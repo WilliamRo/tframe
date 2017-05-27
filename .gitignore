@@ -1,0 +1,11 @@
+# Ignore PyCharm files
+.idea/
+
+# Ignore byte-compiled files
+*.pyc
+*pycache*
+
+# Ignore data / checkpoint / log files
+*[Dd]ata*/
+*checkpoint*/
+*[Ll]og*/
