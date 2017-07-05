@@ -1,4 +1,4 @@
-from ._console import Console
+from . import console
+from . import local
 
 
-console = Console()
