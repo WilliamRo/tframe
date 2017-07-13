@@ -42,8 +42,8 @@ def show_status(content):
   print("%s %s" % (_config['prompt'], content))
 
 
-def supplement(content):
-  print("{} {}".format(_config['sub_prompt'], content))
+def supplement(content, level=1):
+  print("{} {}".format(level * _config['sub_prompt'], content))
 
 
 def pprint(content):
