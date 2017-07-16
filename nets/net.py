@@ -5,6 +5,8 @@ import tensorflow as tf
 from ..core import Function
 from ..layers.layer import Layer
 
+from .. import pedia
+
 
 class Net(Function):
   """Function which can packet sub-functions automatically when calling add
@@ -23,6 +25,7 @@ class Net(Function):
     if isinstance(f, tf.Tensor):
       # If f is a placeholder
       self.inputs = f
+      tf.add_to_collection(pedia.default_feed_dict, f)
     elif isinstance(f, Net) or self._level > 0:
       # Net should be added directly into self.chain
       self.chain += [f]

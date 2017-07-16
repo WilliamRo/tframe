@@ -1,13 +1,15 @@
 from __future__ import absolute_import
 
 import numpy as np
+import six
 
 from . import console
+from .. import pedia
 
 
 class TFData(object):
   """"""
-  def __init__(self, features, name=None, **kwargs):
+  def __init__(self, features, targets=None, name=None, **kwargs):
     """"""
     if not hasattr(features, 'shape'):
       raise ValueError('features must have attribute "shape"')
@@ -15,7 +17,10 @@ class TFData(object):
     self.name = name
     self.sample_num = features.shape[0]
 
-    self._data = {'features': features}
+    self._data = {pedia.features: features}
+    if targets is not None:
+      kwargs[pedia.targets] = targets
+
     for k in kwargs.keys():
       if hasattr(kwargs[k], 'shape') and kwargs[k].shape[0] == self.sample_num:
         self._data[k] = kwargs[k]
@@ -25,16 +30,20 @@ class TFData(object):
 
   @property
   def features(self):
-    return self._data['features']
+    return self._data[pedia.features]
 
   @property
   def feature_shape(self):
     return self.features[0].shape
 
   @property
+  def batches_per_epoch(self):
+    return 1.0 * self.sample_num / self._batch_size
+
+  @property
   def progress(self):
     cursor = self._cursor - 1
-    if cursor < self._batch_size:
+    if cursor <= self._batch_size:
       return 1.0
     else:
       return 1.0 * cursor / self.sample_num
@@ -45,11 +54,16 @@ class TFData(object):
     else:
       return self.__dict__[attrname]
 
-  def __getitem__(self, indices):
-    indices = np.mod(indices, self.sample_num)
+  def __getitem__(self, item):
+    if isinstance(item, six.string_types):
+      return self._data[item]
+    # item is an array
+    item = np.mod(item, self.sample_num)
     data = {}
     for k in self._data.keys():
-      data[k] = self._data[k][indices]
+      data[k] = self._data[k][item]
+
+    return data
 
   def set_batch_size(self, batch_size):
     if not isinstance(batch_size, int) or batch_size < 1:
@@ -94,10 +108,10 @@ def load_mnist(data_dir, flatten=False, one_hot=False,
   console.supplement('labels: {}'.format(mnist.test.labels.shape), 2)
 
   data = {}
-  data['train'] = TFData(mnist.train.images, labels=mnist.train.labels)
+  data['train'] = TFData(mnist.train.images, targets=mnist.train.labels)
   data['validation'] = TFData(mnist.validation.images,
-                              labels=mnist.validation.labels)
-  data['test'] = TFData(mnist.test.images, labels=mnist.test.labels)
+                              targets=mnist.validation.labels)
+  data['test'] = TFData(mnist.test.images, targets=mnist.test.labels)
 
   return data
 

@@ -9,6 +9,7 @@ from .layer import single_input
 from .. import activations
 from .. import initializers
 from .. import regularizers
+from .. import pedia
 
 
 class Activation(Layer):
@@ -29,15 +30,19 @@ class Activation(Layer):
 
 class Dropout(Layer):
   """"""
-  def __init__(self):
+  def __init__(self, train_keep_prob=0.5):
     # Initialize keep probability until while linking to put the
     #   the placeholder in the right name scope
     self._keep_prob = None
+    self.train_keep_prob = train_keep_prob
 
   @single_input
   def _link(self, input_):
     if self._keep_prob is None:
-      self._keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+      self._keep_prob = tf.placeholder(tf.float32, name=pedia.keep_prob)
+      tf.add_to_collection(pedia.default_feed_dict, self._keep_prob)
+      pedia.memo[self._keep_prob.name] = self.train_keep_prob
+
     return tf.nn.dropout(input_, self._keep_prob)
 
 

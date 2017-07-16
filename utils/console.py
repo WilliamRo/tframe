@@ -50,7 +50,7 @@ def pprint(content):
   _pp.pprint(content)
 
 
-def print_progress(index, total, start_time=None):
+def print_progress(index=None, total=None, start_time=None, progress=None):
   """
   Print progress bar, the line which cursor is positioned will be overwritten
   
@@ -58,17 +58,23 @@ def print_progress(index, total, start_time=None):
   :param total: positive scalar, indicating total work 
   :param start_time: if provided, ETA will be displayed to the right of
                       the progress bar
+  :param progress: ...
   """
+  if progress is None:
+    if index is None or total is None:
+      raise ValueError('index and total must be provided')
+    progress = 1.0 * index / total
+
   if start_time is not None:
     duration = time.time() - start_time
-    eta = duration / index * (total - index)
+    eta = duration / max(progress, 1e-7) * (1 - progress)
     tail = "ETA: {:.0f}s".format(eta)
   else:
-    tail = "{:.0f}%".format(100 * index / total)
+    tail = "{:.0f}%".format(100 * progress)
 
-  left = int(index * _config['bar_width']/ total)
+  left = int(progress * _config['bar_width'])
   right = _config['bar_width'] - left
-  mid = '=' if index == total else '>'
+  mid = '=' if progress == 1 else '>'
   stdout.write('[%s%s%s] %s' %
                ('=' * left, mid, ' ' * right, tail))
   stdout.flush()

@@ -4,6 +4,8 @@ import os
 import re
 import six
 
+import tensorflow as tf
+
 from . import console
 
 
@@ -40,5 +42,26 @@ def clear_paths(paths):
 
     # Show status
     console.show_status('Directory "{}" has been cleared'.format(path))
+
+
+def load_checkpoint(path, session, saver):
+  console.show_status('Access to directory {}'.format(path))
+  ckpt_state = tf.train.get_checkpoint_state(path)
+
+  if ckpt_state and ckpt_state.model_checkpoint_path:
+    ckpt_name = os.path.basename(ckpt_state.model_checkpoint_path)
+    saver.restore(session, os.path.join(path, ckpt_name))
+    counter = int(next(re.finditer("(\d+)(?!.*\d)", ckpt_name)).group(0))
+    console.show_status("Loaded {}".format(ckpt_name))
+    return True, counter
+  else:
+    console.show_status('New checkpoints will be created ...')
+    return False, 0
+
+
+def save_checkpoint(path, session, saver, step):
+  saver.save(session, path, step)
+
+
 
 
