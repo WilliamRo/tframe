@@ -20,7 +20,7 @@ class Predictor(Feedforward):
              metric=None, metric_name='Metric'):
     Feedforward.build(self)
     # Initiate targets and add it to collection
-    self._targets = tf.placeholder(tf.float32, self.outputs.get_shape(),
+    self._targets = tf.placeholder(self.outputs.dtype, self.outputs.get_shape(),
                                    name='targets')
     tf.add_to_collection(pedia.default_feed_dict, self._targets)
 
@@ -50,9 +50,13 @@ class Predictor(Feedforward):
     if self._session is None:
       self.launch_model(overwrite=False)
 
-    outputs = self._session.run(
-      [self.outputs], feed_dict=self._get_default_feed_dict(data, train=False))
+    outputs, loss = self._session.run(
+      [self.outputs, self._loss],
+      feed_dict=self._get_default_feed_dict(data, train=False))
 
-    return outputs
+    return outputs, loss
+
+
+
 
 

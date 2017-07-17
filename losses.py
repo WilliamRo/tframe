@@ -12,7 +12,13 @@ def cross_entropy(labels, logits):
 
 
 def mean_squared_error(y_true, y_predict):
-  return tf.reduce_mean(tf.square(tf.abs(y_true - y_predict)), axis=-1)
+  return tf.reduce_mean(tf.square(tf.abs(y_true - y_predict)))
+
+
+def euclidean(y_true, y_predict):
+  delta = tf.abs(y_true - y_predict)
+  distances = tf.norm(delta)
+  return tf.reduce_mean(distances)
 
 
 def get(identifier):
@@ -24,6 +30,8 @@ def get(identifier):
       return mean_squared_error
     elif identifier in ['cross_entropy']:
       return cross_entropy
+    elif identifier in ['euclid', 'euclidean']:
+      return euclidean
     else:
       raise ValueError('Can not resolve "{}"'.format(identifier))
   else:

@@ -15,18 +15,24 @@ class TFData(object):
       raise ValueError('features must have attribute "shape"')
 
     self.name = name
-    self.sample_num = features.shape[0]
 
     self._data = {pedia.features: features}
+    self.attachment = {}
     if targets is not None:
       kwargs[pedia.targets] = targets
 
     for k in kwargs.keys():
       if hasattr(kwargs[k], 'shape') and kwargs[k].shape[0] == self.sample_num:
         self._data[k] = kwargs[k]
+      else:
+        self.attachment[k] = kwargs[k]
 
     self._batch_size = None
     self._cursor = 0
+
+  @property
+  def sample_num(self):
+    return self.features.shape[0]
 
   @property
   def features(self):
@@ -56,7 +62,12 @@ class TFData(object):
 
   def __getitem__(self, item):
     if isinstance(item, six.string_types):
-      return self._data[item]
+      if item in self._data.keys():
+        return self._data[item]
+      elif item in self.attachment.keys():
+        return self.attachment[item]
+      else:
+        raise ValueError('Can not resolve "{}"'.format(item))
     # item is an array
     item = np.mod(item, self.sample_num)
     data = {}

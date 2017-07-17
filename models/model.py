@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import time
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
@@ -43,7 +44,7 @@ class Model(object):
 
     self._counter = None
 
-    self._snapshot = None
+    self._snapshot_function = None
 
   # region : Properties
 
@@ -62,7 +63,8 @@ class Model(object):
   # endregion : Properties
 
   def train(self, epoch=1, batch_size=128, training_set=None,
-            test_set=None, print_cycle=0, snapshot_cycle=0):
+            test_set=None, print_cycle=0, snapshot_cycle=0,
+            snapshot_function=None):
     # Check data
     if training_set is not None:
       self._training_set = training_set
@@ -73,11 +75,23 @@ class Model(object):
     elif not isinstance(training_set, TFData):
       raise TypeError('Data for training must be an instance of TFData')
 
+    if snapshot_function is not None:
+      if not callable(snapshot_function):
+        raise ValueError('snapshot_function must be callable')
+      self._snapshot_function = snapshot_function
+
     # Get epoch and batch size
     epoch = FLAGS.epoch if FLAGS.epoch > 0 else epoch
     batch_size = FLAGS.batch_size if FLAGS.batch_size > 0 else batch_size
     assert isinstance(self._training_set, TFData)
     self._training_set.set_batch_size(batch_size)
+
+    # Show configurations
+    console.show_status('Configurations:')
+    console.supplement('Training set feature shape: {}'.format(
+      self._training_set.features.shape))
+    console.supplement('epochs: {}'.format(epoch))
+    console.supplement('batch size: {}'.format(batch_size))
 
     # Do some preparation
     if self._session is None:
@@ -101,7 +115,7 @@ class Model(object):
             self._print_progress(epc, start_time, train_loss)
           # Snapshot
           if snapshot_cycle > 0 and np.mod(self._counter, snapshot_cycle) == 0:
-            pass
+            self._snapshot()
           # Check flag
           if end_epoch_flag:
             console.clear_line()
@@ -129,7 +143,7 @@ class Model(object):
   def _update_model(self):
     assert isinstance(self._training_set, TFData)
     batch, flag = self._training_set.next_batch(shuffle=FLAGS.shuffle)
-    feed_dict = self._get_default_feed_dict(batch, False)
+    feed_dict = self._get_default_feed_dict(batch, train=True)
 
     summary, loss, _ = self._session.run(
       [self._merged_summary, self._loss, self._train_step],
@@ -142,7 +156,7 @@ class Model(object):
 
   def _print_progress(self, epc, start_time, train_loss):
     test_status = ''
-    if self._test_set is not None:
+    if self._test_set is not None and not config.block_test:
       feed_dict = self._get_default_feed_dict(self._test_set, False)
       test_loss = self._loss.eval(feed_dict)
       test_status = ', Test loss = {:.3f}'.format(test_loss)
@@ -155,6 +169,15 @@ class Model(object):
 
     console.print_progress(progress=self._training_set.progress,
                            start_time=start_time)
+
+  def _snapshot(self):
+    if self._snapshot_function is None:
+      return
+
+    fig = self._snapshot_function(self)
+    epcs = 1.0 * self._counter / self._training_set.batches_per_epoch
+    plt.savefig("{}/train_{:.1f}_epcs.png".format(self.snapshot_dir, epcs))
+    plt.close(fig)
 
   def _define_loss(self, loss):
     if not isinstance(loss, tf.Tensor):
