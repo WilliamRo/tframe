@@ -12,7 +12,7 @@ def cross_entropy(labels, logits):
 
 
 def mean_squared_error(y_true, y_predict):
-  return tf.reduce_mean(tf.square(y_true - y_predict), axis=-1)
+  return tf.reduce_mean(tf.square(tf.abs(y_true - y_predict)), axis=-1)
 
 
 def get(identifier):

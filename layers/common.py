@@ -21,7 +21,10 @@ class Activation(Layer):
   def _link(self, inputs):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
-    return self._activation(inputs)
+    outputs = self._activation(inputs)
+    with tf.name_scope(pedia.summaries):
+      tf.summary.histogram('activations', outputs)
+    return outputs
 
   @staticmethod
   def ReLU():
