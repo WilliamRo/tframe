@@ -23,7 +23,7 @@ class Activation(Layer):
        Function.__call__ but calling self._activation"""
     outputs = self._activation(inputs)
     with tf.name_scope(pedia.summaries):
-      tf.summary.histogram('activations', outputs)
+      tf.summary.histogram('activations', tf.abs(outputs))
     return outputs
 
   @staticmethod

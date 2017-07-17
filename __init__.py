@@ -3,6 +3,8 @@ import tensorflow as tf
 
 flags = tf.app.flags
 
+flags.DEFINE_string("mark", "default", "...")
+
 flags.DEFINE_integer("epoch", -1, "Epochs to train")
 flags.DEFINE_integer("batch_size", -1, "The size of batch images")
 
@@ -17,3 +19,5 @@ from .utils import local
 from .utils.tfdata import TFData
 
 from .models import Predictor
+
+from . import config
