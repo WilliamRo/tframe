@@ -27,7 +27,7 @@ class Model(object):
   model_name = 'default'
 
   def __init__(self, mark=None):
-    self.mark = mark
+    self.mark = FLAGS.mark if mark is None else mark
 
     self._training_set = None
     self._test_set = None
@@ -49,15 +49,16 @@ class Model(object):
 
   @property
   def log_dir(self):
-    return check_path(config.record_dir, config.log_folder_name)
+    return check_path(config.record_dir, config.log_folder_name, self.mark)
 
   @property
   def ckpt_dir(self):
-    return check_path(config.record_dir, config.ckpt_folder_name)
+    return check_path(config.record_dir, config.ckpt_folder_name, self.mark)
 
   @property
   def snapshot_dir(self):
-    return check_path(config.record_dir, config.snapshot_folder_name)
+    return check_path(config.record_dir, config.snapshot_folder_name,
+                       self.mark)
 
   # endregion : Properties
 
