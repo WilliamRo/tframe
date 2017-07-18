@@ -11,6 +11,8 @@ flags.DEFINE_integer("batch_size", -1, "The size of batch images")
 flags.DEFINE_bool("overwrite", True, "Whether to overwrite records")
 flags.DEFINE_bool("shuffle", False, "Whether to shuffle")
 
+flags.DEFINE_bool("suppress_logging", True, "...")
+
 FLAGS = flags.FLAGS
 
 
@@ -22,3 +24,6 @@ from .models import Predictor
 from .models import GAN
 
 from . import config
+
+# Control logging
+console.set_logging_level(1)

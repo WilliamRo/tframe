@@ -224,7 +224,9 @@ class Model(object):
     if overwrite:
       clear_paths([self.log_dir, self.ckpt_dir, self.snapshot_dir])
 
+    console.show_status('Launching session ...')
     self._session = tf.Session()
+    console.show_status('Session launched')
     self._saver = tf.train.Saver()
     self._summary_writer = tf.summary.FileWriter(self.log_dir,
                                                  self._session.graph)

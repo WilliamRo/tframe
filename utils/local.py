@@ -30,6 +30,7 @@ def clear_paths(paths):
   if isinstance(paths, six.string_types):
     paths = [paths]
 
+  console.show_status('Cleaning path ...')
   for path in paths:
     # Delete all files in path
     for root, dirs, files in os.walk(path, topdown=False):
@@ -41,7 +42,7 @@ def clear_paths(paths):
         os.remove(os.path.join(root, file))
 
     # Show status
-    console.show_status('Directory "{}" has been cleared'.format(path))
+    console.supplement('Directory "{}" has been cleared'.format(path))
 
 
 def load_checkpoint(path, session, saver):

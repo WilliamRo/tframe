@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import pprint
 import time
+import os
 
 from sys import stdout
 
@@ -89,4 +90,17 @@ def clear_line():
   stdout.write("\r{}\r".format(" " * (_config['bar_width'] +
                                       _config['tail_width'])))
   stdout.flush()
+
+
+def set_logging_level(level):
+  """
+  Set tensorflow logging level 
+  :param level: integer \in {0, 1, 2, 3}
+  """
+  assert 0 <= level <= 3
+  os.environ['TF_CPP_MIN_LOG_LEVEL'] = '{}'.format(level)
+
+
+def suppress_logging():
+  set_logging_level(2)
 
