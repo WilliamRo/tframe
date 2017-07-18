@@ -16,7 +16,7 @@ class Conv2D(Layer, Conv2D_):
   abbreviation = 'conv'
 
   @single_input
-  def _link(self, input_, **kwargs):
+  def __call__(self, input_=None, **kwargs):
     assert isinstance(input_, tf.Tensor)
     return Conv2D_.__call__(self, input_, scope=self.full_name)
 

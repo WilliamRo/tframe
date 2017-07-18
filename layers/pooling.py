@@ -13,7 +13,7 @@ class MaxPool2D(Layer, MaxPool2D_):
   full_name = 'maxpool2d'
 
   @single_input
-  def _link(self, input_, **kwargs):
+  def __call__(self, input_=None, **kwargs):
     assert isinstance(input_, tf.Tensor)
     return MaxPool2D_.__call__(self, input_, scope=self.full_name)
 

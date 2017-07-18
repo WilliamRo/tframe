@@ -2,9 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tframe.models.model import Model
-from tframe.nets.net import Net
-from tframe.layers import Input
+from ..models.model import Model
+from ..nets.net import Net
+from ..layers import Input
+
+from .. import FLAGS
 
 
 class GAN(Model):
@@ -45,5 +47,15 @@ class GAN(Model):
   def build(self, loss='default', optimizer=None):
     # Link G and D to produce _G and _D
     self._G = self.Generator()
-    self._Dr = self.Discriminator()
-    self._Df = self.Discriminator(self._G)
+    # :: Check shape
+    g_shape = self._G.get_shape().as_list()[1:]
+    d_shape = self.D.inputs.get_shape().as_list()[1:]
+    if g_shape != d_shape:
+      raise ValueError('Output shape of generator {} does not match the input '
+                        'shape of discriminator {}'.format(g_shape, d_shape))
+
+    self._Dr, self._logits_Dr = self.Discriminator(with_logits=True)
+    self._Df, self._logits_Df = self.Discriminator(self._G, with_logits=True)
+
+    # Launch session
+    self.launch_model(FLAGS.overwrite)

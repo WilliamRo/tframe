@@ -42,8 +42,10 @@ class Net(Function):
     logits = None
     # Link all functions in chain
     for f in self.chain:
+      # Logits are always inputs of activation layers
       if isinstance(f, Activation):
         logits = outputs
+
       if isinstance(f, Net) and with_logits:
         outputs, logits = f(outputs, **kwargs)
       else:
