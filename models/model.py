@@ -63,6 +63,9 @@ class Model(object):
 
   # endregion : Properties
 
+  def build(self):
+    raise  NotImplementedError('build method not implemented')
+
   def train(self, epoch=1, batch_size=128, training_set=None,
             test_set=None, print_cycle=0, snapshot_cycle=0,
             snapshot_function=None):

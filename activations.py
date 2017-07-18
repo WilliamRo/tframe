@@ -33,3 +33,7 @@ def get(identifier, **kwargs):
       return activation
   else:
     raise TypeError('identifier must be callable or a string')
+
+
+if __name__ == "__main__":
+  activation = get('softmax')

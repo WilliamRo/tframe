@@ -141,8 +141,8 @@ class Reshape(Layer):
     return tf.reshape(input_, self.output_shape, name=name)
 
 
-def Input(shape=None, dtype=tf.float32):
-  return tf.placeholder(dtype=dtype, shape=shape, name='Input')
+def Input(shape=None, dtype=tf.float32, name='Input'):
+  return tf.placeholder(dtype=dtype, shape=shape, name=name)
 
 
 Flatten = lambda: Reshape()

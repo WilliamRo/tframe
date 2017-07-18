@@ -1,13 +1,8 @@
 from __future__ import absolute_import
 
-import tensorflow as tf
-
 from .model import Model
 
 from ..nets import Net
-
-from .. import losses
-from .. import pedia
 
 
 class Feedforward(Model, Net):

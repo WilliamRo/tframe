@@ -12,12 +12,12 @@ class Function(object):
 
   @property
   def group_name(self):
-    raise NotImplementedError('Property name has not implemented yet')
+    raise NotImplementedError('Property "group_name" has not implemented yet')
 
   def __call__(self, inputs=None, reuse=False):
     if inputs is None:
       if self.inputs is None:
-        raise ValueError('Can not find input')
+        raise ValueError('Input not defined')
       inputs = self.inputs
     if self.group_name is not None:
       with tf.variable_scope(self.group_name):
@@ -29,12 +29,9 @@ class Function(object):
       return self._link(inputs)
 
   def _link(self, inputs):
-    # If outputs have been specified, return them directly
     # TODO: this may be not necessary
-    if self.outputs is not None and False:
-      return self.outputs
     # Otherwise link functions in chain list
-    elif not isinstance(self.chain, list):
+    if not isinstance(self.chain, list):
       raise TypeError('Function.chain must be a list')
     else:
       if len(self.chain) == 0:

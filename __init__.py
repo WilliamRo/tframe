@@ -19,5 +19,6 @@ from .utils import local
 from .utils.tfdata import TFData
 
 from .models import Predictor
+from .models import GAN
 
 from . import config
