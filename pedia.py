@@ -8,4 +8,6 @@ is_training = 'is_training '
 metric_name = 'metric_name'
 summaries = 'summaries'
 
+with_logits = 'with_logits '
+
 memo = {}

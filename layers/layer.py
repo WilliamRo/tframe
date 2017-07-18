@@ -16,10 +16,8 @@ class Layer(Function):
   def group_name(self):
     return self.full_name
 
-  def _link(self, inputs):
-    raise NotImplementedError('_link method not implemented')
-
-  def _get_variable(self, name, shape, fixed_zero=False,
+  @staticmethod
+  def _get_variable(name, shape, fixed_zero=False,
                       initializer='xavier_uniform', regularizer=None):
     return tf.get_variable(
       name, shape, dtype=tf.float32, trainable=not fixed_zero,

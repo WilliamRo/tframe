@@ -4,6 +4,7 @@ import tensorflow as tf
 
 from ..core import Function
 from ..layers.layer import Layer
+from ..layers.common import Activation
 
 from .. import pedia
 
@@ -15,11 +16,44 @@ class Net(Function):
     """Instantiate Net, a name must be given"""
     self._name = name
     self._level = level
-    Function.__init__(self)
+
+    self.chain = []
+    self.inputs = None
 
   @property
   def group_name(self):
     return self._name
+
+  def _link(self, inputs, **kwargs):
+    # Check inputs
+    if inputs is None:
+      if self.inputs is None:
+        raise ValueError('Input not defined')
+      inputs = self.inputs
+
+    # Check chain
+    assert isinstance(self.chain, list)
+    if len(self.chain) == 0:
+      raise ValueError('Net is empty')
+
+    with_logits = kwargs.get(pedia.with_logits, False)
+
+    outputs = inputs
+    logits = None
+    # Link all functions in chain
+    for f in self.chain:
+      if isinstance(f, Activation):
+        logits = outputs
+      if isinstance(f, Net) and with_logits:
+        outputs, logits = f(outputs, **kwargs)
+      else:
+        outputs = f(outputs)
+
+    # Return
+    if with_logits:
+      return outputs, logits
+    else:
+      return outputs
 
   def add(self, f):
     if isinstance(f, tf.Tensor):

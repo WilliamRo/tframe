@@ -8,7 +8,7 @@ from .layer import single_input
 from tensorflow.python.layers.convolutional import Conv2D as Conv2D_
 
 
-class Conv2D(Conv2D_, Layer):
+class Conv2D(Layer, Conv2D_):
   """"""
   is_nucleus = True
 
@@ -16,7 +16,8 @@ class Conv2D(Conv2D_, Layer):
   abbreviation = 'conv'
 
   @single_input
-  def __call__(self, input_):
+  def _link(self, input_, **kwargs):
     assert isinstance(input_, tf.Tensor)
     return Conv2D_.__call__(self, input_, scope=self.full_name)
+
 

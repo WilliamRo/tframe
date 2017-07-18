@@ -18,7 +18,7 @@ class Activation(Layer):
     self._activation = activations.get(identifier, **kwargs)
 
   @single_input
-  def _link(self, inputs):
+  def _link(self, inputs, **kwargs):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
     outputs = self._activation(inputs)
@@ -40,7 +40,7 @@ class Dropout(Layer):
     self.train_keep_prob = train_keep_prob
 
   @single_input
-  def _link(self, input_):
+  def _link(self, input_, **kwargs):
     if self._keep_prob is None:
       self._keep_prob = tf.placeholder(tf.float32, name=pedia.keep_prob)
       tf.add_to_collection(pedia.default_feed_dict, self._keep_prob)
@@ -79,7 +79,7 @@ class Linear(Layer):
     self.biases = None
 
   @single_input
-  def _link(self, input_):
+  def _link(self, input_, **kwargs):
     assert isinstance(input_, tf.Tensor)
 
     # If this layer has been linked once, variables should be reused
@@ -132,7 +132,7 @@ class Reshape(Layer):
     self.output_shape = shape
 
   @single_input
-  def _link(self, input_):
+  def _link(self, input_, **kwargs):
     name = 'reshape'
     if self.output_shape is None:
       input_shape = input_.get_shape().as_list()
