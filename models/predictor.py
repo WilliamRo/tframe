@@ -55,7 +55,7 @@ class Predictor(Feedforward):
 
     outputs, loss = self._session.run(
       [self.outputs, self._loss],
-      feed_dict=self._get_default_feed_dict(data, train=False))
+      feed_dict=self._get_default_feed_dict(data, is_training=False))
 
     return outputs, loss
 

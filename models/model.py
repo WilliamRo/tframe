@@ -194,7 +194,7 @@ class Model(object):
 
     console.clear_line()
     console.write_line("[Snapshot] images saved to '{}'".format(filename))
-    console.print_progress(self._training_set.progress)
+    console.print_progress(progress=self._training_set.progress)
 
   def _define_loss(self, loss):
     if not isinstance(loss, tf.Tensor):
