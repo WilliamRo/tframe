@@ -88,11 +88,13 @@ class GAN(Model):
     self._Df, self._logits_Df = self.Discriminator(self._G, with_logits=True)
 
     # Define output tensor
+    if self._output_shape is None:
+      self._output_shape = g_shape
     if g_shape == self._output_shape:
       self._outputs = self._G
     else:
       self._outputs = tf.reshape(
-        self._G, shape=[None] + self._output_shape, name='outputs')
+        self._G, shape=[-1] + self._output_shape, name='outputs')
 
     # Prepare sample z
     self._sample_z = tf.Variable(
@@ -106,8 +108,8 @@ class GAN(Model):
     # Define train steps
     if optimizer is None:
       optimizer = tf.train.AdamOptimizer()
-    get_train_step = lambda loss, var_list: optimizer.minimize(
-      loss=loss, var_list=var_list)
+    get_train_step = lambda loss_, var_list: optimizer.minimize(
+      loss=loss_, var_list=var_list)
     with tf.name_scope('G_train_step'):
       self._train_step_G = get_train_step(self._loss_G, self._theta_G)
     with tf.name_scope('D_train_step'):
@@ -121,8 +123,6 @@ class GAN(Model):
 
     # Set default snapshot function
     self._snapshot_function = self._default_snapshot_function
-
-    #
 
     # Launch session
     self.launch_model(FLAGS.overwrite)
@@ -156,13 +156,12 @@ class GAN(Model):
         self._loss_D = tf.add(self._loss_Dr, self._loss_Df, name='loss_D')
       with tf.name_scope('G_loss'):
         self._loss_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=self._logits_Df, labels=tf.ones_like(self._logits_Dr)))
+          logits=self._logits_Df, labels=tf.ones_like(self._logits_Df)))
     else:
       raise ValueError('Can not resolve "{}"'.format(loss))
 
   def _add_summaries(self):
     sum_z = tf.summary.histogram('z_sum', self.G.inputs)
-    sum_G = tf.summary.image("G_sum", self._outputs, max_outputs=3)
     sum_Dr = tf.summary.histogram("D_real_sum", self._Dr)
     sum_Df = tf.summary.histogram("D_fake_sum", self._Df)
 
@@ -171,8 +170,11 @@ class GAN(Model):
     sum_loss_Df = tf.summary.scalar("D_fake_loss_sum", self._loss_Df)
     sum_loss_D = tf.summary.scalar("D_loss_sum", self._loss_D)
 
-    self._merged_sum_G = tf.summary.merge(
-      [sum_loss_G, sum_Df, sum_loss_Df, sum_G, sum_z])
+    sum_G_list = [sum_loss_G, sum_Df, sum_loss_Df, sum_z]
+    if len(self._output_shape) == 3:
+      sum_G_list += [tf.summary.image("G_sum", self._outputs, max_outputs=3)]
+    self._merged_sum_G = tf.summary.merge(sum_G_list)
+
     self._merged_sum_D = tf.summary.merge([sum_Dr, sum_loss_Dr, sum_loss_D])
 
   def _update_model(self, data_batch, **kwargs):
@@ -186,6 +188,7 @@ class GAN(Model):
     loss_D, loss_G = None, None
     summaries_D, summaries_G = None, None
 
+    assert isinstance(self._session, tf.Session)
     # Update discriminator
     feed_dict_D = {self.D.inputs: features,
                    self.G.inputs: self.random_z(sample_num)}
@@ -218,12 +221,15 @@ class GAN(Model):
     z_dim = self.G.inputs.get_shape().as_list()[1]
     return np.random.standard_normal(size=[sample_num, z_dim])
 
+  @staticmethod
   def _default_snapshot_function(self):
     # Generate samples
     feed_dict = {self.G.inputs: (self._sample_z.eval() if self._fix_sample_z
                                  else self.random_z(self._sample_num))}
     feed_dict.update(self._get_status_feed_dict(is_training=False))
     samples = self._outputs.eval(feed_dict)
+    if samples.shape[-1] == 1:
+      samples = samples.reshape(samples.shape[:-1])
 
     # Plot samples
     manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
