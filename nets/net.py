@@ -31,12 +31,13 @@ class Net(Function):
           or detail or f.is_nucleus]
     assert isinstance(self.chain, list)
     result = ('' if self.inputs is None
-              else 'input_{}'.format(shape_string(get_scale(self.inputs))))
+              else 'input_{} => '.format(shape_string(get_scale(self.inputs))))
     for (i, f) in zip(range(len(self.chain)), fs):
-      result += '-'
       if isinstance(f, Net):
+        result += ' => ' if i != 0 else ''
         result += f.structure_string(detail, scale)
       else:
+        result += ' -> ' if i != 0 else ''
         result += f.abbreviation
         if scale and f.neuron_scale is not None:
           result += '_{}'.format(shape_string(f.neuron_scale))
