@@ -2,6 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import numpy as np
 import six
 import tensorflow as tf
 
@@ -9,14 +12,14 @@ from ..models.model import Model
 from ..nets.net import Net
 from ..layers import Input
 
-from .. import console
 from .. import pedia
 from .. import FLAGS
 
 
 class GAN(Model):
   """"""
-  def __init__(self, z_dim=None, sample_shape=None, mark=None):
+  def __init__(self, z_dim=None, sample_shape=None, output_shape=None,
+               mark=None, fix_sample_z=True, sample_num=9):
     # Call parent's constructor
     Model.__init__(self, mark)
 
@@ -39,15 +42,20 @@ class GAN(Model):
 
     self._z_dim = z_dim
     self._sample_shape = sample_shape
+    self._output_shape = output_shape
+    self._fix_sample_z = fix_sample_z
+    self._sample_num = sample_num
 
     # Private tensors and ops
-    self._G = None
+    self._G, self._outputs = None, None
     self._Dr, self._Df = None, None
     self._logits_Dr, self._logits_Df = None, None
     self._loss_G, self._loss_D = None, None
     self._loss_Dr, self._loss_Df = None, None
     self._train_step_G, self._train_step_D = None, None
     self._merged_summary_G, self._merged_summary_D = None, None
+
+    self._sample_z = None
 
   @property
   def _theta_D(self):
@@ -79,6 +87,19 @@ class GAN(Model):
     self._Dr, self._logits_Dr = self.Discriminator(with_logits=True)
     self._Df, self._logits_Df = self.Discriminator(self._G, with_logits=True)
 
+    # Define output tensor
+    if g_shape == self._output_shape:
+      self._outputs = self._G
+    else:
+      self._outputs = tf.reshape(
+        self._G, shape=[None] + self._output_shape, name='outputs')
+
+    # Prepare sample z
+    self._sample_z = tf.Variable(
+      initial_value=tf.random_normal(
+        shape=[self._sample_num, self.G.inputs.get_shape().as_list()[1]]),
+      trainable=False)
+
     # Define loss
     self._define_losses(loss)
 
@@ -97,6 +118,11 @@ class GAN(Model):
 
     # Print status and model structure
     self.show_building_info(Generator=self.G, Discriminator=self.D)
+
+    # Set default snapshot function
+    self._snapshot_function = self._default_snapshot_function
+
+    #
 
     # Launch session
     self.launch_model(FLAGS.overwrite)
@@ -135,6 +161,8 @@ class GAN(Model):
       raise ValueError('Can not resolve "{}"'.format(loss))
 
   def _add_summaries(self):
+    sum_z = tf.summary.histogram('z_sum', self.G.inputs)
+    sum_G = tf.summary.image("G_sum", self._outputs, max_outputs=3)
     sum_Dr = tf.summary.histogram("D_real_sum", self._Dr)
     sum_Df = tf.summary.histogram("D_fake_sum", self._Df)
 
@@ -143,8 +171,78 @@ class GAN(Model):
     sum_loss_Df = tf.summary.scalar("D_fake_loss_sum", self._loss_Df)
     sum_loss_D = tf.summary.scalar("D_loss_sum", self._loss_D)
 
-    self._merged_sum_G = tf.summary.merge([sum_loss_G, sum_Df, sum_loss_Df])
+    self._merged_sum_G = tf.summary.merge(
+      [sum_loss_G, sum_Df, sum_loss_Df, sum_G, sum_z])
     self._merged_sum_D = tf.summary.merge([sum_Dr, sum_loss_Dr, sum_loss_D])
+
+  def _update_model(self, data_batch, **kwargs):
+    # TODO: design some mechanisms to handle these
+    G_times = kwargs.get('G_times', 1)
+    D_times = kwargs.get('D_times', 1)
+
+    features = data_batch[pedia.features]
+    sample_num = features.shape[0]
+
+    loss_D, loss_G = None, None
+    summaries_D, summaries_G = None, None
+
+    # Update discriminator
+    feed_dict_D = {self.D.inputs: features,
+                   self.G.inputs: self.random_z(sample_num)}
+    feed_dict_D.update(self._get_status_feed_dict(is_training=True))
+
+    for _ in range(D_times):
+      _, loss_D, summaries_D = self._session.run(
+        [self._train_step_D, self._loss_D, self._merged_sum_D],
+        feed_dict=feed_dict_D)
+
+    # Update generator
+    feed_dict_G = {self.G.inputs: self.random_z(sample_num)}
+    feed_dict_G.update(self._get_status_feed_dict(is_training=True))
+
+    for _ in range(G_times):
+      _, loss_G, summaries_G = self._session.run(
+        [self._train_step_G, self._loss_G, self._merged_sum_G],
+        feed_dict=feed_dict_G)
+
+    # Write summaries to file
+    assert isinstance(self._summary_writer, tf.summary.FileWriter)
+    self._summary_writer.add_summary(summaries_D, self._counter)
+    self._summary_writer.add_summary(summaries_G, self._counter)
+
+    # Return loss dict
+    return {'Discriminator loss': loss_D, 'Generator loss': loss_G}
+
+  def random_z(self, sample_num):
+    assert isinstance(self.G.inputs, tf.Tensor)
+    z_dim = self.G.inputs.get_shape().as_list()[1]
+    return np.random.standard_normal(size=[sample_num, z_dim])
+
+  def _default_snapshot_function(self):
+    # Generate samples
+    feed_dict = {self.G.inputs: (self._sample_z.eval() if self._fix_sample_z
+                                 else self.random_z(self._sample_num))}
+    feed_dict.update(self._get_status_feed_dict(is_training=False))
+    samples = self._outputs.eval(feed_dict)
+
+    # Plot samples
+    manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
+    manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
+
+    fig = plt.figure(figsize=(manifold_h, manifold_w))
+    gs = gridspec.GridSpec(manifold_h, manifold_w)
+    gs.update(wspace=0.05, hspace=0.05)
+
+    for i, sample in enumerate(samples):
+      ax = plt.subplot(gs[i])
+      plt.axis('off')
+      ax.set_xticklabels([])
+      ax.set_yticklabels([])
+      ax.set_aspect('equal')
+      plt.imshow(sample, cmap='Greys_r')
+
+    return fig
+
 
 
 

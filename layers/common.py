@@ -50,7 +50,7 @@ class Dropout(Layer):
   def _link(self, input_, **kwargs):
     if self._keep_prob is None:
       self._keep_prob = tf.placeholder(tf.float32, name=pedia.keep_prob)
-      tf.add_to_collection(pedia.default_feed_dict, self._keep_prob)
+      tf.add_to_collection(pedia.status_tensors, self._keep_prob)
       pedia.memo[self._keep_prob.name] = self.train_keep_prob
 
     return tf.nn.dropout(input_, self._keep_prob)

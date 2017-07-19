@@ -70,7 +70,7 @@ class Model(object):
 
   def train(self, epoch=1, batch_size=128, training_set=None,
             test_set=None, print_cycle=0, snapshot_cycle=0,
-            snapshot_function=None):
+            snapshot_function=None, **kwargs):
     # Check data
     if training_set is not None:
       self._training_set = training_set
@@ -112,13 +112,16 @@ class Model(object):
         # Record epoch start time
         start_time = time.time()
         while True:
-          # Update model
-          train_loss, end_epoch_flag = self._update_model()
-          # Increase counter
+          # Get data batch
+          data_batch, end_epoch_flag = self._training_set.next_batch(
+            shuffle=FLAGS.shuffle)
+          # Increase counter, counter may be used in _update_model
           self._counter += 1
+          # Update model
+          loss_dict = self._update_model(data_batch, **kwargs)
           # Print status
           if print_cycle > 0 and np.mod(self._counter, print_cycle) == 0:
-            self._print_progress(epc, start_time, train_loss)
+            self._print_progress(epc, start_time, loss_dict)
           # Snapshot
           if snapshot_cycle > 0 and np.mod(self._counter, snapshot_cycle) == 0:
             self._snapshot()
@@ -131,7 +134,7 @@ class Model(object):
             if self._metric is not None and self._test_set is not None:
               assert isinstance(self._metric, tf.Tensor)
               metric = self._metric.eval(self._get_default_feed_dict(
-                self._test_set, train=False))
+                self._test_set, is_training=False))
               console.show_status('{} on test set is {:.4f}'.format(
                 pedia.memo[pedia.metric_name], metric))
 
@@ -146,10 +149,8 @@ class Model(object):
     self._summary_writer.close()
     self._session.close()
 
-  def _update_model(self):
-    assert isinstance(self._training_set, TFData)
-    batch, flag = self._training_set.next_batch(shuffle=FLAGS.shuffle)
-    feed_dict = self._get_default_feed_dict(batch, train=True)
+  def _update_model(self, data_batch, **kwargs):
+    feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
 
     summary, loss, _ = self._session.run(
       [self._merged_summary, self._loss, self._train_step],
@@ -158,20 +159,25 @@ class Model(object):
     assert isinstance(self._summary_writer, tf.summary.FileWriter)
     self._summary_writer.add_summary(summary, self._counter)
 
-    return loss, flag
+    return {'Train loss': loss}
 
-  def _print_progress(self, epc, start_time, train_loss):
-    test_status = ''
+  def _print_progress(self, epc, start_time, loss_dict):
+    # TODO: move test elsewhere
     if self._test_set is not None and not config.block_test:
       feed_dict = self._get_default_feed_dict(self._test_set, False)
       test_loss = self._loss.eval(feed_dict)
-      test_status = ', Test loss = {:.3f}'.format(test_loss)
+      assert loss_dict.get('Test loss', None) is None
+      loss_dict['Test loss'] = test_loss
+
+    # Generate loss string
+    loss_strings = ['{} = {:.3f}'.format(k, loss_dict[k])
+                    for k in loss_dict.keys()]
+    loss_string = ', '.join(loss_strings)
 
     total_epoch = self._counter / self._training_set.batches_per_epoch
     console.clear_line()
     console.show_status(
-      'Epoch {} [{:.1f} Total] Train loss = {:.3f}{}'.format(
-        epc + 1, total_epoch, train_loss, test_status))
+      'Epoch {} [{:.1f} Total] {}'.format(epc + 1, total_epoch, loss_string))
 
     console.print_progress(progress=self._training_set.progress,
                            start_time=start_time)
@@ -182,8 +188,13 @@ class Model(object):
 
     fig = self._snapshot_function(self)
     epcs = 1.0 * self._counter / self._training_set.batches_per_epoch
-    plt.savefig("{}/train_{:.1f}_epcs.png".format(self.snapshot_dir, epcs))
+    filename = 'train_{:.1f}_epcs.png'.format(epcs)
+    plt.savefig("{}/{}".format(self.snapshot_dir, filename))
     plt.close(fig)
+
+    console.clear_line()
+    console.write_line("[Snapshot] images saved to '{}'".format(filename))
+    console.print_progress(self._training_set.progress)
 
   def _define_loss(self, loss):
     if not isinstance(loss, tf.Tensor):
@@ -200,17 +211,26 @@ class Model(object):
       self._train_step = optimizer.minimize(loss=self._loss, var_list=var_list)
 
   @staticmethod
-  def _get_default_feed_dict(batch, train):
+  def _get_default_feed_dict(batch, is_training):
     feed_dict = {}
     for tensor in tf.get_collection(pedia.default_feed_dict):
       if 'input' in tensor.name.lower():
         feed_dict[tensor] = batch[pedia.features]
       elif 'target' in tensor.name:
         feed_dict[tensor] = batch[pedia.targets]
-      elif pedia.keep_prob in tensor.name:
-        feed_dict[tensor] = pedia.memo[tensor.name] if not train else 1.0
+
+    feed_dict.update(Model._get_status_feed_dict(is_training))
+
+    return feed_dict
+
+  @staticmethod
+  def _get_status_feed_dict(is_training):
+    feed_dict = {}
+    for tensor in tf.get_collection(pedia.status_tensors):
+      if pedia.keep_prob in tensor.name:
+        feed_dict[tensor] = pedia.memo[tensor.name] if is_training else 1.0
       elif pedia.is_training in tensor.name:
-        feed_dict[tensor] = train
+        feed_dict[tensor] = is_training
 
     return feed_dict
 
