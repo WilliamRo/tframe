@@ -12,6 +12,8 @@ class Layer(Function):
   full_name = None
   abbreviation = None
 
+  neuron_scale = None
+
   @property
   def group_name(self):
     return self.full_name
@@ -44,6 +46,5 @@ def single_input(_link):
     return _link(*args)
 
   return wrapper
-
 
 

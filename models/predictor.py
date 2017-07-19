@@ -40,6 +40,9 @@ class Predictor(Feedforward):
     # Define train step
     self._define_train_step(optimizer)
 
+    # Print status and model structure
+    self.show_building_info(FeedforwardNet=self)
+
     # Launch session
     self.launch_model(FLAGS.overwrite)
 

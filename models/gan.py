@@ -95,8 +95,8 @@ class GAN(Model):
     # Add summaries
     self._add_summaries()
 
-    # Print status
-    console.show_status('Model built successfully:')
+    # Print status and model structure
+    self.show_building_info(Generator=self.G, Discriminator=self.D)
 
     # Launch session
     self.launch_model(FLAGS.overwrite)

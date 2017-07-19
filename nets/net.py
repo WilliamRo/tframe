@@ -5,6 +5,8 @@ import tensorflow as tf
 from ..core import Function
 from ..layers.layer import Layer
 from ..layers.common import Activation
+from ..utils import get_scale
+from ..utils import shape_string
 
 from .. import pedia
 
@@ -23,6 +25,24 @@ class Net(Function):
   @property
   def group_name(self):
     return self._name
+
+  def structure_string(self, detail=True, scale=True):
+    fs = [f for f in self.chain if isinstance(f, Net)
+          or detail or f.is_nucleus]
+    assert isinstance(self.chain, list)
+    result = ('' if self.inputs is None
+              else 'input_{}'.format(shape_string(get_scale(self.inputs))))
+    for (i, f) in zip(range(len(self.chain)), fs):
+      result += '-'
+      if isinstance(f, Net):
+        result += f.structure_string(detail, scale)
+      else:
+        result += f.abbreviation
+        if scale and f.neuron_scale is not None:
+          result += '_{}'.format(shape_string(f.neuron_scale))
+
+    # Return
+    return result
 
   def _link(self, inputs, **kwargs):
     # Check inputs

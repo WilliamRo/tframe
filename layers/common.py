@@ -1,10 +1,13 @@
 from __future__ import absolute_import
 
 import numpy as np
+import six
 import tensorflow as tf
 
 from .layer import Layer
 from .layer import single_input
+
+from ..utils import get_scale
 
 from .. import activations
 from .. import initializers
@@ -15,6 +18,8 @@ from .. import pedia
 class Activation(Layer):
   """"""
   def __init__(self, identifier, **kwargs):
+    self.abbreviation = (identifier if isinstance(identifier, six.string_types)
+                         else identifier.__name__)
     self._activation = activations.get(identifier, **kwargs)
 
   @single_input
@@ -33,6 +38,8 @@ class Activation(Layer):
 
 class Dropout(Layer):
   """"""
+  abbreviation = 'dropout'
+
   def __init__(self, train_keep_prob=0.5):
     # Initialize keep probability until while linking to put the
     #   the placeholder in the right name scope
@@ -77,6 +84,8 @@ class Linear(Layer):
 
     self.weights = None
     self.biases = None
+
+    self.neuron_scale = [output_dim]
 
   @single_input
   def _link(self, input_, **kwargs):
@@ -128,6 +137,7 @@ class Linear(Layer):
 
 
 class Reshape(Layer):
+
   def __init__(self, shape=None):
     self.output_shape = shape
 
@@ -138,7 +148,12 @@ class Reshape(Layer):
       input_shape = input_.get_shape().as_list()
       self.output_shape = [-1, np.prod(input_shape[1:])]
       name = 'flatten'
-    return tf.reshape(input_, self.output_shape, name=name)
+
+    self.abbreviation = name
+
+    output = tf.reshape(input_, self.output_shape, name=name)
+    self.neuron_scale = get_scale(output)
+    return output
 
 
 def Input(shape=None, dtype=tf.float32, name='Input'):

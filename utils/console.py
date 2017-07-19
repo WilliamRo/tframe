@@ -12,7 +12,7 @@ _config = {
   'default_title': 'main',
   'prompt': '>>',
   'sub_prompt': '...',
-  'tail_width': 12
+  'tail_width': 13
 }
 _config['bar_width'] = _config['default_line_width'] - _config['tail_width'] - 2
 

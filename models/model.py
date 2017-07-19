@@ -13,6 +13,8 @@ from .. import config
 from .. import console
 from .. import pedia
 
+from ..nets import Net
+
 from ..utils.local import check_path
 from ..utils.local import clear_paths
 from ..utils.local import load_checkpoint
@@ -238,6 +240,15 @@ class Model(object):
       self._session.run(tf.global_variables_initializer())
 
     return load_flag
+
+  @staticmethod
+  def show_building_info(**kwargs):
+    console.show_status('Model built successfully:')
+    for k in kwargs:
+      net = kwargs[k]
+      assert isinstance(net, Net)
+      console.supplement('{}: {}'.format(k, net.structure_string()))
+
 
 
 
