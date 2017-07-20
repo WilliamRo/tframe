@@ -16,6 +16,8 @@ flags.DEFINE_bool("shuffle", False, "Whether to shuffle")
 
 flags.DEFINE_bool("suppress_logging", True, "...")
 
+flags.DEFINE_bool("train", True, "Whether to train or inference")
+
 FLAGS = flags.FLAGS
 
 from .utils import console

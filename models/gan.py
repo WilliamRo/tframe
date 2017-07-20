@@ -2,8 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import six
 import tensorflow as tf
@@ -11,6 +9,7 @@ import tensorflow as tf
 from ..models.model import Model
 from ..nets.net import Net
 from ..layers import Input
+from ..utils import imtool
 
 from .. import pedia
 from .. import FLAGS
@@ -18,6 +17,7 @@ from .. import FLAGS
 flags = tf.app.flags
 
 flags.DEFINE_bool('fix_sample_z', False, 'Whether to fix z when snapshotting')
+flags.DEFINE_integer('sample_num', -1, 'Number of samples to generate')
 
 
 class GAN(Model):
@@ -196,7 +196,7 @@ class GAN(Model):
     assert isinstance(self._session, tf.Session)
     # Update discriminator
     feed_dict_D = {self.D.inputs: features,
-                   self.G.inputs: self.random_z(sample_num)}
+                   self.G.inputs: self._random_z(sample_num)}
     feed_dict_D.update(self._get_status_feed_dict(is_training=True))
 
     for _ in range(D_times):
@@ -205,7 +205,7 @@ class GAN(Model):
         feed_dict=feed_dict_D)
 
     # Update generator
-    feed_dict_G = {self.G.inputs: self.random_z(sample_num)}
+    feed_dict_G = {self.G.inputs: self._random_z(sample_num)}
     feed_dict_G.update(self._get_status_feed_dict(is_training=True))
 
     for _ in range(G_times):
@@ -221,7 +221,7 @@ class GAN(Model):
     # Return loss dict
     return {'Discriminator loss': loss_D, 'Generator loss': loss_G}
 
-  def random_z(self, sample_num):
+  def _random_z(self, sample_num):
     assert isinstance(self.G.inputs, tf.Tensor)
     z_dim = self.G.inputs.get_shape().as_list()[1]
     return np.random.standard_normal(size=[sample_num, z_dim])
@@ -230,29 +230,45 @@ class GAN(Model):
   def _default_snapshot_function(self):
     # Generate samples
     feed_dict = {self.G.inputs: (self._sample_z.eval() if self._fix_sample_z
-                                 else self.random_z(self._sample_num))}
+                                 else self._random_z(self._sample_num))}
     feed_dict.update(self._get_status_feed_dict(is_training=False))
     samples = self._outputs.eval(feed_dict)
-    if samples.shape[-1] == 1:
-      samples = samples.reshape(samples.shape[:-1])
 
     # Plot samples
-    manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
-    manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
-
-    fig = plt.figure(figsize=(manifold_h, manifold_w))
-    gs = gridspec.GridSpec(manifold_h, manifold_w)
-    gs.update(wspace=0.05, hspace=0.05)
-
-    for i, sample in enumerate(samples):
-      ax = plt.subplot(gs[i])
-      plt.axis('off')
-      ax.set_xticklabels([])
-      ax.set_yticklabels([])
-      ax.set_aspect('equal')
-      plt.imshow(sample, cmap='Greys_r')
+    fig = imtool.gan_grid_plot(samples)
 
     return fig
+
+  def generate(self, z=None, sample_num=1):
+    if self._G is None:
+      raise ValueError('Model not built yet')
+
+    if self._session is None:
+      self.launch_model(overwrite=False)
+    assert isinstance(self._session, tf.Session)
+
+    # Get sample number
+    sample_num = (FLAGS.sample_num if FLAGS.sample_num > 0 else
+                  max(1, sample_num))
+
+    # Check input z
+    z = self._random_z(sample_num) if z is None else z
+    z_shape = list(z.shape[1:])
+    g_input_shape = self.G.inputs.get_shape().as_list()[1:]
+    if z_shape != g_input_shape:
+      raise ValueError("Shape of input z {} doesn't match the shape of "
+                        "generator's input {}".format(
+        z_shape, g_input_shape))
+
+    # Generate samples
+    feed_dict = {self.G.inputs: z}
+    feed_dict.update(self._get_status_feed_dict(is_training=False))
+    samples = self._session.run(self._outputs, feed_dict=feed_dict)
+
+    return samples
+
+
+
 
 
 
