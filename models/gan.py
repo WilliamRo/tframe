@@ -15,11 +15,15 @@ from ..layers import Input
 from .. import pedia
 from .. import FLAGS
 
+flags = tf.app.flags
+
+flags.DEFINE_bool('fix_sample_z', False, 'Whether to fix z when snapshotting')
+
 
 class GAN(Model):
   """"""
   def __init__(self, z_dim=None, sample_shape=None, output_shape=None,
-               mark=None, fix_sample_z=True, sample_num=9):
+               mark=None, fix_sample_z=None, sample_num=9):
     # Call parent's constructor
     Model.__init__(self, mark)
 
@@ -43,8 +47,9 @@ class GAN(Model):
     self._z_dim = z_dim
     self._sample_shape = sample_shape
     self._output_shape = output_shape
-    self._fix_sample_z = fix_sample_z
     self._sample_num = sample_num
+    self._fix_sample_z = (fix_sample_z if fix_sample_z is not None
+                          else FLAGS.fix_sample_z)
 
     # Private tensors and ops
     self._G, self._outputs = None, None

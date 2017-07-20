@@ -30,7 +30,8 @@ class Model(object):
   model_name = 'default'
 
   def __init__(self, mark=None):
-    self.mark = FLAGS.mark if mark is None else mark
+    self.mark = (FLAGS.mark if mark is None or FLAGS.mark != pedia.default
+                 else mark)
 
     self._training_set = None
     self._test_set = None
@@ -91,6 +92,11 @@ class Model(object):
     batch_size = FLAGS.batch_size if FLAGS.batch_size > 0 else batch_size
     assert isinstance(self._training_set, TFData)
     self._training_set.set_batch_size(batch_size)
+
+    # Get print and snapshot cycles
+    print_cycle = FLAGS.print_cycle if FLAGS.print_cycle >= 0 else print_cycle
+    snapshot_cycle = (FLAGS.snapshot_cycle if FLAGS.snapshot_cycle >= 0
+                      else snapshot_cycle)
 
     # Show configurations
     console.show_status('Configurations:')

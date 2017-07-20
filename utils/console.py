@@ -10,7 +10,7 @@ from sys import stdout
 _config = {
   'default_line_width': 80,
   'default_title': 'main',
-  'prompt': '>>',
+  'status_prompt': '>>',
   'sub_prompt': '...',
   'tail_width': 13
 }
@@ -40,7 +40,7 @@ def section(contents):
 
 
 def show_status(content):
-  print("%s %s" % (_config['prompt'], content))
+  print("%s %s" % (_config['status_prompt'], content))
 
 
 def supplement(content, level=1):
@@ -103,4 +103,9 @@ def set_logging_level(level):
 
 def suppress_logging():
   set_logging_level(2)
+
+
+def execute_py(path, **kwargs):
+  os.system('python {} {}'.format(path, ' '.join(
+    ['--{} {}'.format(k, kwargs[k]) for k in kwargs.keys()])))
 

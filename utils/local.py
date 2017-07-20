@@ -46,7 +46,7 @@ def clear_paths(paths):
 
 
 def load_checkpoint(path, session, saver):
-  console.show_status('Access to directory {}'.format(path))
+  console.show_status("Access to directory '{}' ...".format(path))
   ckpt_state = tf.train.get_checkpoint_state(path)
 
   if ckpt_state and ckpt_state.model_checkpoint_path:
