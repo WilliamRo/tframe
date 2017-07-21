@@ -44,7 +44,7 @@ class Predictor(Feedforward):
     self.show_building_info(FeedforwardNet=self)
 
     # Launch session
-    self.launch_model(FLAGS.overwrite)
+    self.launch_model(FLAGS.overwrite and FLAGS.train)
 
   def predict(self, data):
     if self.outputs is None:

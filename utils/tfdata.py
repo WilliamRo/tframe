@@ -27,6 +27,12 @@ class TFData(object):
       else:
         self.attachment[k] = kwargs[k]
 
+    # Check data shape
+    for k in self._data:
+      shape = self._data[k].shape
+      if len(shape) == 1:
+        self._data[k] = self._data[k].reshape((shape[0], 1))
+
     self._batch_size = None
     self._cursor = 0
 
@@ -57,6 +63,8 @@ class TFData(object):
   def __getattr__(self, attrname):
     if attrname in self._data.keys():
       return self._data[attrname]
+    elif attrname in self.attachment.keys():
+      return self.attachment[attrname]
     else:
       return self.__dict__[attrname]
 

@@ -26,7 +26,7 @@ def get(identifier):
     return identifier
   elif isinstance(identifier, six.string_types):
     identifier = identifier.lower()
-    if identifier in ['mean_squared', 'mean_squared_error']:
+    if identifier in ['mean_squared', 'mean_squared_error', 'mse']:
       return mean_squared_error
     elif identifier in ['cross_entropy']:
       return cross_entropy
