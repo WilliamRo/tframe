@@ -1,3 +1,5 @@
+activation_sum = 'activation_sum'
+
 cross_entropy = 'cross_entropy'
 
 default = 'default'
@@ -23,3 +25,5 @@ summaries = 'summaries'
 with_logits = 'with_logits'
 
 memo = {}
+
+memo[activation_sum] = []

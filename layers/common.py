@@ -30,7 +30,8 @@ class Activation(Layer):
        Function.__call__ but calling self._activation"""
     outputs = self._activation(inputs)
     with tf.name_scope(pedia.summaries):
-      tf.summary.histogram('activations', tf.abs(outputs))
+      act_sum = tf.summary.histogram('activations', tf.abs(outputs))
+      pedia.memo[pedia.activation_sum] += [act_sum]
     return outputs
 
   @staticmethod

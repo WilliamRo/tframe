@@ -166,6 +166,13 @@ class GAN(Model):
       raise ValueError('Can not resolve "{}"'.format(loss))
 
   def _add_summaries(self):
+    # Get activation summaries
+    act_sum_G = [act_sum for act_sum in pedia.memo[pedia.activation_sum]
+                 if pedia.Generator in act_sum.name]
+    act_sum_D = [act_sum for act_sum in pedia.memo[pedia.activation_sum]
+                 if pedia.Discriminator in act_sum.name]
+
+    # Get other summaries
     sum_z = tf.summary.histogram('z_sum', self.G.inputs)
     sum_Dr = tf.summary.histogram("D_real_sum", self._Dr)
     sum_Df = tf.summary.histogram("D_fake_sum", self._Df)
@@ -178,9 +185,10 @@ class GAN(Model):
     sum_G_list = [sum_loss_G, sum_Df, sum_loss_Df, sum_z]
     if len(self._output_shape) == 3:
       sum_G_list += [tf.summary.image("G_sum", self._outputs, max_outputs=3)]
-    self._merged_sum_G = tf.summary.merge(sum_G_list)
+    self._merged_sum_G = tf.summary.merge(sum_G_list + act_sum_G)
 
-    self._merged_sum_D = tf.summary.merge([sum_Dr, sum_loss_Dr, sum_loss_D])
+    self._merged_sum_D = tf.summary.merge([sum_Dr, sum_loss_Dr, sum_loss_D] +
+                                          act_sum_D)
 
   def _update_model(self, data_batch, **kwargs):
     # TODO: design some mechanisms to handle these
