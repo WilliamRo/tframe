@@ -167,10 +167,12 @@ class GAN(Model):
 
   def _add_summaries(self):
     # Get activation summaries
-    act_sum_G = [act_sum for act_sum in pedia.memo[pedia.activation_sum]
-                 if pedia.Generator in act_sum.name]
-    act_sum_D = [act_sum for act_sum in pedia.memo[pedia.activation_sum]
-                 if pedia.Discriminator in act_sum.name]
+    act_sum_G = ([act_sum for act_sum in pedia.memo[pedia.activation_sum]
+                 if pedia.Generator in act_sum.name] if FLAGS.act_sum
+                 else [])
+    act_sum_D = ([act_sum for act_sum in pedia.memo[pedia.activation_sum]
+                 if pedia.Discriminator in act_sum.name] if FLAGS.act_sum
+                 else [])
 
     # Get other summaries
     sum_z = tf.summary.histogram('z_sum', self.G.inputs)

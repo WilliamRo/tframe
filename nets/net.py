@@ -22,6 +22,8 @@ class Net(Function):
     self.chain = []
     self.inputs = None
 
+    self._last_scale = None
+
   @property
   def group_name(self):
     return self._name
@@ -32,6 +34,7 @@ class Net(Function):
     assert isinstance(self.chain, list)
     result = ('' if self.inputs is None
               else 'input_{} => '.format(shape_string(get_scale(self.inputs))))
+
     for (i, f) in zip(range(len(self.chain)), fs):
       if isinstance(f, Net):
         result += ' => ' if i != 0 else ''
@@ -40,7 +43,11 @@ class Net(Function):
         result += ' -> ' if i != 0 else ''
         result += f.abbreviation
         if scale and f.neuron_scale is not None:
-          result += '_{}'.format(shape_string(f.neuron_scale))
+          self._last_scale = shape_string(f.neuron_scale)
+          result += '_{}'.format(self._last_scale)
+
+    if self._level == 0:
+      result += ' => output_{}'.format(self.chain[-1]._last_scale)
 
     # Return
     return result
