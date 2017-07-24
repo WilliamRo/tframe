@@ -28,9 +28,13 @@ from .models import Predictor
 from .models import GAN
 
 from . import config
+from . import pedia
 
 
 # Control logging
 console.set_logging_level(1)
 
-
+# Create placeholder for tframe statue
+is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
+tf.add_to_collection(pedia.status_tensors, is_training)
+pedia.memo[pedia.is_training] = is_training

@@ -18,6 +18,14 @@ def relu(input_):
   else:
     return tf.nn.relu(input_, name='relu')
 
+
+def leaky_relu(input_, **kwargs):
+  if input_.dtype in [tf.complex64, tf.complex128]:
+    raise TypeError('leaky-relu currently does not support complex input')
+  leak = kwargs.get('leak', 0.2)
+  return tf.maximum(input_, input_ * leak, name='lrelu')
+
+
 def get(identifier, **kwargs):
   if callable(identifier):
     return identifier
@@ -25,6 +33,8 @@ def get(identifier, **kwargs):
     identifier = identifier.lower()
     if identifier in ['relu']:
       return relu
+    elif identifier in ['lrelu', 'leakyrelu', 'leaky-relu']:
+      return lambda x: leaky_relu(x, **kwargs)
     else:
       # Try to find activation in tf.nn
       activation = tf.nn.__dict__.get(identifier, None)

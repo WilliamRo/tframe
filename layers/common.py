@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import numpy as np
 import six
@@ -34,6 +36,10 @@ class Activation(Layer):
   @staticmethod
   def ReLU():
     return Activation('relu')
+
+  @staticmethod
+  def LeakyReLU():
+    return Activation('lrelu')
 
 
 class Dropout(Layer):
@@ -142,19 +148,24 @@ class Linear(Layer):
 class Reshape(Layer):
 
   def __init__(self, shape=None):
+    """
+    Reshape layer. 
+    :param shape: list or tuple. Shape of each example, not including 1st
+                   dimension
+    """
     self.output_shape = shape
 
   @single_input
   def _link(self, input_, **kwargs):
-    name = 'reshape'
-    if self.output_shape is None:
-      input_shape = input_.get_shape().as_list()
-      self.output_shape = [-1, np.prod(input_shape[1:])]
-      name = 'flatten'
-
+    name = 'flatten' if self.output_shape is None else 'reshape'
     self.abbreviation = name
 
-    output = tf.reshape(input_, self.output_shape, name=name)
+    input_shape = input_.get_shape().as_list()
+    output_shape = ([-1, np.prod(input_shape[1:])]
+                    if self.output_shape is None
+                    else [-1] + self.output_shape)
+
+    output = tf.reshape(input_, output_shape, name=name)
     self.neuron_scale = get_scale(output)
     return output
 
