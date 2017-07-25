@@ -128,10 +128,11 @@ class Model(object):
           # Update model
           loss_dict = self._update_model(data_batch, **kwargs)
           # Print status
-          if print_cycle > 0 and np.mod(self._counter, print_cycle) == 0:
+          if print_cycle > 0 and np.mod(self._counter - 1, print_cycle) == 0:
             self._print_progress(epc, start_time, loss_dict)
           # Snapshot
-          if snapshot_cycle > 0 and np.mod(self._counter, snapshot_cycle) == 0:
+          if snapshot_cycle > 0 and np.mod(self._counter - 1,
+                                           snapshot_cycle) == 0:
             self._snapshot()
           # Check flag
           if end_epoch_flag:

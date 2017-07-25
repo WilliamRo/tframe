@@ -77,7 +77,8 @@ class Linear(Layer):
                weight_initializer='xavier_uniform',
                bias_initializer='zeros',
                weight_regularizer=None,
-               bias_regularizer=None):
+               bias_regularizer=None,
+               **kwargs):
     Layer.__init__(self)
 
     if not np.isscalar(output_dim):
@@ -89,8 +90,8 @@ class Linear(Layer):
 
     self._weight_initializer = initializers.get(weight_initializer)
     self._bias_initializer = initializers.get(bias_initializer)
-    self._weight_regularizer = regularizers.get(weight_regularizer)
-    self._bias_regularizer = regularizers.get(bias_regularizer)
+    self._weight_regularizer = regularizers.get(weight_regularizer, **kwargs)
+    self._bias_regularizer = regularizers.get(bias_regularizer, **kwargs)
 
     self.weights = None
     self.biases = None
@@ -171,8 +172,15 @@ class Reshape(Layer):
     return output
 
 
-def Input(shape=None, dtype=tf.float32, name='Input'):
-  return tf.placeholder(dtype=dtype, shape=shape, name=name)
+def Input(sample_shape=None, dtype=tf.float32, name='Input'):
+  # Check sample shape
+  if sample_shape is not None:
+    if not (isinstance(sample_shape, list) or isinstance(sample_shape, tuple)):
+      raise TypeError('sample_shape must be a list or a tuple')
+    if sample_shape[0] is not None:
+      sample_shape = [None] + list(sample_shape)
+
+  return tf.placeholder(dtype=dtype, shape=sample_shape, name=name)
 
 
 Flatten = lambda: Reshape()

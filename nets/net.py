@@ -43,14 +43,28 @@ class Net(Function):
         result += ' -> ' if i != 0 else ''
         result += f.abbreviation
         if scale and f.neuron_scale is not None:
+          h_line = '_'
+          for k in f.__dict__.keys():
+            if 'regularizer' in k and f.__dict__[k] is not None:
+              h_line = '-'
+              break
           self._last_scale = shape_string(f.neuron_scale)
-          result += '_{}'.format(self._last_scale)
+          result += '{}{}'.format(h_line, self._last_scale)
 
     if self._level == 0:
       result += ' => output_{}'.format(self.chain[-1]._last_scale)
 
     # Return
     return result
+
+  @property
+  def regularization_loss(self):
+    reg_losses = tf.get_collection(pedia.tfkey.regularization_losses,
+                                   self._name)
+    loss_sum = None
+    for loss in reg_losses:
+      loss_sum = loss if loss_sum is None else loss_sum + loss
+    return loss_sum
 
   def _link(self, inputs, **kwargs):
     # Check inputs

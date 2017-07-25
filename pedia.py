@@ -27,3 +27,7 @@ with_logits = 'with_logits'
 memo = {}
 
 memo[activation_sum] = []
+
+# Keys for tensorflow
+class tfkey:
+  regularization_losses = 'regularization_losses'

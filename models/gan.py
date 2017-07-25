@@ -37,12 +37,12 @@ class GAN(Model):
     # If z_dim/sample_shape is provided, define the input for
     #   generator/discriminator accordingly
     if z_dim is not None:
-      self.G.add(Input(shape=[None, z_dim], name='z'))
+      self.G.add(Input(sample_shape=[None, z_dim], name='z'))
     if sample_shape is not None:
       if (not isinstance(sample_shape, list) and
             not isinstance(sample_shape, tuple)):
         raise TypeError('sample shape must be a list or a tuple')
-      self.D.add(Input(shape=[None] + list(sample_shape), name='samples'))
+      self.D.add(Input(sample_shape=[None] + list(sample_shape), name='samples'))
 
     self._z_dim = z_dim
     self._sample_shape = sample_shape
@@ -102,23 +102,26 @@ class GAN(Model):
         self._G, shape=[-1] + self._output_shape, name='outputs')
 
     # Prepare sample z
-    self._sample_z = tf.Variable(
-      initial_value=tf.random_normal(
-        shape=[self._sample_num, self.G.inputs.get_shape().as_list()[1]]),
-      trainable=False)
+    with tf.name_scope('Fixed_Sample_Z'):
+      self._sample_z = tf.Variable(
+        initial_value=tf.random_normal(
+          shape=[self._sample_num, self.G.inputs.get_shape().as_list()[1]]),
+        trainable=False)
 
     # Define loss
-    self._define_losses(loss)
+    with tf.name_scope('Losses'):
+      self._define_losses(loss)
 
     # Define train steps
     if optimizer is None:
       optimizer = tf.train.AdamOptimizer()
     get_train_step = lambda loss_, var_list: optimizer.minimize(
       loss=loss_, var_list=var_list)
-    with tf.name_scope('G_train_step'):
-      self._train_step_G = get_train_step(self._loss_G, self._theta_G)
-    with tf.name_scope('D_train_step'):
-      self._train_step_D = get_train_step(self._loss_D, self._theta_D)
+    with tf.name_scope('Train_Steps'):
+      with tf.name_scope('G_train_step'):
+        self._train_step_G = get_train_step(self._loss_G, self._theta_G)
+      with tf.name_scope('D_train_step'):
+        self._train_step_D = get_train_step(self._loss_D, self._theta_D)
 
     # Add summaries
     self._add_summaries()
@@ -140,30 +143,33 @@ class GAN(Model):
       raise TypeError('loss must be callable or a string')
 
     loss = loss.lower()
+    loss_Dr_raw, loss_Df_raw, loss_G_raw = None, None, None
     if loss == pedia.default:
-      with tf.name_scope('D_losses'):
-        self._loss_Dr = tf.reduce_mean(-tf.log(self._Dr), name='loss_D_real')
-        self._loss_Df = tf.reduce_mean(-tf.log(1. - self._Df),
-                                       name='loss_D_fake')
-        self._loss_D = tf.add(self._loss_Dr, self._loss_Df, name='loss_D')
-      with tf.name_scope('G_loss'):
-        self._loss_G = tf.reduce_mean(-tf.log(self._Df), name='loss_G')
+      loss_Dr_raw = -tf.log(self._Dr, name='loss_D_real_raw')
+      loss_Df_raw = -tf.log(1. - self._Df, name='loss_D_fake_raw')
+      loss_G_raw = -tf.log(self._Df, name='loss_G_raw')
     elif loss == pedia.cross_entropy:
-      with tf.name_scope('D_losses'):
-        self._loss_Dr = tf.reduce_mean(
-          tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=self._logits_Dr, labels=tf.ones_like(self._logits_Dr)),
-          name='loss_D_real')
-        self._loss_Df = tf.reduce_mean(
-          tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=self._logits_Df, labels=tf.zeros_like(self._logits_Df)),
-          name='loss_D_fake')
-        self._loss_D = tf.add(self._loss_Dr, self._loss_Df, name='loss_D')
-      with tf.name_scope('G_loss'):
-        self._loss_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=self._logits_Df, labels=tf.ones_like(self._logits_Df)))
+      loss_Dr_raw = tf.nn.sigmoid_cross_entropy_with_logits(
+        logits=self._logits_Dr, labels=tf.ones_like(self._logits_Dr))
+      loss_Df_raw = tf.nn.sigmoid_cross_entropy_with_logits(
+        logits=self._logits_Df, labels=tf.zeros_like(self._logits_Df))
+      loss_G_raw = tf.nn.sigmoid_cross_entropy_with_logits(
+        logits=self._logits_Df, labels=tf.ones_like(self._logits_Df))
     else:
       raise ValueError('Can not resolve "{}"'.format(loss))
+
+    reg_loss_D = self.D.regularization_loss
+    reg_loss_G = self.G.regularization_loss
+    with tf.name_scope('D_losses'):
+      self._loss_Dr = tf.reduce_mean(loss_Dr_raw, name='loss_D_real')
+      self._loss_Df = tf.reduce_mean(loss_Df_raw, name='loss_D_fake')
+      self._loss_D = tf.add(self._loss_Dr, self._loss_Df, name='loss_D')
+      self._loss_D = (self._loss_D if reg_loss_D is None
+                      else self._loss_D + reg_loss_D)
+    with tf.name_scope('G_loss'):
+      self._loss_G = tf.reduce_mean(loss_G_raw, name='loss_G')
+      self._loss_G = (self._loss_G if reg_loss_G is None
+                      else self._loss_G + reg_loss_G)
 
   def _add_summaries(self):
     # Get activation summaries
