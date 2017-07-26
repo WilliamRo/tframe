@@ -28,11 +28,11 @@ class Predictor(Feedforward):
     loss_function = losses.get(loss)
     with tf.name_scope('Loss'):
       self._loss = loss_function(self._targets, self.outputs)
+      # TODO: with or without regularization loss?
+      tf.summary.scalar('loss_sum', self._loss)
       # Try to add regularization loss
       reg_loss = self.regularization_loss
       self._loss = self._loss if reg_loss is None else self._loss + reg_loss
-      # TODO: with or without regularization loss?
-      tf.summary.scalar('loss_sum', self._loss)
 
     # Define metric
     metric_function = metrics.get(metric)

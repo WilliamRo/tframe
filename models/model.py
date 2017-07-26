@@ -155,6 +155,9 @@ class Model(object):
     # End training
     console.clear_line()
     self._summary_writer.flush()
+    self.shutdown()
+
+  def shutdown(self):
     self._summary_writer.close()
     self._session.close()
 
@@ -260,14 +263,15 @@ class Model(object):
     self._session = tf.Session()
     console.show_status('Session launched')
     self._saver = tf.train.Saver()
-    self._summary_writer = tf.summary.FileWriter(self.log_dir,
-                                                 self._session.graph)
+    self._summary_writer = tf.summary.FileWriter(self.log_dir)
     # Try to load exist model
     load_flag, self._counter = self._load()
     if not load_flag:
       assert self._counter == 0
       # If checkpoint does not exist, initialize all variables
       self._session.run(tf.global_variables_initializer())
+      # Add graph
+      self._summary_writer.add_graph(self._session.graph)
 
     return load_flag
 

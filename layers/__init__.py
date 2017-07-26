@@ -7,6 +7,7 @@ from .common import Dropout
 from .common import Flatten
 from .common import Linear
 from .common import Input
+from .common import Rescale
 from .common import Reshape
 
 from .convolutional import Conv1D

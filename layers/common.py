@@ -147,6 +147,32 @@ class Linear(Layer):
     return output
 
 
+class Rescale(Layer):
+  full_name = 'rescale'
+  abbreviation = 'rs'
+
+  def __init__(self, from_scale, to_scale):
+    if not(isinstance(from_scale, list) or isinstance(from_scale, tuple)):
+      raise TypeError('from_scale must be a list or a tuple')
+    if not(isinstance(to_scale, list) or isinstance(to_scale, tuple)):
+      raise TypeError('to_scale must be a list or a tuple')
+
+    self._from_scale = from_scale
+    self._to_scale = to_scale
+
+  @single_input
+  def _link(self, input_, **kwargs):
+    from_, to_ = self._from_scale, self._to_scale
+    if from_[0] >= from_[1]:
+      raise ValueError('from_[0] should be less than from_[1]')
+    if to_[0] >= to_[1]:
+      raise ValueError('to_[0] should be less than to_[1]')
+    output = (input_ - from_[0]) / (from_[1] - from_[0])
+    output = output * (to_[1] - to_[0]) + to_[0]
+
+    return output
+
+
 class Reshape(Layer):
 
   def __init__(self, shape=None):
