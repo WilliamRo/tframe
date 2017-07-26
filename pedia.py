@@ -14,12 +14,14 @@ targets = 'targets'
 
 keep_prob = 'keep_prob'
 
-is_training = 'is_training'
-
-status_tensors = 'status_tensors'
+linear = 'linear'
 
 metric_name = 'metric_name'
 
+is_training = 'is_training'
+
+spherical = 'spherical'
+status_tensors = 'status_tensors'
 summaries = 'summaries'
 
 with_logits = 'with_logits'

@@ -10,6 +10,7 @@ from ..models.model import Model
 from ..nets.net import Net
 from ..layers import Input
 from ..utils import imtool
+from ..utils.maths import interpolations
 
 from .. import pedia
 from .. import FLAGS
@@ -283,7 +284,7 @@ class GAN(Model):
 
     return samples
 
-  def interpolate(self, z1=None, z2=None, inter_num=8, via='great_circle'):
+  def interpolate(self, z1=None, z2=None, inter_num=8, via='spherical'):
     z1 = self._random_z(1) if z1 is None else z1
     z2 = self._random_z(1) if z2 is None else z2
 
@@ -291,11 +292,10 @@ class GAN(Model):
     zs[-1] = z2
 
     # Interpolate z
-    interp = None
-    if via in ['great_circle', 'circle']:
-      pass
-    elif via in ['straight_line', 'line']:
-      interp = lambda pct: z1 + pct * (z2 - z1)
+    if via in ['great_circle', 'circle', 'spherical']:
+      interp = lambda mu: interpolations.slerp(mu, z1, z2)
+    elif via in ['straight_line', 'line', 'linear']:
+      interp = lambda mu: z1 + mu * (z2 - z1)
     else:
       raise ValueError("Can not resolve '{}'".format(via))
 
