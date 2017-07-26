@@ -48,7 +48,8 @@ class GAN(Model):
     self._z_dim = z_dim
     self._sample_shape = sample_shape
     self._output_shape = output_shape
-    self._sample_num = sample_num
+    self._sample_num = (sample_num if FLAGS.sample_num < 0
+                        else FLAGS.sample_num)
     self._fix_sample_z = (fix_sample_z if fix_sample_z is not None
                           else FLAGS.fix_sample_z)
 
@@ -72,6 +73,12 @@ class GAN(Model):
   def _theta_G(self):
     return [var for var in tf.trainable_variables()
             if pedia.Generator in var.name]
+
+  @property
+  def description(self):
+    str = 'Generator: {}\nDiscriminator: {}\n'.format(
+      self.G.structure_string(), self.D.structure_string())
+    return str
 
   def build(self, loss='default', optimizer=None):
     """

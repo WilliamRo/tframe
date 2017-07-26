@@ -21,6 +21,7 @@ from ..utils.local import check_path
 from ..utils.local import clear_paths
 from ..utils.local import load_checkpoint
 from ..utils.local import save_checkpoint
+from ..utils.local import write_file
 
 from ..utils.tfdata import TFData
 
@@ -65,6 +66,9 @@ class Model(object):
   def snapshot_dir(self):
     return check_path(config.record_dir, config.snapshot_folder_name,
                        self.mark)
+  @property
+  def description(self):
+    return 'No description'
 
   # endregion : Properties
 
@@ -272,6 +276,9 @@ class Model(object):
       self._session.run(tf.global_variables_initializer())
       # Add graph
       self._summary_writer.add_graph(self._session.graph)
+      # Write model description to file
+      description_path = os.path.join(self.snapshot_dir, 'description.txt')
+      write_file(description_path, self.description)
 
     return load_flag
 

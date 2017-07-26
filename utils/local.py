@@ -64,5 +64,8 @@ def save_checkpoint(path, session, saver, step):
   saver.save(session, path, step)
 
 
-
-
+def write_file(path, content, append=False):
+  mode = 'a' if append else 'w'
+  f = open(path, mode)
+  f.write(content)
+  f.close()
