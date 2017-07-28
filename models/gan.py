@@ -80,7 +80,8 @@ class GAN(Model):
       self.G.structure_string(), self.D.structure_string())
     return str
 
-  def build(self, loss='default', optimizer=None):
+  def build(self, loss='cross_entropy', G_optimizer=None, D_optimizer=None,
+             smooth_factor=0.9):
     """
     Build model
     :param loss: either a string or a function with:
@@ -118,18 +119,21 @@ class GAN(Model):
 
     # Define loss
     with tf.name_scope('Losses'):
-      self._define_losses(loss)
+      self._define_losses(loss, smooth_factor)
 
     # Define train steps
-    if optimizer is None:
-      optimizer = tf.train.AdamOptimizer()
-    get_train_step = lambda loss_, var_list: optimizer.minimize(
-      loss=loss_, var_list=var_list)
+    if G_optimizer is None:
+      G_optimizer = tf.train.AdamOptimizer()
+    if D_optimizer is None:
+      D_optimizer = tf.train.AdamOptimizer()
+
     with tf.name_scope('Train_Steps'):
       with tf.name_scope('G_train_step'):
-        self._train_step_G = get_train_step(self._loss_G, self._theta_G)
+        self._train_step_G = G_optimizer.minimize(
+          loss=self._loss_G, var_list=self._theta_G)
       with tf.name_scope('D_train_step'):
-        self._train_step_D = get_train_step(self._loss_D, self._theta_D)
+        self._train_step_D  =D_optimizer.minimize(
+          loss=self._loss_D, var_list=self._theta_D)
 
     # Add summaries
     self._add_summaries()
@@ -143,7 +147,7 @@ class GAN(Model):
     # Launch session
     self.launch_model(FLAGS.overwrite)
 
-  def _define_losses(self, loss):
+  def _define_losses(self, loss, alpha):
     if callable(loss):
       self._loss_G, self._loss_D = loss(self)
       return
@@ -158,7 +162,7 @@ class GAN(Model):
       loss_G_raw = -tf.log(self._Df, name='loss_G_raw')
     elif loss == pedia.cross_entropy:
       loss_Dr_raw = tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=self._logits_Dr, labels=tf.ones_like(self._logits_Dr))
+        logits=self._logits_Dr, labels=tf.ones_like(self._logits_Dr) * alpha)
       loss_Df_raw = tf.nn.sigmoid_cross_entropy_with_logits(
         logits=self._logits_Df, labels=tf.zeros_like(self._logits_Df))
       loss_G_raw = tf.nn.sigmoid_cross_entropy_with_logits(
@@ -208,8 +212,8 @@ class GAN(Model):
 
   def _update_model(self, data_batch, **kwargs):
     # TODO: design some mechanisms to handle these
-    G_times = kwargs.get('G_times', 1)
-    D_times = kwargs.get('D_times', 1)
+    G_iterations = kwargs.get('G_iterations', 1)
+    D_iterations = kwargs.get('D_iterations', 1)
 
     features = data_batch[pedia.features]
     sample_num = features.shape[0]
@@ -223,7 +227,7 @@ class GAN(Model):
                    self.G.inputs: self._random_z(sample_num)}
     feed_dict_D.update(self._get_status_feed_dict(is_training=True))
 
-    for _ in range(D_times):
+    for _ in range(D_iterations):
       _, loss_D, summaries_D = self._session.run(
         [self._train_step_D, self._loss_D, self._merged_sum_D],
         feed_dict=feed_dict_D)
@@ -232,7 +236,7 @@ class GAN(Model):
     feed_dict_G = {self.G.inputs: self._random_z(sample_num)}
     feed_dict_G.update(self._get_status_feed_dict(is_training=True))
 
-    for _ in range(G_times):
+    for _ in range(G_iterations):
       _, loss_G, summaries_G = self._session.run(
         [self._train_step_G, self._loss_G, self._merged_sum_G],
         feed_dict=feed_dict_G)
