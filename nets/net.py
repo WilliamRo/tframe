@@ -32,8 +32,8 @@ class Net(Function):
     fs = [f for f in self.chain if isinstance(f, Net)
           or detail or f.is_nucleus]
     assert isinstance(self.chain, list)
-    result = ('' if self.inputs is None
-              else 'input_{} => '.format(shape_string(get_scale(self.inputs))))
+    result = ('' if self.inputs is None else 'input_{} => '.format(
+      shape_string(get_scale(self.inputs[0]))))
 
     for (i, f) in zip(range(len(self.chain)), fs):
       if isinstance(f, Net):
@@ -102,7 +102,9 @@ class Net(Function):
   def add(self, f):
     if isinstance(f, tf.Tensor):
       # If f is a placeholder
-      self.inputs = f
+      if self.inputs is None:
+        self.inputs = []
+      self.inputs += [f]
       tf.add_to_collection(pedia.default_feed_dict, f)
     elif isinstance(f, Net) or self._level > 0:
       # Net should be added directly into self.chain

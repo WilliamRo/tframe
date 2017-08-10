@@ -10,23 +10,32 @@ from ..models.model import Model
 from ..nets.net import Net
 from ..layers import Input
 from ..utils import imtool
+from ..utils import misc
 from ..utils.maths import interpolations
+
+from ..layers import merge
 
 from .. import pedia
 from .. import FLAGS
 
 flags = tf.app.flags
 
-flags.DEFINE_bool('fix_sample_z', False, 'Whether to fix z when snapshotting')
 flags.DEFINE_integer('sample_num', -1, 'Number of samples to generate')
 
 
 class GAN(Model):
   """"""
   def __init__(self, z_dim=None, sample_shape=None, output_shape=None,
-               mark=None, fix_sample_z=None, sample_num=9):
+               mark=None, classes=0):
     # Call parent's constructor
     Model.__init__(self, mark)
+
+    self._targets = None
+    self._conditional = classes > 0
+    self._classes = classes
+    if self._conditional:
+      self._targets = tf.placeholder(
+        dtype=tf.float32, shape=[None, classes], name='one_hot_labels')
 
     # Define generator and discriminator
     self.Generator = Net(pedia.Generator)
@@ -48,10 +57,7 @@ class GAN(Model):
     self._z_dim = z_dim
     self._sample_shape = sample_shape
     self._output_shape = output_shape
-    self._sample_num = (sample_num if FLAGS.sample_num < 0
-                        else FLAGS.sample_num)
-    self._fix_sample_z = (fix_sample_z if fix_sample_z is not None
-                          else FLAGS.fix_sample_z)
+    self._sample_num = None
 
     # Private tensors and ops
     self._G, self._outputs = None, None
@@ -62,7 +68,7 @@ class GAN(Model):
     self._train_step_G, self._train_step_D = None, None
     self._merged_summary_G, self._merged_summary_D = None, None
 
-    self._sample_z = None
+  # region : Properties
 
   @property
   def _theta_D(self):
@@ -80,6 +86,10 @@ class GAN(Model):
       self.G.structure_string(), self.D.structure_string())
     return str
 
+  # endregion : Properties
+
+  # region : Building
+
   def build(self, loss='cross_entropy', G_optimizer=None, D_optimizer=None,
              smooth_factor=0.9):
     """
@@ -89,11 +99,21 @@ class GAN(Model):
                   (2) return: G_loss, D_loss
     :param optimizer: a tensorflow optimizer
     """
+
+    if self._conditional:
+      # 1st element of chain of G or D is a net
+      assert isinstance(self.G.chain[0], Net)
+      self.G.chain[0].chain.insert(0, merge.Concatenate(
+        companions={self._targets: 1}))
+      assert isinstance(self.D.chain[0], Net)
+      self.D.chain[0].chain.insert(0, merge.Concatenate(
+        companions={self._targets: 1}))
+
     # Link G and D to produce _G and _D
     self._G = self.Generator()
     # :: Check shape
     g_shape = self._G.get_shape().as_list()[1:]
-    d_shape = self.D.inputs.get_shape().as_list()[1:]
+    d_shape = self.D.inputs[0].get_shape().as_list()[1:]
     if g_shape != d_shape:
       raise ValueError('Output shape of generator {} does not match the input '
                         'shape of discriminator {}'.format(g_shape, d_shape))
@@ -109,13 +129,6 @@ class GAN(Model):
     else:
       self._outputs = tf.reshape(
         self._G, shape=[-1] + self._output_shape, name='outputs')
-
-    # Prepare sample z
-    with tf.name_scope('Fixed_Sample_Z'):
-      self._sample_z = tf.Variable(
-        initial_value=tf.random_normal(
-          shape=[self._sample_num, self.G.inputs.get_shape().as_list()[1]]),
-        trainable=False)
 
     # Define loss
     with tf.name_scope('Losses'):
@@ -193,7 +206,7 @@ class GAN(Model):
                  else [])
 
     # Get other summaries
-    sum_z = tf.summary.histogram('z_sum', self.G.inputs)
+    sum_z = tf.summary.histogram('z_sum', self.G.inputs[0])
     sum_Dr = tf.summary.histogram("D_real_sum", self._Dr)
     sum_Df = tf.summary.histogram("D_fake_sum", self._Df)
 
@@ -210,12 +223,34 @@ class GAN(Model):
     self._merged_sum_D = tf.summary.merge([sum_Dr, sum_loss_Dr, sum_loss_D] +
                                           act_sum_D)
 
+  # endregion : Building
+
+  # region : Training
+
+  def _pretrain(self, **kwargs):
+    """Check data sets"""
+
+    self._sample_num = (FLAGS.sample_num if FLAGS.sample_num > 0
+                        else kwargs.get('sample_num', 9))
+
+    if not self._conditional:
+      return
+
+    # If self._conditional is True
+    if not pedia.targets in self._training_set._data.keys():
+      raise ValueError('Targets must be provided when using conditional model')
+    if len(self._training_set._data[pedia.targets].shape) != 2:
+      raise ValueError('Targets should be formatted as one-hot')
+
   def _update_model(self, data_batch, **kwargs):
+    assert isinstance(data_batch, dict)
     # TODO: design some mechanisms to handle these
     G_iterations = kwargs.get('G_iterations', 1)
     D_iterations = kwargs.get('D_iterations', 1)
 
     features = data_batch[pedia.features]
+    if self._conditional:
+      assert pedia.targets in data_batch.keys()
     sample_num = features.shape[0]
 
     loss_D, loss_G = None, None
@@ -223,9 +258,11 @@ class GAN(Model):
 
     assert isinstance(self._session, tf.Session)
     # Update discriminator
-    feed_dict_D = {self.D.inputs: features,
-                   self.G.inputs: self._random_z(sample_num)}
+    feed_dict_D = {self.D.inputs[0]: features,
+                   self.G.inputs[0]: self._random_z(sample_num)}
     feed_dict_D.update(self._get_status_feed_dict(is_training=True))
+    if self._conditional:
+      feed_dict_D[self._targets] = data_batch[pedia.targets]
 
     for _ in range(D_iterations):
       _, loss_D, summaries_D = self._session.run(
@@ -233,8 +270,10 @@ class GAN(Model):
         feed_dict=feed_dict_D)
 
     # Update generator
-    feed_dict_G = {self.G.inputs: self._random_z(sample_num)}
+    feed_dict_G = {self.G.inputs[0]: self._random_z(sample_num)}
     feed_dict_G.update(self._get_status_feed_dict(is_training=True))
+    if self._conditional:
+      feed_dict_G[self._targets] = data_batch[pedia.targets]
 
     for _ in range(G_iterations):
       _, loss_G, summaries_G = self._session.run(
@@ -249,16 +288,41 @@ class GAN(Model):
     # Return loss dict
     return {'Discriminator loss': loss_D, 'Generator loss': loss_G}
 
-  def _random_z(self, sample_num):
-    assert isinstance(self.G.inputs, tf.Tensor)
-    z_dim = self.G.inputs.get_shape().as_list()[1]
-    return np.random.standard_normal(size=[sample_num, z_dim])
+  # endregion : Training
+
+  # region : Private Methods
+
+  def _random_z(self, sample_num, with_label=False):
+    assert isinstance(self.G.inputs[0], tf.Tensor)
+    z_dim = self.G.inputs[0].get_shape().as_list()[1]
+    z = np.random.standard_normal(size=[sample_num, z_dim])
+
+    if self._conditional and with_label:
+      labels = self._random_labels(sample_num)
+      return z, labels
+
+    return z
+
+  def _random_labels(self, sample_num):
+    # Make sure self._classes makes sense
+    assert self._conditional
+    labels = np.random.randint(self._classes, size=sample_num)
+
+    return misc.convert_to_one_hot(labels, self._classes)
 
   @staticmethod
   def _default_snapshot_function(self):
+    assert isinstance(self, GAN)
+
     # Generate samples
-    feed_dict = {self.G.inputs: (self._sample_z.eval() if self._fix_sample_z
-                                 else self._random_z(self._sample_num))}
+    feed_dict = {}
+    if self._conditional:
+      z, one_hot = self._random_z(self._sample_num, True)
+      feed_dict[self._targets] = one_hot
+    else:
+      z = self._random_z(self._sample_num)
+
+    feed_dict[self.G.inputs[0]] = z
     feed_dict.update(self._get_status_feed_dict(is_training=False))
     samples = self._outputs.eval(feed_dict)
 
@@ -267,10 +331,25 @@ class GAN(Model):
 
     return fig
 
-  def generate(self, z=None, sample_num=1):
+  # endregion : Private Methods
+
+  # region : Public Methods
+
+  def generate(self, z=None, sample_num=1, labels=None):
+    """
+    Generate samples 
+    :param z: numpy array with shape (None, z_dim). If provided, sample_number
+               will be ignored. Otherwise it will be generated randomly with
+               shape (sample_num, z_dim)
+    :param sample_num: positive integer. 
+    :param labels: If z is provided, classes should be None or a list with
+                     length z.shape[0]. If classes is None, labels will be 
+                     generated randomly if self is a conditional model.
+    :return: Samples generated with a shape of self._output_shape
+    """
+    # Check model and session
     if self._G is None:
       raise ValueError('Model not built yet')
-
     if self._session is None:
       self.launch_model(overwrite=False)
     assert isinstance(self._session, tf.Session)
@@ -281,15 +360,28 @@ class GAN(Model):
 
     # Check input z
     z = self._random_z(sample_num) if z is None else z
+    sample_num = z.shape[0]
     z_shape = list(z.shape[1:])
-    g_input_shape = self.G.inputs.get_shape().as_list()[1:]
+    g_input_shape = self.G.inputs[0].get_shape().as_list()[1:]
     if z_shape != g_input_shape:
       raise ValueError("Shape of input z {} doesn't match the shape of "
-                        "generator's input {}".format(
-        z_shape, g_input_shape))
+                        "generator's input {}".format(z_shape, g_input_shape))
+    # Check labels
+    if self._conditional:
+      if labels is None:
+        labels = self._random_labels(sample_num)
+      else:
+        labels = misc.convert_to_one_hot(labels)
+      # Make sure z and one-hot labels can be concatenated
+      if labels.shape[0] != sample_num:
+        raise ValueError('!! Provided z and labels should stand for same '
+                         'number of samples but {} != {}'.format(
+          sample_num, labels.shape[0]))
 
     # Generate samples
-    feed_dict = {self.G.inputs: z}
+    feed_dict = {self.G.inputs[0]: z}
+    if self._conditional:
+      feed_dict[self._targets] = labels
     feed_dict.update(self._get_status_feed_dict(is_training=False))
     samples = self._session.run(self._outputs, feed_dict=feed_dict)
 
@@ -322,6 +414,9 @@ class GAN(Model):
 
     return fig
 
+  # endregion : Public Methods
+
+  """Don't remove this line"""
 
 
 

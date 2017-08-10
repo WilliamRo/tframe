@@ -9,11 +9,16 @@ from ..core import Function
 
 class Layer(Function):
   """Abstract definition for layers"""
+  # If layer is nucleus, it will be wrapped as a sub net while added
+  #  .. to a net
   is_nucleus = False
 
+  # Full name will appear in tensor board
   full_name = None
+  # Abbreviation will appear in structure string
   abbreviation = None
 
+  # If not None, neuron scale will be shown in structure string
   neuron_scale = None
 
   @property

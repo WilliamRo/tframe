@@ -72,8 +72,33 @@ class Model(object):
 
   # endregion : Properties
 
+  # region : Building
+
   def build(self):
+    """Abstract method, must be implemented in different models"""
     raise  NotImplementedError('build method not implemented')
+
+  def _define_loss(self, loss):
+    if not isinstance(loss, tf.Tensor):
+      raise TypeError('loss must be a tensor')
+    self._loss = loss
+
+  def _define_train_step(self, optimizer=None, var_list=None):
+    if self._loss is None:
+      raise ValueError('loss has not been defined yet')
+    with tf.name_scope('Optimizer'):
+      if optimizer is None:
+        optimizer = tf.train.AdamOptimizer(1e-4)
+
+      self._train_step = optimizer.minimize(loss=self._loss, var_list=var_list)
+
+  # endregion : Building
+
+  # region : Training
+
+  def _pretrain(self, **kwargs):
+    """Method run in early training process, should be overrode"""
+    pass
 
   def train(self, epoch=1, batch_size=128, training_set=None,
             test_set=None, print_cycle=0, snapshot_cycle=0,
@@ -103,6 +128,9 @@ class Model(object):
     print_cycle = FLAGS.print_cycle if FLAGS.print_cycle >= 0 else print_cycle
     snapshot_cycle = (FLAGS.snapshot_cycle if FLAGS.snapshot_cycle >= 0
                       else snapshot_cycle)
+
+    # Run pre-train method
+    self._pretrain(**kwargs)
 
     # Show configurations
     console.show_status('Configurations:')
@@ -136,7 +164,7 @@ class Model(object):
             self._print_progress(epc, start_time, loss_dict)
           # Snapshot
           if snapshot_cycle > 0 and np.mod(self._counter - 1,
-                                           snapshot_cycle) == 0:
+                                            snapshot_cycle) == 0:
             self._snapshot()
           # Check flag
           if end_epoch_flag:
@@ -161,11 +189,8 @@ class Model(object):
     self._summary_writer.flush()
     self.shutdown()
 
-  def shutdown(self):
-    self._summary_writer.close()
-    self._session.close()
-
   def _update_model(self, data_batch, **kwargs):
+    """Default model updating method, should be overrode"""
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
 
     summary, loss, _ = self._session.run(
@@ -213,19 +238,17 @@ class Model(object):
     console.write_line("[Snapshot] images saved to '{}'".format(filename))
     console.print_progress(progress=self._training_set.progress)
 
-  def _define_loss(self, loss):
-    if not isinstance(loss, tf.Tensor):
-      raise TypeError('loss must be a tensor')
-    self._loss = loss
+  # endregion : Training
 
-  def _define_train_step(self, optimizer=None, var_list=None):
-    if self._loss is None:
-      raise ValueError('loss has not been defined yet')
-    with tf.name_scope('Optimizer'):
-      if optimizer is None:
-        optimizer = tf.train.AdamOptimizer(1e-4)
+  # region : Static Methods
 
-      self._train_step = optimizer.minimize(loss=self._loss, var_list=var_list)
+  @staticmethod
+  def show_building_info(**kwargs):
+    console.show_status('Model built successfully:')
+    for k in kwargs:
+      net = kwargs[k]
+      assert isinstance(net, Net)
+      console.supplement('{}: {}'.format(k, net.structure_string()))
 
   @staticmethod
   def _get_default_feed_dict(batch, is_training):
@@ -251,12 +274,13 @@ class Model(object):
 
     return feed_dict
 
-  def _load(self):
-    return load_checkpoint(self.ckpt_dir, self._session, self._saver)
+  # endregion : Static Methods
 
-  def _save(self, step):
-    model_path = os.path.join(self.ckpt_dir, '{}.model'.format(self.model_name))
-    save_checkpoint(model_path, self._session, self._saver, step)
+  # region : Public Methods
+
+  def shutdown(self):
+    self._summary_writer.close()
+    self._session.close()
 
   def launch_model(self, overwrite=False):
     # Before launch session, do some cleaning work
@@ -282,14 +306,20 @@ class Model(object):
 
     return load_flag
 
-  @staticmethod
-  def show_building_info(**kwargs):
-    console.show_status('Model built successfully:')
-    for k in kwargs:
-      net = kwargs[k]
-      assert isinstance(net, Net)
-      console.supplement('{}: {}'.format(k, net.structure_string()))
+  # endregion : Public Methods
 
+  # region : Private Methods
+
+  def _load(self):
+    return load_checkpoint(self.ckpt_dir, self._session, self._saver)
+
+  def _save(self, step):
+    model_path = os.path.join(self.ckpt_dir, '{}.model'.format(self.model_name))
+    save_checkpoint(model_path, self._session, self._saver, step)
+
+  # endregion : Private Methods
+
+  """For some reason, do not remove this line"""
 
 
 
