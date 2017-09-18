@@ -13,7 +13,7 @@ flags.DEFINE_integer("batch_size", -1, "The size of batch images")
 flags.DEFINE_integer("print_cycle", -1, "Print cycle")
 flags.DEFINE_integer("snapshot_cycle", -1, "Snapshot cycle")
 
-flags.DEFINE_bool("overwrite", True, "Whether to overwrite records")
+flags.DEFINE_bool("overwrite", False, "Whether to overwrite records")
 flags.DEFINE_bool("shuffle", False, "Whether to shuffle")
 
 flags.DEFINE_bool("suppress_logging", True, "...")

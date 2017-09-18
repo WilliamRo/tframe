@@ -337,7 +337,7 @@ class GAN(Model):
 
   def generate(self, z=None, sample_num=1, labels=None):
     """
-    Generate samples 
+    Generate samples. 
     :param z: numpy array with shape (None, z_dim). If provided, sample_number
                will be ignored. Otherwise it will be generated randomly with
                shape (sample_num, z_dim)
@@ -346,6 +346,14 @@ class GAN(Model):
                      length z.shape[0]. If classes is None, labels will be 
                      generated randomly if self is a conditional model.
     :return: Samples generated with a shape of self._output_shape
+    
+    Examples:  model.generate(labels=[1, 4, 5])
+    
+               model.generate(sample_num=10)
+               
+               # Here labels is a list
+               model.generate(z, labels)
+               assert len(labels) == z.shape[0]
     """
     # Check model and session
     if self._G is None:
@@ -357,6 +365,9 @@ class GAN(Model):
     # Get sample number
     sample_num = (FLAGS.sample_num if FLAGS.sample_num > 0 else
                   max(1, sample_num))
+    if self._conditional and not labels is None:
+      labels = misc.convert_to_one_hot(labels, self._classes)
+      sample_num = labels.shape[0]
 
     # Check input z
     z = self._random_z(sample_num) if z is None else z
@@ -368,10 +379,9 @@ class GAN(Model):
                         "generator's input {}".format(z_shape, g_input_shape))
     # Check labels
     if self._conditional:
+      # If labels is not None, they have already been converted
       if labels is None:
         labels = self._random_labels(sample_num)
-      else:
-        labels = misc.convert_to_one_hot(labels)
       # Make sure z and one-hot labels can be concatenated
       if labels.shape[0] != sample_num:
         raise ValueError('!! Provided z and labels should stand for same '

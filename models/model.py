@@ -284,7 +284,7 @@ class Model(object):
 
   def launch_model(self, overwrite=False):
     # Before launch session, do some cleaning work
-    if overwrite:
+    if overwrite and FLAGS.train:
       clear_paths([self.log_dir, self.ckpt_dir, self.snapshot_dir])
 
     console.show_status('Launching session ...')

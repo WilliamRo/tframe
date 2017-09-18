@@ -16,6 +16,10 @@ class Predictor(Feedforward):
     Feedforward.__init__(self, mark)
     self._targets = None
 
+  @property
+  def description(self):
+    return self.structure_string()
+
   def build(self, loss='cross_entropy', optimizer=None,
              metric=None, metric_name='Metric'):
     Feedforward.build(self)
