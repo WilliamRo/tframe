@@ -1,16 +1,40 @@
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import numpy as np
+import os
+import pickle
+import platform
 import six
+from six.moves import urllib
+import time
+import tarfile
 
 from . import console
 from .. import pedia
 
 
 class TFData(object):
-  """"""
+  """
+  Only valid data container for tframe
+  """
+  # region : Constructor
+
   def __init__(self, features, targets=None, name=None, **kwargs):
-    """"""
+    """
+    Pack data into an instance of TFData
+    :param features: features in numpy array
+    :param targets: targets or labels, must be provided in supervised learning
+    :param name: name for dataset, i.e. 'MNIST'
+    :param kwargs: Other data to be pack into tha data dict
+    
+    Examples:
+    (1) images, labels = get_data()
+        data = TFDate(images, targets=labels)
+        display(data[features])
+    
+    """
     if not hasattr(features, 'shape'):
       raise ValueError('features must have attribute "shape"')
 
@@ -35,6 +59,10 @@ class TFData(object):
 
     self._batch_size = None
     self._cursor = 0
+
+  # endregion : Constructor
+
+  # region : Properties
 
   @property
   def sample_num(self):
@@ -84,6 +112,10 @@ class TFData(object):
 
     return data
 
+  # endregion : Properties
+
+  # region : Public Methods
+
   def set_batch_size(self, batch_size):
     if not isinstance(batch_size, int) or batch_size < 1:
       raise TypeError('batch size must be a positive integer')
@@ -108,6 +140,10 @@ class TFData(object):
 
     return self[indices], end_epoch
 
+  # endregion : Public Methods
+
+  pass
+
 
 def load_mnist(data_dir, flatten=False, one_hot=False,
                validation_size=5000):
@@ -127,11 +163,117 @@ def load_mnist(data_dir, flatten=False, one_hot=False,
   console.supplement('labels: {}'.format(mnist.test.labels.shape), 2)
 
   data = {}
-  data['train'] = TFData(mnist.train.images, targets=mnist.train.labels)
-  data['validation'] = TFData(mnist.validation.images,
+  data[pedia.training] = TFData(mnist.train.images, targets=mnist.train.labels)
+  data[pedia.validation] = TFData(mnist.validation.images,
                               targets=mnist.validation.labels)
-  data['test'] = TFData(mnist.test.images, targets=mnist.test.labels)
+  data[pedia.test] = TFData(mnist.test.images, targets=mnist.test.labels)
 
   return data
+
+
+def load_cifar10(data_dir, flatten=False, one_hot=False, validation_size=0):
+  console.show_status('Loading CIFAR-10 ...')
+
+  # region : Download, tar data
+
+  # Check data directory
+  if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
+  # Get data file name and path
+  DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+  filename = DATA_URL.split('/')[-1]
+  filepath = os.path.join(data_dir, filename)
+  # If data does not exists, download from Alex's website
+  if not os.path.exists(filepath):
+    console.show_status('Downloading ...')
+    start_time = time.time()
+    def _progress(count, block_size, total_size):
+      console.clear_line()
+      console.print_progress(count*block_size, total_size, start_time)
+    filepath, _ = urllib.request.urlretrieve(DATA_URL, filepath, _progress)
+    statinfo = os.stat(filepath)
+    console.show_status('Successfully downloaded {} {} bytes.'.format(
+      filename, statinfo.st_size))
+
+  # Tar file
+  tarfile.open(filepath, 'r:gz').extractall(data_dir)
+  # Update data directory
+  data_dir = os.path.join(data_dir, 'cifar-10-batches-py')
+
+  # endregion : Download, tar data
+
+  # Define functions
+  def pickle_load(f):
+    version = platform.python_version_tuple()
+    if version[0] == '2':
+      return pickle.load(f)
+    elif version[0] == '3':
+      return pickle.load(f, encoding='latin1')
+    raise ValueError('Invalid python version: {}'.format(version))
+
+  def load_batch(filename):
+    with open(filename, 'rb') as f:
+      datadict = pickle_load(f)
+      X = datadict['data']
+      X = X.reshape(10000, 3, 32, 32).transpose(0, 2, 3, 1).astype('float')
+      Y = np.array(datadict['labels'])
+      if flatten:
+        X = X.reshape(10000, -1)
+      if one_hot:
+        def dense_to_one_hot(labels_dense, num_classes):
+          """Convert class labels from scalars to one-hot vectors."""
+          num_labels = labels_dense.shape[0]
+          index_offset = np.arange(num_labels) * num_classes
+          labels_one_hot = np.zeros((num_labels, num_classes))
+          labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
+          return labels_one_hot
+        Y = dense_to_one_hot(Y, 10)
+
+      return X, Y
+
+  # Load data from files
+  xs = []
+  ys = []
+  for b in range(1, 6):
+    f = os.path.join(data_dir,  'data_batch_{}'.format(b))
+    X, Y = load_batch(f)
+    xs.append(X)
+    ys.append(Y)
+  Xtr = np.concatenate(xs)
+  Ytr = np.concatenate(ys)
+  del X, Y
+  Xte, Yte = load_batch(os.path.join(data_dir, 'test_batch'))
+
+  # Pack data into instances of TFData and form a data dict
+  data = {}
+  total = 50000
+  training_size = total - validation_size
+
+  mask = list(range(training_size))
+  data[pedia.training] = TFData(Xtr[mask], targets=Ytr[mask])
+  mask = list(range(training_size, total))
+  data[pedia.validation] = TFData(Xtr[mask], targets=Ytr[mask])
+  data[pedia.test] = TFData(Xte, targets=Yte)
+
+  console.show_status('CIFAR-10 loaded')
+  console.supplement('Training Set:')
+  console.supplement('images: {}'.format(
+    data[pedia.training][pedia.features].shape), 2)
+  console.supplement('labels: {}'.format(
+    data[pedia.training][pedia.targets].shape), 2)
+  console.supplement('Validation Set:')
+  console.supplement('images: {}'.format(
+    data[pedia.validation][pedia.features].shape), 2)
+  console.supplement('labels: {}'.format(
+    data[pedia.validation][pedia.targets].shape), 2)
+  console.supplement('Test Set:')
+  console.supplement('images: {}'.format(
+    data[pedia.test][pedia.features].shape), 2)
+  console.supplement('labels: {}'.format(
+    data[pedia.test][pedia.targets].shape), 2)
+
+  return data
+
+
 
 

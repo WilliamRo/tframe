@@ -10,8 +10,6 @@ features = 'features'
 
 Generator = 'Generator'
 
-targets = 'targets'
-
 keep_prob = 'keep_prob'
 
 linear = 'linear'
@@ -23,6 +21,12 @@ is_training = 'is_training'
 spherical = 'spherical'
 status_tensors = 'status_tensors'
 summaries = 'summaries'
+
+targets = 'targets'
+test = 'test'
+training = 'training'
+
+validation = 'validation'
 
 with_logits = 'with_logits'
 
