@@ -1,3 +1,4 @@
+Accuracy = 'Accuracy'
 activation_sum = 'activation_sum'
 
 cross_entropy = 'cross_entropy'

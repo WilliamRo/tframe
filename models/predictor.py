@@ -4,6 +4,8 @@ import tensorflow as tf
 
 from .feedforward import Feedforward
 
+from tframe import console
+
 from .. import losses
 from .. import pedia
 from .. import metrics
@@ -19,6 +21,10 @@ class Predictor(Feedforward):
   @property
   def description(self):
     return self.structure_string()
+
+  @property
+  def metric_is_accuracy(self):
+    return pedia.memo[pedia.metric_name] == pedia.Accuracy
 
   def build(self, loss='cross_entropy', optimizer=None,
              metric=None, metric_name='Metric'):
@@ -54,6 +60,21 @@ class Predictor(Feedforward):
     # Launch session
     self.launch_model(FLAGS.overwrite and FLAGS.train)
 
+  def _print_progress(self, epc, start_time, info_dict, **kwargs):
+    # Generate loss string
+    loss_strings = ['{} = {:.3f}'.format(k, info_dict[k])
+                    for k in info_dict.keys()]
+    loss_string = ', '.join(loss_strings)
+
+    total_epoch = self._counter / self._training_set.batches_per_epoch
+    console.clear_line()
+    console.show_status(
+      'Epoch {} [{:.1f} Total] {}'.format(epc + 1, total_epoch, loss_string))
+
+    console.print_progress(progress=self._training_set.progress,
+                           start_time=start_time)
+
+
   def predict(self, data):
     if self.outputs is None:
       raise ValueError('Model not built yet')
@@ -66,6 +87,9 @@ class Predictor(Feedforward):
       feed_dict=self._get_default_feed_dict(data, is_training=False))
 
     return outputs, loss
+
+
+
 
 
 

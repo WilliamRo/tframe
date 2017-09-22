@@ -37,6 +37,7 @@ class Model(object):
                  else mark)
 
     self._training_set = None
+    self._validation_set = None
     self._test_set = None
     self._metric = None
     self._merged_summary = None
@@ -101,13 +102,13 @@ class Model(object):
     pass
 
   def train(self, epoch=1, batch_size=128, training_set=None,
-            test_set=None, print_cycle=0, snapshot_cycle=0,
+            validation_set=None, print_cycle=0, snapshot_cycle=0,
             snapshot_function=None, **kwargs):
     # Check data
     if training_set is not None:
       self._training_set = training_set
-    if test_set is not None:
-      self._test_set = test_set
+    if validation_set is not None:
+      self._validation_set = validation_set
     if self._training_set is None:
       raise ValueError('Data for training not found')
     elif not isinstance(training_set, TFData):
@@ -161,7 +162,8 @@ class Model(object):
           loss_dict = self._update_model(data_batch, **kwargs)
           # Print status
           if print_cycle > 0 and np.mod(self._counter - 1, print_cycle) == 0:
-            self._print_progress(epc, start_time, loss_dict)
+            self._print_progress(epc, start_time, loss_dict,
+                                 data_batch=data_batch)
           # Snapshot
           if snapshot_cycle > 0 and np.mod(self._counter - 1,
                                             snapshot_cycle) == 0:
@@ -172,11 +174,11 @@ class Model(object):
             console.show_status('End of epoch. Elapsed time is ' 
                                 '{:.1f} secs'.format(time.time() - start_time))
             # Show metric
-            if self._metric is not None and self._test_set is not None:
+            if self._metric is not None and self._validation_set is not None:
               assert isinstance(self._metric, tf.Tensor)
               metric = self._metric.eval(self._get_default_feed_dict(
-                self._test_set, is_training=False))
-              console.show_status('{} on test set is {:.4f}'.format(
+                self._validation_set, is_training=False))
+              console.show_status('{} on validation set is {:.4f}'.format(
                 pedia.memo[pedia.metric_name], metric))
 
             break
@@ -202,15 +204,15 @@ class Model(object):
 
     return {'Train loss': loss}
 
-  def _print_progress(self, epc, start_time, loss_dict):
+  def _print_progress(self, epc, start_time, loss_dict, **kwargs):
     # TODO: move test elsewhere
-    if self._test_set is not None and not config.block_test:
-      feed_dict = self._get_default_feed_dict(self._test_set, False)
-      test_loss = self._loss.eval(feed_dict)
-      assert loss_dict.get('Test loss', None) is None
-      loss_dict['Test loss'] = test_loss
+    # if self._validation_set is not none and not config.block_validation:
+    #   feed_dict = self._get_default_feed_dict(self._validation_set, false)
+    #   test_loss = self._loss.eval(feed_dict)
+    #   assert loss_dict.get('test loss', none) is none
+    #   loss_dict['test loss'] = test_loss
 
-    # Generate loss string
+    # generate loss string
     loss_strings = ['{} = {:.3f}'.format(k, loss_dict[k])
                     for k in loss_dict.keys()]
     loss_string = ', '.join(loss_strings)

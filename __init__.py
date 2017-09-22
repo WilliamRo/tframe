@@ -26,6 +26,7 @@ from .utils import console
 from .utils import local
 from .utils.tfdata import TFData
 
+from .models import Classifier
 from .models import Predictor
 from .models import GAN
 
