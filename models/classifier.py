@@ -30,11 +30,7 @@ class Classifier(Predictor):
   def _update_model(self, data_batch, **kwargs):
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
 
-    summary, _ = self._session.run(
-      [self._sum_train_acc, self._train_step], feed_dict=feed_dict)
-
-    assert isinstance(self._summary_writer, tf.summary.FileWriter)
-    self._summary_writer.add_summary(summary, self._counter)
+    self._session.run(self._train_step, feed_dict=feed_dict)
 
     return {}
 
@@ -47,16 +43,21 @@ class Classifier(Predictor):
 
     # Reset dict
     info_dict = {}
+
     data_batch = kwargs.get('data_batch', None)
     assert data_batch is not None
-    train_acc = self._metric.eval(self._get_default_feed_dict(
-      data_batch, is_training=False))
+    feed_dict = self._get_default_feed_dict(
+      data_batch, is_training=False)
+    sum_train_acc, train_acc = self._session.run(
+      [self._sum_train_acc, self._metric], feed_dict=feed_dict)
 
     feed_dict = self._get_default_feed_dict(
       self._validation_set, is_training=False)
-    summary, val_acc = self._session.run(
+    sum_val_acc, val_acc = self._session.run(
       [self._sum_val_acc, self._metric], feed_dict=feed_dict)
-    self._summary_writer.add_summary(summary, self._counter)
+
+    self._summary_writer.add_summary(sum_train_acc, self._counter)
+    self._summary_writer.add_summary(sum_val_acc, self._counter)
 
     info_dict['Training Accuracy'] = train_acc
     info_dict['Validation Accuracy'] = val_acc
