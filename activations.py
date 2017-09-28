@@ -26,6 +26,12 @@ def leaky_relu(input_, **kwargs):
   return tf.maximum(input_, input_ * leak, name='lrelu')
 
 
+def softmax(input_):
+  if input_.dtype in [tf.complex64, tf.complex128]:
+    raise TypeError('softmax currently does not support complex input')
+  return tf.nn.softmax(input_, name='softmax')
+
+
 def get(identifier, **kwargs):
   if callable(identifier):
     return identifier
@@ -35,6 +41,8 @@ def get(identifier, **kwargs):
       return relu
     elif identifier in ['lrelu', 'leakyrelu', 'leaky-relu']:
       return lambda x: leaky_relu(x, **kwargs)
+    elif identifier in ['softmax']:
+      return softmax
     else:
       # Try to find activation in tf.nn
       activation = tf.nn.__dict__.get(identifier, None)
