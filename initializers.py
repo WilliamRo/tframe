@@ -2,7 +2,6 @@ from __future__ import  absolute_import
 
 import six
 
-import tensorflow as tf
 from tensorflow.python.ops import init_ops
 
 

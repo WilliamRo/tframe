@@ -23,6 +23,8 @@ class Layer(Function):
 
   @property
   def group_name(self):
+    """group name will be shown in tensorboard graphs view.
+       If full_name is not specified, no variable scope will be created"""
     return self.full_name
 
   @staticmethod

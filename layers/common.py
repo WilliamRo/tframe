@@ -79,11 +79,10 @@ class Linear(Layer):
                weight_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    Layer.__init__(self)
-
     if not np.isscalar(output_dim):
       raise TypeError('output_dim must be a scalar, not {}'.format(
         type(output_dim)))
+
     self._output_dim = output_dim
     self._force_real = force_real
     self._use_bias = use_bias
