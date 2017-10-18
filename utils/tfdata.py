@@ -43,6 +43,10 @@ class TFData(object):
     self._data = {pedia.features: features}
     self.attachment = {}
     if targets is not None:
+      if targets.shape[0] != features.shape[0]:
+        raise ValueError(
+          "targets number {} doesn't match feature number".format(
+            targets.shape[0], features.shape[0]))
       kwargs[pedia.targets] = targets
 
     for k in kwargs.keys():
@@ -65,12 +69,47 @@ class TFData(object):
   # region : Properties
 
   @property
+  def scalar_labels(self):
+    if self.targets is None:
+      return False
+    # Here self.targets is not None
+    target_shape = self.targets.shape
+    shape_len = len(target_shape)
+    if shape_len == 1 or shape_len == 2 and target_shape[1] == 1:
+      return self.targets
+    elif shape_len > 2:
+      return None
+    # At this point targets may be one-hot
+    return np.argmax(self.targets, axis=1)
+
+  @property
+  def feature_is_image(self):
+    feature_shape = self.features.shape
+    flag = False
+    if len(feature_shape) == 4:
+      # Channel last images are supported only
+      flag = feature_shape[-1] in [1, 3]
+    elif len(feature_shape) == 3:
+      flag = feature_shape[1] > 1 and feature_shape[2] > 1
+
+    return flag
+
+  @property
   def sample_num(self):
     return self.features.shape[0]
 
   @property
+  def cursor(self):
+    return self._cursor
+
+  @property
   def features(self):
     return self._data[pedia.features]
+
+  @property
+  def targets(self):
+    return (None if pedia.targets not in self._data.keys()
+            else self._data[pedia.targets])
 
   @property
   def feature_shape(self):
@@ -88,13 +127,14 @@ class TFData(object):
     else:
       return 1.0 * cursor / self.sample_num
 
-  def __getattr__(self, attrname):
-    if attrname in self._data.keys():
-      return self._data[attrname]
-    elif attrname in self.attachment.keys():
-      return self.attachment[attrname]
-    else:
-      return self.__dict__[attrname]
+  # TODO: ...
+  # def __getattr__(self, attrname):
+  #   if attrname in self._data.keys():
+  #     return self._data[attrname]
+  #   elif attrname in self.attachment.keys():
+  #     return self.attachment[attrname]
+  #   else:
+  #     return object.__getattribute__(self, attrname)
 
   def __getitem__(self, item):
     if isinstance(item, six.string_types):
@@ -115,6 +155,19 @@ class TFData(object):
   # endregion : Properties
 
   # region : Public Methods
+
+  def set_cursor(self, position):
+    if not 0 <= position < self.sample_num:
+      raise ValueError('Invalid position for cursor')
+    self._cursor = position
+
+  def move_cursor(self, step):
+    assert step in [-1, 1]
+    self._cursor += step
+    if self._cursor < 0:
+      self._cursor += self.sample_num
+    elif self._cursor >= self.sample_num:
+      self._cursor -= self.sample_num
 
   def set_batch_size(self, batch_size):
     if not isinstance(batch_size, int) or batch_size < 1:
@@ -139,6 +192,15 @@ class TFData(object):
       self._cursor -= self.sample_num
 
     return self[indices], end_epoch
+
+  def save(self, filename):
+    with open(filename, 'wb') as output:
+      pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+  @staticmethod
+  def load(filename):
+    with open(filename, 'rb') as input_:
+      return pickle.load(input_)
 
   # endregion : Public Methods
 
