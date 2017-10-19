@@ -21,7 +21,8 @@ class TFData(object):
   """
   # region : Constructor
 
-  def __init__(self, features, targets=None, name=None, **kwargs):
+  def __init__(self, features, targets=None, name=None, classes=None,
+               **kwargs):
     """
     Pack data into an instance of TFData
     :param features: features in numpy array
@@ -42,6 +43,7 @@ class TFData(object):
 
     self._data = {pedia.features: features}
     self.attachment = {}
+    self.classes = classes
     if targets is not None:
       if targets.shape[0] != features.shape[0]:
         raise ValueError(
@@ -69,6 +71,13 @@ class TFData(object):
   # region : Properties
 
   @property
+  def predictions(self):
+    if pedia.predictions in self._data.keys():
+      return self._data[pedia.predictions]
+    else:
+      return None
+
+  @property
   def scalar_labels(self):
     if self.targets is None:
       return False
@@ -76,7 +85,7 @@ class TFData(object):
     target_shape = self.targets.shape
     shape_len = len(target_shape)
     if shape_len == 1 or shape_len == 2 and target_shape[1] == 1:
-      return self.targets
+      return np.squeeze(self.targets)
     elif shape_len > 2:
       return None
     # At this point targets may be one-hot
@@ -146,15 +155,30 @@ class TFData(object):
         raise ValueError('Can not resolve "{}"'.format(item))
     # item is an array
     item = np.mod(item, self.sample_num)
-    data = {}
+    kwargs = {}
     for k in self._data.keys():
-      data[k] = self._data[k][item]
+      kwargs[k] = self._data[k][item]
+    features = kwargs.pop(pedia.features)
+    data = TFData(features, name=self.name, classes=self.classes, **kwargs)
 
     return data
 
   # endregion : Properties
 
   # region : Public Methods
+
+  def update(self, **kwargs):
+    for k in kwargs.keys():
+      new_data = kwargs[k]
+      if len(new_data) != self.sample_num:
+        raise ValueError('New data must have the same length as sample number')
+      self._data[k] = new_data
+
+  def get_classes(self, index):
+    if self.classes is not None:
+      return self.classes[index]
+    else:
+      return '{}'.format(index)
 
   def set_cursor(self, position):
     if not 0 <= position < self.sample_num:
@@ -311,11 +335,13 @@ def load_cifar10(data_dir, flatten=False, one_hot=False, validation_size=0):
   total = 50000
   training_size = total - validation_size
 
+  classes = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog',
+             'horse', 'ship', 'truck']
   mask = list(range(training_size))
-  data[pedia.training] = TFData(Xtr[mask], targets=Ytr[mask])
+  data[pedia.training] = TFData(Xtr[mask], targets=Ytr[mask], classes=classes)
   mask = list(range(training_size, total))
-  data[pedia.validation] = TFData(Xtr[mask], targets=Ytr[mask])
-  data[pedia.test] = TFData(Xte, targets=Yte)
+  data[pedia.validation] = TFData(Xtr[mask], targets=Ytr[mask], classes=classes)
+  data[pedia.test] = TFData(Xte, targets=Yte, classes=classes)
 
   console.show_status('CIFAR-10 loaded')
   console.supplement('Training Set:')

@@ -28,6 +28,16 @@ class Net(Function):
   def group_name(self):
     return self._name
 
+  @property
+  def last_layer(self):
+    if len(self.chain) == 0:
+      return None
+    layer = self.chain[-1]
+    while isinstance(layer, Net):
+      layer = layer.chain[-1]
+
+    return layer
+
   def structure_string(self, detail=True, scale=True):
     fs = [f for f in self.chain if isinstance(f, Net)
           or detail or f.is_nucleus]

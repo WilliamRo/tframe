@@ -2,12 +2,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from .predictor import Predictor
 from ..utils import console
+from ..utils.tfdata import TFData
 from .. import config
 from .. import pedia
+
+from ..layers import Activation
 
 
 class Classifier(Predictor):
@@ -15,6 +19,7 @@ class Classifier(Predictor):
     Predictor.__init__(self, mark)
     self._sum_train_acc = None
     self._sum_val_acc = None
+    self._possibilities = None
 
 
   def build(self, loss='cross_entropy', optimizer=None):
@@ -25,6 +30,13 @@ class Classifier(Predictor):
 
     self._sum_train_acc = tf.summary.scalar('train_acc', self._metric)
     self._sum_val_acc = tf.summary.scalar('val_acc', self._metric)
+
+    # Find last layer
+    if (isinstance(self.last_layer, Activation)
+        and self.last_layer.abbreviation == 'softmax'):
+      self._possibilities = self.outputs
+    else:
+      self._possibilities = tf.nn.softmax(self.outputs, name='possibilities')
 
 
   def _update_model(self, data_batch, **kwargs):
@@ -66,22 +78,38 @@ class Classifier(Predictor):
     Predictor._print_progress(self, epc, start_time, info_dict)
 
 
-  def evaluate_model(self, data):
+  def evaluate_model(self, data, with_false=False):
     if self.outputs is None:
       raise ValueError('Model not built yet')
-
     if self._session is None:
       self.launch_model(overwrite=False)
-
     if not self.metric_is_accuracy:
       raise ValueError('Currently this only supports accuracy')
 
-    accuracy = self._session.run(
-      self._metric, feed_dict=self._get_default_feed_dict(
-        data, is_training=False))
+    possibilities, accuracy = self._session.run(
+      [self._possibilities, self._metric],
+      feed_dict=self._get_default_feed_dict(data, is_training=False))
     accuracy *= 100
 
     console.show_status('Accuracy on test set is {:.2f}%'.format(accuracy))
+
+    if with_false:
+      assert isinstance(data, TFData)
+      predictions = np.argmax(possibilities, axis=1).squeeze()
+      data.update(predictions=predictions)
+      labels = data.scalar_labels
+      false_indices = [i for i in range(data.sample_num)
+                      if predictions[i] != labels[i]]
+
+      from tframe import ImageViewer
+      vr = ImageViewer(data[false_indices])
+      vr.show()
+
+
+
+
+
+
 
 
 

@@ -15,21 +15,25 @@ from tframe import console
 from tframe import TFData
 from tframe import pedia
 
-from tframe.utils.tfdata import load_mnist
+from tframe.utils.tfdata import load_cifar10
 
 try:
   import tkinter as tk
   from tkinter import filedialog
-  console.show_status('tkinter imported')
+  # console.show_status('tkinter imported')
 except:
   # Tkinter in python 2.X may work weired, thus python 3.X is recommended.
   import Tkinter as tk
   import tkFileDialog as filedialog
-  console.show_status('Tkinter imported')
+  # console.show_status('Tkinter imported')
 
 
 class ImageViewer(object):
-  """Image Viewer for TFData"""
+  """Image Viewer for TFData
+     Features:
+     (1) One-hot labels will be converted automatically (done by TFData)
+     (2) Support save and load
+  """
 
   MIN_WIDTH = 260
   MIN_HEIGHT = 260
@@ -57,7 +61,7 @@ class ImageViewer(object):
     self.dataset = None
     self.labels = None
     self.set_data(dataset)
-    self.update_title()
+    self._update_title()
 
   # region : Properties
 
@@ -105,7 +109,7 @@ class ImageViewer(object):
 
   def show(self):
     assert isinstance(self.form, tk.Tk)
-    self.form.after(20, self.move_to_center)
+    self.form.after(20, self._move_to_center)
     self.form.mainloop()
 
   # endregion : Public Methods
@@ -130,7 +134,7 @@ class ImageViewer(object):
     self.form.bind('<Control-s>', self.save_dataset)
     self.form.bind('<Control-l>', self.load_dataset)
 
-  def move_to_center(self):
+  def _move_to_center(self):
     sh, sw = self.screen_size
     x = sw // 2 - self.width // 2
     y = sh // 2 - self.height // 2
@@ -143,18 +147,23 @@ class ImageViewer(object):
     if event.keysym == 'Escape':
       self.form.quit()
     elif event.keysym == 'j':
-      flag = self.move_cursor(1)
+      flag = self._move_cursor(1)
     elif event.keysym == 'k':
-      flag = self.move_cursor(-1)
+      flag = self._move_cursor(-1)
     elif event.keysym == 'quoteleft':
+      console.show_status('Widgets sizes:')
       for k in self.__dict__.keys():
         item = self.__dict__[k]
         if isinstance(item, tk.Widget) or k == 'form':
           str = '[{}] {}: {}x{}'.format(
             item.__class__, k, item.winfo_height(), item.winfo_width())
-          console.show_status(str)
+          console.supplement(str)
+    elif event.keysym == 'Tab':
+      console.show_status('Data:')
+      for k in self.dataset._data.keys():
+        console.supplement('{}: {}'.format(k, self.dataset._data[k].shape))
     elif event.keysym == 'space':
-      self.resize()
+      self._resize()
     else:
       # console.show_status(event.keysym)
       pass
@@ -163,7 +172,7 @@ class ImageViewer(object):
     if flag:
       self.refresh()
 
-  def move_cursor(self, step):
+  def _move_cursor(self, step):
     assert step in [-1, 1]
     flag = False
     if self.dataset is not None:
@@ -176,12 +185,12 @@ class ImageViewer(object):
     return flag
 
   def refresh(self):
-    self.update_info()
-    self.update_image()
-    self.update_details()
-    self.resize()
+    self._update_info()
+    self._update_image()
+    self._update_details()
+    self._resize()
 
-  def update_title(self):
+  def _update_title(self):
     filename = 'New Data Set'
     if self.filename is not None:
       # Hide directory information
@@ -192,27 +201,32 @@ class ImageViewer(object):
     title = 'Image Viewer - {}'.format(filename)
     self.form.title(title)
 
-  def update_info(self):
+  def _update_info(self):
     if self.dataset is not None:
       assert isinstance(self.dataset, TFData)
       cursor = self.dataset.cursor
       info = ''
       if self.labels is not None:
-        info = 'Label: {}'.format(self.labels[cursor])
-      self.image_info.config(fg='DodgerBlue4', text='[{} / {}] {}'.format(
+        info = 'Label: {}'.format(self.dataset.get_classes(self.labels[cursor]))
+      self.image_info.config(fg='Black', text='[{} / {}] {}'.format(
         cursor + 1, self.dataset.sample_num, info))
     else:
       self.image_info.config(text='No data set found', fg='grey')
 
-  def update_image(self):
+  def _update_image(self):
     if self.dataset is not None:
       assert isinstance(self.dataset, TFData)
       cursor = self.dataset.cursor
       image = np.squeeze(self.dataset.features[cursor])
+      if not self.dataset.feature_is_image:
+        self.canvas.config(bg='light grey')
+        return
 
       # Convert image data type
       if np.max(image) <= 1.0:
-        image = np.int8(np.around(image * 255))
+        image = np.around(image * 255)
+      # IMPORTANT!
+      image = image.astype('uint8')
 
       # Adjust canvas size
       shape = image.shape
@@ -222,7 +236,8 @@ class ImageViewer(object):
       self.image_height = height
       self.image_width = width
       # Draw image
-      image = Image_.fromarray(image)
+      mode = 'RGB' if len(shape) == 3 else None
+      image = Image_.fromarray(image, mode)
       image = image.resize((width, height))
       self.photo = ImageTk.PhotoImage(image=image)
 
@@ -230,10 +245,22 @@ class ImageViewer(object):
     else:
       self.canvas.config(bg='light grey')
 
-  def update_details(self):
-    self.details.config(text='No details', fg='grey')
+  def _update_details(self):
+    assert isinstance(self.dataset, TFData)
+    if self.dataset.predictions is not None:
+      cursor = self.dataset.cursor
+      prediction = self.dataset.predictions[cursor]
+      if isinstance(prediction, np.ndarray):
+        prediction = prediction[0]
+      info = 'Prediction: {}'.format(self.dataset.get_classes(prediction))
+      color = 'black'
+      if self.labels is not None:
+        color = 'green' if self.labels[cursor] == prediction else 'red'
+      self.details.config(text=info, fg=color)
+    else:
+      self.details.config(text='No details', fg='grey')
 
-  def resize(self):
+  def _resize(self):
     self.form.geometry('{}x{}'.format(self.width, self.height))
 
   def save_dataset(self, _):
@@ -252,7 +279,7 @@ class ImageViewer(object):
     # Print status
     self.filename = filename
     print(">> Data set saved to '{}'".format(filename))
-    self.update_title()
+    self._update_title()
 
   def load_dataset(self, _):
     filename = filedialog.askopenfilename(
@@ -263,7 +290,7 @@ class ImageViewer(object):
 
     self.filename = filename
     self.set_data(TFData.load(filename))
-    self.update_title()
+    self._update_title()
 
     # Print status
     print(">> Loaded data set '{}'".format(filename))
@@ -274,9 +301,12 @@ class ImageViewer(object):
 
 
 if __name__ == '__main__':
-  # mnist = load_mnist(r'..\..\data\MNIST', one_hot=True, validation_size=5000)
-  # dataset = mnist[pedia.validation]
-  dataset = r'C:\Users\HPEC\Documents\mnist_val_5000.tfd'
+  # cifar10 = load_cifar10(
+  #   r'..\..\data\CIFAR-10', one_hot=True, validation_size=5000)
+  # dataset = r'C:\Users\HPEC\Documents\mnist_val_5000.tfd'
+  # dataset = r'C:\Users\HPEC\Documents\cifar10-5000.tfd'
   # dataset = None
+  # dataset = cifar10[pedia.test]
+  dataset = './fp.tfd'
   viewer = ImageViewer(dataset)
   viewer.show()

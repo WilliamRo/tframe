@@ -17,6 +17,8 @@ linear = 'linear'
 
 metric_name = 'metric_name'
 
+predictions = 'predictions'
+
 is_training = 'is_training'
 
 spherical = 'spherical'

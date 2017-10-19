@@ -25,6 +25,7 @@ FLAGS = flags.FLAGS
 from .utils import console
 from .utils import local
 from .utils.tfdata import TFData
+from .utils.tfinter import ImageViewer
 
 from .models import Classifier
 from .models import Predictor

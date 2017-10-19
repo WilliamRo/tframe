@@ -9,3 +9,6 @@
 *[Dd]ata*/
 *checkpoint*/
 *[Ll]og*/
+
+# Ignore .tfd files
+*.tfd
