@@ -56,6 +56,11 @@ class Model(object):
 
     self._snapshot_function = None
 
+    # TODO: need a more elegant way to bind is_training to graph
+    self._graph = tf.get_default_graph()
+    self._graph.is_training = tf.placeholder(
+      dtype=tf.bool,name=pedia.is_training)
+
   # region : Properties
 
   @property
@@ -208,13 +213,6 @@ class Model(object):
     return {'Train loss': loss}
 
   def _print_progress(self, epc, start_time, loss_dict, **kwargs):
-    # TODO: move test elsewhere
-    # if self._validation_set is not none and not config.block_validation:
-    #   feed_dict = self._get_default_feed_dict(self._validation_set, false)
-    #   test_loss = self._loss.eval(feed_dict)
-    #   assert loss_dict.get('test loss', none) is none
-    #   loss_dict['test loss'] = test_loss
-
     # generate loss string
     loss_strings = ['{} = {:.3f}'.format(k, loss_dict[k])
                     for k in loss_dict.keys()]
@@ -255,30 +253,6 @@ class Model(object):
       assert isinstance(net, Net)
       console.supplement('{}: {}'.format(k, net.structure_string()))
 
-  @staticmethod
-  def _get_default_feed_dict(batch, is_training):
-    feed_dict = {}
-    for tensor in tf.get_collection(pedia.default_feed_dict):
-      if 'input' in tensor.name.lower():
-        feed_dict[tensor] = batch[pedia.features]
-      elif 'target' in tensor.name:
-        feed_dict[tensor] = batch[pedia.targets]
-
-    feed_dict.update(Model._get_status_feed_dict(is_training))
-
-    return feed_dict
-
-  @staticmethod
-  def _get_status_feed_dict(is_training):
-    feed_dict = {}
-    for tensor in tf.get_collection(pedia.status_tensors):
-      if pedia.keep_prob in tensor.name:
-        feed_dict[tensor] = pedia.memo[tensor.name] if is_training else 1.0
-      elif pedia.is_training in tensor.name:
-        feed_dict[tensor] = is_training
-
-    return feed_dict
-
   # endregion : Static Methods
 
   # region : Public Methods
@@ -315,6 +289,24 @@ class Model(object):
 
   # region : Private Methods
 
+  def _get_default_feed_dict(self, batch, is_training):
+    feed_dict = {}
+    for tensor in tf.get_collection(pedia.default_feed_dict):
+      if 'input' in tensor.name.lower():
+        feed_dict[tensor] = batch[pedia.features]
+      elif 'target' in tensor.name:
+        feed_dict[tensor] = batch[pedia.targets]
+
+    feed_dict.update(self._get_status_feed_dict(is_training))
+
+    return feed_dict
+
+  def _get_status_feed_dict(self, is_training):
+    is_training_tensor = self._graph.is_training
+    assert isinstance(is_training_tensor, tf.Tensor)
+    feed_dict = {is_training_tensor: is_training}
+
+    return feed_dict
   def _load(self):
     return load_checkpoint(self.ckpt_dir, self._session, self._saver)
 

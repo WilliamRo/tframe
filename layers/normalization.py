@@ -82,7 +82,7 @@ class BatchNormalization(Layer):
 
     # endregion : Get input shape and validation check
 
-    is_training = pedia.memo[pedia.is_training]
+    is_training = tf.get_default_graph().is_training
 
     # If this layer has been linked before, reuse the variables
     if self.center and self.beta is not None or (

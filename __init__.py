@@ -41,6 +41,6 @@ from . import pedia
 console.set_logging_level(1)
 
 # Create placeholder for tframe status
-is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
-tf.add_to_collection(pedia.status_tensors, is_training)
-pedia.memo[pedia.is_training] = is_training
+# is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
+# tf.add_to_collection(pedia.status_tensors, is_training)
+# pedia.memo[pedia.is_training] = is_training

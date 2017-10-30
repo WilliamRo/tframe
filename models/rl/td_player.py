@@ -28,6 +28,14 @@ class TDPlayer(Feedforward, Player):
 
     self._opponent = None
 
+  # region : Properties
+
+  @property
+  def description(self):
+    return self.structure_string()
+
+  # endregion : Properties
+
   # region : Build
 
   def build(self, lamda=0.5, learning_rate=0.01):
@@ -74,7 +82,7 @@ class TDPlayer(Feedforward, Player):
   # region : Train
 
   def train(self, agent, episodes=500, print_cycle=0, snapshot_cycle=0,
-             match_cycle=0, rounds=100, rate_thresh=1.0,
+             match_cycle=0, rounds=100, rate_thresh=1.0, shadow=None,
              snapshot_function=None):
     # Validate agent
     if not isinstance(agent, FMDPAgent):
@@ -98,8 +106,11 @@ class TDPlayer(Feedforward, Player):
     # Do some preparation
     if self._session is None:
       self.launch_model()
-    if self._merged_summary is None:
-      self._merged_summary = tf.summary.merge_all()
+
+    assert isinstance(self._graph, tf.Graph)
+    with self._graph.as_default():
+      if self._merged_summary is None:
+        self._merged_summary = tf.summary.merge_all()
 
     # Find a random opponent
     if match_cycle > 0:
@@ -139,12 +150,13 @@ class TDPlayer(Feedforward, Player):
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
       self._summary_writer.add_summary(summary, self._counter)
 
-      if print_cycle > 0 and np.mod(self._counter, print_cycle) == 0:
+      if print_cycle > 0 and np.mod(self._counter + 1, print_cycle) == 0:
         self._print_progress(epi, start_time, steps, total=episodes)
-      if snapshot_cycle > 0 and np.mod(self._counter, snapshot_cycle) == 0:
+      if snapshot_cycle > 0 and np.mod(self._counter + 1, snapshot_cycle) == 0:
         self._snapshot(epi / episodes)
-      if match_cycle > 0 and np.mod(self._counter, match_cycle) == 0:
-        self._training_match(agent, rounds, epi / episodes, rate_thresh)
+      if match_cycle > 0 and np.mod(self._counter + 1, match_cycle) == 0:
+        self._training_match(agent, rounds, epi / episodes, rate_thresh,
+                             shadow)
 
       self._save(self._counter)
       self._counter += 1
@@ -159,7 +171,7 @@ class TDPlayer(Feedforward, Player):
     console.clear_line()
     console.show_status(
       'Episode {} [{} total] {} steps, Time elapsed = {:.2f} sec'.format(
-        epi, self._counter, steps, time.time() - start_time))
+        epi, self._counter + 1, steps, time.time() - start_time))
     console.print_progress(epi, kwargs.get('total'))
 
   def _snapshot(self, progress):
@@ -174,16 +186,19 @@ class TDPlayer(Feedforward, Player):
     console.write_line("[Snapshot] snapshot saved to {}".format(filename))
     console.print_progress(progress=progress)
 
-  def _training_match(self, agent, rounds, progress, rate_thresh):
+  def _training_match(self, agent, rounds, progress, rate_thresh, shadow):
+    # TODO: inference graph is hard to build under this frame => compromise
     if self._opponent is None:
       return
     assert isinstance(agent, FMDPAgent)
 
     console.clear_line()
     rate = self.compete(agent, rounds, self._opponent, title='Training match')
-    if rate >= rate_thresh:
+    if rate >= rate_thresh and shadow is not None:
       # Find an stronger opponent
-      pass
+      self._opponent = shadow
+      assert isinstance(shadow, TDPlayer)
+      shadow._load()
       console.show_status('Opponent updated')
 
     console.print_progress(progress=progress)
@@ -194,6 +209,7 @@ class TDPlayer(Feedforward, Player):
 
   def compete(self, agent, rounds, opponent, title='Competition'):
     console.show_status('[{}]'.format(title))
+    assert isinstance(agent, FMDPAgent)
     rate, reports = agent.compete([self, opponent], rounds)
     for report in reports:
       console.supplement(report)
@@ -208,17 +224,16 @@ class TDPlayer(Feedforward, Player):
     reward = agent.act(action_index)
     return reward if agent.terminated else values[action_index]
 
-  def estimate(self, data):
+  def estimate(self, states):
     if self.outputs is None:
       raise ValueError('Model not built yet')
     if self._session is None:
       self.launch_model(overwrite=False)
-    if not isinstance(data, TFData):
-      data = {'features': data}
 
-    outputs = self._session.run(
-      self.outputs,
-      feed_dict=self._get_default_feed_dict(data, is_training=False))
+    feed_dict = {self.inputs[0]: states}
+    feed_dict.update(self._get_status_feed_dict(False))
+
+    outputs = self._session.run( self.outputs, feed_dict)
 
     return outputs
 

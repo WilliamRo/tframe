@@ -50,17 +50,22 @@ class Dropout(Layer):
   def __init__(self, train_keep_prob=0.5):
     # Initialize keep probability until while linking to put the
     #   the placeholder in the right name scope
-    self._keep_prob = None
+
+    # self._keep_prob = None
     self.train_keep_prob = train_keep_prob
 
   @single_input
   def _link(self, input_, **kwargs):
-    if self._keep_prob is None:
-      self._keep_prob = tf.placeholder(tf.float32, name=pedia.keep_prob)
-      tf.add_to_collection(pedia.status_tensors, self._keep_prob)
-      pedia.memo[self._keep_prob.name] = self.train_keep_prob
+    is_training = tf.get_default_graph().is_training
+    return tf.nn.dropout(
+      input_, tf.cond(is_training, self.train_keep_prob, 1.0))
 
-    return tf.nn.dropout(input_, self._keep_prob)
+    # if self._keep_prob is None:
+    #   self._keep_prob = tf.placeholder(tf.float32, name=pedia.keep_prob)
+    #   tf.add_to_collection(pedia.status_tensors, self._keep_prob)
+    #   pedia.memo[self._keep_prob.name] = self.train_keep_prob
+    #
+    # return tf.nn.dropout(input_, self._keep_prob)
 
 
 class Linear(Layer):
