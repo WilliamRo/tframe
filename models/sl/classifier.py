@@ -5,13 +5,12 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from .predictor import Predictor
-from ..utils import console
-from ..utils.tfdata import TFData
-from .. import config
-from .. import pedia
-
-from ..layers import Activation
+from tframe import config
+from tframe import pedia
+from tframe.layers import Activation
+from tframe.models.sl.predictor import Predictor
+from tframe.utils import console
+from tframe.utils.tfdata import TFData
 
 
 class Classifier(Predictor):

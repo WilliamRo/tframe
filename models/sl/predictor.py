@@ -1,16 +1,17 @@
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import tensorflow as tf
 
-from .feedforward import Feedforward
+from tframe.models.feedforward import Feedforward
 
 from tframe import console
+from tframe import losses
+from tframe import pedia
+from tframe import metrics
 
-from .. import losses
-from .. import pedia
-from .. import metrics
-
-from .. import FLAGS
+from tframe import FLAGS
 
 
 class Predictor(Feedforward):

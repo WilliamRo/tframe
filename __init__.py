@@ -12,6 +12,7 @@ flags.DEFINE_integer("batch_size", -1, "The size of batch images")
 
 flags.DEFINE_integer("print_cycle", -1, "Print cycle")
 flags.DEFINE_integer("snapshot_cycle", -1, "Snapshot cycle")
+flags.DEFINE_integer("match_cycle", -1, "Match cycle for RL")
 
 flags.DEFINE_bool("overwrite", False, "Whether to overwrite records")
 flags.DEFINE_bool("shuffle", False, "Whether to shuffle")
@@ -30,6 +31,7 @@ from .utils.tfinter import ImageViewer
 from .models import Classifier
 from .models import Predictor
 from .models import GAN
+from .models import TDPlayer
 
 from . import config
 from . import pedia

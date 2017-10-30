@@ -30,6 +30,9 @@ class Model(object):
   """
   Base class of all kinds of models
   """
+  # TODO: Model should be generalized further. Subclasses for sl/usl and rl
+  #       should be inherited from this separately
+
   model_name = 'default'
 
   def __init__(self, mark=None):

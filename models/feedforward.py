@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 from .model import Model
-
 from ..nets import Net
 
 
@@ -16,4 +15,5 @@ class Feedforward(Model, Net):
   def build(self):
     # Feed forward to get outputs
     self.outputs = self()
+
 

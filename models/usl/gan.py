@@ -6,17 +6,17 @@ import numpy as np
 import six
 import tensorflow as tf
 
-from ..models.model import Model
-from ..nets.net import Net
-from ..layers import Input
-from ..utils import imtool
-from ..utils import misc
-from ..utils.maths import interpolations
+from tframe.models.model import Model
+from tframe.nets.net import Net
+from tframe.layers import Input
+from tframe.utils import imtool
+from tframe.utils import misc
+from tframe.utils.maths import interpolations
 
-from ..layers import merge
+from tframe.layers import merge
 
-from .. import pedia
-from .. import FLAGS
+from tframe import pedia
+from tframe import FLAGS
 
 flags = tf.app.flags
 
