@@ -101,7 +101,7 @@ class TDPlayer(Feedforward, Player):
 
     # Show configurations
     console.show_status('Configurations:')
-    console.supplement('episode: {}'.format(episodes))
+    console.supplement('episodes: {}'.format(episodes))
 
     # Do some preparation
     if self._session is None:
@@ -112,9 +112,16 @@ class TDPlayer(Feedforward, Player):
       if self._merged_summary is None:
         self._merged_summary = tf.summary.merge_all()
 
-    # Find a random opponent
+    # Set opponent
     if match_cycle > 0:
-      self._opponent = FMDRandomPlayer()
+      if shadow is None:
+        self._opponent = FMDRandomPlayer()
+        self._opponent.player_name = 'Random Player'
+      elif isinstance(shadow, TDPlayer):
+        self._opponent = shadow
+        self._opponent.player_name = 'Shadow_{}'.format(self._opponent._counter)
+      else:
+        raise TypeError('Opponent should be an instance of TDPlayer')
 
     # Begin training iteration
     assert isinstance(agent, FMDPAgent)
@@ -147,19 +154,19 @@ class TDPlayer(Feedforward, Player):
         state = agent.state
 
       # End of current episode
+      self._counter += 1
+
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
       self._summary_writer.add_summary(summary, self._counter)
 
-      if print_cycle > 0 and np.mod(self._counter + 1, print_cycle) == 0:
+      if print_cycle > 0 and np.mod(self._counter, print_cycle) == 0:
         self._print_progress(epi, start_time, steps, total=episodes)
-      if snapshot_cycle > 0 and np.mod(self._counter + 1, snapshot_cycle) == 0:
+      if snapshot_cycle > 0 and np.mod(self._counter, snapshot_cycle) == 0:
         self._snapshot(epi / episodes)
-      if match_cycle > 0 and np.mod(self._counter + 1, match_cycle) == 0:
-        self._training_match(agent, rounds, epi / episodes, rate_thresh,
-                             shadow)
+      if match_cycle > 0 and np.mod(self._counter, match_cycle) == 0:
+        self._training_match(agent, rounds, epi / episodes, rate_thresh)
 
       self._save(self._counter)
-      self._counter += 1
 
     # End training
     console.clear_line()
@@ -171,7 +178,7 @@ class TDPlayer(Feedforward, Player):
     console.clear_line()
     console.show_status(
       'Episode {} [{} total] {} steps, Time elapsed = {:.2f} sec'.format(
-        epi, self._counter + 1, steps, time.time() - start_time))
+        epi, self._counter, steps, time.time() - start_time))
     console.print_progress(epi, kwargs.get('total'))
 
   def _snapshot(self, progress):
@@ -186,19 +193,19 @@ class TDPlayer(Feedforward, Player):
     console.write_line("[Snapshot] snapshot saved to {}".format(filename))
     console.print_progress(progress=progress)
 
-  def _training_match(self, agent, rounds, progress, rate_thresh, shadow):
+  def _training_match(self, agent, rounds, progress, rate_thresh):
     # TODO: inference graph is hard to build under this frame => compromise
     if self._opponent is None:
       return
     assert isinstance(agent, FMDPAgent)
 
     console.clear_line()
-    rate = self.compete(agent, rounds, self._opponent, title='Training match')
-    if rate >= rate_thresh and shadow is not None:
+    title = 'Training match with {}'.format(self._opponent.player_name)
+    rate = self.compete(agent, rounds, self._opponent, title=title)
+    if rate >= rate_thresh and isinstance(self._opponent, TDPlayer):
       # Find an stronger opponent
-      self._opponent = shadow
-      assert isinstance(shadow, TDPlayer)
-      shadow._load()
+      self._opponent._load()
+      self._opponent.player_name = 'Shadow_{}'.format(self._opponent._counter)
       console.show_status('Opponent updated')
 
     console.print_progress(progress=progress)
