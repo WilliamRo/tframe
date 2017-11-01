@@ -83,7 +83,7 @@ class TDPlayer(Feedforward, Player):
 
   def train(self, agent, episodes=500, print_cycle=0, snapshot_cycle=0,
              match_cycle=0, rounds=100, rate_thresh=1.0, shadow=None,
-             snapshot_function=None):
+             save_cycle=100, snapshot_function=None):
     # Validate agent
     if not isinstance(agent, FMDPAgent):
       raise TypeError('Agent should be a FMDP-agent')
@@ -165,8 +165,8 @@ class TDPlayer(Feedforward, Player):
         self._snapshot(epi / episodes)
       if match_cycle > 0 and np.mod(self._counter, match_cycle) == 0:
         self._training_match(agent, rounds, epi / episodes, rate_thresh)
-
-      self._save(self._counter)
+      if np.mod(self._counter, save_cycle) == 0:
+        self._save(self._counter)
 
     # End training
     console.clear_line()
