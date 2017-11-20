@@ -5,7 +5,10 @@ cross_entropy = 'cross_entropy'
 
 default = 'default'
 default_feed_dict = 'default_feed_dict '
+Decoder = 'Decoder'
 Discriminator = 'Discriminator'
+
+Encoder = 'Encoder'
 
 features = 'features'
 

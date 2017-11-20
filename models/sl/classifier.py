@@ -18,7 +18,7 @@ class Classifier(Predictor):
     Predictor.__init__(self, mark)
     self._sum_train_acc = None
     self._sum_val_acc = None
-    self._possibilities = None
+    self._probabilities = None
 
 
   def build(self, loss='cross_entropy', optimizer=None):
@@ -31,11 +31,11 @@ class Classifier(Predictor):
     self._sum_val_acc = tf.summary.scalar('val_acc', self._metric)
 
     # Find last layer
-    if (isinstance(self.last_layer, Activation)
-        and self.last_layer.abbreviation == 'softmax'):
-      self._possibilities = self.outputs
+    if (isinstance(self.last_function, Activation)
+        and self.last_function.abbreviation == 'softmax'):
+      self._probabilities = self.outputs
     else:
-      self._possibilities = tf.nn.softmax(self.outputs, name='possibilities')
+      self._probabilities = tf.nn.softmax(self.outputs, name='possibilities')
 
 
   def _update_model(self, data_batch, **kwargs):
@@ -86,7 +86,7 @@ class Classifier(Predictor):
       raise ValueError('Currently this only supports accuracy')
 
     possibilities, accuracy = self._session.run(
-      [self._possibilities, self._metric],
+      [self._probabilities, self._metric],
       feed_dict=self._get_default_feed_dict(data, is_training=False))
     accuracy *= 100
 

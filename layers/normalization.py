@@ -84,26 +84,10 @@ class BatchNormalization(Layer):
 
     is_training = tf.get_default_graph().is_training
 
-    # If this layer has been linked before, reuse the variables
-    if self.center and self.beta is not None or (
-      self.scale and self.gamma is not None):
-      tf.get_variable_scope().reuse_variables()
-
     # Get parameters shape (only support most common use-case currently)
     if len(self.axis) != 1:
       raise ValueError('!! Single axis batch norm is supported only currently')
     param_shape = (input_shape[self.axis[0]].value,)
-
-    # Get variable
-    if self.center:
-      self.beta = tf.get_variable(
-        'beta', shape=param_shape, dtype=tf.float32,
-        initializer=self.beta_initializer , trainable=True)
-
-    if self.scale:
-      self.gamma = tf.get_variable(
-        'gamma', shape=param_shape, dtype=tf.float32,
-        initializer=self.gamma_initializer, trainable=True)
 
     # Calculate mean and variance
     reduction_axes = [i for i in range(len(input_shape))
@@ -115,14 +99,30 @@ class BatchNormalization(Layer):
 
     # Create the shadow variables and add an ops to maintain moving averages
     # for mean and variance
+    ema_apply_op = ema.apply([batch_mean, batch_variance])
     def mean_var_with_update():
-      ema_apply_op = ema.apply([batch_mean, batch_variance])
       with tf.control_dependencies([ema_apply_op]):
         return tf.identity(batch_mean), tf.identity(batch_variance)
 
     mean, variance = tf.cond(
       is_training, mean_var_with_update,
       lambda: (ema.average(batch_mean), ema.average(batch_variance)))
+
+    # If this layer has been linked before, reuse the variables
+    if self.center and self.beta is not None or (
+          self.scale and self.gamma is not None):
+      tf.get_variable_scope().reuse_variables()
+
+    # Get variable
+    if self.center:
+      self.beta = tf.get_variable(
+        'beta', shape=param_shape, dtype=tf.float32,
+        initializer=self.beta_initializer , trainable=True)
+
+    if self.scale:
+      self.gamma = tf.get_variable(
+        'gamma', shape=param_shape, dtype=tf.float32,
+        initializer=self.gamma_initializer, trainable=True)
 
     # Output
     output = tf.nn.batch_normalization(

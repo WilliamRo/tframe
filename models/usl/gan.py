@@ -11,6 +11,7 @@ from tframe.nets.net import Net
 from tframe.layers import Input
 from tframe.utils import imtool
 from tframe.utils import misc
+from tframe.utils import TFData
 from tframe.utils.maths import interpolations
 
 from tframe.layers import merge
@@ -52,7 +53,8 @@ class GAN(Model):
       if (not isinstance(sample_shape, list) and
             not isinstance(sample_shape, tuple)):
         raise TypeError('sample shape must be a list or a tuple')
-      self.D.add(Input(sample_shape=[None] + list(sample_shape), name='samples'))
+      self.D.add(Input(
+        sample_shape=[None] + list(sample_shape), name='samples'))
 
     self._z_dim = z_dim
     self._sample_shape = sample_shape
@@ -243,14 +245,14 @@ class GAN(Model):
       raise ValueError('Targets should be formatted as one-hot')
 
   def _update_model(self, data_batch, **kwargs):
-    assert isinstance(data_batch, dict)
+    assert isinstance(data_batch, TFData)
     # TODO: design some mechanisms to handle these
     G_iterations = kwargs.get('G_iterations', 1)
     D_iterations = kwargs.get('D_iterations', 1)
 
     features = data_batch[pedia.features]
     if self._conditional:
-      assert pedia.targets in data_batch.keys()
+      assert pedia.targets in data_batch._data.keys()
     sample_num = features.shape[0]
 
     loss_D, loss_G = None, None

@@ -28,7 +28,7 @@ from ..utils.tfdata import TFData
 
 class Model(object):
   """
-  Base class of all kinds of models
+  Base class of some kinds of models
   """
   # TODO: Model should be generalized further. Subclasses for sl/usl and rl
   #       should be inherited from this separately

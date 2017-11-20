@@ -12,10 +12,26 @@ def get_scale(tensor):
   return tensor.get_shape().as_list()[1:]
 
 
-def shape_string(shape):
-  assert isinstance(shape, list)
-  strs = [str(x) if x is not None else "?" for x in shape]
-  return "x".join(strs)
+def shape_string(input_):
+  # If input is a single tensor
+  if isinstance(input_, tf.Tensor):
+    shapes = [get_scale(input_)]
+  else:
+    assert isinstance(input_, list) and len(input_) > 0
+    if isinstance(input_[0], tf.Tensor):
+      shapes = [get_scale(tensor) for tensor in input_]
+    elif not isinstance(input_[0], list):
+      shapes = [input_]
+
+  result = ''
+  for i, shape in zip(range(len(shapes)), shapes):
+    result += ', ' if i > 0 else ''
+    result += 'x'.join([str(x) if x is not None else "?" for x in shape])
+
+  if len(shapes) > 1:
+    result = '({})'.format(result)
+
+  return result
 
 
 def convert_to_one_hot(labels, classes):

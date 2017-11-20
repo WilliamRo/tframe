@@ -195,7 +195,7 @@ class Reshape(Layer):
     input_shape = input_.get_shape().as_list()
     output_shape = ([-1, np.prod(input_shape[1:])]
                     if self.output_shape is None
-                    else [-1] + self.output_shape)
+                    else [-1] + list(self.output_shape))
 
     output = tf.reshape(input_, output_shape, name=name)
     self.neuron_scale = get_scale(output)
