@@ -307,6 +307,7 @@ class Model(object):
     feed_dict = {is_training_tensor: is_training}
 
     return feed_dict
+
   def _load(self):
     return load_checkpoint(self.ckpt_dir, self._session, self._saver)
 
