@@ -58,7 +58,9 @@ class Dropout(Layer):
   def _link(self, input_, **kwargs):
     is_training = tf.get_default_graph().is_training
     return tf.nn.dropout(
-      input_, tf.cond(is_training, self.train_keep_prob, 1.0))
+      input_, tf.cond(is_training,
+                      lambda: self.train_keep_prob,
+                      lambda: 1.0))
 
     # if self._keep_prob is None:
     #   self._keep_prob = tf.placeholder(tf.float32, name=pedia.keep_prob)
