@@ -16,4 +16,6 @@ class Feedforward(Model, Net):
     # Feed forward to get outputs
     self.outputs = self()
 
+    self._built = True
+
 

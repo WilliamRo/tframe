@@ -56,6 +56,8 @@ class Model(object):
 
     self._snapshot_function = None
 
+    self._built = False
+
     # TODO: need a more elegant way to bind is_training to graph
     self._graph = tf.get_default_graph()
     self._graph.is_training = tf.placeholder(
@@ -78,6 +80,10 @@ class Model(object):
   @property
   def description(self):
     return 'No description'
+
+  @property
+  def built(self):
+    return self._built
 
   # endregion : Properties
 

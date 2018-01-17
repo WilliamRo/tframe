@@ -62,6 +62,9 @@ class Predictor(Feedforward):
     # Launch session
     self.launch_model(FLAGS.overwrite and FLAGS.train)
 
+    # Set built flag
+    self._built = True
+
   def _print_progress(self, epc, start_time, info_dict, **kwargs):
     # Generate loss string
     loss_strings = ['{} = {:.3f}'.format(k, info_dict[k])
@@ -81,8 +84,7 @@ class Predictor(Feedforward):
     # Sanity check
     if not isinstance(data, TFData):
       raise TypeError('!! Input data must be an instance of TFData')
-    if self.outputs is None:
-      raise ValueError('!! Model not built yet')
+    if not self.built: raise ValueError('!! Model not built yet')
     if self._session is None:
       self.launch_model(overwrite=False)
 
