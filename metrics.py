@@ -18,6 +18,12 @@ def accuracy(labels, outputs):
                          name='accuracy')
 
 
+def delta(truth, output):
+  assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  result = tf.abs(truth - output)
+  return tf.reduce_mean(tf.norm(result))
+
+
 def get(identifier):
   if identifier is None or callable(identifier):
     return identifier
@@ -25,6 +31,8 @@ def get(identifier):
     identifier = identifier.lower()
     if identifier in ['accuracy', 'acc']:
       return accuracy
+    elif identifier in ['delta', 'distance']:
+      return delta
     else:
       raise ValueError('Can not resolve "{}"'.format(identifier))
   else:

@@ -197,7 +197,8 @@ class Model(object):
     # End training
     console.clear_line()
     self._summary_writer.flush()
-    self.shutdown()
+    # TODO: shutdown at an appropriate time
+    # self.shutdown()
 
   def _update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
@@ -295,7 +296,8 @@ class Model(object):
       if 'input' in tensor.name.lower():
         feed_dict[tensor] = batch[pedia.features]
       elif 'target' in tensor.name:
-        feed_dict[tensor] = batch[pedia.targets]
+        # TODO: when predict without outputing loss ...
+        if batch.targets is not None: feed_dict[tensor] = batch.targets
 
     feed_dict.update(self._get_status_feed_dict(is_training))
 

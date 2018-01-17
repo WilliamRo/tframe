@@ -10,6 +10,7 @@ from tframe import console
 from tframe import losses
 from tframe import pedia
 from tframe import metrics
+from tframe import TFData
 
 from tframe import FLAGS
 
@@ -77,17 +78,24 @@ class Predictor(Feedforward):
 
 
   def predict(self, data):
+    # Sanity check
+    if not isinstance(data, TFData):
+      raise TypeError('!! Input data must be an instance of TFData')
     if self.outputs is None:
-      raise ValueError('Model not built yet')
-
+      raise ValueError('!! Model not built yet')
     if self._session is None:
       self.launch_model(overwrite=False)
 
-    outputs, loss = self._session.run(
-      [self.outputs, self._loss],
-      feed_dict=self._get_default_feed_dict(data, is_training=False))
-
-    return outputs, loss
+    if data.targets is None:
+      outputs = self._session.run(
+        self.outputs,
+        feed_dict=self._get_default_feed_dict(data, is_training=False))
+      return outputs
+    else:
+      outputs, loss = self._session.run(
+        [self.outputs, self._loss],
+        feed_dict=self._get_default_feed_dict(data, is_training=False))
+      return outputs, loss
 
 
 
