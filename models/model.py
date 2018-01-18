@@ -176,6 +176,7 @@ class Model(object):
           loss_dict = self._update_model(data_batch, **kwargs)
           # Print status
           if print_cycle > 0 and np.mod(self._counter - 1, print_cycle) == 0:
+            loss_dict = self._update_loss_dict(loss_dict)
             self._print_progress(epc, start_time, loss_dict,
                                  data_batch=data_batch)
           # Snapshot
@@ -187,14 +188,6 @@ class Model(object):
             console.clear_line()
             console.show_status('End of epoch. Elapsed time is ' 
                                 '{:.1f} secs'.format(time.time() - start_time))
-            # Show metric
-            if self._metric is not None and self._validation_set is not None:
-              assert isinstance(self._metric, tf.Tensor)
-              metric = self._metric.eval(self._get_default_feed_dict(
-                self._validation_set, is_training=False))
-              console.show_status('{} on validation set is {:.4f}'.format(
-                pedia.memo[pedia.metric_name], metric))
-
             break
 
         # End of epoch
@@ -205,6 +198,17 @@ class Model(object):
     self._summary_writer.flush()
     # TODO: shutdown at an appropriate time
     # self.shutdown()
+
+  def _update_loss_dict(self, loss_dict):
+    if self._metric is None or self._validation_set is None:
+      return loss_dict
+
+    assert isinstance(self._metric, tf.Tensor)
+    metric = self._metric.eval(self._get_default_feed_dict(
+      self._validation_set, is_training=False))
+    loss_dict.update({pedia.memo[pedia.metric_name]: metric})
+
+    return loss_dict
 
   def _update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""

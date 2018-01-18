@@ -52,6 +52,7 @@ class Predictor(Feedforward):
       pedia.memo[pedia.metric_name] = metric_name
       with tf.name_scope('Metric'):
         self._metric = metric_function(self._targets, self.outputs)
+        tf.summary.scalar('metric_sum', self._metric)
 
     # Define train step
     self._define_train_step(optimizer)

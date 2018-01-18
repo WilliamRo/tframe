@@ -20,8 +20,12 @@ def accuracy(labels, outputs):
 
 def delta(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
-  result = tf.abs(truth - output)
-  return tf.reduce_mean(tf.norm(result))
+  return tf.norm(truth - output)
+
+
+def error_ratio(truth, output):
+  assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  return tf.norm(truth - output) / tf.norm(truth) * 100
 
 
 def get(identifier):
@@ -33,6 +37,8 @@ def get(identifier):
       return accuracy
     elif identifier in ['delta', 'distance']:
       return delta
+    elif identifier in ['ratio', 'error_ratio']:
+      return error_ratio
     else:
       raise ValueError('Can not resolve "{}"'.format(identifier))
   else:
