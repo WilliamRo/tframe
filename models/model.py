@@ -239,7 +239,7 @@ class Model(object):
 
     fig = self._snapshot_function(self)
     epcs = 1.0 * self._counter / self._training_set.batches_per_epoch
-    filename = 'train_{:.1f}_epcs.png'.format(epcs)
+    filename = 'train_{:.2f}_epcs.png'.format(epcs)
     plt.savefig("{}/{}".format(self.snapshot_dir, filename),
                 bbox_inches='tight', pad_inches=0.02)
     plt.close(fig)
