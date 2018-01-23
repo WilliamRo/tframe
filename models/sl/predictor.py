@@ -13,6 +13,7 @@ from tframe import metrics
 from tframe import TFData
 
 from tframe import FLAGS
+from tframe import with_graph
 
 
 class Predictor(Feedforward):
@@ -28,6 +29,7 @@ class Predictor(Feedforward):
   def metric_is_accuracy(self):
     return pedia.memo[pedia.metric_name] == pedia.Accuracy
 
+  @with_graph
   def build(self, loss='cross_entropy', optimizer=None,
              metric=None, metric_name='Metric'):
     Feedforward.build(self)
@@ -66,6 +68,7 @@ class Predictor(Feedforward):
     # Set built flag
     self._built = True
 
+  # TODO: does it have any difference with the one in model ?
   def _print_progress(self, epc, start_time, info_dict, **kwargs):
     # Generate loss string
     loss_strings = ['{} = {:.3f}'.format(k, info_dict[k])

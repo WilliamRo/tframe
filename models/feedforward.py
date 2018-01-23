@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
-from .model import Model
-from ..nets import Net
+from tframe import with_graph
+
+from tframe.models.model import Model
+from tframe.nets.net import Net
 
 
 class Feedforward(Model, Net):
@@ -12,6 +14,7 @@ class Feedforward(Model, Net):
     Model.__init__(self, mark)
     Net.__init__(self, 'FeedforwardNet')
 
+  @with_graph
   def build(self):
     # Feed forward to get outputs
     self.outputs = self()

@@ -23,6 +23,8 @@ flags.DEFINE_bool("train", True, "Whether to train or inference")
 
 FLAGS = flags.FLAGS
 
+from .core import with_graph
+
 from .utils import console
 from .utils import local
 from .utils.tfdata import TFData
@@ -41,7 +43,3 @@ from . import pedia
 # Control logging
 console.set_logging_level(1)
 
-# Create placeholder for tframe status
-# is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
-# tf.add_to_collection(pedia.status_tensors, is_training)
-# pedia.memo[pedia.is_training] = is_training

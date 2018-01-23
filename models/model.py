@@ -9,21 +9,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from .. import FLAGS
+from tframe import FLAGS
+from tframe import TFData
+from tframe import config
+from tframe import console
+from tframe import pedia
 
-from .. import config
-from .. import console
-from .. import pedia
+from tframe.core import with_graph
 
-from ..nets import Net
+from tframe.nets.net import Net
 
-from ..utils.local import check_path
-from ..utils.local import clear_paths
-from ..utils.local import load_checkpoint
-from ..utils.local import save_checkpoint
-from ..utils.local import write_file
+from tframe.utils.local import check_path
+from tframe.utils.local import clear_paths
+from tframe.utils.local import load_checkpoint
+from tframe.utils.local import save_checkpoint
+from tframe.utils.local import write_file
 
-from ..utils.tfdata import TFData
 
 
 class Model(object):
@@ -58,10 +59,10 @@ class Model(object):
 
     self._built = False
 
-    # TODO: need a more elegant way to bind is_training to graph
-    self._graph = tf.get_default_graph()
-    self._graph.is_training = tf.placeholder(
-      dtype=tf.bool,name=pedia.is_training)
+    # Each model is bound to a unique graph
+    self._graph = tf.Graph()
+    with self._graph.as_default():
+      self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
 
   # region : Properties
 
@@ -98,12 +99,12 @@ class Model(object):
       raise TypeError('loss must be a tensor')
     self._loss = loss
 
+  @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):
     if self._loss is None:
       raise ValueError('loss has not been defined yet')
     with tf.name_scope('Optimizer'):
-      if optimizer is None:
-        optimizer = tf.train.AdamOptimizer(1e-4)
+      if optimizer is None: optimizer = tf.train.AdamOptimizer(1e-4)
 
       self._train_step = optimizer.minimize(loss=self._loss, var_list=var_list)
 
@@ -115,22 +116,25 @@ class Model(object):
     """Method run in early training process, should be overrode"""
     pass
 
+  @with_graph
   def train(self, epoch=1, batch_size=128, training_set=None,
             validation_set=None, print_cycle=0, snapshot_cycle=0,
-            snapshot_function=None, **kwargs):
+            snapshot_function=None, probe=None, **kwargs):
     # Check data
     if training_set is not None:
       self._training_set = training_set
     if validation_set is not None:
       self._validation_set = validation_set
     if self._training_set is None:
-      raise ValueError('Data for training not found')
+      raise ValueError('!! Data for training not found')
     elif not isinstance(training_set, TFData):
-      raise TypeError('Data for training must be an instance of TFData')
+      raise TypeError('!! Data for training must be an instance of TFData')
+    if probe is not None and not callable(probe):
+      raise TypeError('!! Probe must be callable')
 
     if snapshot_function is not None:
       if not callable(snapshot_function):
-        raise ValueError('snapshot_function must be callable')
+        raise ValueError('!! snapshot_function must be callable')
       self._snapshot_function = snapshot_function
 
     # Get epoch and batch size
@@ -176,7 +180,7 @@ class Model(object):
           loss_dict = self._update_model(data_batch, **kwargs)
           # Print status
           if print_cycle > 0 and np.mod(self._counter - 1, print_cycle) == 0:
-            loss_dict = self._update_loss_dict(loss_dict)
+            loss_dict = self._update_loss_dict(loss_dict, probe)
             self._print_progress(epc, start_time, loss_dict,
                                  data_batch=data_batch)
           # Snapshot
@@ -199,7 +203,7 @@ class Model(object):
     # TODO: shutdown at an appropriate time
     # self.shutdown()
 
-  def _update_loss_dict(self, loss_dict):
+  def _update_loss_dict(self, loss_dict, probe):
     if self._metric is None or self._validation_set is None:
       return loss_dict
 
@@ -207,6 +211,10 @@ class Model(object):
     metric = self._metric.eval(self._get_default_feed_dict(
       self._validation_set, is_training=False))
     loss_dict.update({pedia.memo[pedia.metric_name]: metric})
+
+    if probe is not None:
+      assert callable(probe)
+      loss_dict.update({'Probe': probe(self)})
 
     return loss_dict
 
@@ -259,10 +267,9 @@ class Model(object):
   @staticmethod
   def show_building_info(**kwargs):
     console.show_status('Model built successfully:')
-    for k in kwargs:
-      net = kwargs[k]
-      assert isinstance(net, Net)
-      console.supplement('{}: {}'.format(k, net.structure_string()))
+    for k, v in kwargs.items():
+      assert isinstance(v, Net)
+      console.supplement('{}: {}'.format(k, v.structure_string()))
 
   # endregion : Static Methods
 
@@ -278,7 +285,7 @@ class Model(object):
       clear_paths([self.log_dir, self.ckpt_dir, self.snapshot_dir])
 
     console.show_status('Launching session ...')
-    self._session = tf.Session()
+    self._session = tf.Session(graph=self._graph)
     console.show_status('Session launched')
     self._saver = tf.train.Saver()
     self._summary_writer = tf.summary.FileWriter(self.log_dir)
@@ -300,6 +307,7 @@ class Model(object):
 
   # region : Private Methods
 
+  @with_graph
   def _get_default_feed_dict(self, batch, is_training):
     feed_dict = {}
     for tensor in tf.get_collection(pedia.default_feed_dict):
@@ -314,7 +322,7 @@ class Model(object):
     return feed_dict
 
   def _get_status_feed_dict(self, is_training):
-    is_training_tensor = self._graph.is_training
+    is_training_tensor = self._is_training
     assert isinstance(is_training_tensor, tf.Tensor)
     feed_dict = {is_training_tensor: is_training}
 
@@ -330,6 +338,11 @@ class Model(object):
   # endregion : Private Methods
 
   """For some reason, do not remove this line"""
+
+
+if __name__ == '__main__':
+  console.show_status('__main__')
+
 
 
 

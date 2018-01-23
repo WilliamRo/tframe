@@ -14,6 +14,7 @@ from tframe.utils import TFData
 
 from tframe import pedia
 from tframe import FLAGS
+from tframe import with_graph
 
 
 class VAE(Model):
@@ -70,6 +71,7 @@ class VAE(Model):
 
   # region : Building
 
+  @with_graph
   def build(self, optimizer=None):
     # Generate mean and var from encoder
     z_mu, z_logvar = self.Encoder()

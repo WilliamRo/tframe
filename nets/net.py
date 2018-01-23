@@ -3,12 +3,13 @@ from __future__ import absolute_import
 import six
 import tensorflow as tf
 
-from ..core import Function
-from ..layers.layer import Layer
-from ..layers.common import Activation
-from ..utils import shape_string
+from tframe.core import Function
+from tframe.layers.layer import Layer
+from tframe.layers import Activation
+from tframe.layers import Input
+from tframe.utils import shape_string
 
-from .. import pedia
+from tframe import pedia
 
 
 class Net(Function):
@@ -64,7 +65,7 @@ class Net(Function):
           or detail or f.is_nucleus]
     assert isinstance(self.chain, list)
     result = ('' if self.inputs is None else 'input_{} => '.format(
-      shape_string(self.inputs[0])))
+      shape_string(self.inputs[0].place_holder)))
 
     for (i, f) in zip(range(len(self.chain)), fs):
       if isinstance(f, Net):
@@ -84,24 +85,30 @@ class Net(Function):
 
   @property
   def regularization_loss(self):
-    reg_losses = tf.get_collection(pedia.tfkey.regularization_losses,
-                                   self._name)
-    loss_sum = None
-    for loss in reg_losses:
-      loss_sum = loss if loss_sum is None else loss_sum + loss
-    return loss_sum
+    reg_losses = tf.get_collection(
+      pedia.tfkey.regularization_losses, self._name)
+    return (None if len(reg_losses) == 0
+            else tf.add_n(reg_losses, name='reg_sum'))
 
   def _link(self, inputs, **kwargs):
-    # Check inputs
+    # If self is call without given inputs
     if inputs is None:
-      if self.inputs is None:
-        raise ValueError('Input not defined')
-      inputs = self.inputs
+      if self.inputs is None: raise ValueError('!! Input not defined')
+      inputs = []
+      for input_ in self.inputs: inputs.append(input_())
+    # Make sure inputs is a list(or tuple) of tf.Tensor
+    if isinstance(inputs, tf.Tensor): inputs = [inputs]
+    elif isinstance(inputs, (tuple, list)):
+      for input_ in inputs:
+        if not isinstance(input_, tf.Tensor):
+          raise TypeError('!! input list (tuple) must consist of Tensors')
+    else: raise TypeError('!! Illegal input type')
+
+    assert isinstance(inputs, (list, tuple))
 
     # Check chain
     assert isinstance(self.chain, list)
-    if len(self.chain) == 0:
-      raise ValueError('Net is empty')
+    if len(self.chain) == 0: raise ValueError('!! Net is empty')
 
     with_logits = kwargs.get(pedia.with_logits, False)
 
@@ -110,46 +117,35 @@ class Net(Function):
     # Link all functions in chain
     for f in self.chain:
       # Logits are always inputs of activation layers
-      if isinstance(f, Activation):
-        logits = outputs
-
+      if isinstance(f, Activation): logits = outputs
       if isinstance(f, Net) and with_logits:
         outputs, logits = f(outputs, **kwargs)
-      else:
-        outputs = f(outputs)
-
+      else: outputs = f(outputs)
       # Assign last_scale for custom net
       if isinstance(f, Net) and f.is_custom:
         f.last_scale = shape_string(outputs)
 
     # Return
-    if with_logits:
-      return outputs, logits
-    else:
-      return outputs
+    if with_logits: return outputs, logits
+    else: return outputs
 
   def add(self, f):
-    if isinstance(f, tf.Tensor):
+    if isinstance(f, Input):
       # If f is a placeholder
-      if self.inputs is None:
-        self.inputs = []
+      if self.inputs is None: self.inputs = []
       self.inputs += [f]
-      tf.add_to_collection(pedia.default_feed_dict, f)
     elif isinstance(f, Net) or self._level > 0:
       # Net should be added directly into self.chain
       self.chain += [f]
     elif isinstance(f, Layer):
       # If layer is a nucleus or the 1st layer added into this Net
-      if f.is_nucleus or len(self.chain) == 0:
-        self._wrap_and_add(f)
+      if f.is_nucleus or len(self.chain) == 0: self._wrap_and_add(f)
       # Otherwise add this layer to last Net of self.chain
       assert isinstance(self.chain[-1], Net)
       self.chain[-1].add(f)
-    elif callable(f):
-      self._wrap_and_add(f)
-    else:
-      raise ValueError('Object added to a Net must be a Layer or a Net or'
-                        'callable')
+    elif callable(f): self._wrap_and_add(f)
+    else: raise ValueError(
+      'Object added to a Net must be a Layer or a Net or callable')
 
   def _wrap_and_add(self, f):
     # Input f should be either a layer or a function

@@ -11,6 +11,7 @@ from tframe import config
 from tframe import console
 from tframe import FLAGS
 from tframe import pedia
+from tframe import with_graph
 
 
 class Frame(object):
@@ -26,6 +27,7 @@ class Frame(object):
                  else mark)
 
     # Placeholders for frame fields
+    self._graph = None
     self._session = None
     self._summary_writer = None
     self._saver = None

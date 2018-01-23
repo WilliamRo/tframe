@@ -43,11 +43,11 @@ def single_input(_link):
     input_ = args[1] if isinstance(args[0], Layer) else args[0]
     if isinstance(input_, list):
       if len(input_) != 1:
-        raise ValueError('This layer only accept single input')
+        raise ValueError('!! This layer only accept single input')
       input_ = input_[0]
 
     if not isinstance(input_, tf.Tensor):
-      raise TypeError('This layer only accept a Tensor as input')
+      raise TypeError('!! This layer only accept a Tensor as input')
 
     args = ((args[0], input_) + args[2:] if isinstance(args[0], Layer)
             else (input_, ) + args[1:])

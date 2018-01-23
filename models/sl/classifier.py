@@ -7,6 +7,8 @@ import tensorflow as tf
 
 from tframe import config
 from tframe import pedia
+from tframe import with_graph
+
 from tframe.layers import Activation
 from tframe.models.sl.predictor import Predictor
 from tframe.utils import console
@@ -21,6 +23,7 @@ class Classifier(Predictor):
     self._probabilities = None
 
 
+  @with_graph
   def build(self, loss='cross_entropy', optimizer=None):
     # TODO: ... do some compromise
     config.block_validation = True

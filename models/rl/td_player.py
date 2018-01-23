@@ -12,6 +12,7 @@ from tframe import console
 from tframe import pedia
 from tframe import FLAGS
 from tframe import TFData
+from tframe import with_graph
 
 from tframe.models.rl.interfaces import FMDPAgent
 from tframe.models.rl.interfaces import Player
@@ -38,6 +39,7 @@ class TDPlayer(Feedforward, Player):
 
   # region : Build
 
+  @with_graph
   def build(self, lamda=0.5, learning_rate=0.01):
     Feedforward.build(self)
     # Initialize target placeholder

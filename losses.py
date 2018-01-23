@@ -16,8 +16,7 @@ def mean_squared_error(y_true, y_predict):
 
 
 def euclidean(y_true, y_predict):
-  delta = tf.abs(y_true - y_predict)
-  distances = tf.norm(delta)
+  distances = tf.norm(y_true - y_predict)
   return tf.reduce_mean(distances)
 
 

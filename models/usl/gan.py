@@ -18,6 +18,7 @@ from tframe.layers import merge
 
 from tframe import pedia
 from tframe import FLAGS
+from tframe import with_graph
 
 flags = tf.app.flags
 
@@ -25,7 +26,7 @@ flags.DEFINE_integer('sample_num', -1, 'Number of samples to generate')
 
 
 class GAN(Model):
-  """"""
+  """Generative Adversarial Networks"""
   def __init__(self, z_dim=None, sample_shape=None, output_shape=None,
                mark=None, classes=0):
     # Call parent's constructor
@@ -92,6 +93,7 @@ class GAN(Model):
 
   # region : Building
 
+  @with_graph
   def build(self, loss='cross_entropy', G_optimizer=None, D_optimizer=None,
              smooth_factor=0.9):
     """

@@ -6,15 +6,16 @@ import numpy as np
 import six
 import tensorflow as tf
 
-from .layer import Layer
-from .layer import single_input
+from tframe.layers.layer import Layer
+from tframe.layers.layer import single_input
 
-from ..utils import get_scale
+from tframe.utils import get_scale
+from tframe.utils.misc import get_scale
 
-from .. import activations
-from .. import initializers
-from .. import regularizers
-from .. import pedia
+from tframe import activations
+from tframe import initializers
+from tframe import regularizers
+from tframe import pedia
 
 
 class Activation(Layer):
@@ -61,13 +62,6 @@ class Dropout(Layer):
       input_, tf.cond(is_training,
                       lambda: self.train_keep_prob,
                       lambda: 1.0))
-
-    # if self._keep_prob is None:
-    #   self._keep_prob = tf.placeholder(tf.float32, name=pedia.keep_prob)
-    #   tf.add_to_collection(pedia.status_tensors, self._keep_prob)
-    #   pedia.memo[self._keep_prob.name] = self.train_keep_prob
-    #
-    # return tf.nn.dropout(input_, self._keep_prob)
 
 
 class Linear(Layer):
@@ -204,15 +198,37 @@ class Reshape(Layer):
     return output
 
 
-def Input(sample_shape=None, dtype=tf.float32, name='Input'):
-  # Check sample shape
-  if sample_shape is not None:
-    if not (isinstance(sample_shape, list) or isinstance(sample_shape, tuple)):
-      raise TypeError('sample_shape must be a list or a tuple')
-    if sample_shape[0] is not None:
-      sample_shape = [None] + list(sample_shape)
+class Input(Layer):
 
-  return tf.placeholder(dtype=dtype, shape=sample_shape, name=name)
+  def __init__(self, sample_shape=None, dtype=tf.float32, name='Input'):
+    # Check sample shape
+    if sample_shape is not None:
+      if not isinstance(sample_shape, (list, tuple)):
+        raise TypeError('sample_shape must be a list or a tuple')
+      if sample_shape[0] is not None:
+        sample_shape = [None] + list(sample_shape)
+
+    # Initiate attributes
+    self.sample_shape = sample_shape
+    self.dtype = dtype
+    self.name = name
+    self.place_holder = None
+
+
+  def _link(self, *args, **kwargs):
+    # This method is only accessible by Function.__call__ thus a None will
+    #   be given as input
+    assert len(args) == 1 and len(kwargs) == 0
+    assert args[0] is None
+    input_ = tf.placeholder(
+      dtype=self.dtype, shape=self.sample_shape, name=self.name)
+    # Update neuron scale
+    self.neuron_scale = get_scale(input_)
+    # Add input to default collection
+    tf.add_to_collection(pedia.default_feed_dict, input_)
+    # Return placeholder
+    self.place_holder = input_
+    return input_
 
 
 Flatten = lambda: Reshape()
