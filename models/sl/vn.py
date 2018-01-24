@@ -38,6 +38,8 @@ class VolterraNet(Model):
     self._input = Input([depth], name='input')
     self._output = None
     self._target = None
+    self._alpha = 2
+    self._outputs = {}
 
     # Initialize operators in each degree
     self._init_T()
@@ -68,12 +70,13 @@ class VolterraNet(Model):
   # region : Building
 
   @with_graph
-  def build(self, loss='euclid', optimizer=None,
+  def build(self, loss='euclid', optimizer=None, homo_strength=1.0,
             metric=None, metric_name='Metric'):
     """Build model"""
     # Define output
-    with tf.name_scope('Output'):
-      self._output = tf.add_n([op() for op in self.T.values()], name='output')
+    with tf.name_scope('Outputs'):
+      for order, op in self.T.items(): self._outputs[order] = op()
+      self._output = tf.add_n(list(self._outputs.values()), name='output')
 
     self._target = tf.placeholder(
       self._output.dtype, self._output.get_shape(), name='target')
@@ -82,14 +85,43 @@ class VolterraNet(Model):
     # Define loss
     loss_function = losses.get(loss)
     with tf.name_scope('Loss'):
-      self._loss = loss_function(self._target, self._output)
-      tf.summary.scalar('loss_sum', self._loss)
+      # All losses in loss list will be added
+      loss_list = []
+
+      # Delta loss
+      with tf.name_scope('Delta'):
+        delta_loss = loss_function(self._target, self._output)
+        loss_list.append(delta_loss)
+        tf.summary.scalar('delta_loss_sum', delta_loss)
+
+      # Homogeneous loss
+      with tf.name_scope('Homogeneous'):
+        homo_list = []
+        for order in range(2, self.degree + 1):
+          homo_loss_k = tf.norm(
+            self._outputs[order] * (self._alpha ** order) -
+            self.T[order](self._input.place_holder * self._alpha),
+          name='homo_loss_{}'.format(order))
+
+          homo_list.append(homo_loss_k)
+          tf.summary.scalar('homo_loss_{}_sum'.format(order), homo_loss_k)
+
+        homo_loss = tf.add_n(homo_list, 'homo_loss') * homo_strength
+        loss_list.append(homo_loss)
+        # tf.summary.scalar('homo_loss_sum', homo_loss)
+
       # Try to add regularization loss
       reg_list = [op.regularization_loss for op in self.T.values()
-                  if op.regularization_loss  is not None]
-      reg_loss = None if len(reg_list) == 0 else tf.add_n(
-        reg_list, name='reg_loss')
-      self._loss = self._loss if reg_loss is None else self._loss + reg_loss
+                  if op.regularization_loss is not None]
+      if len(reg_list) > 0:
+        with tf.name_scope('WeightNorm'):
+          weight_norm = tf.add_n(reg_list, name='reg_loss')
+          loss_list.append(weight_norm)
+          # tf.summary.scalar('reg_loss_sum', weight_norm)
+
+      # Add all losses
+      self._loss = tf.add_n(loss_list, name='loss')
+      tf.summary.scalar('total_loss', self._loss)
 
     # Define metric
     metric_function = metrics.get(metric)
