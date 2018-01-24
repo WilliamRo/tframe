@@ -4,11 +4,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from ..core import Function
-from .layer import Layer
-from .layer import single_input
+from tframe.core import Function
+from tframe.core import init_with_graph
+from tframe.layers.layer import Layer
+from tframe.layers.layer import single_input
 
-from ..utils import get_scale
+from tframe.utils import get_scale
 
 from tensorflow.python.layers.convolutional import Conv1D as _Conv1D
 from tensorflow.python.layers.convolutional import Conv2D as _Conv2D
@@ -19,6 +20,10 @@ class _Conv(Layer):
   is_nucleus = True
   abbreviation = 'conv'
 
+  @init_with_graph
+  def __init__(self, *args, **kwargs):
+    super(Function, self).__init__(*args, **kwargs)
+
   @single_input
   def __call__(self, input_=None, **kwargs):
     assert isinstance(input_, tf.Tensor)
@@ -27,6 +32,9 @@ class _Conv(Layer):
     self.neuron_scale = get_scale(output)
     return output
 
+
+# The tensorflow class is next to Function in the __mro__ list of the
+#  classes below
 
 class Conv1D(_Conv, _Conv1D):
   full_name = 'convolutional1d'

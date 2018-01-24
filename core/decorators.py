@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tframe as tfr
 
 
 def with_graph(meth):
@@ -11,4 +12,11 @@ def with_graph(meth):
     else:
       assert isinstance(graph, tf.Graph)
       with graph.as_default(): return meth(*args, **kwargs)
+  return wrapper
+
+
+def init_with_graph(init):
+  def wrapper(*args, **kwargs):
+    assert isinstance(tfr.current_graph, tf.Graph)
+    with tfr.current_graph.as_default(): init(*args, **kwargs)
   return wrapper

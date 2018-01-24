@@ -9,7 +9,7 @@ import tensorflow as tf
 from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
 
-from tframe.utils import get_scale
+from tframe.core import init_with_graph
 from tframe.utils.misc import get_scale
 
 from tframe import activations
@@ -213,6 +213,10 @@ class Input(Layer):
     self.dtype = dtype
     self.name = name
     self.place_holder = None
+
+
+  def get_shape(self):
+    return self.sample_shape
 
 
   def _link(self, *args, **kwargs):

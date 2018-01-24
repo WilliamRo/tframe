@@ -84,7 +84,7 @@ class VAE(Model):
     self._P = self.Decoder()
     # Check output shape of decoder
     p_shape = self._P.get_shape().as_list()[1:]
-    q_shape = self.Q.inputs[0].get_shape().as_list()[1:]
+    q_shape = self.Q.default_input_tensor.get_shape()[1:]
     if p_shape != q_shape:
       raise ValueError('Output shape of decoder {} does not match the input '
                         'shape of encoder {}'.format(p_shape, q_shape))
@@ -102,7 +102,7 @@ class VAE(Model):
       # E[log P(X|z)]
       recon_loss = tf.reduce_mean(tf.reduce_sum(
         tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=logits, labels=self.Q.inputs[0]), 1))
+          logits=logits, labels=self.Q.default_input_tensor), 1))
       # recon_loss = tf.norm
 
       # D_KL(Q(z|X) || P(z|X))
@@ -151,7 +151,7 @@ class VAE(Model):
     assert isinstance(self._session, tf.Session)
 
     # Set feed dictionary
-    feed_dict = {self.Q.inputs[0]: features}
+    feed_dict = {self.Q.default_input_tensor: features}
     feed_dict.update(self._get_status_feed_dict(is_training=True))
     _, loss, summaries = self._session.run(
       [self._train_step, self._loss, self._merged_summary], feed_dict=feed_dict)
@@ -174,7 +174,7 @@ class VAE(Model):
     z = self._random_z(self._sample_num)
 
     feed_dict = {}
-    feed_dict[self.P.inputs[0]] = z
+    feed_dict[self.P.default_input_tensor] = z
     feed_dict.update(self._get_status_feed_dict(is_training=False))
     samples = self._outputs.eval(feed_dict)
 
@@ -184,8 +184,8 @@ class VAE(Model):
     return fig
 
   def _random_z(self, sample_num, with_label=False):
-    assert isinstance(self.P.inputs[0], tf.Tensor)
-    z_dim = self.P.inputs[0].get_shape().as_list()[1]
+    assert isinstance(self.P.default_input_tensor, tf.Tensor)
+    z_dim = self.P.default_input_tensor.get_shape().as_list()[1]
     z = np.random.standard_normal(size=[sample_num, z_dim])
 
     # if self._conditional and with_label:
@@ -221,13 +221,13 @@ class VAE(Model):
     z = self._random_z(sample_num) if z is None else z
     sample_num = z.shape[0]
     z_shape = list(z.shape[1:])
-    p_input_shape = self.P.inputs[0].get_shape().as_list()[1:]
+    p_input_shape = self.P.default_input_tensor.get_shape().as_list()[1:]
     if z_shape != p_input_shape:
       raise ValueError("Shape of input z {} doesn't match the shape of "
                        "decoder's input {}".format(z_shape, p_input_shape))
 
     # Generate samples
-    feed_dict = {self.P.inputs[0]: z}
+    feed_dict = {self.P.default_input_tensor: z}
     feed_dict.update(self._get_status_feed_dict(is_training=False))
     samples = self._session.run(self._outputs, feed_dict=feed_dict)
 

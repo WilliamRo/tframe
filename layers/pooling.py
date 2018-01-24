@@ -4,10 +4,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from .layer import Layer
-from .layer import single_input
+from tframe.layers.layer import Layer
+from tframe.layers.layer import single_input
 
-from ..utils import get_scale
+from tframe.utils import get_scale
+from tframe.core import init_with_graph
+from tframe.core.function import Function
 
 from tensorflow.python.layers.pooling import MaxPool2D as MaxPool2D_
 
@@ -16,6 +18,10 @@ class MaxPool2D(Layer, MaxPool2D_):
   """"""
   full_name = 'maxpool2d'
   abbreviation = 'maxpool'
+
+  @init_with_graph
+  def __init__(self, *args, **kwargs):
+    super(Function, self).__init__(*args, **kwargs)
 
   @single_input
   def __call__(self, input_=None, **kwargs):

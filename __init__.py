@@ -43,3 +43,6 @@ from . import pedia
 # Control logging
 console.set_logging_level(1)
 
+# Record graph bound to the last initiated model
+current_graph = None
+

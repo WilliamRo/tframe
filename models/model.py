@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+import tframe as tfr
+
 from tframe import FLAGS
 from tframe import TFData
 from tframe import config
@@ -63,6 +65,11 @@ class Model(object):
     self._graph = tf.Graph()
     with self._graph.as_default():
       self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
+    # When linking batch-norm layer (and dropout layer),
+    #   this placeholder will be got from default graph
+    self._graph.is_training = self._is_training
+    # Record current graph
+    tfr.current_graph = self._graph
 
   # region : Properties
 

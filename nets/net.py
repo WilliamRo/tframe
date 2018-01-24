@@ -44,6 +44,11 @@ class Net(Function):
   def is_custom(self):
     return self._f is not None
 
+  @property
+  def default_input_tensor(self):
+    if self.inputs is None: raise ValueError('!! Input not found')
+    return self.inputs[0].place_holder
+
   def _get_layer_string(self, f, scale):
     assert isinstance(f, Layer)
     result = ''
