@@ -108,6 +108,19 @@ class Classifier(Predictor):
       vr.show()
 
 
+  def classify(self, data):
+    if self.outputs is None:
+      raise ValueError('Model not built yet')
+    if self._session is None:
+      self.launch_model(overwrite=False)
+
+    possibilities = self._session.run(
+      self._probabilities, feed_dict=self._get_default_feed_dict(
+        data, is_training=False))
+
+    return np.argmax(possibilities, axis=1).squeeze()
+
+
 
 
 
