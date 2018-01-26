@@ -115,15 +115,14 @@ class VolterraNet(Model):
           pred_k = op(self._input.place_holder * self._alpha)
 
           # Calculate loss
-          numerator = tf.norm(truth_k - pred_k,
-                              name='home_{}_loss'.format(order))
+          homo_loss_k = tf.norm(truth_k - pred_k,
+                                name='home_loss_{}'.format(order))
           # homo_list.append(numerator / coef)
-          homo_list.append(numerator)
+          homo_list.append(homo_loss_k)
 
           # Add summary
-          denominator = tf.norm(truth_k)
           default_summaries.append(tf.summary.scalar(
-            'homo_loss_{}_sum'.format(order), tf.div(numerator, denominator)))
+            'homo_loss_{}_sum'.format(order), homo_loss_k))
 
         # Add all homogeneous losses
         homo_loss = tf.add_n(homo_list, 'homo_loss') * homo_strength
