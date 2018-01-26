@@ -7,6 +7,7 @@ import tensorflow as tf
 
 def L2(**kwargs):
   strength = kwargs.get('strength', 0.1)
+  if strength is None: return None
   return lambda x: strength * tf.norm(x)
 
 

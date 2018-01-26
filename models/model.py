@@ -47,6 +47,7 @@ class Model(object):
     self._test_set = None
     self._metric = None
     self._merged_summary = None
+    self._print_summary = None
 
     self._session = None
     self._summary_writer = None
@@ -215,9 +216,14 @@ class Model(object):
       return loss_dict
 
     assert isinstance(self._metric, tf.Tensor)
-    metric = self._metric.eval(self._get_default_feed_dict(
-      self._validation_set, is_training=False))
+    metric, summary = self._session.run(
+      [self._metric, self._print_summary],
+      feed_dict=self._get_default_feed_dict(
+        self._validation_set, is_training=False))
+
     loss_dict.update({pedia.memo[pedia.metric_name]: metric})
+    assert isinstance(self._summary_writer, tf.summary.FileWriter)
+    self._summary_writer.add_summary(summary, self._counter)
 
     if probe is not None:
       assert callable(probe)

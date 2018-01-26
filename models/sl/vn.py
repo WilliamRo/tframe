@@ -23,7 +23,7 @@ from tframe.layers import Linear
 class VolterraNet(Model):
   """ A class for Volterra Networks"""
 
-  def __init__(self, degree, depth, mark=None):
+  def __init__(self, degree, depth, mark=None, **kwargs):
     # Check parameters
     if degree < 1: raise ValueError('!! Degree must be a positive integer')
     if depth < 0: raise ValueError('!! Depth must be a positive integer')
@@ -42,19 +42,25 @@ class VolterraNet(Model):
     self._outputs = {}
 
     # Initialize operators in each degree
+    orders = kwargs.get('orders', None)
+    if orders is None: orders = list(range(1, self.degree + 1))
+    self.orders = orders
     self._init_T()
 
   # region : Properties
 
   @property
   def linear_coefs(self):
+    if 1 not in self.orders: return None
     coefs = self._session.run(self.T[1].chain[0].chain[0].weights)
     return coefs.flatten()
 
   @property
   def operators(self):
     od = collections.OrderedDict()
-    for i in range(1, self.degree + 1): od[i] = self.T[i]
+    for i in range(1, self.degree + 1):
+      if i not in self.orders: continue
+      od[i] = self.T[i]
     return od
 
   @property
@@ -73,6 +79,9 @@ class VolterraNet(Model):
   def build(self, loss='euclid', optimizer=None, homo_strength=1.0,
             metric=None, metric_name='Metric'):
     """Build model"""
+    # Set summary place holder
+    default_summaries = []
+    print_summaries = []
     # Define output
     with tf.name_scope('Outputs'):
       for order, op in self.T.items(): self._outputs[order] = op()
@@ -92,23 +101,33 @@ class VolterraNet(Model):
       with tf.name_scope('Delta'):
         delta_loss = loss_function(self._target, self._output)
         loss_list.append(delta_loss)
-        tf.summary.scalar('delta_loss_sum', delta_loss)
+        default_summaries.append(
+          tf.summary.scalar('delta_loss_sum', delta_loss))
 
       # Homogeneous loss
       with tf.name_scope('Homogeneous'):
         homo_list = []
-        for order in range(2, self.degree + 1):
-          homo_loss_k = tf.norm(
-            self._outputs[order] * (self._alpha ** order) -
-            self.T[order](self._input.place_holder * self._alpha),
-          name='homo_loss_{}'.format(order))
+        # Calculate homo-loss for each order
+        for order, op in self.T.items():
+          if order == 1: continue
+          coef = self._alpha ** order
+          truth_k = self._outputs[order] * coef
+          pred_k = op(self._input.place_holder * self._alpha)
 
-          homo_list.append(homo_loss_k)
-          tf.summary.scalar('homo_loss_{}_sum'.format(order), homo_loss_k)
+          # Calculate loss
+          numerator = tf.norm(truth_k - pred_k,
+                              name='home_{}_loss'.format(order))
+          # homo_list.append(numerator / coef)
+          homo_list.append(numerator)
 
+          # Add summary
+          denominator = tf.norm(truth_k)
+          default_summaries.append(tf.summary.scalar(
+            'homo_loss_{}_sum'.format(order), tf.div(numerator, denominator)))
+
+        # Add all homogeneous losses
         homo_loss = tf.add_n(homo_list, 'homo_loss') * homo_strength
         loss_list.append(homo_loss)
-        # tf.summary.scalar('homo_loss_sum', homo_loss)
 
       # Try to add regularization loss
       reg_list = [op.regularization_loss for op in self.T.values()
@@ -121,7 +140,7 @@ class VolterraNet(Model):
 
       # Add all losses
       self._loss = tf.add_n(loss_list, name='loss')
-      tf.summary.scalar('total_loss', self._loss)
+      # tf.summary.scalar('total_loss', self._loss)
 
     # Define metric
     metric_function = metrics.get(metric)
@@ -129,7 +148,14 @@ class VolterraNet(Model):
       pedia.memo[pedia.metric_name] = metric_name
       with tf.name_scope('Metric'):
         self._metric = metric_function(self._target, self._output)
-        tf.summary.scalar('metric_sum', self._metric)
+        print_summaries.append(tf.summary.scalar('metric_sum', self._metric))
+
+    # Merge summaries
+    self._merged_summary = tf.summary.merge(default_summaries,
+                                            name='default_summaries')
+    if print_summaries is not None:
+      self._print_summary = tf.summary.merge(print_summaries)
+
 
     # Define train step
     self._define_train_step(optimizer)
@@ -150,12 +176,12 @@ class VolterraNet(Model):
 
   def _init_T(self):
     # Add empty nets to each degree
-    for n in range(1, self.degree + 1):
+    for n in self.orders:
       self.T[n] = Net('T{}'.format(n))
       self.T[n].add(self._input)
 
     # Initialize linear part
-    self.T[1].add(Linear(output_dim=1))
+    if 1 in self.orders: self.T[1].add(Linear(output_dim=1))
 
   # endregion : Private Methods
 
