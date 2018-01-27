@@ -9,6 +9,8 @@ import tensorflow as tf
 from tframe.models.model import Model
 from tframe.nets.net import Net
 
+from tframe import console
+
 from tframe import pedia
 from tframe import FLAGS
 from tframe import losses
@@ -182,9 +184,18 @@ class VolterraNet(Model):
     # Initialize linear part
     if 1 in self.orders: self.T[1].add(Linear(output_dim=1))
 
+    # Initialize quadratic part
+    if 2 in self.orders:
+      pass
+      # self.T[2]
+
   # endregion : Private Methods
 
   # region : Public Methods
+
+  def add(self, order, layer):
+    if not order in self.orders:
+      pass
 
   # TODO: Exactly the same as predict method in predictor.py
   def predict(self, data):
