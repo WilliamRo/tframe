@@ -216,14 +216,18 @@ class Model(object):
       return loss_dict
 
     assert isinstance(self._metric, tf.Tensor)
-    metric, summary = self._session.run(
-      [self._metric, self._print_summary],
-      feed_dict=self._get_default_feed_dict(
-        self._validation_set, is_training=False))
+    feed_dict = self._get_default_feed_dict(
+      self._validation_set, is_training=False)
+
+    if self._print_summary is None:
+      metric = self._session.run(self._metric, feed_dict=feed_dict)
+    else:
+      metric, summary = self._session.run(
+        [self._metric, self._print_summary], feed_dict=feed_dict)
+      assert isinstance(self._summary_writer, tf.summary.FileWriter)
+      self._summary_writer.add_summary(summary, self._counter)
 
     loss_dict.update({pedia.memo[pedia.metric_name]: metric})
-    assert isinstance(self._summary_writer, tf.summary.FileWriter)
-    self._summary_writer.add_summary(summary, self._counter)
 
     if probe is not None:
       assert callable(probe)
