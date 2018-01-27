@@ -9,7 +9,6 @@ import tensorflow as tf
 from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
 
-from tframe.core import init_with_graph
 from tframe.utils.misc import get_scale
 
 from tframe import activations
@@ -81,7 +80,7 @@ class Linear(Layer):
                bias_regularizer=None,
                **kwargs):
     if not np.isscalar(output_dim):
-      raise TypeError('output_dim must be a scalar, not {}'.format(
+      raise TypeError('!! output_dim must be a scalar, not {}'.format(
         type(output_dim)))
 
     self._output_dim = output_dim

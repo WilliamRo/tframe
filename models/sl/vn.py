@@ -18,8 +18,10 @@ from tframe import metrics
 from tframe import TFData
 from tframe import with_graph
 
+from tframe.layers.layer import Layer
 from tframe.layers import Input
 from tframe.layers import Linear
+from tframe.layers.homogeneous import Quadric
 
 
 class VolterraNet(Model):
@@ -40,7 +42,7 @@ class VolterraNet(Model):
     self._input = Input([depth], name='input')
     self._output = None
     self._target = None
-    self._alpha = 2
+    self._alpha = 1.1
     self._outputs = {}
 
     # Initialize operators in each degree
@@ -111,7 +113,7 @@ class VolterraNet(Model):
         homo_list = []
         # Calculate homo-loss for each order
         for order, op in self.T.items():
-          if order == 1: continue
+          if order in (1, 2): continue
           coef = self._alpha ** order
           truth_k = self._outputs[order] * coef
           pred_k = op(self._input.place_holder * self._alpha)
@@ -127,8 +129,9 @@ class VolterraNet(Model):
             'homo_loss_{}_sum'.format(order), homo_loss_k))
 
         # Add all homogeneous losses
-        homo_loss = tf.add_n(homo_list, 'homo_loss') * homo_strength
-        loss_list.append(homo_loss)
+        if len(homo_list) > 0:
+          homo_loss = tf.add_n(homo_list, 'homo_loss') * homo_strength
+          loss_list.append(homo_loss)
 
       # Try to add regularization loss
       reg_list = [op.regularization_loss for op in self.T.values()
@@ -182,12 +185,10 @@ class VolterraNet(Model):
       self.T[n].add(self._input)
 
     # Initialize linear part
-    if 1 in self.orders: self.T[1].add(Linear(output_dim=1))
+    if 1 in self.orders: self.T[1].add(Linear(output_dim=1, use_bias=False))
 
-    # Initialize quadratic part
-    if 2 in self.orders:
-      pass
-      # self.T[2]
+    # Initialize quadratic par
+    if 2 in self.orders: self.T[2].add(Quadric())
 
   # endregion : Private Methods
 
@@ -195,7 +196,13 @@ class VolterraNet(Model):
 
   def add(self, order, layer):
     if not order in self.orders:
-      pass
+      raise ValueError('!! Model does not have order {}'.format(order))
+    if not isinstance(layer, Layer):
+      raise ValueError('!! The second parameter should be an instance of Layer')
+    if order in (1, 2): raise ValueError('!! Order 1 and 2 are fixed')
+
+    self.T[order].add(layer)
+
 
   # TODO: Exactly the same as predict method in predictor.py
   def predict(self, data):
