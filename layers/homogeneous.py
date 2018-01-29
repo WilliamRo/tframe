@@ -11,32 +11,6 @@ from tframe.layers.layer import single_input
 from tframe import pedia
 
 
-class Quadric(Layer):
-  """Quadric layer"""
-  is_nucleus = True
-
-  full_name = 'quadric'
-  abbreviation = 'quad'
-
-  def __init__(self):
-    self.weights = None
-    self.neuron_scale = [1]
-
-  @single_input
-  def _link(self, input_, **kwargs):
-    assert isinstance(input_, tf.Tensor)
-    if self.weights is not None: tf.get_variable_scope().reuse_variables()
-    # Get the shape and data type of input
-    dim = input_.get_shape().as_list()[1]
-    # Get variable
-    self.weights = tf.get_variable('weights', shape=(dim, dim))
-    # Calculate output
-    tmp = tf.matmul(input_, self.weights)
-    output = tf.reduce_sum(
-      tmp * input_, axis=1, keep_dims=True, name='quad_output')
-    return output
-
-
 class Homogeneous(Layer):
   """Homogeneous layer"""
   is_nucleus = True
@@ -55,6 +29,7 @@ class Homogeneous(Layer):
     self.order = order
     self.abbreviation = self.poly_name
     self.full_name = self.poly_name
+    self.neuron_scale = [1]
 
 
   @property
@@ -70,7 +45,6 @@ class Homogeneous(Layer):
     if self.weights is not None: tf.get_variable_scope().reuse_variables()
     # Get input dimension
     D = input_.get_shape().as_list()[1]
-    self.neuron_scale = [D] * self.order
     # Get variable
     self.weights = tf.get_variable('weights', shape=(D,)*self.order)
     # Calculate output

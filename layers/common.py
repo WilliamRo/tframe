@@ -15,6 +15,7 @@ from tframe import activations
 from tframe import initializers
 from tframe import regularizers
 from tframe import pedia
+from tframe import FLAGS
 
 
 class Activation(Layer):
@@ -29,9 +30,10 @@ class Activation(Layer):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
     outputs = self._activation(inputs)
-    with tf.name_scope(pedia.summaries):
-      act_sum = tf.summary.histogram('activations', tf.abs(outputs))
-      pedia.memo[pedia.activation_sum] += [act_sum]
+    if FLAGS.act_sum:
+      with tf.name_scope(pedia.summaries):
+        act_sum = tf.summary.histogram('activations', tf.abs(outputs))
+        pedia.memo[pedia.activation_sum] += [act_sum]
     return outputs
 
   @staticmethod
