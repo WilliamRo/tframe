@@ -20,14 +20,13 @@ from tframe import with_graph
 
 from tframe.layers.layer import Layer
 from tframe.layers import Input
-from tframe.layers import Linear
-from tframe.layers.homogeneous import Quadric
+from tframe.layers.homogeneous import Homogeneous
 
 
 class VolterraNet(Model):
   """ A class for Volterra Networks"""
 
-  def __init__(self, degree, depth, mark=None, **kwargs):
+  def __init__(self, degree, depth, mark=None, max_volterra_order=3, **kwargs):
     # Check parameters
     if degree < 1: raise ValueError('!! Degree must be a positive integer')
     if depth < 0: raise ValueError('!! Depth must be a positive integer')
@@ -38,6 +37,7 @@ class VolterraNet(Model):
     # Initialize fields
     self.degree = degree
     self.depth = depth
+    self._max_volterra_order = max_volterra_order
     self.T = {}
     self._input = Input([depth], name='input')
     self._output = None
@@ -87,8 +87,8 @@ class VolterraNet(Model):
     default_summaries = []
     print_summaries = []
     # Define output
+    for order, op in self.T.items(): self._outputs[order] = op()
     with tf.name_scope('Outputs'):
-      for order, op in self.T.items(): self._outputs[order] = op()
       self._output = tf.add_n(list(self._outputs.values()), name='output')
 
     self._target = tf.placeholder(
@@ -113,7 +113,7 @@ class VolterraNet(Model):
         homo_list = []
         # Calculate homo-loss for each order
         for order, op in self.T.items():
-          if order in (1, 2): continue
+          if order in range(1, self._max_volterra_order + 1): continue
           coef = self._alpha ** order
           truth_k = self._outputs[order] * coef
           pred_k = op(self._input.place_holder * self._alpha)
@@ -184,22 +184,28 @@ class VolterraNet(Model):
       self.T[n] = Net('T{}'.format(n))
       self.T[n].add(self._input)
 
-    # Initialize linear part
-    if 1 in self.orders: self.T[1].add(Linear(output_dim=1, use_bias=False))
-
-    # Initialize quadratic par
-    if 2 in self.orders: self.T[2].add(Quadric())
+    # Initialize volterra part
+    for order in range(1, self._max_volterra_order + 1):
+      self.T[order].add(Homogeneous(order))
 
   # endregion : Private Methods
 
   # region : Public Methods
+
+  def volterra_coefs(self, orders=None):
+    if orders is None: orders = self.orders
+    od = collections.OrderedDict()
+    return od
+
 
   def add(self, order, layer):
     if not order in self.orders:
       raise ValueError('!! Model does not have order {}'.format(order))
     if not isinstance(layer, Layer):
       raise ValueError('!! The second parameter should be an instance of Layer')
-    if order in (1, 2): raise ValueError('!! Order 1 and 2 are fixed')
+    if order in range(1, self._max_volterra_order + 1):
+      raise ValueError('!! Order 1 to {} are fixed'.format(
+        self._max_volterra_order))
 
     self.T[order].add(layer)
 
