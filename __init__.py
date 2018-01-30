@@ -20,6 +20,7 @@ flags.DEFINE_bool("shuffle", False, "Whether to shuffle")
 flags.DEFINE_bool("suppress_logging", True, "...")
 
 flags.DEFINE_bool("train", True, "Whether to train or inference")
+flags.DEFINE_bool("save_best", False, "Whether to save best model")
 
 FLAGS = flags.FLAGS
 

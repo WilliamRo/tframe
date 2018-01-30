@@ -37,7 +37,7 @@ class VolterraNet(Model):
     # Initialize fields
     self.degree = degree
     self.depth = depth
-    self._max_volterra_order = max_volterra_order
+    self._max_volterra_order = min(max_volterra_order, degree)
     self.T = {}
     self._input = Input([depth], name='input')
     self._output = None

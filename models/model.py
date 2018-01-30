@@ -62,9 +62,13 @@ class Model(object):
 
     self._built = False
 
+    self._last_epoch = 0
+
     # Each model is bound to a unique graph
     self._graph = tf.Graph()
     with self._graph.as_default():
+      self._best_loss = tf.Variable(
+        initial_value=-1.0, trainable=False, name='best_loss')
       self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
@@ -145,6 +149,8 @@ class Model(object):
         raise ValueError('!! snapshot_function must be callable')
       self._snapshot_function = snapshot_function
 
+    tol_epoch = kwargs.get('tol_epoch', 10)
+
     # Get epoch and batch size
     epoch = FLAGS.epoch if FLAGS.epoch > 0 else epoch
     batch_size = FLAGS.batch_size if FLAGS.batch_size > 0 else batch_size
@@ -188,13 +194,17 @@ class Model(object):
           loss_dict = self._update_model(data_batch, **kwargs)
           # Print status
           if print_cycle > 0 and np.mod(self._counter - 1, print_cycle) == 0:
-            loss_dict = self._update_loss_dict(loss_dict, probe)
+            loss_dict, new_record = self._update_loss_dict(loss_dict, probe)
             self._print_progress(epc, start_time, loss_dict,
                                  data_batch=data_batch)
+            if new_record:
+              self._save(self._counter)
+              self._last_epoch = epc
+              self._inter_cut('[New Record] Model saved')
+
           # Snapshot
-          if snapshot_cycle > 0 and np.mod(self._counter - 1,
-                                            snapshot_cycle) == 0:
-            self._snapshot()
+          if snapshot_cycle > 0 and np.mod(
+                  self._counter - 1, snapshot_cycle) == 0: self._snapshot()
           # Check flag
           if end_epoch_flag:
             console.clear_line()
@@ -203,7 +213,15 @@ class Model(object):
             break
 
         # End of epoch
-        self._save(self._counter)
+        if not FLAGS.save_best:
+          self._save(self._counter)
+          console.show_status('Model saved')
+        else:
+          best_loss = self._session.run(self._best_loss)
+          since_last = epc - self._last_epoch + 1
+          console.show_status('[Best {:.4f}] {} epochs since last save.'.format(
+            best_loss, since_last))
+          if since_last >= tol_epoch: break
 
     # End training
     console.clear_line()
@@ -213,17 +231,21 @@ class Model(object):
 
   def _update_loss_dict(self, loss_dict, probe):
     if self._metric is None or self._validation_set is None:
-      return loss_dict
+      return loss_dict, False
+
+    new_record = False
 
     assert isinstance(self._metric, tf.Tensor)
     feed_dict = self._get_default_feed_dict(
       self._validation_set, is_training=False)
 
     if self._print_summary is None:
-      metric = self._session.run(self._metric, feed_dict=feed_dict)
+      metric, best_loss = self._session.run(
+        [self._metric, self._best_loss], feed_dict=feed_dict)
     else:
-      metric, summary = self._session.run(
-        [self._metric, self._print_summary], feed_dict=feed_dict)
+      metric, summary, best_loss = self._session.run(
+        [self._metric, self._print_summary, self._best_loss],
+        feed_dict=feed_dict)
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
       self._summary_writer.add_summary(summary, self._counter)
 
@@ -233,7 +255,12 @@ class Model(object):
       assert callable(probe)
       loss_dict.update({'Probe': probe(self)})
 
-    return loss_dict
+    # TODO: Save best
+    if (metric < best_loss or best_loss < 0) and FLAGS.save_best:
+      new_record = True
+      self._session.run(tf.assign(self._best_loss, metric))
+
+    return loss_dict, new_record
 
   def _update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
@@ -255,12 +282,9 @@ class Model(object):
     loss_string = ', '.join(loss_strings)
 
     total_epoch = self._counter / self._training_set.batches_per_epoch
-    console.clear_line()
-    console.show_status(
-      'Epoch {} [{:.1f} Total] {}'.format(epc + 1, total_epoch, loss_string))
-
-    console.print_progress(progress=self._training_set.progress,
-                           start_time=start_time)
+    self._inter_cut(
+      'Epoch {} [{:.1f} Total] {}'.format(epc + 1, total_epoch, loss_string),
+      start_time=start_time)
 
   def _snapshot(self):
     if self._snapshot_function is None:
@@ -273,9 +297,7 @@ class Model(object):
                 bbox_inches='tight', pad_inches=0.02)
     plt.close(fig)
 
-    console.clear_line()
-    console.write_line("[Snapshot] images saved to '{}'".format(filename))
-    console.print_progress(progress=self._training_set.progress)
+    self._inter_cut("[Snapshot] images saved to '{}'".format(filename))
 
   # endregion : Training
 
@@ -344,6 +366,12 @@ class Model(object):
     feed_dict = {is_training_tensor: is_training}
 
     return feed_dict
+
+  def _inter_cut(self, content, start_time=None):
+    console.clear_line()
+    console.show_status(content )
+    console.print_progress(progress=self._training_set.progress,
+                           start_time=start_time)
 
   def _load(self):
     return load_checkpoint(self.ckpt_dir, self._session, self._saver)
