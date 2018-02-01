@@ -17,13 +17,14 @@ class Polynomial(Layer):
   full_name = 'polynomial'
   abbreviation = 'poly'
 
-  def __init__(self, order, initializer='xavier_uniform'):
+  def __init__(self, order, initializer=None):
     # Check input
     if order < 0: raise TypeError('!! order must be a non-negative integer')
 
     self.order = order
     self.coefs = None
-    self._initializer = initializers.get(initializer)
+    if initializer is None:
+      self._initializer = tf.random_normal_initializer(stddev=0.02)
     tail = '{}'.format(order)
     self.full_name += tail
 
