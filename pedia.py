@@ -1,6 +1,7 @@
 Accuracy = 'Accuracy'
 activation_sum = 'activation_sum'
 
+cascade = 'cascade'
 cross_entropy = 'cross_entropy'
 
 default = 'default'
@@ -11,6 +12,7 @@ Discriminator = 'Discriminator'
 Encoder = 'Encoder'
 
 features = 'features'
+fork = 'fork'
 
 Generator = 'Generator'
 
@@ -21,11 +23,13 @@ linear = 'linear'
 metric_name = 'metric_name'
 
 predictions = 'predictions'
+prod = 'prod'
 
 is_training = 'is_training'
 
 spherical = 'spherical'
 status_tensors = 'status_tensors'
+sum = 'sum'
 summaries = 'summaries'
 
 targets = 'targets'

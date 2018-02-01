@@ -15,16 +15,16 @@ from tframe import pedia
 class Net(Function):
   """Function which can packet sub-functions automatically when calling add
      method"""
-  def __init__(self, name, f=None, level=0):
+  def __init__(self, name, level=0, inter_type=pedia.cascade):
     """Instantiate Net, a name must be given"""
     self._name = name
-    self._f = f
     self._level = level
+    self._inter_type = inter_type
 
     self.inputs = None
-    self._last_scale = None
+    self._output_scale = None
 
-    self.chain = [f] if self.is_custom else []
+    self.children = []
 
   @property
   def group_name(self):
@@ -32,17 +32,11 @@ class Net(Function):
 
   @property
   def last_function(self):
-    if len(self.chain) == 0:
+    if len(self.children) == 0 or self._inter_type in (pedia.prod, pedia.sum):
       return None
-    f = self.chain[-1]
-    while isinstance(f, Net):
-      f = f.chain[-1]
-
+    f = self.children[-1]
+    while isinstance(f, Net): f = f.last_function
     return f
-
-  @property
-  def is_custom(self):
-    return self._f is not None
 
   @property
   def default_input_tensor(self):
@@ -51,39 +45,47 @@ class Net(Function):
 
   def _get_layer_string(self, f, scale):
     assert isinstance(f, Layer)
-    result = ''
-
-    result += f.abbreviation
+    result = f.abbreviation
     if scale and f.neuron_scale is not None:
-      h_line = '_'
-      for k in f.__dict__.keys():
-        if 'regularizer' in k and f.__dict__[k] is not None:
-          h_line = '-'
-          break
-      self._last_scale = shape_string(f.neuron_scale)
-      result += '{}{}'.format(h_line, self._last_scale)
-
+      self._output_scale = shape_string(
+        f.neuron_scale if f.output_scale is None else f.output_scale)
+      result += '_{}'.format(f.neuron_scale)
     return result
 
   def structure_string(self, detail=True, scale=True):
-    fs = [f for f in self.chain if isinstance(f, Net)
+    # Get functions to be added to structure string
+    assert isinstance(self.children, list)
+    fs = [f for f in self.children if isinstance(f, Net)
           or detail or f.is_nucleus]
-    assert isinstance(self.chain, list)
-    result = ('' if self.inputs is None else 'input_{} => '.format(
-      shape_string(self.inputs[0].place_holder)))
 
-    for (i, f) in zip(range(len(self.chain)), fs):
+    # Add input layer
+    result = ('' if self.inputs is None else 'input_{} => '.format(
+      shape_string(self.default_input_tensor)))
+
+    # Check interconnection type
+    next_net, next_layer = ' => ', ' -> '
+    if self._inter_type is not pedia.cascade:
+      if self._inter_type in [pedia.sum, pedia.prod]:
+        result += self._inter_type
+      next_layer, next_net = ', ', ', '
+      result += '('
+
+    # Add children
+    for (i, f) in zip(range(len(self.children)), fs):
       if isinstance(f, Net):
-        result += ' => ' if i != 0 else ''
-        result += ('custom' if f.is_custom else
-                   f.structure_string(detail, scale))
+        result += next_net if i != 0 else ''
+        result += f.structure_string(detail, scale)
       else:
         assert isinstance(f, Layer)
-        result += ' -> ' if i != 0 else ''
+        result += next_layer if i != 0 else ''
         result += self._get_layer_string(f, scale)
 
+    # Check interconnection type
+    if self._inter_type is not pedia.cascade: result += ')'
+
+    # Add output scale
     if self._level == 0:
-      result += ' => output_{}'.format(self.chain[-1]._last_scale)
+      result += ' => output_{}'.format(self.children[-1]._output_scale)
 
     # Return
     return result
@@ -111,66 +113,82 @@ class Net(Function):
 
     assert isinstance(inputs, (list, tuple))
 
-    # Check chain
-    assert isinstance(self.chain, list)
-    if len(self.chain) == 0: raise ValueError('!! Net is empty')
+    # Check children
+    assert isinstance(self.children, list)
+    if len(self.children) == 0: raise ValueError('!! Net is empty')
 
     with_logits = kwargs.get(pedia.with_logits, False)
 
-    outputs = inputs
+    pioneer = inputs
     logits = None
-    # Link all functions in chain
-    for f in self.chain:
+    output_list = []
+    output = None
+    # Link all functions in children
+    for f in self.children:
       # Logits are always inputs of activation layers
-      if isinstance(f, Activation): logits = outputs
+      if isinstance(f, Activation): logits = pioneer
+
+      # Call each child
       if isinstance(f, Net) and with_logits:
-        outputs, logits = f(outputs, **kwargs)
-      else: outputs = f(outputs)
-      # Assign last_scale for custom net
-      if isinstance(f, Net) and f.is_custom:
-        f.last_scale = shape_string(outputs)
+        output, logits = f(pioneer, **kwargs)
+      else: output = f(pioneer)
+
+      if self._inter_type is pedia.cascade: pioneer = output
+      else: output_list.append(output)
+
+    # Calculate output
+    if self._inter_type is pedia.fork: output = output_list
+    elif self._inter_type is pedia.sum: output = tf.add_n(output_list)
+    elif self._inter_type is pedia.prod:
+      output = output_list.pop()
+      for tensor in output_list: output *= tensor
 
     # Return
-    if with_logits: return outputs, logits
-    else: return outputs
+    if with_logits: return output, logits
+    else: return output
 
-  def add(self, f):
+  def add(self, f=None, inter_type=pedia.cascade):
+    # If add an empty non-cascade net
+    if inter_type is not pedia.cascade:
+      name = self._get_new_net_name(inter_type)
+      net = Net(name, level=self._level+1, inter_type=inter_type)
+      self.children.append(net)
+      return net
+    assert f is not None
+
+    # If add a function into this cascade net
     if isinstance(f, Input):
       # If f is a placeholder
       if self.inputs is None: self.inputs = []
       self.inputs += [f]
     elif isinstance(f, Net) or self._level > 0:
-      # Net should be added directly into self.chain
-      self.chain += [f]
+      # Net should be added directly into self.children
+      self.children += [f]
     elif isinstance(f, Layer):
       # If layer is a nucleus or the 1st layer added into this Net
-      if f.is_nucleus or len(self.chain) == 0: self._wrap_and_add(f)
-      # Otherwise add this layer to last Net of self.chain
-      assert isinstance(self.chain[-1], Net)
-      self.chain[-1].add(f)
-    elif callable(f): self._wrap_and_add(f)
+      if f.is_nucleus or len(self.children) == 0: self._wrap_and_add(f)
+      # Otherwise add this layer to last Net of self.children
+      assert isinstance(self.children[-1], Net)
+      self.children[-1].add(f)
     else: raise ValueError(
       'Object added to a Net must be a Layer or a Net or callable')
 
-  def _wrap_and_add(self, f):
-    # Input f should be either a layer or a function
-    assert callable(f)
+  def _wrap_and_add(self, layer):
+    # Input f should be a layer
+    assert isinstance(layer, Layer)
     # Specify the name of the Net
-    if isinstance(f, Layer) and not f.is_nucleus:
-      name = 'Preprocess'
-    else:
-      name = f.abbreviation if isinstance(f, Layer) else 'Custom'
-      index = 1
-      get_name = lambda: '{}{}'.format(name, index)
-      for f_ in self.chain:
-        if isinstance(f_, Net) and f_.group_name == get_name():
-          index += 1
-      # Now we get the name
-      name = get_name()
+    if not layer.is_nucleus: name = 'Preprocess'
+    else: name = self._get_new_net_name(layer.abbreviation)
 
     # Wrap the layer into a new Net
-    self.add(Net(name, f=(None if isinstance(f, Layer) else f),
-                 level=self._level+1))
+    self.add(Net(name, level=self._level+1))
+
+  def _get_new_net_name(self, name):
+    index = 1
+    get_name = lambda: '{}{}'.format(name, index)
+    for f_ in self.children:
+      if isinstance(f_, Net) and f_.group_name == get_name(): index += 1
+    return get_name()
 
 
 class Fork(Net):

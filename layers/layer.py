@@ -20,6 +20,7 @@ class Layer(Function):
 
   # If not None, neuron scale will be shown in structure string
   neuron_scale = None
+  output_scale = None
 
   @property
   def group_name(self):

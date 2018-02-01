@@ -107,11 +107,11 @@ class GAN(Model):
 
     if self._conditional:
       # 1st element of chain of G or D is a net
-      assert isinstance(self.G.chain[0], Net)
-      self.G.chain[0].chain.insert(0, merge.Concatenate(
+      assert isinstance(self.G.children[0], Net)
+      self.G.children[0].children.insert(0, merge.Concatenate(
         companions={self._targets: 1}))
-      assert isinstance(self.D.chain[0], Net)
-      self.D.chain[0].chain.insert(0, merge.Concatenate(
+      assert isinstance(self.D.children[0], Net)
+      self.D.children[0].children.insert(0, merge.Concatenate(
         companions={self._targets: 1}))
 
     # Link G and D to produce _G and _D

@@ -29,7 +29,7 @@ class Homogeneous(Layer):
     self.order = order
     self.abbreviation = self.poly_name
     self.full_name = self.poly_name
-    self.neuron_scale = [1]
+    self.output_scale = [1]
 
 
   @property
@@ -45,6 +45,7 @@ class Homogeneous(Layer):
     if self.weights is not None: tf.get_variable_scope().reuse_variables()
     # Get input dimension
     D = input_.get_shape().as_list()[1]
+    self.neuron_scale = [D] * self.order
     # Get variable
     self.weights = tf.get_variable('weights', shape=(D,)*self.order)
     # Calculate output
