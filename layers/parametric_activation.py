@@ -27,7 +27,6 @@ class Polynomial(Layer):
       self._initializer = tf.random_normal_initializer(stddev=0.02)
     tail = '{}'.format(order)
     self.full_name += tail
-    self.output_scale = [1]
 
 
   @single_input
@@ -36,11 +35,11 @@ class Polynomial(Layer):
     if self.coefs is not None: tf.get_variable_scope().reuse_variables()
     # Get input dimension
     D = input_.get_shape().as_list()[1]
-    self.neuron_scale = [self.order + 1, D]
+    self.neuron_scale = [D]
     # Get variable and calculate output
     order_list = []
     self.coefs = tf.get_variable(
-      'coefs', shape=self.neuron_scale, dtype=input_.dtype,
+      'coefs', shape=(self.order + 1, D), dtype=input_.dtype,
       initializer=self._initializer)
     x = tf.ones_like(input_)
     for order in range(self.order + 1):
