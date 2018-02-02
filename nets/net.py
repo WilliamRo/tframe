@@ -157,7 +157,7 @@ class Net(Function):
   def add(self, f=None, inter_type=pedia.cascade):
     # If add an empty net
     if f is None:
-      name = self._get_new_net_name(inter_type)
+      name = self._get_new_name(inter_type)
       net = Net(name, level=self._level+1, inter_type=inter_type)
       self.children.append(net)
       return net
@@ -169,32 +169,47 @@ class Net(Function):
       self.inputs += [f]
     elif (isinstance(f, Net) or self._level > 0 or
            self._inter_type != pedia.cascade):
-      # Net should be added directly into self.children
-      self.children += [f]
+      # Net should be added directly into self.children of any net
+      # Layer should be added directly into self.children for non-cascade nets
+      self._save_add(f)
     elif isinstance(f, Layer):
       # If layer is a nucleus or the 1st layer added into this Net
       if f.is_nucleus or len(self.children) == 0: self._wrap_and_add(f)
       # Otherwise add this layer to last Net of self.children
-      assert isinstance(self.children[-1], Net)
-      self.children[-1].add(f)
+      self.add_to_last_net(f)
     else: raise ValueError(
       'Object added to a Net must be a Layer or a Net')
+
+  def _save_add(self, f):
+    # TODO: avoid name scope conflict when add layers to non-cascade nets
+    name = self._get_new_name(f)
+    if isinstance(f, Layer): f.full_name = name
+    elif isinstance(f, Net):
+      f._level = self._level + 1
+      f._name = name
+    self.children.append(f)
 
   def _wrap_and_add(self, layer):
     # Input f should be a layer
     assert isinstance(layer, Layer)
     # Specify the name of the Net
     if not layer.is_nucleus: name = 'Preprocess'
-    else: name = self._get_new_net_name(layer.abbreviation)
+    else: name = self._get_new_name(layer.abbreviation)
 
     # Wrap the layer into a new Net
     self.add(Net(name, level=self._level+1))
 
-  def _get_new_net_name(self, name):
+  def _get_new_name(self, entity):
+    if isinstance(entity, Net): name = entity.group_name
+    elif isinstance(entity, Layer): name = entity.full_name
+    else: name = entity
     index = 1
-    get_name = lambda: '{}{}'.format(name, index)
+    get_name = lambda: '{}{}'.format(name, '' if index == 1 else index)
+
     for f_ in self.children:
-      if isinstance(f_, Net) and f_.group_name == get_name(): index += 1
+      if isinstance(entity, Layer) and isinstance(f_, Layer):
+        if f_.full_name == get_name(): index += 1
+      elif f_.group_name == get_name(): index += 1
     return get_name()
 
 
