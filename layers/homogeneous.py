@@ -25,7 +25,7 @@ class Homogeneous(Layer):
       raise TypeError('!! order must be an integer between 1 and {}'.format(
         self.MAX_ORDER))
 
-    self.weights = None
+    self.coefs = None
     self.order = order
     self.abbreviation = self.poly_name
     self.full_name = self.poly_name
@@ -42,14 +42,14 @@ class Homogeneous(Layer):
   @single_input
   def _link(self, input_, **kwargs):
     assert isinstance(input_, tf.Tensor)
-    if self.weights is not None: tf.get_variable_scope().reuse_variables()
+    if self.coefs is not None: tf.get_variable_scope().reuse_variables()
     # Get input dimension
     D = input_.get_shape().as_list()[1]
     self.neuron_scale = [D] * self.order
     # Get variable
-    self.weights = tf.get_variable('weights', shape=(D,)*self.order)
+    self.coefs = tf.get_variable('coefs', shape=(D,) * self.order)
     # Calculate output
-    result = self.weights
+    result = self.coefs
     for dim in range(self.order - 1, -1, -1):
       shape = [-1, D] + [1] * dim
       result = tf.reshape(input_, shape=shape) * result

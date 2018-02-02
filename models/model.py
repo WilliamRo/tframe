@@ -149,7 +149,7 @@ class Model(object):
         raise ValueError('!! snapshot_function must be callable')
       self._snapshot_function = snapshot_function
 
-    tol_epoch = kwargs.get('tol_epoch', 10)
+    epoch_tol = FLAGS.epoch_tol
 
     # Get epoch and batch size
     epoch = FLAGS.epoch if FLAGS.epoch > 0 else epoch
@@ -221,7 +221,7 @@ class Model(object):
           since_last = epc - self._last_epoch + 1
           console.show_status('[Best {:.4f}] {} epochs since last save.'.format(
             best_loss, since_last))
-          if since_last >= tol_epoch: break
+          if since_last >= epoch_tol: break
 
     # End training
     console.clear_line()

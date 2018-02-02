@@ -8,6 +8,7 @@ flags.DEFINE_string("mark", "default", "...")
 flags.DEFINE_bool("act_sum", False, "Whether to add activation summaries")
 
 flags.DEFINE_integer("epoch", -1, "Epochs to train")
+flags.DEFINE_integer("epoch_tol", 10, "epoch tolerance")
 flags.DEFINE_integer("batch_size", -1, "The size of batch images")
 
 flags.DEFINE_integer("print_cycle", -1, "Print cycle")

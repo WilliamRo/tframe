@@ -64,7 +64,7 @@ class Net(Function):
 
     # Check interconnection type
     next_net, next_layer = ' => ', ' -> '
-    if self._inter_type is not pedia.cascade:
+    if self._inter_type != pedia.cascade:
       if self._inter_type in [pedia.sum, pedia.prod]:
         result += self._inter_type
       next_layer, next_net = ', ', ', '
@@ -81,7 +81,7 @@ class Net(Function):
         result += self._get_layer_string(f, scale)
 
     # Check interconnection type
-    if self._inter_type is not pedia.cascade: result += ')'
+    if self._inter_type != pedia.cascade: result += ')'
 
     # Add output scale
     if self._level == 0:
@@ -133,13 +133,13 @@ class Net(Function):
         output, logits = f(pioneer, **kwargs)
       else: output = f(pioneer)
 
-      if self._inter_type is pedia.cascade: pioneer = output
+      if self._inter_type == pedia.cascade: pioneer = output
       else: output_list.append(output)
 
     # Calculate output
-    if self._inter_type is pedia.fork: output = output_list
-    elif self._inter_type is pedia.sum: output = tf.add_n(output_list)
-    elif self._inter_type is pedia.prod:
+    if self._inter_type == pedia.fork: output = output_list
+    elif self._inter_type == pedia.sum: output = tf.add_n(output_list)
+    elif self._inter_type == pedia.prod:
       output = output_list.pop()
       for tensor in output_list: output *= tensor
 
@@ -147,21 +147,28 @@ class Net(Function):
     if with_logits: return output, logits
     else: return output
 
+  def add_to_last_net(self, layer):
+    if len(self.children) == 0:
+      raise AssertionError('!! This net does not have children')
+    last_net = self.children[-1]
+    assert isinstance(last_net, Net)
+    last_net.add(layer)
+
   def add(self, f=None, inter_type=pedia.cascade):
-    # If add an empty non-cascade net
-    if inter_type is not pedia.cascade:
+    # If add an empty net
+    if f is None:
       name = self._get_new_net_name(inter_type)
       net = Net(name, level=self._level+1, inter_type=inter_type)
       self.children.append(net)
       return net
-    assert f is not None
 
-    # If add a function into this cascade net
+    # If add a function to this net
     if isinstance(f, Input):
       # If f is a placeholder
       if self.inputs is None: self.inputs = []
       self.inputs += [f]
-    elif isinstance(f, Net) or self._level > 0:
+    elif (isinstance(f, Net) or self._level > 0 or
+           self._inter_type != pedia.cascade):
       # Net should be added directly into self.children
       self.children += [f]
     elif isinstance(f, Layer):
@@ -171,7 +178,7 @@ class Net(Function):
       assert isinstance(self.children[-1], Net)
       self.children[-1].add(f)
     else: raise ValueError(
-      'Object added to a Net must be a Layer or a Net or callable')
+      'Object added to a Net must be a Layer or a Net')
 
   def _wrap_and_add(self, layer):
     # Input f should be a layer
@@ -191,6 +198,7 @@ class Net(Function):
     return get_name()
 
 
+# TODO: deprecate class Fork
 class Fork(Net):
   """Many to many net"""
   def __init__(self, name):
