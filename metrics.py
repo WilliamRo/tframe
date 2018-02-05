@@ -23,9 +23,15 @@ def delta(truth, output):
   return tf.norm(truth - output)
 
 
-def error_ratio(truth, output):
+def norm_error_ratio(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
   return tf.norm(truth - output) / tf.norm(truth) * 100
+
+
+def rms_error_ratio(truth, output):
+  assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  rms = lambda x: tf.sqrt(tf.reduce_mean(tf.square(x)))
+  return rms(truth - output) / rms(truth) * 100
 
 
 def get(identifier):
@@ -37,8 +43,10 @@ def get(identifier):
       return accuracy
     elif identifier in ['delta', 'distance']:
       return delta
-    elif identifier in ['ratio', 'error_ratio']:
-      return error_ratio
+    elif identifier in ['ratio', 'norm_ratio']:
+      return norm_error_ratio
+    elif identifier in ['rms_ratio']:
+      return rms_error_ratio
     else:
       raise ValueError('Can not resolve "{}"'.format(identifier))
   else:
