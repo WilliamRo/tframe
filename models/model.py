@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import os
 import time
 
@@ -46,6 +47,8 @@ class Model(object):
     self._validation_set = None
     self._test_set = None
     self._metric = None
+    self._metric_log = []          # metric is calculated while printing
+    self._train_status = {}
     self._merged_summary = None
     self._print_summary = None
 
@@ -55,6 +58,7 @@ class Model(object):
 
     self._loss = None
     self._train_step = None
+    self._optimizer = None
 
     self._counter = None
 
@@ -117,6 +121,7 @@ class Model(object):
       raise ValueError('loss has not been defined yet')
     with tf.name_scope('Optimizer'):
       if optimizer is None: optimizer = tf.train.AdamOptimizer(1e-4)
+      self._optimizer = optimizer
 
       self._train_step = optimizer.minimize(loss=self._loss, var_list=var_list)
 
@@ -127,6 +132,55 @@ class Model(object):
   def _pretrain(self, **kwargs):
     """Method run in early training process, should be overrode"""
     pass
+
+  def _init_smart_train(self, validation_set):
+    """The so-called 'smart train' refers to automatically tuning learning
+        rate and early stopping during training under some criteria"""
+    metric_on = validation_set is not None and self._metric is not None
+    FLAGS.smart_train = (FLAGS.smart_train and metric_on and self._optimizer
+                         is not None)
+    # Initialize train status
+    self._train_status['ep_count'] = 0
+    self._train_status['metric_on'] = metric_on
+    self._train_status['bad_apples'] = 0
+
+  def _apply_smart_train(self):
+    memory = 4
+    lr_decay = FLAGS.lr_decay
+    # At the end of each epoch, analyze metric log
+    assert isinstance(self._metric_log[-1], list)
+    metric_mean = np.mean(self._metric_log.pop())
+    self._metric_log.append(metric_mean)
+    history = []
+    for i in range(min(memory, len(self._metric_log) - 1)):
+      hist_mean = self._metric_log[-(i + 2)]
+      assert hist_mean > 0
+      history.append((metric_mean - hist_mean) / hist_mean * 100)
+
+    # Show status
+    tendency = ''
+    if len(history) > 0:
+      tendency += ' ('
+      for i, ratio in enumerate(history):
+        if i > 0: tendency += ', '
+        tendency += '[{}]{:.2f}%'.format(i + 1, ratio)
+      tendency += ')'
+    console.supplement('E[metric] = {:.3f}{}'.format(metric_mean, tendency))
+
+    # Tune learning rate TODO: smart train will only be applied here
+    if len(self._metric_log) >= memory + 1 and self._train_status['metric_on']:
+      if all(np.array(history) < 0) and self._train_status['bad_apples'] > 0:
+        self._train_status['bad_apples'] -= 1
+      console.supplement('{} bad apples found'.format(
+        self._train_status['bad_apples']))
+      if self._train_status['bad_apples'] > memory and FLAGS.smart_train:
+        self._tune_lr(lr_decay)
+        self._train_status['bad_apples'] = 0
+        if not FLAGS.save_best:
+          console.show_status('save_best option has been turned on')
+        FLAGS.save_best = True
+
+    return False
 
   @with_graph
   def train(self, epoch=1, batch_size=128, training_set=None,
@@ -148,6 +202,8 @@ class Model(object):
       if not callable(snapshot_function):
         raise ValueError('!! snapshot_function must be callable')
       self._snapshot_function = snapshot_function
+
+    self._init_smart_train(validation_set)
 
     epoch_tol = FLAGS.epoch_tol
 
@@ -182,6 +238,8 @@ class Model(object):
     with self._session.as_default():
       for epc in range(epoch):
         console.section('Epoch {}'.format(epc + 1))
+        # Add a new list to metric log if smart_train is on
+        if self._train_status['metric_on']: self._metric_log.append([])
         # Record epoch start time
         start_time = time.time()
         while True:
@@ -198,9 +256,10 @@ class Model(object):
             self._print_progress(epc, start_time, loss_dict,
                                  data_batch=data_batch)
             if new_record:
-              self._save(self._counter)
               self._last_epoch = epc
-              self._inter_cut('[New Record] Model saved')
+              if FLAGS.save_best:
+                self._save(self._counter)
+                self._inter_cut('[New Record] Model saved')
 
           # Snapshot
           if snapshot_cycle > 0 and np.mod(
@@ -213,15 +272,23 @@ class Model(object):
             break
 
         # End of epoch
+        since_last = epc - self._last_epoch
+        if since_last == 0: self._train_status['bad_apples'] = 0
+        else: self._train_status['bad_apples'] += 1
+        break_flag = self._apply_smart_train() if FLAGS.smart_train else False
+        if self._train_status['metric_on']:
+          best_loss = self._session.run(self._best_loss)
+          console.supplement(
+            '[Best {:.3f}] {} epochs since last record appears.'.format(
+            best_loss, since_last))
+
         if not FLAGS.save_best:
           self._save(self._counter)
           console.show_status('Model saved')
-        else:
-          best_loss = self._session.run(self._best_loss)
-          since_last = epc - self._last_epoch + 1
-          console.show_status('[Best {:.4f}] {} epochs since last save.'.format(
-            best_loss, since_last))
-          if since_last >= epoch_tol: break
+        elif since_last >= epoch_tol: break_flag = True
+
+        # Early stop if break flag is true
+        if break_flag: break
 
     # End training
     console.clear_line()
@@ -230,11 +297,13 @@ class Model(object):
     # self.shutdown()
 
   def _update_loss_dict(self, loss_dict, probe):
+    # Update loss dictionary by adding metric (and probe) information
     if self._metric is None or self._validation_set is None:
       return loss_dict, False
 
     new_record = False
 
+    # Calculate metric
     assert isinstance(self._metric, tf.Tensor)
     feed_dict = self._get_default_feed_dict(
       self._validation_set, is_training=False)
@@ -249,14 +318,22 @@ class Model(object):
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
       self._summary_writer.add_summary(summary, self._counter)
 
+    # Add metric info to loss dictionary for printing
     loss_dict.update({pedia.memo[pedia.metric_name]: metric})
 
+    # Add metric information to log maintained by model(self)
+    if self._train_status['metric_on']:
+      assert isinstance(self._metric_log[-1], list)
+      self._metric_log[-1].append(metric)
+
+    # Try to add probing information
     if probe is not None:
       assert callable(probe)
       loss_dict.update({'Probe': probe(self)})
 
     # TODO: Save best
-    if (metric < best_loss or best_loss < 0) and FLAGS.save_best:
+    delta = best_loss - metric
+    if delta > 2e-4 or best_loss < 0:
       new_record = True
       self._session.run(tf.assign(self._best_loss, metric))
 
@@ -273,7 +350,9 @@ class Model(object):
     assert isinstance(self._summary_writer, tf.summary.FileWriter)
     self._summary_writer.add_summary(summary, self._counter)
 
-    return {'Train loss': loss}
+    loss_dict = collections.OrderedDict()
+    loss_dict['Train loss'] = loss
+    return loss_dict
 
   def _print_progress(self, epc, start_time, loss_dict, **kwargs):
     # generate loss string
@@ -345,6 +424,23 @@ class Model(object):
   # endregion : Public Methods
 
   # region : Private Methods
+
+  def _tune_lr(self, alpha):
+    assert np.isscalar(alpha) and 0 < alpha < 1
+    lr, new_lr = None, None
+    if isinstance(self._optimizer, tf.train.AdamOptimizer):
+      lr = self._optimizer._lr
+      new_lr = lr * alpha
+      self._optimizer._lr = new_lr
+      self._lr_t = tf.constant(new_lr)
+    elif isinstance(self._optimizer, tf.train.GradientDescentOptimizer):
+      lr = self._optimizer._learning_rate
+      new_lr = lr * alpha
+      self._optimizer._learning_rate = new_lr
+    else: return
+    # Show status
+    console.show_status(
+      'learning rate updated: {:.7f} => {:.7f}'.format(lr, new_lr))
 
   @with_graph
   def _get_default_feed_dict(self, batch, is_training):

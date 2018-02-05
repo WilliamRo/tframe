@@ -8,7 +8,7 @@ flags.DEFINE_string("mark", "default", "...")
 flags.DEFINE_bool("act_sum", False, "Whether to add activation summaries")
 
 flags.DEFINE_integer("epoch", -1, "Epochs to train")
-flags.DEFINE_integer("epoch_tol", 10, "epoch tolerance")
+flags.DEFINE_integer("epoch_tol", 20, "epoch tolerance")
 flags.DEFINE_integer("batch_size", -1, "The size of batch images")
 
 flags.DEFINE_integer("print_cycle", -1, "Print cycle")
@@ -21,7 +21,10 @@ flags.DEFINE_bool("shuffle", False, "Whether to shuffle")
 flags.DEFINE_bool("suppress_logging", True, "...")
 
 flags.DEFINE_bool("train", True, "Whether to train or inference")
+flags.DEFINE_bool("smart_train", False, "Whether to train in a smart way")
 flags.DEFINE_bool("save_best", False, "Whether to save best model")
+
+flags.DEFINE_float("lr_decay", 0.6, "Learning rate decay ratio in smart train")
 
 FLAGS = flags.FLAGS
 
