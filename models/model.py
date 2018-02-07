@@ -71,8 +71,10 @@ class Model(object):
     # Each model is bound to a unique graph
     self._graph = tf.Graph()
     with self._graph.as_default():
-      self._best_loss = tf.Variable(
-        initial_value=-1.0, trainable=False, name='best_loss')
+      self._best_metric = tf.Variable(
+        initial_value=-1.0, trainable=False, name='best_metric')
+      self._best_mean_metric = tf.Variable(
+        initial_value=-1.0, trainable=False, name='best_mean_metric')
       self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
@@ -147,6 +149,9 @@ class Model(object):
   def _apply_smart_train(self):
     memory = 4
     lr_decay = FLAGS.lr_decay
+
+    save_flag = False
+
     # At the end of each epoch, analyze metric log
     assert isinstance(self._metric_log[-1], list)
     metric_mean = np.mean(self._metric_log.pop())
@@ -157,15 +162,22 @@ class Model(object):
       assert hist_mean > 0
       history.append((metric_mean - hist_mean) / hist_mean * 100)
 
+    # Refresh best mean metric
+    best_mean_metric = self._session.run(self._best_mean_metric)
+    if metric_mean < best_mean_metric or best_mean_metric < 0:
+      save_flag = True
+      self._session.run(tf.assign(self._best_mean_metric, metric_mean))
+      best_mean_metric = metric_mean
+
     # Show status
     tendency = ''
     if len(history) > 0:
-      tendency += ' ('
       for i, ratio in enumerate(history):
         if i > 0: tendency += ', '
-        tendency += '[{}]{:.2f}%'.format(i + 1, ratio)
-      tendency += ')'
-    console.supplement('E[metric] = {:.3f}{}'.format(metric_mean, tendency))
+        tendency += '[{}]{:.1f}%'.format(i + 1, ratio)
+    console.supplement('E[metric] = {:.3f}, min(E[metric]) = {:.3f}'.format(
+      metric_mean, best_mean_metric))
+    if tendency != '': console.supplement(tendency, level=2)
 
     # Tune learning rate TODO: smart train will only be applied here
     if len(self._metric_log) >= memory + 1 and self._train_status['metric_on']:
@@ -180,7 +192,7 @@ class Model(object):
           console.show_status('save_best option has been turned on')
         FLAGS.save_best = True
 
-    return False
+    return save_flag
 
   @with_graph
   def train(self, epoch=1, batch_size=128, training_set=None,
@@ -272,17 +284,18 @@ class Model(object):
             break
 
         # End of epoch
+        break_flag = False
         since_last = epc - self._last_epoch
         if since_last == 0: self._train_status['bad_apples'] = 0
         else: self._train_status['bad_apples'] += 1
-        break_flag = self._apply_smart_train() if FLAGS.smart_train else False
+        save_flag = self._apply_smart_train() if FLAGS.smart_train else True
         if self._train_status['metric_on']:
-          best_loss = self._session.run(self._best_loss)
+          best_loss = self._session.run(self._best_metric)
           console.supplement(
             '[Best {:.3f}] {} epochs since last record appears.'.format(
             best_loss, since_last))
 
-        if not FLAGS.save_best:
+        if not FLAGS.save_best and save_flag:
           self._save(self._counter)
           console.show_status('Model saved')
         elif since_last >= epoch_tol: break_flag = True
@@ -310,10 +323,10 @@ class Model(object):
 
     if self._print_summary is None:
       metric, best_loss = self._session.run(
-        [self._metric, self._best_loss], feed_dict=feed_dict)
+        [self._metric, self._best_metric], feed_dict=feed_dict)
     else:
       metric, summary, best_loss = self._session.run(
-        [self._metric, self._print_summary, self._best_loss],
+        [self._metric, self._print_summary, self._best_metric],
         feed_dict=feed_dict)
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
       self._summary_writer.add_summary(summary, self._counter)
@@ -335,7 +348,7 @@ class Model(object):
     delta = best_loss - metric
     if delta > 2e-4 or best_loss < 0:
       new_record = True
-      self._session.run(tf.assign(self._best_loss, metric))
+      self._session.run(tf.assign(self._best_metric, metric))
 
     return loss_dict, new_record
 

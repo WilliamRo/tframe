@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import six
 import tensorflow as tf
@@ -15,7 +17,7 @@ from tframe import pedia
 class Net(Function):
   """Function which can packet sub-functions automatically when calling add
      method"""
-  def __init__(self, name, level=0, inter_type=pedia.cascade):
+  def __init__(self, name, level=0, inter_type=pedia.cascade, **kwargs):
     """Instantiate Net, a name must be given"""
     self._name = name
     self._level = level
@@ -25,6 +27,10 @@ class Net(Function):
     self._output_scale = None
 
     self.children = []
+    self._kwargs = kwargs
+
+
+  # region : Properties
 
   @property
   def group_name(self):
@@ -97,6 +103,11 @@ class Net(Function):
     return (None if len(reg_losses) == 0
             else tf.add_n(reg_losses, name='reg_sum'))
 
+  # endregion : Properties
+
+
+  # region : Overrode Method
+
   def _link(self, inputs, **kwargs):
     # If self is call without given inputs
     if inputs is None:
@@ -147,12 +158,18 @@ class Net(Function):
     if with_logits: return output, logits
     else: return output
 
+  # endregion : Overrode Methods
+
+
+  # region : Public Methods
+
   def add_to_last_net(self, layer):
     if len(self.children) == 0:
       raise AssertionError('!! This net does not have children')
     last_net = self.children[-1]
     assert isinstance(last_net, Net)
     last_net.add(layer)
+    return last_net
 
   def add(self, f=None, inter_type=pedia.cascade):
     # If add an empty net
@@ -167,27 +184,36 @@ class Net(Function):
       # If f is a placeholder
       if self.inputs is None: self.inputs = []
       self.inputs += [f]
+      return self
     elif (isinstance(f, Net) or self._level > 0 or
            self._inter_type != pedia.cascade):
       # Net should be added directly into self.children of any net
       # Layer should be added directly into self.children for non-cascade nets
-      self._save_add(f)
+      return self._save_add(f)
     elif isinstance(f, Layer):
       # If layer is a nucleus or the 1st layer added into this Net
       if f.is_nucleus or len(self.children) == 0: self._wrap_and_add(f)
       # Otherwise add this layer to last Net of self.children
-      self.add_to_last_net(f)
+      return self.add_to_last_net(f)
     else: raise ValueError(
       'Object added to a Net must be a Layer or a Net')
+
+  # endregion : Public Methods
+
+
+  # region : Private Methods
 
   def _save_add(self, f):
     # TODO: avoid name scope conflict when add layers to non-cascade nets
     name = self._get_new_name(f)
+    net = self
     if isinstance(f, Layer): f.full_name = name
     elif isinstance(f, Net):
       f._level = self._level + 1
       f._name = name
+      net = f
     self.children.append(f)
+    return net
 
   def _wrap_and_add(self, layer):
     # Input f should be a layer
@@ -210,8 +236,13 @@ class Net(Function):
       if isinstance(entity, Layer) and isinstance(f_, Layer):
         if f_.full_name == get_name(): index += 1
       elif f_.group_name == get_name(): index += 1
+
     return get_name()
 
+  # endregion: Private Methods
+
+
+# region : Deprecated
 
 # TODO: deprecate class Fork
 class Fork(Net):
@@ -253,4 +284,4 @@ class Fork(Net):
       raise TypeError('name must be a string')
     self.siblings[name] = f
 
-
+# endregion : Deprecated
