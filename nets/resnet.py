@@ -75,6 +75,9 @@ class ResidualNet(tfr_net.Net):
           output_dim=output_shape[1], use_bias=use_bias)
       else: raise TypeError(
         '!! ResNet in tframe currently only support linear transformation')
+      # Save add
+      self._transform_layer.full_name = self._get_new_name(
+        self._transform_layer)
       origin = self._transform_layer(origin)
     # Do transformation
     output = output + origin
@@ -103,6 +106,8 @@ class ResidualNet(tfr_net.Net):
     if not isinstance(layer, Layer): raise TypeError(
         '!! layer added to ResNet block must be an instance of Layer')
     assert isinstance(self._current_collection, list)
+    name = self._get_new_name(layer)
+    layer.full_name = name
     self._current_collection.append(layer)
 
   # endregion : Public Methods

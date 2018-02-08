@@ -23,6 +23,7 @@ class Activation(Layer):
   def __init__(self, identifier, **kwargs):
     self.abbreviation = (identifier if isinstance(identifier, six.string_types)
                          else identifier.__name__)
+    self.full_name = self.abbreviation
     self._activation = activations.get(identifier, **kwargs)
 
   @single_input
