@@ -39,7 +39,7 @@ from .models import Classifier
 from .models import Predictor
 from .models import GAN
 from .models import VAE
-from .models import TDPlayer
+# from .models import TDPlayer
 
 from . import config
 from . import pedia
