@@ -1,5 +1,8 @@
-import matplotlib.gridspec as gridspec
-import matplotlib.pyplot as plt
+try:
+  import matplotlib.gridspec as gridspec
+  import matplotlib.pyplot as plt
+except:
+  pass
 
 import numpy as np
 
@@ -33,3 +36,8 @@ def gan_grid_plot(samples, show=False, h=None, w=None,
     plt.show()
 
   return fig
+
+
+def save_plt(fig, filename):
+  plt.savefig(filename, bbox_inches='tight', pad_inches=0.02)
+  plt.close(fig)

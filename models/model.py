@@ -6,7 +6,6 @@ import collections
 import os
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
@@ -17,6 +16,7 @@ from tframe import TFData
 from tframe import config
 from tframe import console
 from tframe import pedia
+from tframe.utils import imtool
 
 from tframe.core import with_graph
 
@@ -385,9 +385,7 @@ class Model(object):
     fig = self._snapshot_function(self)
     epcs = 1.0 * self._counter / self._training_set.batches_per_epoch
     filename = 'train_{:.2f}_epcs.png'.format(epcs)
-    plt.savefig("{}/{}".format(self.snapshot_dir, filename),
-                bbox_inches='tight', pad_inches=0.02)
-    plt.close(fig)
+    imtool.save_plt(fig, "{}/{}".format(self.snapshot_dir))
 
     self._inter_cut("[Snapshot] images saved to '{}'".format(filename))
 
