@@ -8,23 +8,20 @@ import six
 
 import numpy as np
 
-from PIL import Image as Image_
-from PIL import ImageTk
-
 from tframe import console
 from tframe import TFData
 from tframe import pedia
 
-from tframe.utils.tfdata import load_cifar10
-
 try:
   import tkinter as tk
   from tkinter import filedialog
-  # console.show_status('tkinter imported')
+  from PIL import Image as Image_
+  from PIL import ImageTk
 except:
+  print('!! ImageViewer is disabled, install pillow and tkinter to enable it')
   # Tkinter in python 2.X may work weired, thus python 3.X is recommended.
-  import Tkinter as tk
-  import tkFileDialog as filedialog
+  # import Tkinter as tk
+  # import tkFileDialog as filedialog
   # console.show_status('Tkinter imported')
 
 
@@ -301,12 +298,14 @@ class ImageViewer(object):
 
 
 if __name__ == '__main__':
+  from tframe.utils.tfdata import load_cifar10
+
   # cifar10 = load_cifar10(
-  #   r'..\..\data\CIFAR-10', one_hot=True, validation_size=5000)
+  #   r'..\..\data\CIFAR-10', one_hot=True, validation_size=200)
   # dataset = r'C:\Users\HPEC\Documents\mnist_val_5000.tfd'
-  # dataset = r'C:\Users\HPEC\Documents\cifar10-5000.tfd'
+  dataset = r'C:\Users\HPEC\Documents\cifar10-200.tfd'
   # dataset = None
-  # dataset = cifar10[pedia.test]
-  dataset = './fp.tfd'
+  # dataset = cifar10[pedia.validation]
+  # dataset = './fp.tfd'
   viewer = ImageViewer(dataset)
   viewer.show()
