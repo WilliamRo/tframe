@@ -41,9 +41,14 @@ class TFData(object):
 
     self.name = name
 
+    # A dictionary where the data is stored
     self._data = {pedia.features: features}
-    self.attachment = {}
+    # Data set properties, not a list with the same length of core data
+    self.attachments = {}
+    # Description of classes
     self.classes = classes
+
+    # Put data into self._data or self.attachment
     if targets is not None:
       if targets.shape[0] != features.shape[0]:
         raise ValueError(
@@ -51,18 +56,17 @@ class TFData(object):
             targets.shape[0], features.shape[0]))
       kwargs[pedia.targets] = targets
 
-    for k in kwargs.keys():
-      if hasattr(kwargs[k], 'shape') and kwargs[k].shape[0] == self.sample_num:
-        self._data[k] = kwargs[k]
-      else:
-        self.attachment[k] = kwargs[k]
+    for key, data in kwargs.items():
+      if hasattr(data, 'shape') and data.shape[0] == self.sample_num:
+        self._data[key] = data
+      else: self.attachments[key] = data
 
     # Check data shape
-    for k in self._data:
-      shape = self._data[k].shape
-      if len(shape) == 1:
-        self._data[k] = self._data[k].reshape((shape[0], 1))
+    for key, data in self._data.items():
+      if len(data.shape) == 1:
+        self._data[key] = data.reshape((data.shape[0], 1))
 
+    # Initialize private fields
     self._batch_size = None
     self._cursor = 0
 
@@ -149,23 +153,45 @@ class TFData(object):
     if isinstance(item, six.string_types):
       if item in self._data.keys():
         return self._data[item]
-      elif item in self.attachment.keys():
-        return self.attachment[item]
-      else:
-        raise ValueError('Can not resolve "{}"'.format(item))
+      elif item in self.attachments.keys():
+        return self.attachments[item]
+      else: raise ValueError('Can not resolve "{}"'.format(item))
     # item is an array
     item = np.mod(item, self.sample_num)
     kwargs = {}
     for k in self._data.keys():
       kwargs[k] = self._data[k][item]
     features = kwargs.pop(pedia.features)
-    data = TFData(features, name=self.name, classes=self.classes, **kwargs)
 
-    return data
+    return self.get_shadow(features, **kwargs)
 
   # endregion : Properties
 
   # region : Public Methods
+
+  # region : Data-related methods
+
+  def get_shadow(self, features, **kwargs):
+    kwargs.update(self.attachments)
+    return TFData(features, name=self.name, classes=self.classes, **kwargs)
+
+  def pop_data(self, size):
+    # Sanity check
+    if size > self.sample_num: raise ValueError(
+      '!! input size must be a positive integer less than sample number')
+
+    # Prepare data
+    kwargs = {}
+    for key, value in self._data.items():
+      kwargs[key] = value[:size]
+      self._data[key] = value[size:]
+
+    # Prepare attachment
+    for key, value in self.attachments: kwargs[key] = value
+
+    # Encapsulate and return
+    features = kwargs.pop(pedia.features)
+    return self.get_shadow(features, **kwargs)
 
   def update(self, **kwargs):
     for k in kwargs.keys():
@@ -174,11 +200,14 @@ class TFData(object):
         raise ValueError('New data must have the same length as sample number')
       self._data[k] = new_data
 
+  # endregion : Data-related methods
+
+  # region : Data-fetch methods
+
   def get_classes(self, index):
     if self.classes is not None:
       return self.classes[index]
-    else:
-      return '{}'.format(index)
+    else: return '{}'.format(index)
 
   def set_cursor(self, position):
     if not 0 <= position < self.sample_num:
@@ -217,6 +246,10 @@ class TFData(object):
 
     return self[indices], end_epoch
 
+  # endregion : Data-fetch methods
+
+  # region : Local methods
+
   def save(self, filename):
     with open(filename, 'wb') as output:
       pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
@@ -226,9 +259,9 @@ class TFData(object):
     with open(filename, 'rb') as input_:
       return pickle.load(input_)
 
-  # endregion : Public Methods
+  # endregion : Local methods
 
-  pass
+  # endregion : Public Methods
 
 
 def load_mnist(data_dir, flatten=False, one_hot=False,
@@ -263,8 +296,8 @@ def load_cifar10(data_dir, flatten=False, one_hot=False, validation_size=0):
   # region : Download, tar data
 
   # Check data directory
-  if not os.path.exists(data_dir):
-    os.makedirs(data_dir)
+  if not os.path.exists(data_dir): os.makedirs(data_dir)
+
   # Get data file name and path
   DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
   filename = DATA_URL.split('/')[-1]
@@ -361,6 +394,46 @@ def load_cifar10(data_dir, flatten=False, one_hot=False, validation_size=0):
     data[pedia.test][pedia.targets].shape), 2)
 
   return data
+
+
+def load_cifar10tfd(data_dir, validation_size=0):
+  train_filename = 'cifar-10-train.tfd'
+  test_filename = 'cifar-10-test.tfd'
+  train_path = os.path.join(data_dir, train_filename)
+  test_path = os.path.join(data_dir, test_filename)
+
+  console.show_status('Loading CIFAR-10 (TFD)')
+  train_val_data = TFData.load(train_path)
+  train_data = train_val_data.pop_data(validation_size)
+  val_data = train_val_data
+
+  test_data = TFData.load(test_path)
+
+  data = {}
+  data[pedia.training] = train_data
+  data[pedia.validation] = val_data
+  data[pedia.test] = test_data
+
+  console.show_status('CIFAR-10 loaded')
+  console.supplement('Training Set:')
+  console.supplement('images: {}'.format(
+    data[pedia.training][pedia.features].shape), 2)
+  console.supplement('labels: {}'.format(
+    data[pedia.training][pedia.targets].shape), 2)
+  console.supplement('Validation Set:')
+  console.supplement('images: {}'.format(
+    data[pedia.validation][pedia.features].shape), 2)
+  console.supplement('labels: {}'.format(
+    data[pedia.validation][pedia.targets].shape), 2)
+  console.supplement('Test Set:')
+  console.supplement('images: {}'.format(
+    data[pedia.test][pedia.features].shape), 2)
+  console.supplement('labels: {}'.format(
+    data[pedia.test][pedia.targets].shape), 2)
+
+  return data
+
+
 
 
 

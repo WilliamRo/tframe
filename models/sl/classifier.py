@@ -38,7 +38,7 @@ class Classifier(Predictor):
         and self.last_function.abbreviation == 'softmax'):
       self._probabilities = self.outputs
     else:
-      self._probabilities = tf.nn.softmax(self.outputs, name='possibilities')
+      self._probabilities = tf.nn.softmax(self.outputs, name='probabilities')
 
 
   def _update_model(self, data_batch, **kwargs):
