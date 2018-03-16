@@ -269,7 +269,7 @@ class Model(object):
                                  data_batch=data_batch)
             if new_record:
               self._last_epoch = epc
-              if FLAGS.save_best:
+              if FLAGS.save_best and epc + 1 >= FLAGS.dont_save_until:
                 self._save(self._counter)
                 self._inter_cut('[New Record] Model saved')
 
@@ -322,10 +322,10 @@ class Model(object):
       self._validation_set, is_training=False)
 
     if self._print_summary is None:
-      metric, best_loss = self._session.run(
+      metric, best_metric = self._session.run(
         [self._metric, self._best_metric], feed_dict=feed_dict)
     else:
-      metric, summary, best_loss = self._session.run(
+      metric, summary, best_metric = self._session.run(
         [self._metric, self._print_summary, self._best_metric],
         feed_dict=feed_dict)
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
@@ -345,8 +345,9 @@ class Model(object):
       loss_dict.update({'Probe': probe(self)})
 
     # TODO: Save best
-    delta = best_loss - metric
-    if delta > 2e-4 or best_loss < 0:
+    delta = best_metric - metric
+    if pedia.memo[pedia.metric_name] == pedia.Accuracy: delta = -delta
+    if delta > 2e-4 or best_metric < 0:
       new_record = True
       self._session.run(tf.assign(self._best_metric, metric))
 

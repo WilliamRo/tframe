@@ -27,6 +27,8 @@ class Classifier(Predictor):
   def build(self, loss='cross_entropy', optimizer=None):
     # TODO: ... do some compromise
     config.block_validation = True
+    # Call parent's method to build using the default loss function
+    #  -- cross entropy
     Predictor.build(self, loss, optimizer, metric='accuracy',
                     metric_name=pedia.Accuracy)
 

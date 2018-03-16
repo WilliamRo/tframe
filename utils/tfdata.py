@@ -290,7 +290,7 @@ def load_mnist(data_dir, flatten=False, one_hot=False,
   return data
 
 
-def load_cifar10(data_dir, flatten=False, one_hot=False, validation_size=0):
+def load_cifar10(data_dir, flatten=False, one_hot=False, validation_size=10000):
   console.show_status('Loading CIFAR-10 ...')
 
   # region : Download, tar data
@@ -404,8 +404,8 @@ def load_cifar10tfd(data_dir, validation_size=0):
 
   console.show_status('Loading CIFAR-10 (TFD)')
   train_val_data = TFData.load(train_path)
-  train_data = train_val_data.pop_data(validation_size)
-  val_data = train_val_data
+  val_data = train_val_data.pop_data(validation_size)
+  train_data = train_val_data
 
   test_data = TFData.load(test_path)
 

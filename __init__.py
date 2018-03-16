@@ -14,6 +14,7 @@ flags.DEFINE_integer("batch_size", -1, "The size of batch images")
 flags.DEFINE_integer("print_cycle", -1, "Print cycle")
 flags.DEFINE_integer("snapshot_cycle", -1, "Snapshot cycle")
 flags.DEFINE_integer("match_cycle", -1, "Match cycle for RL")
+flags.DEFINE_integer("dont_save_until", 1, "Until which do not save")
 
 flags.DEFINE_bool("overwrite", False, "Whether to overwrite records")
 flags.DEFINE_bool("shuffle", False, "Whether to shuffle")
@@ -23,6 +24,7 @@ flags.DEFINE_bool("suppress_logging", True, "...")
 flags.DEFINE_bool("train", True, "Whether to train or inference")
 flags.DEFINE_bool("smart_train", False, "Whether to train in a smart way")
 flags.DEFINE_bool("save_best", False, "Whether to save best model")
+flags.DEFINE_bool("use_default", True, "Whether to use default setting")
 
 flags.DEFINE_float("lr_decay", 0.6, "Learning rate decay ratio in smart train")
 
