@@ -86,16 +86,18 @@ class Model(object):
 
   @property
   def log_dir(self):
-    return check_path(config.record_dir, config.log_folder_name, self.mark)
+    return check_path(FLAGS.job_dir, config.record_dir, config.log_folder_name,
+                      self.mark)
 
   @property
   def ckpt_dir(self):
-    return check_path(config.record_dir, config.ckpt_folder_name, self.mark)
+    return check_path(FLAGS.job_dir, config.record_dir,
+                      config.ckpt_folder_name, self.mark)
 
   @property
   def snapshot_dir(self):
-    return check_path(config.record_dir, config.snapshot_folder_name,
-                       self.mark)
+    return check_path(FLAGS.job_dir, config.record_dir,
+                      config.snapshot_folder_name, self.mark)
   @property
   def description(self):
     return 'No description'

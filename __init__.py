@@ -28,6 +28,10 @@ flags.DEFINE_bool("use_default", True, "Whether to use default setting")
 
 flags.DEFINE_float("lr_decay", 0.6, "Learning rate decay ratio in smart train")
 
+flags.DEFINE_string("job_dir", "./", "The root directory where the records "
+                                     "should be put")
+flags.DEFINE_string("data_dir", "", "The data directory")
+
 FLAGS = flags.FLAGS
 
 from .core import with_graph
