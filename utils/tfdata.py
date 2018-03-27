@@ -256,6 +256,14 @@ class TFData(object):
 
   @staticmethod
   def load(filename):
+    # If file is on the cloud, download to local first
+    if filename.startswith('gs://'):
+      import subprocess
+      tmp_path = './data/tmp.tfd'
+      subprocess.check_call(
+        ['gsutil', '-m', '-q', 'cp', '-r', filename, tmp_path])
+      filename = tmp_path
+
     with open(filename, 'rb') as input_:
       return pickle.load(input_)
 

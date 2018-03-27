@@ -6,6 +6,7 @@ import six
 
 import tensorflow as tf
 
+from tframe import FLAGS
 from . import console
 
 
@@ -20,7 +21,7 @@ def check_path(*paths):
   path = ""
   for p in paths:
     path = os.path.join(path, p)
-    if not os.path.exists(path):
+    if not os.path.exists(path) and not FLAGS.cloud:
       os.mkdir(path)
 
   return path

@@ -98,6 +98,7 @@ class Model(object):
   def snapshot_dir(self):
     return check_path(FLAGS.job_dir, config.record_dir,
                       config.snapshot_folder_name, self.mark)
+
   @property
   def description(self):
     return 'No description'
@@ -276,6 +277,7 @@ class Model(object):
                 self._inter_cut('[New Record] Model saved')
 
           # Snapshot
+          if FLAGS.cloud: snapshot_cycle = 0
           if snapshot_cycle > 0 and np.mod(
                   self._counter - 1, snapshot_cycle) == 0: self._snapshot()
           # Check flag
@@ -412,8 +414,11 @@ class Model(object):
     self._session.close()
 
   def launch_model(self, overwrite=False):
+    # Check cloud flag TODO
+    FLAGS.cloud = "://" in FLAGS.job_dir
+
     # Before launch session, do some cleaning work
-    if overwrite and FLAGS.train:
+    if overwrite and FLAGS.train and not FLAGS.cloud:
       clear_paths([self.log_dir, self.ckpt_dir, self.snapshot_dir])
 
     console.show_status('Launching session ...')
@@ -430,8 +435,9 @@ class Model(object):
       # Add graph
       self._summary_writer.add_graph(self._session.graph)
       # Write model description to file
-      description_path = os.path.join(self.snapshot_dir, 'description.txt')
-      write_file(description_path, self.description)
+      if not FLAGS.cloud:
+        description_path = os.path.join(self.snapshot_dir, 'description.txt')
+        write_file(description_path, self.description)
 
     return load_flag
 

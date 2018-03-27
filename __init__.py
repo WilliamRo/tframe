@@ -6,6 +6,7 @@ flags = tf.app.flags
 flags.DEFINE_string("mark", "default", "...")
 
 flags.DEFINE_bool("act_sum", False, "Whether to add activation summaries")
+flags.DEFINE_boolean("cloud", False, "Train on the cloud or not")
 
 flags.DEFINE_integer("epoch", -1, "Epochs to train")
 flags.DEFINE_integer("epoch_tol", 20, "epoch tolerance")
