@@ -6,6 +6,7 @@ flags = tf.app.flags
 flags.DEFINE_string("mark", "default", "...")
 
 flags.DEFINE_bool("act_sum", False, "Whether to add activation summaries")
+flags.DEFINE_boolean("summary", True, "Whether to write summaries")
 flags.DEFINE_boolean("cloud", False, "Train on the cloud or not")
 
 flags.DEFINE_integer("epoch", -1, "Epochs to train")
@@ -28,6 +29,7 @@ flags.DEFINE_bool("smart_train", False, "Whether to train in a smart way")
 flags.DEFINE_bool("save_best", False, "Whether to save best model")
 flags.DEFINE_bool("use_default", True, "Whether to use default setting")
 flags.DEFINE_boolean("progress_bar", True, "Whether to show progress bar")
+flags.DEFINE_boolean("hpt", False, "Whether in hp-tuning mode")
 
 flags.DEFINE_float("lr_decay", 0.6, "Learning rate decay ratio in smart train")
 

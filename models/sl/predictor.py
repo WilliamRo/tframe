@@ -33,6 +33,9 @@ class Predictor(Feedforward):
   def build(self, loss='cross_entropy', optimizer=None,
              metric=None, metric_name='Metric'):
     Feedforward.build(self)
+    # Summary placeholder
+    default_summaries = []
+    print_summaries = []
     # Initiate targets and add it to collection
     self._targets = tf.placeholder(self.outputs.dtype, self.outputs.get_shape(),
                                    name='targets')
@@ -43,7 +46,7 @@ class Predictor(Feedforward):
     with tf.name_scope('Loss'):
       self._loss = loss_function(self._targets, self.outputs)
       # TODO: with or without regularization loss?
-      tf.summary.scalar('loss_sum', self._loss)
+      default_summaries.append(tf.summary.scalar('loss_sum', self._loss))
       # Try to add regularization loss
       reg_loss = self.regularization_loss
       self._loss = self._loss if reg_loss is None else self._loss + reg_loss
@@ -54,7 +57,12 @@ class Predictor(Feedforward):
       pedia.memo[pedia.metric_name] = metric_name
       with tf.name_scope('Metric'):
         self._metric = metric_function(self._targets, self.outputs)
-        tf.summary.scalar('metric_sum', self._metric)
+        print_summaries.append(tf.summary.scalar('metric_sum', self._metric))
+
+    # Merge summaries
+    self._merged_summary = tf.summary.merge(default_summaries)
+    if len(print_summaries) > 0:
+      self._print_summary = tf.summary.merge(print_summaries)
 
     # Define train step
     self._define_train_step(optimizer)

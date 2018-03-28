@@ -73,6 +73,8 @@ class Model(object):
     with self._graph.as_default():
       self._best_metric = tf.Variable(
         initial_value=-1.0, trainable=False, name='best_metric')
+      self._best_metric_sum = tf.summary.scalar(
+        'best_metric_sum', self._best_metric)
       self._best_mean_metric = tf.Variable(
         initial_value=-1.0, trainable=False, name='best_mean_metric')
       self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
@@ -301,10 +303,10 @@ class Model(object):
         else: self._train_status['bad_apples'] += 1
         save_flag = self._apply_smart_train() if FLAGS.smart_train else True
         if self._train_status['metric_on']:
-          best_loss = self._session.run(self._best_metric)
+          best_metric = self._session.run(self._best_metric)
           console.supplement(
             '[Best {:.3f}] {} epochs since last record appears.'.format(
-            best_loss, since_last))
+            best_metric, since_last))
 
         if not FLAGS.save_best and save_flag:
           self._save(self._counter)
@@ -316,6 +318,12 @@ class Model(object):
 
     # End training
     if FLAGS.progress_bar: console.clear_line()
+
+    # Write HP-tuning metric
+    if FLAGS.hpt:
+      summary = self._session.run(self._best_metric_sum)
+      self._summary_writer.add_summary(summary, self._counter)
+
     self._summary_writer.flush()
     # TODO: shutdown at an appropriate time
     # self.shutdown()
@@ -332,7 +340,8 @@ class Model(object):
     feed_dict = self._get_default_feed_dict(
       self._validation_set, is_training=False)
 
-    if self._print_summary is None:
+    # _print_summary is written with print cycle
+    if self._print_summary is None or not FLAGS.summary:
       metric, best_metric = self._session.run(
         [self._metric, self._best_metric], feed_dict=feed_dict)
     else:
@@ -368,12 +377,16 @@ class Model(object):
     """Default model updating method, should be overrode"""
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
 
-    summary, loss, _ = self._session.run(
-      [self._merged_summary, self._loss, self._train_step],
-      feed_dict = feed_dict)
+    if FLAGS.summary:
+      summary, loss, _ = self._session.run(
+        [self._merged_summary, self._loss, self._train_step],
+        feed_dict=feed_dict)
 
-    assert isinstance(self._summary_writer, tf.summary.FileWriter)
-    self._summary_writer.add_summary(summary, self._counter)
+      assert isinstance(self._summary_writer, tf.summary.FileWriter)
+      self._summary_writer.add_summary(summary, self._counter)
+    else:
+      loss, _ = self._session.run(
+        [self._loss, self._train_step], feed_dict=feed_dict)
 
     loss_dict = collections.OrderedDict()
     loss_dict['Train loss'] = loss
@@ -421,9 +434,10 @@ class Model(object):
     self._session.close()
 
   def launch_model(self, overwrite=False):
-    # Check cloud flag TODO
+    # Check flags
     FLAGS.cloud = FLAGS.cloud or "://" in self.job_dir
     FLAGS.progress_bar = FLAGS.progress_bar and not FLAGS.cloud
+    FLAGS.summary = FLAGS.summary and not FLAGS.hpt
 
     # Before launch session, do some cleaning work
     if overwrite and FLAGS.train and not FLAGS.cloud:
