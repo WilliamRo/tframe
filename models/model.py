@@ -85,18 +85,25 @@ class Model(object):
   # region : Properties
 
   @property
+  def job_dir(self):
+    try:
+      return getattr(FLAGS, 'job-dir')
+    except:
+      return getattr(FLAGS, 'job_dir')
+
+  @property
   def log_dir(self):
-    return check_path(FLAGS.job_dir, config.record_dir, config.log_folder_name,
+    return check_path(self.job_dir, config.record_dir, config.log_folder_name,
                       self.mark)
 
   @property
   def ckpt_dir(self):
-    return check_path(FLAGS.job_dir, config.record_dir,
+    return check_path(self.job_dir, config.record_dir,
                       config.ckpt_folder_name, self.mark)
 
   @property
   def snapshot_dir(self):
-    return check_path(FLAGS.job_dir, config.record_dir,
+    return check_path(self.job_dir, config.record_dir,
                       config.snapshot_folder_name, self.mark)
 
   @property
@@ -260,7 +267,7 @@ class Model(object):
         while True:
           # Get data batch
           data_batch, end_epoch_flag = self._training_set.next_batch(
-            shuffle=FLAGS.shuffle)
+            shuffle=FLAGS.shuffle and FLAGS.train)
           # Increase counter, counter may be used in _update_model
           self._counter += 1
           # Update model
@@ -282,7 +289,7 @@ class Model(object):
                   self._counter - 1, snapshot_cycle) == 0: self._snapshot()
           # Check flag
           if end_epoch_flag:
-            console.clear_line()
+            if FLAGS.progress_bar: console.clear_line()
             console.show_status('End of epoch. Elapsed time is ' 
                                 '{:.1f} secs'.format(time.time() - start_time))
             break
@@ -308,7 +315,7 @@ class Model(object):
         if break_flag: break
 
     # End training
-    console.clear_line()
+    if FLAGS.progress_bar: console.clear_line()
     self._summary_writer.flush()
     # TODO: shutdown at an appropriate time
     # self.shutdown()
@@ -415,7 +422,8 @@ class Model(object):
 
   def launch_model(self, overwrite=False):
     # Check cloud flag TODO
-    FLAGS.cloud = "://" in FLAGS.job_dir
+    FLAGS.cloud = FLAGS.cloud or "://" in self.job_dir
+    FLAGS.progress_bar = FLAGS.progress_bar and not FLAGS.cloud
 
     # Before launch session, do some cleaning work
     if overwrite and FLAGS.train and not FLAGS.cloud:
@@ -484,8 +492,13 @@ class Model(object):
     return feed_dict
 
   def _inter_cut(self, content, start_time=None):
+    # If run on the cloud, do not show progress bar
+    if not FLAGS.progress_bar:
+      console.show_status(content)
+      return
+
     console.clear_line()
-    console.show_status(content )
+    console.show_status(content)
     console.print_progress(progress=self._training_set.progress,
                            start_time=start_time)
 

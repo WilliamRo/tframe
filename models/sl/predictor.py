@@ -76,12 +76,12 @@ class Predictor(Feedforward):
     loss_string = ', '.join(loss_strings)
 
     total_epoch = self._counter / self._training_set.batches_per_epoch
-    console.clear_line()
+    if FLAGS.progress_bar: console.clear_line()
     console.show_status(
       'Epoch {} [{:.1f} Total] {}'.format(epc + 1, total_epoch, loss_string))
-
-    console.print_progress(progress=self._training_set.progress,
-                           start_time=start_time)
+    if FLAGS.progress_bar:
+      console.print_progress(progress=self._training_set.progress,
+                             start_time=start_time)
 
 
   def predict(self, data):
