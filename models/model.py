@@ -282,13 +282,14 @@ class Model(object):
             if new_record:
               self._last_epoch = epc
               if FLAGS.save_best and epc + 1 >= FLAGS.dont_save_until:
-                self._save(self._counter)
-                self._inter_cut('[New Record] Model saved')
+                if FLAGS.save_model:
+                  self._save(self._counter)
+                  self._inter_cut('[New Record] Model saved')
 
           # Snapshot
-          if FLAGS.cloud: snapshot_cycle = 0
-          if snapshot_cycle > 0 and np.mod(
-                  self._counter - 1, snapshot_cycle) == 0: self._snapshot()
+          if (FLAGS.snapshot and snapshot_cycle > 0
+              and np.mod(self._counter - 1, snapshot_cycle) == 0):
+            self._snapshot()
           # Check flag
           if end_epoch_flag:
             if FLAGS.progress_bar: console.clear_line()
@@ -308,7 +309,7 @@ class Model(object):
             '[Best {:.3f}] {} epochs since last record appears.'.format(
             best_metric, since_last))
 
-        if not FLAGS.save_best and save_flag:
+        if not FLAGS.save_best and save_flag and FLAGS.save_model:
           self._save(self._counter)
           console.show_status('Model saved')
         elif since_last >= epoch_tol: break_flag = True
@@ -324,7 +325,7 @@ class Model(object):
       summary = self._session.run(self._best_metric_sum)
       self._summary_writer.add_summary(summary, self._counter)
 
-    self._summary_writer.flush()
+    if FLAGS.summary or FLAGS.hpt: self._summary_writer.flush()
     # TODO: shutdown at an appropriate time
     # self.shutdown()
 
@@ -430,7 +431,7 @@ class Model(object):
   # region : Public Methods
 
   def shutdown(self):
-    self._summary_writer.close()
+    if FLAGS.summary or FLAGS.hpt: self._summary_writer.close()
     self._session.close()
 
   def launch_model(self, overwrite=False):
@@ -438,26 +439,34 @@ class Model(object):
     FLAGS.cloud = FLAGS.cloud or "://" in self.job_dir
     FLAGS.progress_bar = FLAGS.progress_bar and not FLAGS.cloud
     FLAGS.summary = FLAGS.summary and not FLAGS.hpt
+    FLAGS.save_model = FLAGS.save_model and not FLAGS.hpt
+    FLAGS.snapshot = FLAGS.snapshot and not FLAGS.cloud
 
     # Before launch session, do some cleaning work
     if overwrite and FLAGS.train and not FLAGS.cloud:
-      clear_paths([self.log_dir, self.ckpt_dir, self.snapshot_dir])
+      paths = []
+      if FLAGS.summary: paths.append(self.log_dir)
+      if FLAGS.save_model: paths.append(self.ckpt_dir)
+      if FLAGS.snapshot: paths.append(self.snapshot_dir)
+      clear_paths(paths)
 
     console.show_status('Launching session ...')
     self._session = tf.Session(graph=self._graph)
     console.show_status('Session launched')
     self._saver = tf.train.Saver()
-    self._summary_writer = tf.summary.FileWriter(self.log_dir)
+    if FLAGS.summary or FLAGS.hpt:
+      self._summary_writer = tf.summary.FileWriter(self.log_dir)
     # Try to load exist model
-    load_flag, self._counter = self._load()
+    load_flag, self._counter = False, 0
+    if FLAGS.save_model: load_flag, self._counter = self._load()
     if not load_flag:
       assert self._counter == 0
       # If checkpoint does not exist, initialize all variables
       self._session.run(tf.global_variables_initializer())
       # Add graph
-      self._summary_writer.add_graph(self._session.graph)
+      if FLAGS.summary: self._summary_writer.add_graph(self._session.graph)
       # Write model description to file
-      if not FLAGS.cloud:
+      if FLAGS.snapshot:
         description_path = os.path.join(self.snapshot_dir, 'description.txt')
         write_file(description_path, self.description)
 

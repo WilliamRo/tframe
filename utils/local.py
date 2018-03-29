@@ -28,6 +28,7 @@ def check_path(*paths):
 
 
 def clear_paths(paths):
+  if len(paths) == 0: return
   if isinstance(paths, six.string_types):
     paths = [paths]
 
