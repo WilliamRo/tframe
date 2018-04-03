@@ -21,16 +21,16 @@ flags.DEFINE_float("lr", 0.001, "Learning rate")
 flags.DEFINE_integer("print_cycle", -1, "Print cycle")
 flags.DEFINE_integer("snapshot_cycle", -1, "Snapshot cycle")
 flags.DEFINE_integer("match_cycle", -1, "Match cycle for RL")
-flags.DEFINE_integer("dont_save_until", 1, "Until which do not save")
+flags.DEFINE_integer("dont_save_until", 5, "Until which do not save")
 
-flags.DEFINE_bool("overwrite", False, "Whether to overwrite records")
 flags.DEFINE_bool("shuffle", True, "Whether to shuffle")
-
 flags.DEFINE_bool("suppress_logging", True, "...")
 
 flags.DEFINE_bool("train", True, "Whether to train or inference")
+flags.DEFINE_bool("overwrite", False, "Whether to overwrite records")
 flags.DEFINE_bool("smart_train", False, "Whether to train in a smart way")
 flags.DEFINE_bool("save_best", False, "Whether to save best model")
+
 flags.DEFINE_bool("use_default", True, "Whether to use default setting")
 flags.DEFINE_boolean("progress_bar", True, "Whether to show progress bar")
 
