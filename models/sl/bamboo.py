@@ -120,6 +120,9 @@ class Bamboo(Predictor):
   @with_graph
   def train(self, *args, branch_index=0, **kwargs):
     self.set_branch_index(branch_index)
+    # TODO
+    freeze = kwargs.get('freeze', True)
+    if not freeze: self._train_step = self._optimizer.minimize(self._loss)
     # Call parent's train method
     Predictor.train(self, *args, **kwargs)
 
