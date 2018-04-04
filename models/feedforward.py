@@ -13,6 +13,7 @@ class Feedforward(Model, Net):
   def __init__(self, mark=None):
     Model.__init__(self, mark)
     Net.__init__(self, 'FeedforwardNet')
+    self.outputs = None
 
   @with_graph
   def build(self):

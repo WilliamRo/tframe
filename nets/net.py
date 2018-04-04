@@ -17,20 +17,31 @@ from tframe import pedia
 class Net(Function):
   """Function which can packet sub-functions automatically when calling add
      method"""
-  def __init__(self, name, level=0, inter_type=pedia.cascade, **kwargs):
-    """Instantiate Net, a name must be given"""
+  def __init__(self, name, level=0, inter_type=pedia.cascade,
+               is_branch=False, **kwargs):
+    """Instantiate Net, a name must be given
+       :param level: level 0 indicates the trunk
+       :param inter_type: \in {cascade, fork, sum, prod}
+    """
     self._name = name
     self._level = level
     self._inter_type = inter_type
+    self.is_branch = is_branch
 
     self.inputs = None
     self._output_scale = None
 
     self.children = []
+    self.branch_outputs = []
     self._kwargs = kwargs
 
 
   # region : Properties
+
+  @property
+  def var_list(self):
+    return [var for var in tf.trainable_variables()
+            if '{}'.format(self._name) == var.name.split('/')[self._level]]
 
   @property
   def group_name(self):
@@ -70,10 +81,11 @@ class Net(Function):
 
     # Check interconnection type
     next_net, next_layer = ' => ', ' -> '
-    if self._inter_type != pedia.cascade:
+    if self._inter_type != pedia.cascade or self.is_branch:
       if self._inter_type in [pedia.sum, pedia.prod]:
         result += self._inter_type
-      next_layer, next_net = ', ', ', '
+      if self.is_branch: result += 'branch'
+      else: next_layer, next_net = ', ', ', '
       result += '('
 
     # Add children
@@ -86,8 +98,12 @@ class Net(Function):
         result += next_layer if i != 0 else ''
         result += self._get_layer_string(f, scale)
 
+    # Check is_branch flag
+    if self.is_branch:
+      result += ' -> output'
+
     # Check interconnection type
-    if self._inter_type != pedia.cascade: result += ')'
+    if self._inter_type != pedia.cascade or self.is_branch: result += ')'
 
     # Add output scale
     if self._level == 0:
@@ -109,11 +125,13 @@ class Net(Function):
   # region : Overrode Method
 
   def _link(self, inputs, **kwargs):
-    # If self is call without given inputs
+    # region : Check inputs
+    # If self is called without given inputs
     if inputs is None:
       if self.inputs is None: raise ValueError('!! Input not defined')
       inputs = []
       for input_ in self.inputs: inputs.append(input_())
+
     # Make sure inputs is a list(or tuple) of tf.Tensor
     if isinstance(inputs, tf.Tensor): inputs = [inputs]
     elif isinstance(inputs, (tuple, list)):
@@ -123,6 +141,7 @@ class Net(Function):
     else: raise TypeError('!! Illegal input type')
 
     assert isinstance(inputs, (list, tuple))
+    # endregion : Check inputs
 
     # Check children
     assert isinstance(self.children, list)
@@ -136,6 +155,12 @@ class Net(Function):
     output = None
     # Link all functions in children
     for f in self.children:
+      # Handle branches
+      if isinstance(f, Net) and f.is_branch:
+        assert not with_logits
+        self.branch_outputs.append(f(pioneer))
+        continue
+
       # Logits are always inputs of activation layers
       if isinstance(f, Activation): logits = pioneer
 
@@ -170,6 +195,14 @@ class Net(Function):
     assert isinstance(last_net, Net)
     last_net.add(layer)
     return last_net
+
+  def add_branch(self):
+    if self._level > 0: raise ValueError('Branches can only added to the trunk')
+
+    net = Net(name='branch', is_branch=True)
+    self.add(net)
+
+    return net
 
   def add(self, f=None, inter_type=pedia.cascade):
     # If add an empty net

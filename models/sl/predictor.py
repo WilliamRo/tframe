@@ -92,7 +92,7 @@ class Predictor(Feedforward):
                              start_time=start_time)
 
 
-  def predict(self, data):
+  def predict(self, data, **kwargs):
     # Sanity check
     if not isinstance(data, TFData):
       raise TypeError('!! Input data must be an instance of TFData')
