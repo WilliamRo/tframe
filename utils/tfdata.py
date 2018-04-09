@@ -70,6 +70,10 @@ class TFData(object):
     self._batch_size = None
     self._cursor = 0
 
+    # Variables used for RNN data
+    self._rnn_input = False
+    self._epoch_size = None
+
   # endregion : Constructor
 
   # region : Properties
@@ -139,15 +143,6 @@ class TFData(object):
       return 1.0
     else:
       return 1.0 * cursor / self.sample_num
-
-  # TODO: ...
-  # def __getattr__(self, attrname):
-  #   if attrname in self._data.keys():
-  #     return self._data[attrname]
-  #   elif attrname in self.attachment.keys():
-  #     return self.attachment[attrname]
-  #   else:
-  #     return object.__getattribute__(self, attrname)
 
   def __getitem__(self, item):
     if isinstance(item, six.string_types):
@@ -245,6 +240,20 @@ class TFData(object):
       self._cursor -= self.sample_num
 
     return self[indices], end_epoch
+
+  def gen_rnn_batches(self, batch_size, num_steps):
+    # Sanity check
+    assert len(self.features.shape) == 2 and self.features.shape[0] == 1
+
+    self._rnn_input = True
+    # Get batch partition length
+    L = self.sample_num // batch_size
+    data_x = np.zeros([batch_size, L])
+    data_y = np.zeros([batch_size, L])
+    for i in range(batch_size):
+      data_x[i] = None
+
+
 
   # endregion : Data-fetch methods
 
