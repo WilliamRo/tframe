@@ -118,13 +118,15 @@ class GAN(Model):
     self._G = self.Generator()
     # :: Check shape
     g_shape = self._G.get_shape().as_list()[1:]
-    d_shape = self.D.inputs[0].get_shape()[1:]
+    d_shape = self.D.input_[0].get_shape()[1:]
     if g_shape != d_shape:
       raise ValueError('Output shape of generator {} does not match the input '
                         'shape of discriminator {}'.format(g_shape, d_shape))
 
-    self._Dr, self._logits_Dr = self.Discriminator(with_logits=True)
-    self._Df, self._logits_Df = self.Discriminator(self._G, with_logits=True)
+    self._Dr, self._logits_Dr = (self.Discriminator(),
+                                 self.Discriminator.logits_tensor)
+    self._Df, self._logits_Df = (self.Discriminator(self._G),
+                                 self.Discriminator.logits_tensor)
 
     # Define output tensor
     if self._output_shape is None:
@@ -211,7 +213,7 @@ class GAN(Model):
                  else [])
 
     # Get other summaries
-    sum_z = tf.summary.histogram('z_sum', self.G.inputs[0].place_holder)
+    sum_z = tf.summary.histogram('z_sum', self.G.input_[0].place_holder)
     sum_Dr = tf.summary.histogram("D_real_sum", self._Dr)
     sum_Df = tf.summary.histogram("D_fake_sum", self._Df)
 
@@ -263,8 +265,8 @@ class GAN(Model):
 
     assert isinstance(self._session, tf.Session)
     # Update discriminator
-    feed_dict_D = {self.D.default_input_tensor: features,
-                   self.G.default_input_tensor: self._random_z(sample_num)}
+    feed_dict_D = {self.D.input_tensor: features,
+                   self.G.input_tensor: self._random_z(sample_num)}
     feed_dict_D.update(self._get_status_feed_dict(is_training=True))
     if self._conditional:
       feed_dict_D[self._targets] = data_batch[pedia.targets]
@@ -275,7 +277,7 @@ class GAN(Model):
         feed_dict=feed_dict_D)
 
     # Update generator
-    feed_dict_G = {self.G.default_input_tensor: self._random_z(sample_num)}
+    feed_dict_G = {self.G.input_tensor: self._random_z(sample_num)}
     feed_dict_G.update(self._get_status_feed_dict(is_training=True))
     if self._conditional:
       feed_dict_G[self._targets] = data_batch[pedia.targets]
@@ -298,7 +300,7 @@ class GAN(Model):
   # region : Private Methods
 
   def _random_z(self, sample_num, with_label=False):
-    input_ = self.G.inputs[0].place_holder
+    input_ = self.G.input_[0].place_holder
     assert isinstance(input_, tf.Tensor)
     z_dim = input_.get_shape().as_list()[1]
     z = np.random.standard_normal(size=[sample_num, z_dim])
@@ -328,7 +330,7 @@ class GAN(Model):
     else:
       z = self._random_z(self._sample_num)
 
-    feed_dict[self.G.default_input_tensor] = z
+    feed_dict[self.G.input_tensor] = z
     feed_dict.update(self._get_status_feed_dict(is_training=False))
     samples = self._outputs.eval(feed_dict)
 
@@ -379,7 +381,7 @@ class GAN(Model):
     z = self._random_z(sample_num) if z is None else z
     sample_num = z.shape[0]
     z_shape = list(z.shape[1:])
-    g_input_shape = self.G.inputs[0].get_shape().as_list()[1:]
+    g_input_shape = self.G.input_[0].get_shape().as_list()[1:]
     if z_shape != g_input_shape:
       raise ValueError("Shape of input z {} doesn't match the shape of "
                         "generator's input {}".format(z_shape, g_input_shape))
@@ -395,7 +397,7 @@ class GAN(Model):
           sample_num, labels.shape[0]))
 
     # Generate samples
-    feed_dict = {self.G.inputs[0]: z}
+    feed_dict = {self.G.input_[0]: z}
     if self._conditional:
       feed_dict[self._targets] = labels
     feed_dict.update(self._get_status_feed_dict(is_training=False))

@@ -147,7 +147,7 @@ class TDPlayer(Feedforward, Player):
         # Update model
         state = np.reshape(state, (1,) + state.shape)
         next_value = np.reshape(np.array(next_value), (1, 1))
-        feed_dict = {self.inputs[0]: state, self._next_value: next_value}
+        feed_dict = {self.input_[0]: state, self._next_value: next_value}
         feed_dict.update(self._get_status_feed_dict(is_training=True))
         assert isinstance(self._session, tf.Session)
         summary, _ = self._session.run(
@@ -239,7 +239,7 @@ class TDPlayer(Feedforward, Player):
     if self._session is None:
       self.launch_model(overwrite=False)
 
-    feed_dict = {self.inputs[0]: states}
+    feed_dict = {self.input_[0]: states}
     feed_dict.update(self._get_status_feed_dict(False))
 
     outputs = self._session.run( self.outputs, feed_dict)

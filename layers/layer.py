@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from ..core import Function
+from tframe.core import Function
 
 
 class Layer(Function):
@@ -39,10 +39,10 @@ class Layer(Function):
 
 def single_input(_link):
 
-  def wrapper(*args):
+  def wrapper(*args, **kwargs):
     # Currently not sure if the decorator is for class method only
     input_ = args[1] if isinstance(args[0], Layer) else args[0]
-    if isinstance(input_, list):
+    if isinstance(input_, (tuple, list)):
       if len(input_) != 1:
         raise ValueError('!! This layer only accept single input')
       input_ = input_[0]
@@ -50,10 +50,9 @@ def single_input(_link):
     if not isinstance(input_, tf.Tensor):
       raise TypeError('!! This layer only accept a Tensor as input')
 
-    args = ((args[0], input_) + args[2:] if isinstance(args[0], Layer)
-            else (input_, ) + args[1:])
+    args = (args[0], input_) if isinstance(args[0], Layer) else (input_,)
 
-    return _link(*args)
+    return _link(*args, *kwargs)
 
   return wrapper
 

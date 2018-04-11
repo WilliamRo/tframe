@@ -83,16 +83,13 @@ class ResidualNet(tfr_net.Net):
     output = output + origin
 
     # Link post process layers
-    logits = None
     for layer in self._post_processes:
       assert isinstance(layer, Layer)
-      if isinstance(layer, Activation): logits = output
+      if isinstance(layer, Activation): self._logits_tensor = output
       output = layer(output)
 
     # Return result
-    with_logits = kwargs.get(pedia.with_logits, False)
-    if with_logits: return output, logits
-    else: return output
+    return output
 
   # endregion : Abstract Implementation
 

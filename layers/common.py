@@ -224,8 +224,7 @@ class Input(Layer):
   def _link(self, *args, **kwargs):
     # This method is only accessible by Function.__call__ thus a None will
     #   be given as input
-    assert len(args) == 1 and len(kwargs) == 0
-    assert args[0] is None
+    assert len(args) == 0 and len(kwargs) == 0
     input_ = tf.placeholder(
       dtype=self.dtype, shape=self.sample_shape, name=self.name)
     # Update neuron scale

@@ -28,12 +28,14 @@ class Net(Function):
     self._inter_type = inter_type
     self.is_branch = is_branch
 
-    self.inputs = None
+    self.input_ = None
     self._output_scale = None
 
     self.children = []
     self.branch_outputs = []
     self._kwargs = kwargs
+
+    self._logits_tensor = None
 
 
   # region : Properties
@@ -56,9 +58,21 @@ class Net(Function):
     return f
 
   @property
-  def default_input_tensor(self):
-    if self.inputs is None: raise ValueError('!! Input not found')
-    return self.inputs[0].place_holder
+  def input_tensor(self):
+    if self.input_ is None: raise ValueError('!! Input not found')
+    return self.input_.place_holder
+
+  @property
+  def logits_tensor(self):
+    if self._logits_tensor is not None: return self._logits_tensor
+    for child in reversed(self.children):
+      if isinstance(child, Net) and child.logits_tensor is not None:
+        return child.logits_tensor
+    return None
+
+  @property
+  def is_root(self):
+    return self._level == 0
 
   def _get_layer_string(self, f, scale):
     assert isinstance(f, Layer)
@@ -76,8 +90,8 @@ class Net(Function):
           or detail or f.is_nucleus]
 
     # Add input layer
-    result = ('' if self.inputs is None else 'input_{} => '.format(
-      shape_string(self.default_input_tensor)))
+    result = ('' if self.input_ is None else 'input_{} => '.format(
+      shape_string(self.input_tensor)))
 
     # Check interconnection type
     next_net, next_layer = ' => ', ' -> '
@@ -106,7 +120,7 @@ class Net(Function):
     if self._inter_type != pedia.cascade or self.is_branch: result += ')'
 
     # Add output scale
-    if self._level == 0:
+    if self.is_root:
       result += ' => output_{}'.format(self.children[-1]._output_scale)
 
     # Return
@@ -124,50 +138,37 @@ class Net(Function):
 
   # region : Overrode Method
 
-  def _link(self, inputs, **kwargs):
+  # TODO: modify with_logits mechanism
+  def _link(self, *inputs, **kwargs):
     # region : Check inputs
-    # If self is called without given inputs
-    if inputs is None:
-      if self.inputs is None: raise ValueError('!! Input not defined')
-      inputs = []
-      for input_ in self.inputs: inputs.append(input_())
-
-    # Make sure inputs is a list(or tuple) of tf.Tensor
-    if isinstance(inputs, tf.Tensor): inputs = [inputs]
-    elif isinstance(inputs, (tuple, list)):
-      for input_ in inputs:
-        if not isinstance(input_, tf.Tensor):
-          raise TypeError('!! input list (tuple) must consist of Tensors')
-    else: raise TypeError('!! Illegal input type')
-
-    assert isinstance(inputs, (list, tuple))
+    if len(inputs) == 0:
+      if self.input_ is None: raise ValueError('!! Input not defined')
+      input_ = self.input_()
+    elif len(inputs) == 1: input_ = inputs[0]
+    else: raise SyntaxError('!! Too much inputs')
+    if not isinstance(input_, tf.Tensor):
+      raise TypeError('!! input should be a Tensor')
     # endregion : Check inputs
 
     # Check children
     assert isinstance(self.children, list)
     if len(self.children) == 0: raise ValueError('!! Net is empty')
 
-    with_logits = kwargs.get(pedia.with_logits, False)
-
-    pioneer = inputs
-    logits = None
+    pioneer = input_
     output_list = []
     output = None
     # Link all functions in children
     for f in self.children:
       # Handle branches
       if isinstance(f, Net) and f.is_branch:
-        assert not with_logits
         self.branch_outputs.append(f(pioneer))
         continue
 
       # Logits are always inputs of activation layers
-      if isinstance(f, Activation): logits = pioneer
+      if isinstance(f, Activation): self._logits_tensor = pioneer
 
       # Call each child
-      if isinstance(f, Net) and with_logits:
-        output, logits = f(pioneer, **kwargs)
-      else: output = f(pioneer)
+      output = f(pioneer)
 
       if self._inter_type == pedia.cascade: pioneer = output
       else: output_list.append(output)
@@ -180,8 +181,7 @@ class Net(Function):
       for tensor in output_list: output *= tensor
 
     # Return
-    if with_logits: return output, logits
-    else: return output
+    return output
 
   # endregion : Overrode Methods
 
@@ -197,8 +197,7 @@ class Net(Function):
     return last_net
 
   def add_branch(self):
-    if self._level > 0: raise ValueError('Branches can only added to the trunk')
-
+    if not self.is_root: raise ValueError('Branches can only added to the root')
     net = Net(name='branch', is_branch=True)
     self.add(net)
 
@@ -208,17 +207,16 @@ class Net(Function):
     # If add an empty net
     if f is None:
       name = self._get_new_name(inter_type)
-      net = Net(name, level=self._level+1, inter_type=inter_type)
+      net = Net(name, level=self._level + 1, inter_type=inter_type)
       self.children.append(net)
       return net
 
     # If add a function to this net
     if isinstance(f, Input):
       # If f is a placeholder
-      if self.inputs is None: self.inputs = []
-      self.inputs += [f]
+      self.input_ = f
       return self
-    elif (isinstance(f, Net) or self._level > 0 or
+    elif (isinstance(f, Net) or not self.is_root or
            self._inter_type != pedia.cascade):
       # Net should be added directly into self.children of any net
       # Layer should be added directly into self.children for non-cascade nets
@@ -256,7 +254,7 @@ class Net(Function):
     else: name = self._get_new_name(layer.abbreviation)
 
     # Wrap the layer into a new Net
-    self.add(Net(name, level=self._level+1))
+    self.add(Net(name, level=self._level + 1))
 
   def _get_new_name(self, entity):
     if isinstance(entity, Net): name = entity.group_name
@@ -297,7 +295,6 @@ class Fork(Net):
     return result
 
   def _link(self, inputs, **kwargs):
-    with_logits = kwargs.get(pedia.with_logits, False)
     outputs = []
     for key in self.siblings.keys():
       f = self.siblings[key]
@@ -305,9 +302,6 @@ class Fork(Net):
       with tf.variable_scope(key):
         outputs.append(f(inputs))
 
-    if with_logits:
-      return outputs, None
-    else:
       return outputs
 
   def add(self, name, f):
