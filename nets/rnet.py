@@ -4,8 +4,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe.layers import Input
-
 from tframe import config
 from tframe.nets.net import Net
 
@@ -17,9 +15,6 @@ class RecurrentNet(Net):
     Net.__init__(self, name)
 
     # Attributes
-    self._batch_size = None
-    self._num_steps = None
-
     self._state_size = None
     self._init_state = None
 
@@ -38,21 +33,19 @@ class RecurrentNet(Net):
   def init_state(self):
     if self.is_root:
       states = []
-      for rnn_cell in self.rnn_cells:
-        states.append(rnn_cell.init_state)
+      with tf.name_scope('InitStates'):
+        for rnn_cell in self.rnn_cells:
+          states.append(rnn_cell.init_state)
       assert len(states) == self.rnn_cell_num
       return states
     else:
       # If initial state is a tuple or list, this property must be overrode
       if self._init_state is None:
-        assert self._state_size is not None and self._batch_size is not None
+        assert self._state_size is not None
         # The initialization of init_state must be done under with_graph
         # .. decorator
-        with tf.name_scope('Init_States'):
-          self._init_state = tf.zeros(
-            shape=(self._batch_size, self._state_size),
-            dtype=config.dtype, name='init_state')
-
+        self._init_state = tf.placeholder(
+          dtype=config.dtype, shape=(None, self._state_size), name='init_state')
       return self._init_state
 
   # endregion : Properties
@@ -99,29 +92,32 @@ class RecurrentNet(Net):
 
   # region : Public Methods
 
-  def set_group_shape(self, batch_size, num_steps):
-    self._batch_size = batch_size
-    self._num_steps = num_steps
-    if not self.is_root: return
-
-    # If self is root
-    assert isinstance(self.input_, Input)
-    self.input_.set_group_shape([batch_size, num_steps])
-
-    # Set group shape for children
-    for cell in self.rnn_cells:
-      cell.set_group_shape(batch_size, num_steps)
-
-  def get_state_dict(self, state):
+  def get_state_dict(self, state=None, batch_size=None):
+    """
+    Get state dictionary
+    :param state: if provided, batch_size will be ignored
+    :param batch_size: if specified, a zero-state dictionary will be returned
+    :return: state dictionary
+    """
     if self.is_root:
-      assert len(state) == self.rnn_cell_num
       state_dict = {}
-      for i, rnn_cell in enumerate(self.rnn_cells):
-        state_dict.update(rnn_cell.get_state_dict(state[i]))
+      if state is not None:
+        assert len(state) == self.rnn_cell_num
+        for i, rnn_cell in enumerate(self.rnn_cells):
+          state_dict.update(rnn_cell.get_state_dict(state=state[i]))
+      else:
+        assert batch_size is not None
+        for rnn_cell in self.rnn_cells:
+          state_dict.update(rnn_cell.get_state_dict(batch_size=batch_size))
       return state_dict
     else:
       # If init state is a tuple or a list, this method must be overrode
       assert self._init_state is not None
+      assert self._state_size is not None
+      if state is None:
+        assert batch_size is not None
+        state = tf.zeros(shape=(batch_size, self._state_size),
+                         dtype=config.dtype)
       return {self._init_state: state}
 
   # endregion : Public Methods

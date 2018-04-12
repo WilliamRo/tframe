@@ -46,9 +46,6 @@ class BasicRNNCell(RecurrentNet):
     self._bias_initializer = initializers.get(bias_initializer)
     self._output_scale = state_size
 
-    # Must be initialized under with_graph decorator
-    self._init_state = None
-
 
   def structure_string(self, detail=True, scale=True):
     return self.group_name + '_{}'.format(self._state_size) if scale else ''
@@ -64,19 +61,18 @@ class BasicRNNCell(RecurrentNet):
     input_size = input_shape[1]
 
     # Initiate bias
-    bias = (tf.get_variable('b', shape=[self._state_size],
+    bias = (tf.get_variable('b', shape=[self._state_size], dtype=config.dtype,
                             initializer=self._bias_initializer)
             if self._use_bias else None)
+
+    get_variable = lambda name, shape: tf.get_variable(
+      name, shape, dtype=config.dtype, initializer=self._weight_initializer)
     if self._inner_struct == 'add':
-      W_h = tf.get_variable('W_h', shape=[self._state_size, self._state_size],
-                            initializer=self._weight_initializer)
-      W_x = tf.get_variable('W_x', shape=[input_size, self._state_size],
-                            initializer=self._weight_initializer)
+      W_h = get_variable('W_h', [self._state_size, self._state_size])
+      W_x = get_variable('W_x', [input_size, self._state_size])
       tmp = tf.matmul(pre_state, W_h) + tf.matmul(input_, W_x)
     elif self._inner_struct == 'concat':
-      W = tf.get_variable(
-        'W', shape=[self._state_size + input_size, self._state_size],
-        initializer=self._weight_initializer)
+      W = get_variable('W', [self._state_size + input_size, self._state_size])
       tmp = tf.matmul(tf.concat([input_, pre_state], axis=1), W)
     else:
       raise TypeError('!! Unknown inner structure {}'.format(
