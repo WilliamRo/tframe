@@ -11,7 +11,7 @@ class Function(object):
 
   def __call__(self, *inputs, **kwargs):
     if self.group_name is not None:
-      with tf.variable_scope(self.group_name):
+      with tf.variable_scope(self.group_name, reuse=tf.AUTO_REUSE):
         return self._link(*inputs, **kwargs)
     else:
       return self._link(*inputs, **kwargs)

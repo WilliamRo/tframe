@@ -12,6 +12,7 @@ from tframe.layers.layer import single_input
 from tframe.utils.misc import get_scale
 
 from tframe import activations
+from tframe import config
 from tframe import initializers
 from tframe import regularizers
 from tframe import pedia
@@ -202,23 +203,40 @@ class Reshape(Layer):
 
 class Input(Layer):
 
-  def __init__(self, sample_shape=None, dtype=tf.float32, name='Input'):
+  def __init__(
+      self,
+      sample_shape=None,
+      dtype=config.dtype,
+      name='Input',
+      group_shape=None):
+
     # Check sample shape
     if sample_shape is not None:
       if not isinstance(sample_shape, (list, tuple)):
         raise TypeError('sample_shape must be a list or a tuple')
-      if sample_shape[0] is not None:
-        sample_shape = [None] + list(sample_shape)
 
     # Initiate attributes
     self.sample_shape = sample_shape
+    self.group_shape = None
     self.dtype = dtype
     self.name = name
     self.place_holder = None
 
+    self.set_group_shape(group_shape)
 
-  def get_shape(self):
-    return self.sample_shape
+
+  @property
+  def input_shape(self):
+    if self.sample_shape is None: return self.sample_shape
+    if self.group_shape is None: return [None] + list(self.sample_shape)
+    else: return list(self.group_shape) + list(self.sample_shape)
+
+
+  def set_group_shape(self, shape):
+    if shape is not None:
+      if not isinstance(shape, (tuple, list)):
+        raise TypeError('group_shape must be a list or a tuple')
+    self.group_shape = shape
 
 
   def _link(self, *args, **kwargs):
@@ -226,7 +244,7 @@ class Input(Layer):
     #   be given as input
     assert len(args) == 0 and len(kwargs) == 0
     input_ = tf.placeholder(
-      dtype=self.dtype, shape=self.sample_shape, name=self.name)
+      dtype=self.dtype, shape=self.input_shape, name=self.name)
     # Update neuron scale
     self.neuron_scale = get_scale(input_)
     # Add input to default collection

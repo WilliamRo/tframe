@@ -138,6 +138,10 @@ class TFData(object):
 
   @property
   def progress(self):
+    # For RNN input
+    if self._rnn_input:
+      return 1.0 * self._cursor / self._epoch_size
+    # For common inputs
     cursor = self._cursor - 1
     if cursor <= self._batch_size:
       return 1.0
@@ -243,17 +247,25 @@ class TFData(object):
 
   def gen_rnn_batches(self, batch_size, num_steps):
     # Sanity check
-    assert len(self.features.shape) == 2 and self.features.shape[0] == 1
+    assert self.features is not None and self.targets is not None
+    x_shape, y_shape = self.feature_shape, self.targets[0].shape
+    assert len(x_shape) == 1 and len(y_shape) == 1
 
     self._rnn_input = True
     # Get batch partition length
     L = self.sample_num // batch_size
-    data_x = np.zeros([batch_size, L])
-    data_y = np.zeros([batch_size, L])
+    data_x = np.zeros([batch_size, L, *x_shape])
+    data_y = np.zeros([batch_size, L, *y_shape])
     for i in range(batch_size):
-      data_x[i] = None
+      data_x[i] = self.features[i * L:(i + 1) * L, :]
+      data_y[i] = self.targets[i * L:(i + 1) * L, :]
 
-
+    self._epoch_size = L // num_steps
+    for i in range(self._epoch_size):
+      x = data_x[:, i * num_steps:(i + 1) * num_steps]
+      y = data_x[:, i * num_steps:(i + 1) * num_steps]
+      self._cursor = i + 1
+      yield (x, y)
 
   # endregion : Data-fetch methods
 

@@ -71,13 +71,14 @@ class Model(object):
     # Each model is bound to a unique graph
     self._graph = tf.Graph()
     with self._graph.as_default():
-      self._best_metric = tf.Variable(
-        initial_value=-1.0, trainable=False, name='best_metric')
-      self._best_metric_sum = tf.summary.scalar(
-        'best_metric_sum', self._best_metric)
-      self._best_mean_metric = tf.Variable(
-        initial_value=-1.0, trainable=False, name='best_mean_metric')
-      self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
+      with tf.name_scope('misc'):
+        self._best_metric = tf.Variable(
+          initial_value=-1.0, trainable=False, name='best_metric')
+        self._best_metric_sum = tf.summary.scalar(
+          'best_metric_sum', self._best_metric)
+        self._best_mean_metric = tf.Variable(
+          initial_value=-1.0, trainable=False, name='best_mean_metric')
+        self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
     self._graph.is_training = self._is_training
@@ -120,14 +121,9 @@ class Model(object):
 
   # region : Building
 
-  def build(self):
+  def build(self, *args, **kwargs):
     """Abstract method, must be implemented in different models"""
     raise  NotImplementedError('build method not implemented')
-
-  def _define_loss(self, loss):
-    if not isinstance(loss, tf.Tensor):
-      raise TypeError('loss must be a tensor')
-    self._loss = loss
 
   @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):

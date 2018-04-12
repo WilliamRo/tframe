@@ -71,7 +71,7 @@ class Predictor(Feedforward):
     self.show_building_info(FeedforwardNet=self)
 
     # Launch session
-    self.launch_model(FLAGS.overwrite and FLAGS.train)
+    self.launch_model(FLAGS.overwrite)
 
     # Set built flag
     self._built = True

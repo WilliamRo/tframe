@@ -80,7 +80,8 @@ class Net(Function):
     if scale and f.neuron_scale is not None:
       self._output_scale = shape_string(
         f.neuron_scale if f.output_scale is None else f.output_scale)
-      result += '_{}'.format(f.neuron_scale)
+      result += '_{}'.format(f.neuron_scale if len(f.neuron_scale) > 1 else
+                             f.neuron_scale[0])
     return result
 
   def structure_string(self, detail=True, scale=True):
@@ -91,7 +92,7 @@ class Net(Function):
 
     # Add input layer
     result = ('' if self.input_ is None else 'input_{} => '.format(
-      shape_string(self.input_tensor)))
+      shape_string(self.input_.sample_shape)))
 
     # Check interconnection type
     next_net, next_layer = ' => ', ' -> '

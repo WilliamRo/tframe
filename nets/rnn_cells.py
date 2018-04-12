@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import tensorflow as tf
 
 from tframe import activations
@@ -45,24 +44,26 @@ class BasicRNNCell(RecurrentNet):
     self._use_bias = use_bias
     self._weight_initializer = initializers.get(weight_initializer)
     self._bias_initializer = initializers.get(bias_initializer)
+    self._output_scale = state_size
+
+    # Must be initialized under with_graph decorator
+    self._init_state = None
 
 
   def structure_string(self, detail=True, scale=True):
     return self.group_name + '_{}'.format(self._state_size) if scale else ''
 
 
-  def zero_state(self, batch_size):
-    return np.zeros(shape=[batch_size, self._state_size], dtype=config.dtype)
-
-
   def _link(self, pre_state, input_, **kwargs):
     assert isinstance(pre_state, tf.Tensor)
-    assert pre_state.shape.as_list()[1] == self._state_size
+    state_shape = pre_state.shape.as_list()
+    assert state_shape[1] == self._state_size
     assert isinstance(input_, tf.Tensor)
     input_shape = input_.shape.as_list()
     assert len(input_shape) == 2
     input_size = input_shape[1]
 
+    # Initiate bias
     bias = (tf.get_variable('b', shape=[self._state_size],
                             initializer=self._bias_initializer)
             if self._use_bias else None)
