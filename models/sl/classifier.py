@@ -38,9 +38,9 @@ class Classifier(Predictor):
     # Find last layer
     if (isinstance(self.last_function, Activation)
         and self.last_function.abbreviation == 'softmax'):
-      self._probabilities = self.outputs
+      self._probabilities = self._outputs
     else:
-      self._probabilities = tf.nn.softmax(self.outputs, name='probabilities')
+      self._probabilities = tf.nn.softmax(self._outputs, name='probabilities')
 
 
   def _update_model(self, data_batch, **kwargs):
@@ -83,7 +83,7 @@ class Classifier(Predictor):
 
 
   def evaluate_model(self, data, with_false=False):
-    if self.outputs is None:
+    if self._outputs is None:
       raise ValueError('Model not built yet')
     if self._session is None:
       self.launch_model(overwrite=False)
@@ -111,7 +111,7 @@ class Classifier(Predictor):
 
 
   def classify(self, data):
-    if self.outputs is None:
+    if self._outputs is None:
       raise ValueError('Model not built yet')
     if self._session is None:
       self.launch_model(overwrite=False)

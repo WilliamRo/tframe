@@ -22,18 +22,9 @@ class Recurrent(Model, RecurrentNet):
     Model.__init__(self, mark)
     RecurrentNet.__init__(self, 'RecurrentNet')
     # Attributes
-    self.outputs = None
     # mascot will be initiated as a placeholder with no shape specified
     # .. and will be put into initializer argument of tf.scan
     self._mascot = None
-
-  # region : Properties
-
-  @property
-  def description(self):
-    return self.structure_string()
-
-  # endregion : Properties
 
   # region : Build
 
@@ -56,7 +47,7 @@ class Recurrent(Model, RecurrentNet):
     perm = list(range(len(input_placeholder.shape.as_list())))
     elems = tf.transpose(input_placeholder, [1, 0] + perm[2:])
     # Call scan to produce a dynamic op
-    self.outputs, _ = tf.scan(
+    self._outputs, _ = tf.scan(
       self, elems, initializer=(self._mascot, self.init_state), name='Scan')
 
     # Set built flag

@@ -44,11 +44,11 @@ class TDPlayer(Feedforward, Player):
     Feedforward.build(self)
     # Initialize target placeholder
     self._next_value = tf.placeholder(
-      self.outputs.dtype, self.outputs.get_shape(), name='next_value')
+      self._outputs.dtype, self._outputs.get_shape(), name='next_value')
 
     # Define loss
     with tf.name_scope('Loss'):
-      delta = tf.reduce_sum(self._next_value - self.outputs, name='delta')
+      delta = tf.reduce_sum(self._next_value - self._outputs, name='delta')
       self._loss = 0.5 * tf.square(delta)
       tf.summary.scalar('loss_sum', self._loss)
 
@@ -58,7 +58,7 @@ class TDPlayer(Feedforward, Player):
       # Define gradient
       with tf.name_scope('Gradients'):
         vars = tf.trainable_variables()
-        grads = tf.gradients(self.outputs, vars)
+        grads = tf.gradients(self._outputs, vars)
       # Update model with eligibility traces
       for var, grad in zip(vars, grads):
         with tf.variable_scope('trace'):
@@ -234,7 +234,7 @@ class TDPlayer(Feedforward, Player):
     return reward if agent.terminated else values[action_index]
 
   def estimate(self, states):
-    if self.outputs is None:
+    if self._outputs is None:
       raise ValueError('Model not built yet')
     if self._session is None:
       self.launch_model(overwrite=False)
@@ -242,7 +242,7 @@ class TDPlayer(Feedforward, Player):
     feed_dict = {self.input_[0]: states}
     feed_dict.update(self._get_status_feed_dict(False))
 
-    outputs = self._session.run( self.outputs, feed_dict)
+    outputs = self._session.run(self._outputs, feed_dict)
 
     return outputs
 

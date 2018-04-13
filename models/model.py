@@ -56,6 +56,7 @@ class Model(object):
     self._summary_writer = None
     self._saver = None
 
+    self._outputs = None
     self._loss = None
     self._train_step = None
     self._optimizer = None

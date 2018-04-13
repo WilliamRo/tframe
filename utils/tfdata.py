@@ -134,6 +134,7 @@ class TFData(object):
 
   @property
   def batches_per_epoch(self):
+    if self._rnn_input: return 1.0 * self._epoch_size
     return 1.0 * self.sample_num / self._batch_size
 
   @property

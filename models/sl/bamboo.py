@@ -42,7 +42,7 @@ class Bamboo(Predictor):
     self._loss = self._losses[index]
     self._metric = self._metrics[index]
     self._train_step = self._train_ops[index]
-    self.outputs = self._output_list[index]
+    self._outputs = self._output_list[index]
 
 
   @with_graph
@@ -50,19 +50,19 @@ class Bamboo(Predictor):
             metric=None, metric_name='Metric'):
     Feedforward.build(self)
     # Check branch shapes
-    output_shape = self.outputs.get_shape().as_list()
+    output_shape = self._outputs.get_shape().as_list()
     for b_out in self.branch_outputs:
       assert isinstance(b_out, tf.Tensor)
       if b_out.get_shape().as_list() != output_shape:
         raise ValueError('!! Branch outputs in bamboo should have the same'
                          ' shape as the trunk output')
     # Initiate targets and add it to collection
-    self._targets = tf.placeholder(self.outputs.dtype, output_shape,
+    self._targets = tf.placeholder(self._outputs.dtype, output_shape,
                                    name='targets')
     tf.add_to_collection(pedia.default_feed_dict, self._targets)
 
     # Generate output list
-    output_list = self.branch_outputs + [self.outputs]
+    output_list = self.branch_outputs + [self._outputs]
 
     # Define losses
     loss_function = losses.get(loss)

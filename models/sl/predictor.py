@@ -5,6 +5,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tframe.models.feedforward import Feedforward
+from tframe.models.recurrent import Recurrent
 
 from tframe import console
 from tframe import losses
@@ -16,35 +17,60 @@ from tframe import FLAGS
 from tframe import with_graph
 
 
-class Predictor(Feedforward):
-  def __init__(self, mark=None):
-    Feedforward.__init__(self, mark)
+class Predictor(Feedforward, Recurrent):
+  """A feedforward or a recurrent predictor"""
+  model_name = 'Predictor'
+
+  def __init__(self, mark=None, net_type=Feedforward):
+    """
+    Construct a Predictor
+    :param mark: model mark
+    :param net_type: \in {Feedforward, Recurrent}
+    """
+    if not net_type in (Feedforward, Recurrent):
+      raise TypeError('!! Unknown net type')
+    self.master = net_type
+    # Call parent's constructor
+    net_type.__init__(self, mark)
+    # Attributes
     self._targets = None
+
+  # region : Properties
 
   @property
   def description(self):
+    # Call Net's method
     return self.structure_string()
 
   @property
   def metric_is_accuracy(self):
     return pedia.memo[pedia.metric_name] == pedia.Accuracy
 
+  # endregion : Properties
+
+  # region : Build
+
   @with_graph
   def build(self, loss='cross_entropy', optimizer=None,
-             metric=None, metric_name='Metric'):
-    Feedforward.build(self)
+            metric=None, metric_name='Metric'):
+    # Call parent's build method
+    self.master.build(self)
+
     # Summary placeholder
     default_summaries = []
+    # print summaries are produced during the execution of print function,
+    # .. i.e. the metric summary
     print_summaries = []
+
     # Initiate targets and add it to collection
-    self._targets = tf.placeholder(self.outputs.dtype, self.outputs.get_shape(),
-                                   name='targets')
+    self._targets = tf.placeholder(
+      self._outputs.dtype, self._outputs.get_shape(), name='targets')
     tf.add_to_collection(pedia.default_feed_dict, self._targets)
 
     # Define loss
     loss_function = losses.get(loss)
     with tf.name_scope('Loss'):
-      self._loss = loss_function(self._targets, self.outputs)
+      self._loss = loss_function(self._targets, self._outputs)
       # TODO: with or without regularization loss?
       default_summaries.append(tf.summary.scalar('loss_sum', self._loss))
       # Try to add regularization loss
@@ -56,7 +82,7 @@ class Predictor(Feedforward):
     if metric_function is not None:
       pedia.memo[pedia.metric_name] = metric_name
       with tf.name_scope('Metric'):
-        self._metric = metric_function(self._targets, self.outputs)
+        self._metric = metric_function(self._targets, self._outputs)
         print_summaries.append(tf.summary.scalar('metric_sum', self._metric))
 
     # Merge summaries
@@ -68,13 +94,18 @@ class Predictor(Feedforward):
     self._define_train_step(optimizer)
 
     # Print status and model structure
-    self.show_building_info(FeedforwardNet=self)
+    kwargs = {'{}'.format(self.master.__name__): self}
+    self.show_building_info(**kwargs)
 
     # Launch session
     self.launch_model(FLAGS.overwrite)
 
     # Set built flag
     self._built = True
+
+  # endregion : Build
+
+  # region : Train
 
   # TODO: does it have any difference with the one in model ?
   def _print_progress(self, epc, start_time, info_dict, **kwargs):
@@ -91,6 +122,9 @@ class Predictor(Feedforward):
       console.print_progress(progress=self._training_set.progress,
                              start_time=start_time)
 
+  # endregion : Train
+
+  # region : Public Methods
 
   def predict(self, data, **kwargs):
     # Sanity check
@@ -102,15 +136,16 @@ class Predictor(Feedforward):
 
     if data.targets is None:
       outputs = self._session.run(
-        self.outputs,
+        self._outputs,
         feed_dict=self._get_default_feed_dict(data, is_training=False))
       return outputs
     else:
       outputs, loss = self._session.run(
-        [self.outputs, self._loss],
+        [self._outputs, self._loss],
         feed_dict=self._get_default_feed_dict(data, is_training=False))
       return outputs, loss
 
+  # endregion : Public Methods
 
 
 
