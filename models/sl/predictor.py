@@ -126,7 +126,7 @@ class Predictor(Feedforward, Recurrent):
 
   # region : Public Methods
 
-  def predict(self, data, **kwargs):
+  def predict(self, data, only_output=False, **kwargs):
     # Sanity check
     if not isinstance(data, TFData):
       raise TypeError('!! Input data must be an instance of TFData')
@@ -134,16 +134,10 @@ class Predictor(Feedforward, Recurrent):
     if self._session is None:
       self.launch_model(overwrite=False)
 
-    if data.targets is None:
-      outputs = self._session.run(
-        self._outputs,
-        feed_dict=self._get_default_feed_dict(data, is_training=False))
-      return outputs
-    else:
-      outputs, loss = self._session.run(
-        [self._outputs, self._loss],
-        feed_dict=self._get_default_feed_dict(data, is_training=False))
-      return outputs, loss
+    only_output = only_output or data.targets is None
+    fetches = [self._outputs] + [] if only_output else [self._loss]
+    feed_dict = self._get_default_feed_dict(data, is_training=False)
+    return self._session.run(fetches, feed_dict=feed_dict)
 
   # endregion : Public Methods
 

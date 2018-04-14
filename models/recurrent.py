@@ -47,8 +47,12 @@ class Recurrent(Model, RecurrentNet):
     perm = list(range(len(input_placeholder.shape.as_list())))
     elems = tf.transpose(input_placeholder, [1, 0] + perm[2:])
     # Call scan to produce a dynamic op
-    self._outputs, _ = tf.scan(
+    scan_outputs, _ = tf.scan(
       self, elems, initializer=(self._mascot, self.init_state), name='Scan')
+    # Transpose scan outputs to get final outputs
+    assert isinstance(scan_outputs, tf.Tensor)
+    perm = list(range(len(scan_outputs.shape.as_list())))
+    self._outputs = tf.transpose(scan_outputs, [1, 0] + perm[2:])
 
     # Set built flag
     self._built = True

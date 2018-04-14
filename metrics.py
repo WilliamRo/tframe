@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 
 import six
-
 import tensorflow as tf
+
+from tframe.trainers import Metric
 
 
 def accuracy(labels, outputs):
@@ -34,20 +35,22 @@ def rms_error_ratio(truth, output):
   return rms(truth - output) / rms(truth) * 100
 
 
-def get(identifier):
-  if identifier is None or callable(identifier):
-    return identifier
+def get(identifier, **kwargs):
+  as_loss = kwargs.get('as_loss', True)
+  if callable(identifier):
+    return Metric(identifier, as_loss)
   elif isinstance(identifier, six.string_types):
     identifier = identifier.lower()
     if identifier in ['accuracy', 'acc']:
-      return accuracy
+      f, as_loss = accuracy, False
     elif identifier in ['delta', 'distance']:
-      return delta
+      f = delta
     elif identifier in ['ratio', 'norm_ratio']:
-      return norm_error_ratio
+      f = norm_error_ratio
     elif identifier in ['rms_ratio']:
-      return rms_error_ratio
+      f = rms_error_ratio
     else:
       raise ValueError('Can not resolve "{}"'.format(identifier))
+    return Metric(f, as_loss)
   else:
     raise TypeError('identifier must be a function or a string')

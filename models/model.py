@@ -70,8 +70,8 @@ class Model(object):
     self._last_epoch = 0
 
     # Each model is bound to a unique graph
-    self._graph = tf.Graph()
-    with self._graph.as_default():
+    self.graph = tf.Graph()
+    with self.graph.as_default():
       with tf.name_scope('misc'):
         self._best_metric = tf.Variable(
           initial_value=-1.0, trainable=False, name='best_metric')
@@ -82,9 +82,9 @@ class Model(object):
         self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
-    self._graph.is_training = self._is_training
+    self.graph.is_training = self._is_training
     # Record current graph
-    tfr.current_graph = self._graph
+    tfr.current_graph = self.graph
 
   # region : Properties
 
@@ -117,6 +117,10 @@ class Model(object):
   @property
   def built(self):
     return self._built
+
+  @property
+  def metric(self):
+    return self._metric
 
   # endregion : Properties
 
@@ -334,17 +338,17 @@ class Model(object):
     new_record = False
 
     # Calculate metric
-    assert isinstance(self._metric, tf.Tensor)
+    # assert isinstance(self._metric, tf.Tensor)
     feed_dict = self._get_default_feed_dict(
       self._validation_set, is_training=False)
 
     # _print_summary is written with print cycle
     if self._print_summary is None or not FLAGS.summary:
       metric, best_metric = self._session.run(
-        [self._metric, self._best_metric], feed_dict=feed_dict)
+        [self._metric.tensor, self._best_metric], feed_dict=feed_dict)
     else:
       metric, summary, best_metric = self._session.run(
-        [self._metric, self._print_summary, self._best_metric],
+        [self._metric.tensor, self._print_summary, self._best_metric],
         feed_dict=feed_dict)
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
       self._summary_writer.add_summary(summary, self._counter)
@@ -448,7 +452,7 @@ class Model(object):
       clear_paths(paths)
 
     console.show_status('Launching session ...')
-    self._session = tf.Session(graph=self._graph)
+    self._session = tf.Session(graph=self.graph)
     console.show_status('Session launched')
     self._saver = tf.train.Saver()
     if FLAGS.summary or FLAGS.hpt:

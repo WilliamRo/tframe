@@ -70,13 +70,21 @@ class TFData(object):
     self._batch_size = None
     self._cursor = 0
 
-    # Variables used for RNN data
-    self._rnn_input = False
+    # Attributes used for RNN data
+    self._is_for_rnn = False
     self._epoch_size = None
 
   # endregion : Constructor
 
   # region : Properties
+
+  @property
+  def as_rnn_data(self):
+    x = np.reshape(self.features, [1] + list(self.features.shape))
+    y = None
+    if self.targets is not None:
+      y = np.reshape(self.targets, [1] + list(self.targets.shape))
+    return self.get_shadow(x, targets=y)
 
   @property
   def predictions(self):
@@ -134,13 +142,13 @@ class TFData(object):
 
   @property
   def batches_per_epoch(self):
-    if self._rnn_input: return 1.0 * self._epoch_size
+    if self._is_for_rnn: return 1.0 * self._epoch_size
     return 1.0 * self.sample_num / self._batch_size
 
   @property
   def progress(self):
     # For RNN input
-    if self._rnn_input:
+    if self._is_for_rnn:
       return 1.0 * self._cursor / self._epoch_size
     # For common inputs
     cursor = self._cursor - 1
@@ -148,6 +156,12 @@ class TFData(object):
       return 1.0
     else:
       return 1.0 * cursor / self.sample_num
+
+  # endregion : Properties
+
+  # region : Public Methods
+
+  # region : Data-related methods
 
   def __getitem__(self, item):
     if isinstance(item, six.string_types):
@@ -164,12 +178,6 @@ class TFData(object):
     features = kwargs.pop(pedia.features)
 
     return self.get_shadow(features, **kwargs)
-
-  # endregion : Properties
-
-  # region : Public Methods
-
-  # region : Data-related methods
 
   def get_shadow(self, features, **kwargs):
     kwargs.update(self.attachments)
@@ -252,7 +260,7 @@ class TFData(object):
     x_shape, y_shape = self.feature_shape, self.targets[0].shape
     assert len(x_shape) == 1 and len(y_shape) == 1
 
-    self._rnn_input = True
+    self._is_for_rnn = True
     # Get batch partition length
     L = self.sample_num // batch_size
     data_x = np.zeros([batch_size, L, *x_shape])
@@ -266,7 +274,7 @@ class TFData(object):
       x = data_x[:, i * num_steps:(i + 1) * num_steps]
       y = data_x[:, i * num_steps:(i + 1) * num_steps]
       self._cursor = i + 1
-      yield (x, y)
+      yield TFData(features=x, targets=y)
 
   # endregion : Data-fetch methods
 

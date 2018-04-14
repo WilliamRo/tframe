@@ -36,7 +36,7 @@ class GAN(Model):
     self._conditional = classes > 0
     self._classes = classes
     if self._conditional:
-      with self._graph.as_default():
+      with self.graph.as_default():
         self._targets = tf.placeholder(
           dtype=tf.float32, shape=[None, classes], name='one_hot_labels')
 
