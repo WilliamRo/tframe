@@ -16,7 +16,6 @@ from tframe import config
 from tframe import initializers
 from tframe import regularizers
 from tframe import pedia
-from tframe import FLAGS
 
 
 class Activation(Layer):
@@ -32,7 +31,7 @@ class Activation(Layer):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
     outputs = self._activation(inputs)
-    if FLAGS.act_sum:
+    if config.activation_sum:
       with tf.name_scope(pedia.summaries):
         act_sum = tf.summary.histogram('activations', tf.abs(outputs))
         pedia.memo[pedia.activation_sum] += [act_sum]
@@ -206,7 +205,7 @@ class Input(Layer):
   def __init__(
       self,
       sample_shape=None,
-      dtype=config.dtype,
+      dtype=None,
       name='Input',
       group_shape=None):
 
@@ -218,7 +217,7 @@ class Input(Layer):
     # Initiate attributes
     self.sample_shape = sample_shape
     self.group_shape = None
-    self.dtype = dtype
+    self.dtype = config.dtype if dtype is None else dtype
     self.name = name
     self.place_holder = None
 

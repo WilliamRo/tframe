@@ -2,14 +2,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import time
 import numpy as np
+
 import tensorflow as tf
 
 from tframe import console
 from tframe import TFData
-from tframe import FLAGS
 from tframe.core import with_graph
 from tframe.models.model import Model
+from tframe.config import Config, Flag
 
 from tframe.trainers.metric import Metric
 
@@ -33,21 +35,21 @@ class Trainer(object):
     self.validation_set = None
     self.set_data(training_set, validation_set)
 
-    # Set snapshot
-    if snapshot is not None and not callable(snapshot):
-      raise TypeError('!! snapshot must be callable')
-    self._snapshot = snapshot
-
-    # Set probe
-    if probe is not None and not callable(probe):
-      raise TypeError('!! probe must be callable')
-    self._probe = probe
+    # Set callable attributes
+    self._snapshot = self._check_callable(snapshot, 'snapshot')
+    self._probe = self._check_callable(probe, 'probe')
 
     # Initiate trainer hub
     self.th = TrainerHub(self)
 
 
   # region : Properties
+
+  @property
+  def session(self):
+    session = self.model.session
+    assert isinstance(session, tf.Session)
+    return session
 
   # endregion : Properties
 
@@ -66,30 +68,65 @@ class Trainer(object):
   # region : Train
 
   @with_graph
-  def train(self, config=None, **kwargs):
+  def train(self, hub=None, **kwargs):
     # Set trainer hub
-    self._init_trainer_hub(config, **kwargs)
+    self._init_trainer_hub(hub, **kwargs)
     # Do some check-up
     self._check_data(), self._sanity_check(), self.th.sanity_check()
-
-    # Set batch size
+    # TODO: Set batch size
+    # Run model's pre-train method
+    self.model.pretrain(**kwargs)
+    # Show configurations
+    self._show_configurations()
+    # Check model.session
+    self._check_model()
+    # TODO: merged summary
 
     # Train with graph
+    with self.session.as_default(): self._outer_loop()
+
+    # :: After training
     pass
 
 
-  def _init_trainer_hub(self, config, **kwargs):
-    if config is not None:
+  # region : Before training
+
+  def _init_trainer_hub(self, hub, **kwargs):
+    if hub is not None:
       # If th is provided
-      if not isinstance(config, TrainerHub):
+      if not isinstance(hub, TrainerHub):
         raise TypeError('!! config must be an instance of TrainerHub')
-      self.th = config
+      self.th = hub
       self.th.trainer = self
     else: self.th.set_up(**kwargs)
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
     pass
+
+  def _show_configurations(self):
+    # TODO: to be modified
+    console.show_status('Configurations:')
+    console.supplement('Training set feature shape: {}'.format(
+      self.training_set.features.shape))
+    console.supplement('epochs: {}'.format(self.th.epoch))
+    console.supplement('batch size: {}'.format(self.th.batch_size))
+
+  def _check_model(self):
+    if self.model.session is None:
+      self.model.launch_model(self.th.overwrite)
+
+  # endregion : Before training
+
+  # region : During training
+
+  def _outer_loop(self):
+    pass
+
+  def _inner_loop(self):
+    pass
+
+  # endregion : During training
 
   # endregion : Train
 
@@ -103,32 +140,43 @@ class Trainer(object):
     if not isinstance(data_set, TFData):
       raise TypeError('!! {} must be an instance of TFData'.format(name))
 
+  @staticmethod
+  def _check_callable(f, name):
+    if f is not None and not callable(f):
+      raise TypeError('!! {} must be callable'.format(name))
+    return f
+
   # endregion : Private Methods
 
 
-class TrainerHub(object):
+class TrainerHub(Config):
+  """"""
+  # :: Define class attributes
+  epoch = Flag.integer(1, 'Epoch number to train')
+  batch_size = Flag.integer(1, 'Batch size')
+  shuffle = Flag.boolean(True, 'Whether to shuffle')
+
+  print_cycle = Flag.integer(0, 'Print cycle')
+  validate_cycle = Flag.integer(0, 'Validate cycle')
+  snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
+  match_cycle = Flag.integer(0, 'Match cycle for RL')
+
+  save_best = Flag.boolean(False, 'Whether to save best')
+  idle_tol = Flag.integer(20, 'Torrance of idle rounds when early stop is on')
+
   def __init__(self, trainer=None):
     self.trainer = trainer
 
-    self.epoch = 1
-    self.batch_size = 1
-    self.print_cycle = 0
-    self.validate_cycle = 0
-    self.snapshot_cycle = 0
-
-    self.save_best = False
-
-
   def set_up(self, **kwargs):
-    # Set epoch
-    epoch = kwargs.get('epoch', self.epoch)
-    self.epoch = FLAGS.epoch if FLAGS.epoch > 0 else epoch
-    # Set batch size
-    batch_size = kwargs.get('batch_size', self.batch_size)
-    self.batch_size = FLAGS.batch_size if FLAGS.batch_size > 0 else batch_size
-
+    for key, arg in kwargs.items():
+      if hasattr(self, key): self.__setattr__(key, arg)
+      else: raise ValueError('!! can not resolve key {}'.format(key))
 
   def sanity_check(self):
     assert isinstance(self.trainer, Trainer)
+
+
+# Register trainer hub
+TrainerHub.register()
 
 

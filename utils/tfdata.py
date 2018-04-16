@@ -21,8 +21,7 @@ class TFData(object):
   """
   # region : Constructor
 
-  def __init__(self, features, targets=None, name=None, classes=None,
-               **kwargs):
+  def __init__(self, features, targets=None, name='tfr_data', **kwargs):
     """
     Pack data into an instance of TFData
     :param features: features in numpy array
@@ -39,14 +38,14 @@ class TFData(object):
     if not hasattr(features, 'shape'):
       raise ValueError('features must have attribute "shape"')
 
+    # :: Initialize core attributes
     self.name = name
-
     # A dictionary where the data is stored
     self._data = {pedia.features: features}
     # Data set properties, not a list with the same length of core data
     self.attachments = {}
     # Description of classes
-    self.classes = classes
+    self.classes = kwargs.get('classes', None)
 
     # Put data into self._data or self.attachment
     if targets is not None:
@@ -66,10 +65,9 @@ class TFData(object):
       if len(data.shape) == 1:
         self._data[key] = data.reshape((data.shape[0], 1))
 
-    # Initialize private fields
+    # :: Initialize other attributes
     self._batch_size = None
     self._cursor = 0
-
     # Attributes used for RNN data
     self._is_for_rnn = False
     self._epoch_size = None
@@ -78,20 +76,15 @@ class TFData(object):
 
   # region : Properties
 
-  @property
-  def as_rnn_data(self):
-    x = np.reshape(self.features, [1] + list(self.features.shape))
-    y = None
-    if self.targets is not None:
-      y = np.reshape(self.targets, [1] + list(self.targets.shape))
-    return self.get_shadow(x, targets=y)
+  # region : Basic Properties
 
   @property
-  def predictions(self):
-    if pedia.predictions in self._data.keys():
-      return self._data[pedia.predictions]
-    else:
-      return None
+  def sample_num(self):
+    return self.features.shape[0]
+
+  @property
+  def feature_shape(self):
+    return self.features[0].shape
 
   @property
   def scalar_labels(self):
@@ -107,6 +100,10 @@ class TFData(object):
     # At this point targets may be one-hot
     return np.argmax(self.targets, axis=1)
 
+  # endregion : Basic Properties
+
+  # region : Booleans
+
   @property
   def feature_is_image(self):
     feature_shape = self.features.shape
@@ -119,13 +116,23 @@ class TFData(object):
 
     return flag
 
-  @property
-  def sample_num(self):
-    return self.features.shape[0]
+  # endregion : Booleans
+
+  # region : Data fetchers
 
   @property
-  def cursor(self):
-    return self._cursor
+  def as_rnn_data(self):
+    x = np.reshape(self.features, [1] + list(self.features.shape))
+    y = None
+    if self.targets is not None:
+      y = np.reshape(self.targets, [1] + list(self.targets.shape))
+    return self.get_shadow(x, targets=y)
+
+  @property
+  def predictions(self):
+    if pedia.predictions in self._data.keys():
+      return self._data[pedia.predictions]
+    else: return None
 
   @property
   def features(self):
@@ -136,9 +143,13 @@ class TFData(object):
     return (None if pedia.targets not in self._data.keys()
             else self._data[pedia.targets])
 
+  # endregion : Data fetchers
+
+  # region : Progress
+
   @property
-  def feature_shape(self):
-    return self.features[0].shape
+  def cursor(self):
+    return self._cursor
 
   @property
   def batches_per_epoch(self):
@@ -156,6 +167,8 @@ class TFData(object):
       return 1.0
     else:
       return 1.0 * cursor / self.sample_num
+
+  # endregion : Progress
 
   # endregion : Properties
 

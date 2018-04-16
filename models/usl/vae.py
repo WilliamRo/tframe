@@ -13,7 +13,7 @@ from tframe.utils import imtool
 from tframe.utils import TFData
 
 from tframe import pedia
-from tframe import FLAGS
+from tframe import config
 from tframe import with_graph
 
 
@@ -134,14 +134,14 @@ class VAE(Model):
     self._snapshot_function = self._default_snapshot_function
 
     # Launch session
-    self.launch_model(FLAGS.overwrite)
+    self.launch_model(overwrite=config.overwrite)
 
   # endregion : Building
 
   # region : Training
 
-  def _pretrain(self, **kwargs):
-    self._sample_num = (FLAGS.sample_num if FLAGS.sample_num > 0
+  def pretrain(self, **kwargs):
+    self._sample_num = (config.sample_num if config.sample_num > 0
                         else kwargs.get('sample_num', 9))
 
   def _update_model(self, data_batch, **kwargs):
@@ -214,7 +214,7 @@ class VAE(Model):
     assert isinstance(self._session, tf.Session)
 
     # Get sample numbers
-    sample_num = (FLAGS.sample_num if FLAGS.sample_num > 0 else
+    sample_num = (config.sample_num if config.sample_num > 0 else
                   max(1, sample_num))
 
     # Check input z

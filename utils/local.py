@@ -6,7 +6,7 @@ import six
 
 import tensorflow as tf
 
-from tframe import FLAGS
+from tframe import config
 from . import console
 
 
@@ -21,7 +21,7 @@ def check_path(*paths):
   path = ""
   for p in paths:
     path = os.path.join(path, p)
-    if not os.path.exists(path) and not FLAGS.cloud:
+    if not os.path.exists(path) and config.should_create_path:
       os.mkdir(path)
 
   return path
@@ -58,7 +58,10 @@ def load_checkpoint(path, session, saver):
     console.show_status("Loaded {}".format(ckpt_name))
     return True, counter
   else:
-    console.show_status('New checkpoints will be created ...')
+    if config.train:
+      console.show_status('New checkpoints will be created ...')
+    else:
+      console.show_status('! Can not found model checkpoint')
     return False, 0
 
 

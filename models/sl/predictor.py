@@ -13,7 +13,7 @@ from tframe import pedia
 from tframe import metrics
 from tframe import TFData
 
-from tframe import FLAGS
+from tframe import config
 from tframe import with_graph
 
 
@@ -98,7 +98,7 @@ class Predictor(Feedforward, Recurrent):
     self.show_building_info(**kwargs)
 
     # Launch session
-    self.launch_model(FLAGS.overwrite)
+    self.launch_model(config.overwrite)
 
     # Set built flag
     self._built = True
@@ -115,10 +115,10 @@ class Predictor(Feedforward, Recurrent):
     loss_string = ', '.join(loss_strings)
 
     total_epoch = self._counter / self._training_set.batches_per_epoch
-    if FLAGS.progress_bar: console.clear_line()
+    if config.progress_bar: console.clear_line()
     console.show_status(
       'Epoch {} [{:.1f} Total] {}'.format(epc + 1, total_epoch, loss_string))
-    if FLAGS.progress_bar:
+    if config.progress_bar:
       console.print_progress(progress=self._training_set.progress,
                              start_time=start_time)
 

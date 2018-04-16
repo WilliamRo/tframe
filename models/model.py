@@ -11,7 +11,6 @@ import tensorflow as tf
 
 import tframe as tfr
 
-from tframe import FLAGS
 from tframe import TFData
 from tframe import config
 from tframe import console
@@ -28,6 +27,8 @@ from tframe.utils.local import load_checkpoint
 from tframe.utils.local import save_checkpoint
 from tframe.utils.local import write_file
 
+from tframe.trainers.trainer import Trainer, TrainerHub
+from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
 
 
 class Model(object):
@@ -40,15 +41,10 @@ class Model(object):
   model_name = 'default'
 
   def __init__(self, mark=None):
-    self.mark = (FLAGS.mark if mark is None or FLAGS.mark != pedia.default
-                 else mark)
+    self.mark = config.mark or mark
+    assert mark is not None
 
-    self._training_set = None
-    self._validation_set = None
-    self._test_set = None
     self._metric = None
-    self._metric_log = []          # metric is calculated while printing
-    self._train_status = {}
     self._merged_summary = None
     self._print_summary = None
 
@@ -70,8 +66,8 @@ class Model(object):
     self._last_epoch = 0
 
     # Each model is bound to a unique graph
-    self.graph = tf.Graph()
-    with self.graph.as_default():
+    self._graph = tf.Graph()
+    with self._graph.as_default():
       with tf.name_scope('misc'):
         self._best_metric = tf.Variable(
           initial_value=-1.0, trainable=False, name='best_metric')
@@ -82,45 +78,58 @@ class Model(object):
         self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
-    self.graph.is_training = self._is_training
+    self._graph.is_training = self._is_training
     # Record current graph
-    tfr.current_graph = self.graph
+    tfr.current_graph = self._graph
 
   # region : Properties
 
-  @property
-  def job_dir(self):
-    try:
-      return getattr(FLAGS, 'job-dir')
-    except:
-      return getattr(FLAGS, 'job_dir')
+  # region : Accessor
 
   @property
-  def log_dir(self):
-    return check_path(self.job_dir, config.record_dir, config.log_folder_name,
-                      self.mark)
+  def graph(self):
+    return self._graph
 
   @property
-  def ckpt_dir(self):
-    return check_path(self.job_dir, config.record_dir,
-                      config.ckpt_folder_name, self.mark)
+  def session(self):
+    return self._session
 
   @property
-  def snapshot_dir(self):
-    return check_path(self.job_dir, config.record_dir,
-                      config.snapshot_folder_name, self.mark)
-
-  @property
-  def description(self):
-    return 'No description'
+  def metric(self):
+    return self._metric
 
   @property
   def built(self):
     return self._built
 
+  # endregion : Accessor
+
+  # region : Paths
+
   @property
-  def metric(self):
-    return self._metric
+  def log_dir(self):
+    return check_path(config.job_dir, config.record_dir,
+                      config.log_folder_name, self.mark)
+
+  @property
+  def ckpt_dir(self):
+    return check_path(config.job_dir, config.record_dir,
+                      config.ckpt_folder_name, self.mark)
+
+  @property
+  def snapshot_dir(self):
+    return check_path(config.job_dir, config.record_dir,
+                      config.snapshot_folder_name, self.mark)
+
+  # endregion : Paths
+
+  # region : Properties to be overrode
+
+  @property
+  def description(self):
+    return 'No description'
+
+  # endregion : Properties to be overrode
 
   # endregion : Properties
 
@@ -144,20 +153,9 @@ class Model(object):
 
   # region : Training
 
-  def _pretrain(self, **kwargs):
+  def pretrain(self, **kwargs):
     """Method run in early training process, should be overrode"""
     pass
-
-  def _init_smart_train(self, validation_set):
-    """The so-called 'smart train' refers to automatically tuning learning
-        rate and early stopping during training under some criteria"""
-    metric_on = validation_set is not None and self._metric is not None
-    FLAGS.smart_train = (FLAGS.smart_train and metric_on and self._optimizer
-                         is not None)
-    # Initialize train status
-    self._train_status['ep_count'] = 0
-    self._train_status['metric_on'] = metric_on
-    self._train_status['bad_apples'] = 0
 
   def _apply_smart_train(self):
     memory = 4
@@ -211,54 +209,14 @@ class Model(object):
   def train(self, epoch=1, batch_size=128, training_set=None,
             validation_set=None, print_cycle=0, snapshot_cycle=0,
             snapshot_function=None, probe=None, **kwargs):
-    # Check data
-    if training_set is not None:
-      self._training_set = training_set
-    if validation_set is not None:
-      self._validation_set = validation_set
-    if self._training_set is None:
-      raise ValueError('!! Data for training not found')
-    elif not isinstance(training_set, TFData):
-      raise TypeError('!! Data for training must be an instance of TFData')
-    if probe is not None and not callable(probe):
-      raise TypeError('!! Probe must be callable')
-
-    if snapshot_function is not None:
-      if not callable(snapshot_function):
-        raise ValueError('!! snapshot_function must be callable')
-      self._snapshot_function = snapshot_function
-
-    self._init_smart_train(validation_set)
-
-    epoch_tol = FLAGS.epoch_tol
-
-    # Get epoch and batch size
-    epoch = FLAGS.epoch if FLAGS.epoch > 0 else epoch
-    batch_size = FLAGS.batch_size if FLAGS.batch_size > 0 else batch_size
-    assert isinstance(self._training_set, TFData)
-    self._training_set.set_batch_size(batch_size)
-
-    # Get print and snapshot cycles
-    print_cycle = FLAGS.print_cycle if FLAGS.print_cycle >= 0 else print_cycle
-    snapshot_cycle = (FLAGS.snapshot_cycle if FLAGS.snapshot_cycle >= 0
-                      else snapshot_cycle)
-
-    # Run pre-train method
-    self._pretrain(**kwargs)
-
-    # Show configurations
-    console.show_status('Configurations:')
-    console.supplement('Training set feature shape: {}'.format(
-      self._training_set.features.shape))
-    console.supplement('epochs: {}'.format(epoch))
-    console.supplement('batch size: {}'.format(batch_size))
-
-    # Do some preparation
-    if self._session is None:
-      self.launch_model()
-    if self._merged_summary is None:
-      self._merged_summary = tf.summary.merge_all()
-
+    """"""
+    trainer_class = SmartTrainer if config.smart_train else Trainer
+    trainer = trainer_class(self, training_set=training_set,
+                            validation_set=validation_set,
+                            snapshot=snapshot_function, probe=probe)
+    trainer.train(epoch=epoch, batch_size=batch_size, print_cycle=print_cycle,
+                  snapshot_cycle=snapshot_cycle, **kwargs)
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # Begin iteration
     with self._session.as_default():
       for epc in range(epoch):
@@ -432,42 +390,39 @@ class Model(object):
   # region : Public Methods
 
   def shutdown(self):
-    if FLAGS.summary or FLAGS.hpt: self._summary_writer.close()
+    if config.summary or config.hp_tuning:
+      self._summary_writer.close()
     self._session.close()
 
   def launch_model(self, overwrite=False):
-    # Check flags
-    FLAGS.cloud = FLAGS.cloud or "://" in self.job_dir
-    FLAGS.progress_bar = FLAGS.progress_bar and not FLAGS.cloud
-    FLAGS.summary = FLAGS.summary and not FLAGS.hpt
-    FLAGS.save_model = FLAGS.save_model and not FLAGS.hpt
-    FLAGS.snapshot = FLAGS.snapshot and not FLAGS.cloud
-
+    config.smooth_out_conflicts()
     # Before launch session, do some cleaning work
-    if overwrite and FLAGS.train and not FLAGS.cloud:
+    if overwrite and config.overwrite:
       paths = []
-      if FLAGS.summary: paths.append(self.log_dir)
-      if FLAGS.save_model: paths.append(self.ckpt_dir)
-      if FLAGS.snapshot: paths.append(self.snapshot_dir)
+      if config.summary: paths.append(self.log_dir)
+      if config.save_model: paths.append(self.ckpt_dir)
+      if config.snapshot: paths.append(self.snapshot_dir)
       clear_paths(paths)
 
+    # Launch session on self.graph
     console.show_status('Launching session ...')
-    self._session = tf.Session(graph=self.graph)
+    self._session = tf.Session(graph=self._graph)
     console.show_status('Session launched')
-    self._saver = tf.train.Saver()
-    if FLAGS.summary or FLAGS.hpt:
+    # Prepare some tools
+    if config.save_model: self._saver = tf.train.Saver()
+    if config.summary or config.hp_tuning:
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
+
     # Try to load exist model
-    load_flag, self._counter = False, 0
-    if FLAGS.save_model: load_flag, self._counter = self._load()
+    load_flag, self._counter = self._load()
     if not load_flag:
       assert self._counter == 0
       # If checkpoint does not exist, initialize all variables
       self._session.run(tf.global_variables_initializer())
       # Add graph
-      if FLAGS.summary: self._summary_writer.add_graph(self._session.graph)
+      if config.summary: self._summary_writer.add_graph(self._session.graph)
       # Write model description to file
-      if FLAGS.snapshot:
+      if config.snapshot:
         description_path = os.path.join(self.snapshot_dir, 'description.txt')
         write_file(description_path, self.description)
 

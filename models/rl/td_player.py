@@ -109,8 +109,8 @@ class TDPlayer(Feedforward, Player):
     if self._session is None:
       self.launch_model()
 
-    assert isinstance(self.graph, tf.Graph)
-    with self.graph.as_default():
+    assert isinstance(self._graph, tf.Graph)
+    with self._graph.as_default():
       if self._merged_summary is None:
         self._merged_summary = tf.summary.merge_all()
 
