@@ -4,8 +4,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe.core import Function
-from tframe.core import init_with_graph
+from tframe.core.function import Function
+from tframe.core.decorators import init_with_graph
 from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
 

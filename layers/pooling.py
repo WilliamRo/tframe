@@ -8,7 +8,7 @@ from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
 
 from tframe.utils import get_scale
-from tframe.core import init_with_graph
+from tframe.core.decorators import init_with_graph
 from tframe.core.function import Function
 
 from tensorflow.python.layers.pooling import MaxPool2D as MaxPool2D_

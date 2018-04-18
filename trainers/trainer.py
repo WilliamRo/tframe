@@ -6,11 +6,12 @@ import time
 import numpy as np
 
 import tensorflow as tf
+import tframe as tfr
 
 from tframe import console
 from tframe import TFData
+from tframe.enums import InputTypes
 from tframe.core import with_graph
-from tframe.models.model import Model
 from tframe.config import Config, Flag
 
 from tframe.trainers.metric import Metric
@@ -26,13 +27,13 @@ class Trainer(object):
       snapshot=None,
       probe=None):
     # Set model for trainer
-    if not isinstance(model, Model):
+    if not isinstance(model, tfr.models.Model):
       raise TypeError('!! model must be an instance of tframe Model')
     self.model = model
 
     # Date set attributes
-    self.training_set = None
-    self.validation_set = None
+    self._training_set = None
+    self._validation_set = None
     self.set_data(training_set, validation_set)
 
     # Set callable attributes
@@ -42,14 +43,33 @@ class Trainer(object):
     # Initiate trainer hub
     self.th = TrainerHub(self)
 
-
   # region : Properties
+
+  @property
+  def training_set(self):
+    if self._training_set is not None:
+      assert isinstance(self._training_set, TFData)
+    return self._training_set
+
+  @property
+  def validation_set(self):
+    if self._validation_set is not None:
+      assert isinstance(self._validation_set, TFData)
+    return self._validation_set
 
   @property
   def session(self):
     session = self.model.session
     assert isinstance(session, tf.Session)
     return session
+
+  @property
+  def counter(self):
+    return self.model.counter
+
+  @counter.setter
+  def counter(self, value):
+    self.model.counter = value
 
   # endregion : Properties
 
@@ -58,10 +78,10 @@ class Trainer(object):
   def set_data(self, training_set=None, validation_set=None):
     if training_set is not None:
       self._check_data(training_set, 'training set')
-      self.training_set = training_set
+      self._training_set = training_set
     if validation_set is not None:
       self._check_data(validation_set, 'validation set')
-      self.validation_set = validation_set
+      self._validation_set = validation_set
 
   # endregion : Public Methods
 
@@ -86,7 +106,8 @@ class Trainer(object):
     with self.session.as_default(): self._outer_loop()
 
     # :: After training
-    pass
+    if self.th.summary or self.th.hp_tuning:
+      self.model.agent.summary_writer.flush()
 
 
   # region : Before training
@@ -108,7 +129,7 @@ class Trainer(object):
     # TODO: to be modified
     console.show_status('Configurations:')
     console.supplement('Training set feature shape: {}'.format(
-      self.training_set.features.shape))
+      self._training_set.features.shape))
     console.supplement('epochs: {}'.format(self.th.epoch))
     console.supplement('batch size: {}'.format(self.th.batch_size))
 
@@ -121,10 +142,42 @@ class Trainer(object):
   # region : During training
 
   def _outer_loop(self):
-    pass
+    hub = self.th
+    for rnd in range(hub.total_outer_loops):
+      console.section('{} {}'.format(hub.round_name, rnd + 1))
+      hub.tic()
+      # Begin inner loop
+      self._inner_loop(rnd)
+      # End of round
+      console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
+        hub.round_name, hub.toc()))
+      # Maybe give a report on metric
+      if hub.validation_on: self.model.metric.end_round()
+      # Early stop
+      if hub.stop: break
 
-  def _inner_loop(self):
-    pass
+  def _inner_loop(self, rnd):
+    # Begin iteration
+    for batch in self._gen_batches():
+      # Increase iteration counter
+      self.counter += 1
+      # Update model
+      loss_dict = self.model.update_model(data_batch=batch)
+      # Print progress
+      self._print_progress(rnd, loss_dict)
+      # TODO
+      # validation
+
+  def _gen_batches(self):
+    if self.model.input_type is InputTypes.BATCH:
+      batches = self.training_set.gen_batches(
+        self.th.batch_size, self.th.shuffle)
+    elif self.model.input_type is InputTypes.RNN_BATCH:
+      batches = self.training_set.gen_rnn_batches(
+        self.th.batch_size, self.th.num_steps)
+    else:
+      raise TypeError('!! Unknown input type {}'.format(self.model.input_type))
+    return batches
 
   # endregion : During training
 
@@ -134,7 +187,7 @@ class Trainer(object):
 
   def _check_data(self, data_set=None, name='dataset'):
     if data_set is None:
-      data_set = self.training_set
+      data_set = self._training_set
       name = 'training set'
     if data_set is None: raise ValueError('!! {} not found'.format(name))
     if not isinstance(data_set, TFData):
@@ -146,14 +199,53 @@ class Trainer(object):
       raise TypeError('!! {} must be callable'.format(name))
     return f
 
+  def _inter_cut(self, content, prompt='>>', start_time=None):
+    # Clear progress bar
+    if self.th.progress_bar: console.clear_line()
+    # Show content
+    print('{} {}'.format(prompt, content))
+    # Print progress bar
+    if self.th.progress_bar:
+      assert isinstance(self._training_set, TFData)
+      console.print_progress(progress=self._training_set.progress,
+                             start_time=start_time)
+
+  def _print_progress(self, rnd, loss_dict):
+    if self.th.print_cycle == 0: return
+    if np.mod(self.counter - 1, self.th.print_cycle) != 0: return
+
+    assert isinstance(loss_dict, dict)
+    loss_strings = ['{} = {:.3f}'.format(k, v) for k, v in loss_dict.items()]
+    loss_string = ', '.join(loss_strings)
+
+    total_rounds = self.counter / self.training_set.batches_per_epoch
+    content = '{} {} ({:.1f} Total) {}'.format(
+      self.th.round_name, rnd + 1, total_rounds, loss_string),
+    self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
+
+  def _validate(self):
+    if not self.th.validation_on: return
+    if np.mod(self.counter, self.th.validate_cycle) != 0: return
+
+    # Get metric
+    metric = self.model.validate(self.validation_set)
+    # Get record
+    record = self.model.session.run(self.model.record_tensor)
+    # Take down the metric
+
+
   # endregion : Private Methods
 
 
 class TrainerHub(Config):
-  """"""
-  # :: Define class attributes
+  """Trainer Hub manages configurations for Trainer and stores status during
+     training"""
+
+  # region : Class Attributes
+
   epoch = Flag.integer(1, 'Epoch number to train')
   batch_size = Flag.integer(1, 'Batch size')
+  num_steps = Flag.integer(1, 'Number of time steps')
   shuffle = Flag.boolean(True, 'Whether to shuffle')
 
   print_cycle = Flag.integer(0, 'Print cycle')
@@ -161,11 +253,59 @@ class TrainerHub(Config):
   snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
+  early_stop = Flag.boolean(False, 'Early stop option')
   save_best = Flag.boolean(False, 'Whether to save best')
   idle_tol = Flag.integer(20, 'Torrance of idle rounds when early stop is on')
 
+  round_name = Flag.string('Epoch', 'Name of outer loop during training')
+  total_rounds = Flag.integer(1, 'General concept of total outer loops, used'
+                                 ' when outer loop is not called epochs',
+                              name='round')
+
+  # endregion : Class Attributes
+
   def __init__(self, trainer=None):
     self.trainer = trainer
+    self.record_rnd = 0
+    # metric log is a list of list
+    self.metric_log = []
+
+    self._start_time = None
+    self._stop = False
+
+  # region : Properties
+
+  @property
+  def total_outer_loops(self):
+    """In most supervised learning tasks, each outer training loop is called
+       an epoch. If epoch is specified in config, it will be returned as
+       total outer loops. In other tasks such as reinforcement learning,
+       an outer loop may be called an episode. In this case, set 'total_rounds'
+        in config instead of epoch."""
+    assert 1 in (self.epoch, self.total_rounds)
+    return max(self.epoch, self.total_rounds)
+
+  @property
+  def validation_on(self):
+    metric = self.trainer.model.metric
+    assert isinstance(metric, Metric)
+    if not metric.activated: return False
+    val_data = self.trainer.validation_set
+    return val_data is not None and self.validate_cycle > 0
+
+  @property
+  def start_time(self):
+    return self._start_time
+
+  @property
+  def stop(self):
+    value = self._stop and self.early_stop
+    self._stop = False
+    return value
+
+  # endregion : Properties
+
+  # region : Public Methods
 
   def set_up(self, **kwargs):
     for key, arg in kwargs.items():
@@ -174,6 +314,18 @@ class TrainerHub(Config):
 
   def sanity_check(self):
     assert isinstance(self.trainer, Trainer)
+
+  def tic(self):
+    self._start_time = time.time()
+
+  def toc(self):
+    assert self._start_time is not None
+    return time.time() - self._start_time
+
+  def report(self):
+    pass
+
+  # endregion : Public Methods
 
 
 # Register trainer hub

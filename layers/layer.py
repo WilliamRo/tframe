@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe.core import Function
+from tframe.core.function import Function
 
 
 class Layer(Function):

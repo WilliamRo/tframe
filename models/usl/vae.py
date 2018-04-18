@@ -14,7 +14,7 @@ from tframe.utils import TFData
 
 from tframe import pedia
 from tframe import config
-from tframe import with_graph
+from tframe.core import with_graph
 
 
 class VAE(Model):
@@ -144,7 +144,7 @@ class VAE(Model):
     self._sample_num = (config.sample_num if config.sample_num > 0
                         else kwargs.get('sample_num', 9))
 
-  def _update_model(self, data_batch, **kwargs):
+  def update_model(self, data_batch, **kwargs):
     assert isinstance(data_batch, TFData)
     features = data_batch[pedia.features]
 
@@ -158,7 +158,7 @@ class VAE(Model):
 
     # Write summaries to file
     assert isinstance(self._summary_writer, tf.summary.FileWriter)
-    self._summary_writer.add_summary(summaries, self._counter)
+    self._summary_writer.add_summary(summaries, self.counter)
 
     # Return loss dict
     return {'VAE loss': loss}

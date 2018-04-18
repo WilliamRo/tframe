@@ -14,7 +14,8 @@ from tframe import metrics
 from tframe import TFData
 
 from tframe import config
-from tframe import with_graph
+from tframe import InputTypes
+from tframe.core import with_graph
 
 
 class Predictor(Feedforward, Recurrent):
@@ -41,6 +42,11 @@ class Predictor(Feedforward, Recurrent):
   def description(self):
     # Call Net's method
     return self.structure_string()
+
+  @property
+  def input_type(self):
+    if self.master is Feedforward: return InputTypes.BATCH
+    else: return InputTypes.RNN_BATCH
 
   @property
   def metric_is_accuracy(self):
@@ -104,25 +110,6 @@ class Predictor(Feedforward, Recurrent):
     self._built = True
 
   # endregion : Build
-
-  # region : Train
-
-  # TODO: does it have any difference with the one in model ?
-  def _print_progress(self, epc, start_time, info_dict, **kwargs):
-    # Generate loss string
-    loss_strings = ['{} = {:.3f}'.format(k, info_dict[k])
-                    for k in info_dict.keys()]
-    loss_string = ', '.join(loss_strings)
-
-    total_epoch = self._counter / self._training_set.batches_per_epoch
-    if config.progress_bar: console.clear_line()
-    console.show_status(
-      'Epoch {} [{:.1f} Total] {}'.format(epc + 1, total_epoch, loss_string))
-    if config.progress_bar:
-      console.print_progress(progress=self._training_set.progress,
-                             start_time=start_time)
-
-  # endregion : Train
 
   # region : Public Methods
 

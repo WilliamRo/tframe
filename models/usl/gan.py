@@ -18,7 +18,7 @@ from tframe.layers import merge
 
 from tframe import pedia
 from tframe import config
-from tframe import with_graph
+from tframe.core import with_graph
 
 
 class GAN(Model):
@@ -245,7 +245,7 @@ class GAN(Model):
     if len(self._training_set._data[pedia.targets].shape) != 2:
       raise ValueError('Targets should be formatted as one-hot')
 
-  def _update_model(self, data_batch, **kwargs):
+  def update_model(self, data_batch, **kwargs):
     assert isinstance(data_batch, TFData)
     # TODO: design some mechanisms to handle these
     G_iterations = kwargs.get('G_iterations', 1)
@@ -285,8 +285,8 @@ class GAN(Model):
 
     # Write summaries to file
     assert isinstance(self._summary_writer, tf.summary.FileWriter)
-    self._summary_writer.add_summary(summaries_D, self._counter)
-    self._summary_writer.add_summary(summaries_G, self._counter)
+    self._summary_writer.add_summary(summaries_D, self.counter)
+    self._summary_writer.add_summary(summaries_G, self.counter)
 
     # Return loss dict
     return {'Discriminator loss': loss_D, 'Generator loss': loss_G}

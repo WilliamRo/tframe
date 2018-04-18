@@ -1,18 +1,21 @@
-from .core import with_graph
+from . import pedia
+from .enums import *
 
 from .utils import console
 from .utils import local
 from .utils.tfdata import TFData
 from .utils.tfinter import ImageViewer
 
+from .config import Config
+from .import models
+
 from .models import Predictor
 from .models import Classifier
-from .models import GAN
-from .models import VAE
 
-from . import pedia
+from . import core
 
-from .config import Config
+
+# Register
 Config.register()
 config = Config()
 

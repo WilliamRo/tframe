@@ -267,6 +267,14 @@ class TFData(object):
 
     return self[indices], end_epoch
 
+  def gen_batches(self, batch_size, shuffle=False):
+    self.set_batch_size(batch_size)
+    self.set_cursor(0)
+    while True:
+      batch, end_epoch = self.next_batch(shuffle=shuffle)
+      yield batch
+      if end_epoch: break
+
   def gen_rnn_batches(self, batch_size, num_steps):
     # Sanity check
     assert self.features is not None and self.targets is not None

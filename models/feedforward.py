@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tframe import with_graph
+from tframe.core.decorators import with_graph
 
 from tframe.models.model import Model
 from tframe.nets.net import Net

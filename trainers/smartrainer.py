@@ -29,7 +29,7 @@ class SmartTrainer(Trainer):
   def _sanity_check(self):
     # Smart training relies on model.metric on the validation data set,
     # .. so their existence should be guaranteed
-    self._check_data(self.validation_set, 'validation set')
+    self._check_data(self._validation_set, 'validation set')
     if getattr(self.model, '_metric', None) is None:
       raise ValueError('!! metric on valid set not defined')
 

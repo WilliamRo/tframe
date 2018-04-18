@@ -121,7 +121,7 @@ class TDPlayer(Feedforward, Player):
         self._opponent.player_name = 'Random Player'
       elif isinstance(shadow, TDPlayer):
         self._opponent = shadow
-        self._opponent.player_name = 'Shadow_{}'.format(self._opponent._counter)
+        self._opponent.player_name = 'Shadow_{}'.format(self._opponent.counter)
       else:
         raise TypeError('Opponent should be an instance of TDPlayer')
 
@@ -156,19 +156,19 @@ class TDPlayer(Feedforward, Player):
         state = agent.state
 
       # End of current episode
-      self._counter += 1
+      self.counter += 1
 
       assert isinstance(self._summary_writer, tf.summary.FileWriter)
-      self._summary_writer.add_summary(summary, self._counter)
+      self._summary_writer.add_summary(summary, self.counter)
 
-      if print_cycle > 0 and np.mod(self._counter, print_cycle) == 0:
+      if print_cycle > 0 and np.mod(self.counter, print_cycle) == 0:
         self._print_progress(epi, start_time, steps, total=episodes)
-      if snapshot_cycle > 0 and np.mod(self._counter, snapshot_cycle) == 0:
+      if snapshot_cycle > 0 and np.mod(self.counter, snapshot_cycle) == 0:
         self._snapshot(epi / episodes)
-      if match_cycle > 0 and np.mod(self._counter, match_cycle) == 0:
+      if match_cycle > 0 and np.mod(self.counter, match_cycle) == 0:
         self._training_match(agent, rounds, epi / episodes, rate_thresh)
-      if np.mod(self._counter, save_cycle) == 0:
-        self._save(self._counter)
+      if np.mod(self.counter, save_cycle) == 0:
+        self._save(self.counter)
 
     # End training
     console.clear_line()
@@ -180,14 +180,14 @@ class TDPlayer(Feedforward, Player):
     console.clear_line()
     console.show_status(
       'Episode {} [{} total] {} steps, Time elapsed = {:.2f} sec'.format(
-        epi, self._counter, steps, time.time() - start_time))
+        epi, self.counter, steps, time.time() - start_time))
     console.print_progress(epi, kwargs.get('total'))
 
   def _snapshot(self, progress):
     if self._snapshot_function is None:
       return
 
-    filename = 'train_{}_episode'.format(self._counter)
+    filename = 'train_{}_episode'.format(self.counter)
     fullname = "{}/{}".format(self.snapshot_dir, filename)
     self._snapshot_function(fullname)
 
@@ -207,7 +207,7 @@ class TDPlayer(Feedforward, Player):
     if rate >= rate_thresh and isinstance(self._opponent, TDPlayer):
       # Find an stronger opponent
       self._opponent._load()
-      self._opponent.player_name = 'Shadow_{}'.format(self._opponent._counter)
+      self._opponent.player_name = 'Shadow_{}'.format(self._opponent.counter)
       console.show_status('Opponent updated')
 
     console.print_progress(progress=progress)
