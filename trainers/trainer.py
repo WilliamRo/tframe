@@ -10,7 +10,7 @@ import tframe as tfr
 
 from tframe import console
 from tframe import TFData
-from tframe.enums import InputTypes
+from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
 from tframe.config import Config, Flag
 
@@ -70,6 +70,10 @@ class Trainer(object):
   @counter.setter
   def counter(self, value):
     self.model.counter = value
+
+  @property
+  def total_rounds(self):
+    return self.counter / self.training_set.batches_per_epoch
 
   # endregion : Properties
 
@@ -165,8 +169,9 @@ class Trainer(object):
       loss_dict = self.model.update_model(data_batch=batch)
       # Print progress
       self._print_progress(rnd, loss_dict)
+      # Validation
+      self._validate_model()
       # TODO
-      # validation
 
   def _gen_batches(self):
     if self.model.input_type is InputTypes.BATCH:
@@ -210,29 +215,36 @@ class Trainer(object):
       console.print_progress(progress=self._training_set.progress,
                              start_time=start_time)
 
+  @staticmethod
+  def _dict_to_string(dict_):
+    assert isinstance(dict_, dict)
+    string_array = ['{} = {:.3f}'.format(k, v) for k, v in dict_.items()]
+    return ', '.join(string_array)
+
   def _print_progress(self, rnd, loss_dict):
     if self.th.print_cycle == 0: return
     if np.mod(self.counter - 1, self.th.print_cycle) != 0: return
 
-    assert isinstance(loss_dict, dict)
-    loss_strings = ['{} = {:.3f}'.format(k, v) for k, v in loss_dict.items()]
-    loss_string = ', '.join(loss_strings)
-
-    total_rounds = self.counter / self.training_set.batches_per_epoch
+    loss_string = self._dict_to_string(loss_dict)
     content = '{} {} ({:.1f} Total) {}'.format(
-      self.th.round_name, rnd + 1, total_rounds, loss_string),
+      self.th.round_name, rnd + 1, self.total_rounds, loss_string),
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
-  def _validate(self):
+  def _validate_model(self):
     if not self.th.validation_on: return
     if np.mod(self.counter, self.th.validate_cycle) != 0: return
 
     # Get metric
-    metric = self.model.validate(self.validation_set)
-    # Get record
-    record = self.model.session.run(self.model.record_tensor)
-    # Take down the metric
+    metric_dict = self.model.validate_model(self.validation_set)
+    metric = metric_dict.values()[0]
+    new_record = self.model.metric.take_down(metric)
+    prompt = '[New Record]' if new_record else '[Validate]'
+    self._inter_cut(self._dict_to_string(metric_dict), prompt=prompt)
 
+    # If necessary, save model
+    if (new_record and self.th.save_model and self.th.save_best
+        and self.total_rounds >= 0):
+      pass
 
   # endregion : Private Methods
 
@@ -254,13 +266,13 @@ class TrainerHub(Config):
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
   early_stop = Flag.boolean(False, 'Early stop option')
-  save_best = Flag.boolean(False, 'Whether to save best')
-  idle_tol = Flag.integer(20, 'Torrance of idle rounds when early stop is on')
+  save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
+                        "Save mode, \in  ['naive', 'on_record']")
+  idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on')
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
-  total_rounds = Flag.integer(1, 'General concept of total outer loops, used'
-                                 ' when outer loop is not called epochs',
-                              name='round')
+  round = Flag.integer(1, 'General concept of total outer loops, used'
+                          ' when outer loop is not called epochs')
 
   # endregion : Class Attributes
 
@@ -282,8 +294,8 @@ class TrainerHub(Config):
        total outer loops. In other tasks such as reinforcement learning,
        an outer loop may be called an episode. In this case, set 'total_rounds'
         in config instead of epoch."""
-    assert 1 in (self.epoch, self.total_rounds)
-    return max(self.epoch, self.total_rounds)
+    assert 1 in (self.epoch, self.round)
+    return max(self.epoch, self.round)
 
   @property
   def validation_on(self):

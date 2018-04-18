@@ -77,8 +77,10 @@ class Metric(TensorSlot):
       new_record = True
 
     # Show metric mean status
-    console.supplement('E[metric] = {:.3f}, min(E[metric]) = {:.3f}'.format(
-      metric_mean, mean_record))
+    # TODO: console access should be somehow controlled
+    token = 'min' if self._as_loss else 'max'
+    console.supplement('E[metric] = {:.3f}, {}(E[metric]) = {:.3f}'.format(
+      metric_mean, token, mean_record))
     self._show_trend()
 
     # Append log container for new round
@@ -86,11 +88,18 @@ class Metric(TensorSlot):
 
     return new_record
 
+  def take_down(self, metric):
+    new_record = False
+    # Add new metric to log
+    self._add_to_log(metric)
 
-  def add_to_log(self, metric):
-    log_for_current_round = self._metric_logs[-1]
-    assert isinstance(log_for_current_round, list)
-    log_for_current_round.append(metric)
+    # Update metric record
+    if self._record.never_assigned or self.is_better_than(metric, self.record):
+      self.record = metric
+      new_record = True
+
+    return new_record
+
 
   # endregion : Public Methods
 
@@ -122,5 +131,10 @@ class Metric(TensorSlot):
         if i > 0: tendency += ', '
         tendency += '[{}]{:.1f}%'.format(i + 1, ratio)
     if tendency != '': console.supplement(tendency, level=2)
+
+  def _add_to_log(self, metric):
+    log_for_current_round = self._metric_logs[-1]
+    assert isinstance(log_for_current_round, list)
+    log_for_current_round.append(metric)
 
   # endregion : Private Methods

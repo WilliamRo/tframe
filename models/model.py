@@ -20,7 +20,8 @@ from tframe.utils import imtool
 from tframe.enums import InputTypes
 from tframe.core import with_graph
 from tframe.core import Agent
-from tframe.core import Slot, TensorSlot, SummarySlot, OperationSlot
+from tframe.core import TensorSlot, SummarySlot, OperationSlot
+from tframe.core import Group
 
 from tframe.nets.net import Net
 
@@ -45,12 +46,18 @@ class Model(object):
 
     # Define slots
     self._outputs = TensorSlot(self)
-    self._loss = TensorSlot(self)
+
+    self._loss = TensorSlot(self, 'Train loss')
     self._train_step = OperationSlot(self)
     self._merged_summary = SummarySlot(self)
+    self._update_group = Group(
+      self, self._loss, self._train_step, self._merged_summary,
+      name='Update-group')
 
     self._metric = Metric(self, 'metric')
     self._validation_summary = SummarySlot(self)
+    self._validate_group = Group(
+      self, self._metric, self._validation_summary, name='Validate-group')
 
     # Private attributes
     self._optimizer = None
@@ -256,36 +263,12 @@ class Model(object):
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
+    return self._update_group.run(feed_dict)
 
-    if config.summary and self._merged_summary is not None:
-      summary, loss, _ = self._session.run(
-        [self._merged_summary, self._loss, self._train_step],
-        feed_dict=feed_dict)
-
-      assert isinstance(self._summary_writer, tf.summary.FileWriter)
-      self._summary_writer.add_summary(summary, self.counter)
-    else:
-      loss, _ = self._session.run(
-        [self._loss, self._train_step], feed_dict=feed_dict)
-
-    loss_dict = collections.OrderedDict()
-    loss_dict['Train loss'] = loss
-    return loss_dict
-
-  def validate(self, validation_set, **kwargs):
+  def validate_model(self, validation_set, **kwargs):
     assert isinstance(validation_set, TFData)
     feed_dict = self._get_default_feed_dict(validation_set, is_training=False)
-
-    if config.summary and self._validation_summary is not None:
-      summary, metric = self._session.run(
-        [self._validation_summary, self.metric.tensor], feed_dict=feed_dict)
-
-      assert isinstance(self._summary_writer, tf.summary.FileWriter)
-      self._summary_writer.add_summary(summary, self.counter)
-    else:
-      metric = self._session.run(self.metric.tensor, feed_dict=feed_dict)
-
-    return metric
+    return self._validate_group.run(feed_dict)
 
   def _snapshot(self):
     if self._snapshot_function is None:

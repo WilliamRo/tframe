@@ -21,6 +21,10 @@ class Slot(object):
   def activated(self):
     return self._op is not None
 
+  @property
+  def op(self):
+    return self._op
+
   # endregion : Properties
 
   # region : Public Methods
@@ -57,9 +61,6 @@ class SummarySlot(Slot):
   @property
   def summary(self):
     return self._op
-
-  def write_summary(self):
-    pass
 
 
 class OperationSlot(Slot):

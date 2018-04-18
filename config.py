@@ -3,13 +3,14 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tframe.enums import EnumPro
 
 flags = tf.app.flags
-FLAGS = flags.FLAGS
 
 
 class Flag(object):
-  def __init__(self, default_value, description, register=None, name=None):
+  def __init__(self, default_value, description, register=None, name=None,
+               **kwargs):
     """
     ... another way to design this class is to let name attribute be assigned
     when registered, but we need to allow FLAGS names such as 'job-dir' to be
@@ -23,6 +24,7 @@ class Flag(object):
     self._description = description
     self._register = register
     self._name = name
+    self._kwargs = kwargs
 
     self._value = default_value
 
@@ -33,15 +35,28 @@ class Flag(object):
     # If not registered to tf.app.flags
     if self._register is None: return self._value
 
-    assert hasattr(FLAGS, self._name)
-    f_value = getattr(FLAGS, self._name)
+    assert hasattr(flags.FLAGS, self._name)
+    f_value = getattr(flags.FLAGS, self._name)
     # Configs defined via tensorflow FLAGS have priority over any other way
     if f_value is None: return self._value
-    else: return f_value
+    # If self is en enum Flag, then f_value must be a string in
+    # .. self.enum_class.value_list(), so we need to get its member
+    if self.is_enum: return self.enum_class.get_member(f_value)
+    return f_value
 
   @property
   def should_register(self):
     return self._register is not None
+
+  @property
+  def enum_class(self):
+    cls = self._kwargs.get('enum_class', None)
+    if cls is None or not issubclass(cls, EnumPro): return None
+    return cls
+
+  @property
+  def is_enum(self):
+    return self.enum_class is not None and self._register is flags.DEFINE_enum
 
   # endregion : Properties
 
@@ -71,18 +86,33 @@ class Flag(object):
   def list(cls, default_value, description, name=None):
     return Flag(default_value, description, flags.DEFINE_list, name)
 
+  @classmethod
+  def enum(cls, default_value, enum_class, description, name=None):
+    assert issubclass(enum_class, EnumPro)
+    return Flag(default_value, description, flags.DEFINE_enum, name,
+                enum_class=enum_class)
+
   # endregion : Class Methods
 
   # region : Public Methods
 
   def register(self, name):
+    # If name is not specified during construction, use flag's attribute name
+    # .. in Config
     if self._name is None: self._name = name
-    if self._register is None or hasattr(FLAGS, self._name): return
+    if self._register is None or self._name in list(flags.FLAGS): return
+    # Register enum flag
+    if self.is_enum:
+      flags.DEFINE_enum(
+        self._name, None, self.enum_class.value_list(), self._description)
+      return
+    # Register other flag
+    assert self._register is not flags.DEFINE_enum
     self._register(self._name, None, self._description)
 
   def new_value(self, value):
     flg = Flag(self._default_value, self._description, self._register,
-               self._name)
+               self._name, **self._kwargs)
     flg._value = value
     return flg
 
@@ -143,7 +173,7 @@ class Config(object):
 
   # endregion : Properties
 
-  # region : Methods Overrode
+  # region : Override
 
   def __getattribute__(self, name):
     attr = object.__getattribute__(self, name)
@@ -151,11 +181,28 @@ class Config(object):
     else: return attr.value
 
   def __setattr__(self, name, value):
+    # If attribute is not found (say during instance initialization),
+    # .. use default __setattr__
+    if not hasattr(self, name):
+      object.__setattr__(self, name, value)
+      return
+
+    # If attribute is not a Flag, use default __setattr__
     attr = object.__getattribute__(self, name)
-    if not isinstance(attr, Flag): object.__setattr__(self, name, value)
+    if not isinstance(attr, Flag):
+      object.__setattr__(self, name, value)
+      return
+
+    # Now attr is definitely a Flag
+    # If attr is a enum Flag, make sure value is legal
+    if attr.is_enum:
+      if value not in list(attr.enum_class):
+        raise TypeError(
+          '!! Can not set {} for enum flag {}'.format(value, name))
+    # Replace the attr with a new Flag
     object.__setattr__(self, name, attr.new_value(value))
 
-  # endregion : Methods Overrode
+  # endregion : Override
 
   # region : Public Methods
 

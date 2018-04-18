@@ -127,6 +127,9 @@ class Agent(object):
       self._summary_writer.close()
     self.session.close()
 
+  def write_summary(self, summary):
+    self._summary_writer.add_summary(summary, self._model.counter)
+
   # endregion : Public Methods
 
   # region : Private Methods
