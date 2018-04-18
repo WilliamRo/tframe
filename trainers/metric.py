@@ -6,11 +6,12 @@ import numpy as np
 
 import tensorflow as tf
 
-import tframe as tfr
 from tframe import console
 
+from tframe.core import TensorSlot, VariableSlot, SummarySlot
 
-class Metric(tfr.core.Slot):
+
+class Metric(TensorSlot):
 
   def __init__(self, model, name):
     # Call parent's constructor
@@ -20,12 +21,10 @@ class Metric(tfr.core.Slot):
     self.symbol = None
     # :: Attribute for take down metric history
     self._metric_logs = [[]]
-    self._best_metric = None
-    self._no_record = True
-    self._best_metric_mean = None
-    self._no_mean_record = True
+    self._record = VariableSlot(self._model)
+    self._mean_record = VariableSlot(self._model)
     # For hp-tuning
-    self._best_metric_summary = None
+    self._record_summary = SummarySlot(self._model)
     # TODO
     self._memory = 4
     self._trend = []
@@ -34,27 +33,19 @@ class Metric(tfr.core.Slot):
 
   @property
   def record(self):
-    return self.fetch()
+    return self._record.fetch()
 
   @record.setter
   def record(self, value):
-    assert self.activated
-    with self._model.graph.as_default():
-      self._model.session.run(tf.assign(self._best_metric, value))
-    self._no_record = False
+    self._record.assign(value)
 
   @property
   def mean_record(self):
-    assert self.activated
-    with self._model.graph.as_default():
-      return self._model.session.run(self._best_metric_mean)
+    return self._mean_record.fetch()
 
   @mean_record.setter
   def mean_record(self, value):
-    assert self.activated
-    with self._model.graph.as_default():
-      self._model.session.run(tf.assign(self._best_metric_mean, value))
-    self._no_mean_record = False
+    self._mean_record.assign(value)
 
   # endregion : Properties
 
@@ -79,7 +70,8 @@ class Metric(tfr.core.Slot):
 
     # Update best mean metric
     mean_record = self.mean_record
-    if self._no_mean_record or self.is_better_than(metric_mean, mean_record):
+    if (self._mean_record.never_assigned
+        or self.is_better_than(metric_mean, mean_record)):
       self.mean_record = metric_mean
       mean_record = metric_mean
       new_record = True
@@ -116,12 +108,12 @@ class Metric(tfr.core.Slot):
 
   def _init_tensors(self):
     with self._model.graph:
-      self._best_metric = tf.Variable(
-        initial_value=0.0, trainable=False, name='best_metric')
-      self._best_metric_mean = tf.Variable(
-        initial_value=0.0, trainable=False, name='best_metric_mean')
-      self._best_metric_summary = tf.summary.scalar(
-        'best_metric_sum', self._best_metric)
+      self._record.plug(tf.Variable(
+        initial_value=0.0, trainable=False, name='metric_record'))
+      self._mean_record.plug(tf.Variable(
+        initial_value=0.0, trainable=False, name='metric_mean_record'))
+      self._record_summary.plug(tf.summary.scalar(
+        'metric_record_sum', self._record.tensor))
 
   def _show_trend(self):
     tendency = ''

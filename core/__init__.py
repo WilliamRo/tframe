@@ -4,4 +4,4 @@ from .decorators import single_input
 from .decorators import init_with_graph
 from .function import Function
 
-from .slot import Slot, TensorSlot, SummarySlot, OperationSlot
+from .slot import Slot, TensorSlot, SummarySlot, OperationSlot, VariableSlot
