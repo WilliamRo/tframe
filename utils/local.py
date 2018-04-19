@@ -66,7 +66,7 @@ def load_checkpoint(path, session, saver):
 
 
 def save_checkpoint(path, session, saver, step):
-  saver.save(session, path, step)
+  saver.save_model(session, path, step)
 
 
 def write_file(path, content, append=False):

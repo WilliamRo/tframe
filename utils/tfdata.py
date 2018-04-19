@@ -153,6 +153,7 @@ class TFData(object):
 
   @property
   def batches_per_epoch(self):
+    # TODO: what if batch size changed?
     if self._is_for_rnn: return 1.0 * self._epoch_size
     return 1.0 * self.sample_num / self._batch_size
 

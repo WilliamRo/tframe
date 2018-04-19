@@ -215,51 +215,6 @@ class Model(object):
     # TODO: shutdown at an appropriate time
     # self.shutdown()
 
-  def _update_loss_dict(self, loss_dict, probe):
-    # Update loss dictionary by adding metric (and probe) information
-    if self._metric is None or self._validation_set is None:
-      return loss_dict, False
-
-    new_record = False
-
-    # Calculate metric
-    # assert isinstance(self._metric, tf.Tensor)
-    feed_dict = self._get_default_feed_dict(
-      self._validation_set, is_training=False)
-
-    # _print_summary is written with print cycle
-    if self._validation_summary is None or not FLAGS.summary:
-      metric, best_metric = self._session.run(
-        [self._metric.tensor, self._best_metric], feed_dict=feed_dict)
-    else:
-      metric, summary, best_metric = self._session.run(
-        [self._metric.tensor, self._validation_summary, self._best_metric],
-        feed_dict=feed_dict)
-      assert isinstance(self._summary_writer, tf.summary.FileWriter)
-      self._summary_writer.add_summary(summary, self.counter)
-
-    # Add metric info to loss dictionary for printing
-    loss_dict.update({pedia.memo[pedia.metric_name]: metric})
-
-    # Add metric information to log maintained by model(self)
-    if self._train_status['metric_on']:
-      assert isinstance(self._metric_log[-1], list)
-      self._metric_log[-1].append(metric)
-
-    # Try to add probing information
-    if probe is not None:
-      assert callable(probe)
-      loss_dict.update({'Probe': probe(self)})
-
-    # TODO: Save best
-    delta = best_metric - metric
-    if pedia.memo[pedia.metric_name] == pedia.Accuracy: delta = -delta
-    if delta > 2e-4 or best_metric < 0:
-      new_record = True
-      self._session.run(tf.assign(self._best_metric, metric))
-
-    return loss_dict, new_record
-
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
@@ -269,17 +224,6 @@ class Model(object):
     assert isinstance(validation_set, TFData)
     feed_dict = self._get_default_feed_dict(validation_set, is_training=False)
     return self._validate_group.run(feed_dict)
-
-  def _snapshot(self):
-    if self._snapshot_function is None:
-      return
-
-    fig = self._snapshot_function(self)
-    epcs = 1.0 * self.counter / self._training_set.batches_per_epoch
-    filename = 'train_{:.2f}_epcs.png'.format(epcs)
-    imtool.save_plt(fig, "{}/{}".format(self.snapshot_dir))
-
-    self._inter_cut("[Snapshot] images saved to '{}'".format(filename))
 
   # endregion : Training
 

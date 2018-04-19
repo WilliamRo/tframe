@@ -272,7 +272,7 @@ class ImageViewer(object):
     if filename[-4:] != '.tfd':
       filename = '{}.tfd'.format(filename)
 
-    self.dataset.save(filename)
+    self.dataset.save_model(filename)
     # Print status
     self.filename = filename
     print(">> Data set saved to '{}'".format(filename))

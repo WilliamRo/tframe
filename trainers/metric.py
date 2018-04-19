@@ -100,6 +100,8 @@ class Metric(TensorSlot):
 
     return new_record
 
+  def write_record_summary(self):
+    self._model.agent.write_summary(self._record_summary.run())
 
   # endregion : Public Methods
 

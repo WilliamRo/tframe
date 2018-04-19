@@ -11,6 +11,7 @@ import tframe as tfr
 from tframe import console
 from tframe import TFData
 from tframe.enums import InputTypes, SaveMode
+from tframe.utils import imtool
 from tframe.core import with_graph
 from tframe.config import Config, Flag
 
@@ -37,7 +38,7 @@ class Trainer(object):
     self.set_data(training_set, validation_set)
 
     # Set callable attributes
-    self._snapshot = self._check_callable(snapshot, 'snapshot')
+    self._snapshot_function = self._check_callable(snapshot, 'snapshot')
     self._probe = self._check_callable(probe, 'probe')
 
     # Initiate trainer hub
@@ -73,6 +74,7 @@ class Trainer(object):
 
   @property
   def total_rounds(self):
+    # TODO: Batch size must be kept the same among different trials
     return self.counter / self.training_set.batches_per_epoch
 
   # endregion : Properties
@@ -110,9 +112,7 @@ class Trainer(object):
     with self.session.as_default(): self._outer_loop()
 
     # :: After training
-    if self.th.summary or self.th.hp_tuning:
-      self.model.agent.summary_writer.flush()
-
+    self._end_training()
 
   # region : Before training
 
@@ -157,6 +157,10 @@ class Trainer(object):
         hub.round_name, hub.toc()))
       # Maybe give a report on metric
       if hub.validation_on: self.model.metric.end_round()
+      # Maybe save model
+      if hub.save_mode is SaveMode.NAIVE:
+        self.model.agent.save_model()
+        console.show_status('Model saved')
       # Early stop
       if hub.stop: break
 
@@ -171,7 +175,8 @@ class Trainer(object):
       self._print_progress(rnd, loss_dict)
       # Validation
       self._validate_model()
-      # TODO
+      # Take snapshot
+      self._snapshot()
 
   def _gen_batches(self):
     if self.model.input_type is InputTypes.BATCH:
@@ -185,6 +190,20 @@ class Trainer(object):
     return batches
 
   # endregion : During training
+
+  # region : After training
+
+  def _end_training(self):
+    # If this is a hp-tuning task, write record summary
+    if self.th.hp_tuning:
+      assert not self.th.summary
+      self.model.metric.write_record_summary()
+
+    # Flush summary
+    if self.th.summary or self.th.hp_tuning:
+      self.model.agent.summary_writer.flush()
+
+  # endregion : After training
 
   # endregion : Train
 
@@ -242,9 +261,22 @@ class Trainer(object):
     self._inter_cut(self._dict_to_string(metric_dict), prompt=prompt)
 
     # If necessary, save model
-    if (new_record and self.th.save_model and self.th.save_best
-        and self.total_rounds >= 0):
-      pass
+    if (new_record and self.th.save_model
+        and self.th.save_mode is SaveMode.ON_RECORD
+        and self.total_rounds > self.th.warm_up_rounds):
+      self.model.agent.save_model()
+      self._inter_cut('Model saved')
+
+  def _snapshot(self):
+    if not self.th.snapshot: return
+    if not self.th.snapshot_cycle > 0: return
+    if np.mod(self.counter - 1, self.th.snapshot_cycle) != 0: return
+
+    fig = self._snapshot_function(self.model)
+    unit = 'epcs' if self.th.round_name == 'Epoch' else 'rnds'
+    filename = 'train_{:.2f}_{}.png'.format(self.total_rounds, unit)
+    self.model.agent.save_plot(fig, filename)
+    self._inter_cut("Images saved to '{}'".format(filename), '[Snapshot]')
 
   # endregion : Private Methods
 
@@ -268,6 +300,8 @@ class TrainerHub(Config):
   early_stop = Flag.boolean(False, 'Early stop option')
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']")
+  warm_up_rounds = Flag.integer(5, 'If save mode is on_record, model will not'
+                                   'be saved until warm-up finishes')
   idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on')
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')

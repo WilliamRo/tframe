@@ -11,6 +11,7 @@ from tframe import config
 from tframe import console
 from tframe import pedia
 
+from tframe.utils import imtool
 from tframe.utils.local import check_path, clear_paths, write_file
 from tframe.utils.local import save_checkpoint, load_checkpoint
 
@@ -85,8 +86,9 @@ class Agent(object):
   def load(self):
     return load_checkpoint(self.ckpt_dir, self.session, self._saver)
 
-  def save(self, step):
-    save_checkpoint(self.model_path, self.session, self._saver, step)
+  def save_model(self):
+    save_checkpoint(self.model_path, self.session, self._saver,
+                    self._model.counter)
 
   def launch_model(self, overwrite=False):
     config.smooth_out_conflicts()
@@ -129,6 +131,9 @@ class Agent(object):
 
   def write_summary(self, summary):
     self._summary_writer.add_summary(summary, self._model.counter)
+
+  def save_plot(self, fig, filename):
+    imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))
 
   # endregion : Public Methods
 
