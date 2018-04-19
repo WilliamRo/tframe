@@ -19,6 +19,7 @@ from tframe.trainers.metric import Metric
 
 class Trainer(object):
   """Base class of trainer for training tframe models.
+
      Model save mechanism when save_mode is
        (1) SaveMode.NAIVE:
            Model will be saved only at the end of each round naively
@@ -26,6 +27,7 @@ class Trainer(object):
            Model will be saved only when a new metric record appears
            after model finishes its warm-up rounds
    """
+  HubClass = None
   def __init__(
       self,
       model,
@@ -77,6 +79,10 @@ class Trainer(object):
   @counter.setter
   def counter(self, value):
     self.model.counter = value
+
+  @property
+  def metric(self):
+    return self.model.metric
 
   @property
   def total_rounds(self):
@@ -134,8 +140,8 @@ class Trainer(object):
   def _init_trainer_hub(self, hub, **kwargs):
     if hub is not None:
       # If th is provided
-      if not isinstance(hub, TrainerHub):
-        raise TypeError('!! config must be an instance of TrainerHub')
+      if not isinstance(hub, self.HubClass): raise TypeError(
+        '!! config must be an instance of {}'.format(self.HubClass))
       self.th = hub
       self.th.trainer = self
     else: self.th.set_up(**kwargs)
@@ -162,19 +168,22 @@ class Trainer(object):
 
   def _outer_loop(self):
     hub = self.th
-    for rnd in range(hub.total_outer_loops):
-      console.section('{} {}'.format(hub.round_name, rnd + 1))
+    for rnd_ in range(hub.total_outer_loops):
+      rnd = rnd_ + 1
+      console.section('{} {}'.format(hub.round_name, rnd))
       hub.tic()
       # Begin inner loop
-      self._inner_loop(rnd + 1)
+      self._inner_loop(rnd)
       # End of round
       console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
         hub.round_name, hub.toc()))
       # Maybe give a report on metric
       if hub.validation_on:
-        self.model.metric.end_round(rnd + 1)
-        if self.model.metric.get_idle_rounds(rnd + 1) > self.th.idle_tol:
+        self.metric.end_round(rnd)
+        if self.metric.get_idle_rounds(rnd) > self.th.idle_tol:
           self.th.raise_stop_flag()
+      # Advanced strategy
+      self._advanced_strategy(rnd)
       # Maybe save model
       if self._save_model_at_round_end: self._save_model()
       # Early stop
@@ -206,6 +215,10 @@ class Trainer(object):
       raise TypeError('!! Unknown input type {}'.format(self.model.input_type))
     return batches
 
+  def _advanced_strategy(self, rnd):
+    """Should be overridden"""
+    pass
+
   # endregion : During training
 
   # region : After training
@@ -216,7 +229,7 @@ class Trainer(object):
     # If this is a hp-tuning task, write record summary
     if self.th.hp_tuning:
       assert not self.th.summary
-      self.model.metric.write_record_summary()
+      self.metric.write_record_summary()
 
     # Flush summary
     if self.th.summary or self.th.hp_tuning:
@@ -275,7 +288,7 @@ class Trainer(object):
     # Get metric
     metric_dict = self.model.validate_model(self.validation_set)
     metric = metric_dict.values()[0]
-    new_record = self.model.metric.take_down(metric, rnd)
+    new_record = self.metric.take_down(metric, rnd)
     prompt = '[New Record]' if new_record else '[Validate]'
     self._inter_cut(self._dict_to_string(metric_dict), prompt=prompt)
 
@@ -352,7 +365,7 @@ class TrainerHub(Config):
 
   @property
   def validation_on(self):
-    metric = self.trainer.model.metric
+    metric = self.trainer.metric
     assert isinstance(metric, Metric)
     if not metric.activated: return False
     val_data = self.trainer.validation_set
@@ -395,5 +408,6 @@ class TrainerHub(Config):
 
 # Register trainer hub
 TrainerHub.register()
+Trainer.HubClass = TrainerHub
 
 

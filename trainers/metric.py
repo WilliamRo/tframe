@@ -27,7 +27,7 @@ class Metric(TensorSlot):
     # For hp-tuning
     self._record_summary = SummarySlot(self._model)
     # TODO
-    self._memory = 4
+    self.memory = 4
     self._trend = []
 
   # region : Properties
@@ -48,6 +48,12 @@ class Metric(TensorSlot):
   def mean_record(self, value):
     self._mean_record.assign(value)
 
+  @property
+  def trend_is_promising(self):
+    if len(self._trend) == 0: return None
+    if self._as_loss: return all(np.array(self._trend) < 0)
+    else: return all(np.array(self._trend) > 0)
+
   # endregion : Properties
 
   # region : Public Methods
@@ -66,10 +72,11 @@ class Metric(TensorSlot):
     metric_mean = np.mean(self._metric_logs.pop())
     self._metric_logs.append(metric_mean)
     trend = []
-    for i in range(min(self._memory, len(self._metric_logs) - 1)):
+    for i in range(min(self.memory, len(self._metric_logs) - 1)):
       hist_mean = self._metric_logs[-(i + 2)]
       assert hist_mean > 0.0
       trend.append((metric_mean - hist_mean) / hist_mean * 100)
+    # trend = [re(rnd-1), re(rnd-2), ..., re(rnd-memory)]
     self._trend = trend
 
     # Update best mean metric

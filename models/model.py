@@ -2,20 +2,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-import os
-import time
-
 import numpy as np
 import tensorflow as tf
-
-import tframe as tfr
 
 from tframe import TFData
 from tframe import config
 from tframe import console
 from tframe import pedia
-from tframe.utils import imtool
 
 from tframe.enums import InputTypes
 from tframe.core import with_graph
@@ -26,8 +19,8 @@ from tframe.core import Group
 from tframe.nets.net import Net
 
 from tframe.trainers.metric import Metric
-from tframe.trainers.trainer import Trainer, TrainerHub
-from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
+from tframe.trainers.trainer import Trainer
+from tframe.trainers.smartrainer import SmartTrainer
 
 
 class Model(object):
@@ -129,25 +122,6 @@ class Model(object):
     """Method run in early training process, should be overrode"""
     pass
 
-  # TODO
-  def _apply_smart_train(self):
-    # ...
-    # Tune learning rate TODO: smart train will only be applied here
-    if len(self._metric_log) >= memory + 1 and self._train_status['metric_on']:
-      if all(np.array(history) < 0) and self._train_status['bad_apples'] > 0:
-        self._train_status['bad_apples'] -= 1
-      console.supplement('{} bad apples found'.format(
-        self._train_status['bad_apples']))
-      if self._train_status['bad_apples'] > memory and FLAGS.smart_train:
-        self._tune_lr(lr_decay)
-        self._train_status['bad_apples'] = 0
-        if not FLAGS.save_best:
-          console.show_status('save_best option has been turned on')
-        FLAGS.save_best = True
-
-    return save_flag
-
-  # TODO
   @with_graph
   def train(self, epoch=1, batch_size=128, training_set=None,
             validation_set=None, print_cycle=0, snapshot_cycle=0,
@@ -159,23 +133,7 @@ class Model(object):
                             snapshot=snapshot_function, probe=probe)
     trainer.train(epoch=epoch, batch_size=batch_size, print_cycle=print_cycle,
                   snapshot_cycle=snapshot_cycle, **kwargs)
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # Begin iteration
-    with self._session.as_default():
-      for epc in range(epoch):
-        # Add a new list to metric log if smart_train is on
-        # Record epoch start time
-        while True:
-          break
 
-        # End of epoch
-        since_last = epc - self._last_epoch
-        if since_last == 0: self._train_status['bad_apples'] = 0
-        else: self._train_status['bad_apples'] += 1
-        save_flag = self._apply_smart_train() if FLAGS.smart_train else True
-
-        # Early stop if break flag is true
-        if break_flag: break
 
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
@@ -202,6 +160,24 @@ class Model(object):
 
   # region : Public Methods
 
+  def tune_lr(self, new_lr=None, coef=1.0):
+    if self._optimizer is None:
+      raise ValueError('!! Optimizer not defined yet')
+    if self._optimizer.__class__ in [tf.train.AdamOptimizer]:
+      lr_name = '_lr'
+    elif self._optimizer.__class__ in [tf.train.GradientDescentOptimizer]:
+      lr_name = '_learning_rate'
+    else:
+      raise TypeError('!! Unsupported optimizer for lr tuning')
+
+    old_lr = self._optimizer.__getattribute__(lr_name)
+    if new_lr is None: new_lr = old_lr * coef
+    self._optimizer.__setattr__(lr_name, new_lr)
+
+    # Show status
+    console.show_status(
+      'Learning rate updated: {:.8f} => {:.8f}'.format(old_lr, new_lr))
+
   def shutdown(self):
     self.agent.shutdown()
 
@@ -211,23 +187,6 @@ class Model(object):
   # endregion : Public Methods
 
   # region : Private Methods
-
-  def _tune_lr(self, alpha):
-    assert np.isscalar(alpha) and 0 < alpha < 1
-    lr, new_lr = None, None
-    if isinstance(self._optimizer, tf.train.AdamOptimizer):
-      lr = self._optimizer._lr
-      new_lr = lr * alpha
-      self._optimizer._lr = new_lr
-      self._lr_t = tf.constant(new_lr)
-    elif isinstance(self._optimizer, tf.train.GradientDescentOptimizer):
-      lr = self._optimizer._learning_rate
-      new_lr = lr * alpha
-      self._optimizer._learning_rate = new_lr
-    else: return
-    # Show status
-    console.show_status(
-      'learning rate updated: {:.7f} => {:.7f}'.format(lr, new_lr))
 
   @with_graph
   def _get_default_feed_dict(self, batch, is_training):
@@ -244,13 +203,4 @@ class Model(object):
     return feed_dict
 
   # endregion : Private Methods
-
-  """For some reason, do not remove this line"""
-
-
-if __name__ == '__main__':
-  console.show_status('__main__')
-
-
-
 

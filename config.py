@@ -7,6 +7,7 @@ from tframe.enums import EnumPro
 
 flags = tf.app.flags
 
+# TODO: Value set to Flag should be checked
 
 class Flag(object):
   def __init__(self, default_value, description, register=None, name=None,
@@ -27,13 +28,18 @@ class Flag(object):
     self._kwargs = kwargs
 
     self._value = default_value
+    self._frozen = False
 
   # region : Properties
 
   @property
+  def frozen(self):
+    return self._frozen
+
+  @property
   def value(self):
-    # If not registered to tf.app.flags
-    if self._register is None: return self._value
+    # If not registered to tf.app.flags or has been frozen
+    if self._register is None or self._frozen: return self._value
 
     assert hasattr(flags.FLAGS, self._name)
     f_value = getattr(flags.FLAGS, self._name)
@@ -116,6 +122,10 @@ class Flag(object):
     flg._value = value
     return flg
 
+  def freeze(self, value):
+    self._value = value
+    self._frozen = True
+
   # endregion : Public Methods
 
 
@@ -194,6 +204,8 @@ class Config(object):
       return
 
     # Now attr is definitely a Flag
+    if attr.frozen:
+      raise AssertionError('!! config {} has been frozen'.format(name))
     # If attr is a enum Flag, make sure value is legal
     if attr.is_enum:
       if value not in list(attr.enum_class):
