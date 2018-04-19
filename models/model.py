@@ -166,54 +166,16 @@ class Model(object):
         # Add a new list to metric log if smart_train is on
         # Record epoch start time
         while True:
-          # Print status
-          if print_cycle > 0 and np.mod(self.counter - 1, print_cycle) == 0:
-            loss_dict, new_record = self._update_loss_dict(loss_dict, probe)
-            self._print_progress(epc, start_time, loss_dict,
-                                 data_batch=data_batch)
-            if new_record:
-              self._last_epoch = epc
-              if FLAGS.save_best and epc + 1 >= FLAGS.dont_save_until:
-                if FLAGS.save_model:
-                  self._save(self.counter)
-                  self._inter_cut('[New Record] Model saved')
-
-          # Snapshot
-          if (FLAGS.snapshot and snapshot_cycle > 0
-              and np.mod(self.counter - 1, snapshot_cycle) == 0):
-            self._snapshot()
-          # Check flag: break
+          break
 
         # End of epoch
         since_last = epc - self._last_epoch
         if since_last == 0: self._train_status['bad_apples'] = 0
         else: self._train_status['bad_apples'] += 1
         save_flag = self._apply_smart_train() if FLAGS.smart_train else True
-        if self._train_status['metric_on']:
-          best_metric = self._session.run(self._best_metric)
-          console.supplement(
-            '[Best {:.3f}] {} epochs since last record appears.'.format(
-            best_metric, since_last))
-
-        if not FLAGS.save_best and save_flag and FLAGS.save_model:
-          self._save(self._counter)
-          console.show_status('Model saved')
-        elif since_last >= epoch_tol: break_flag = True
 
         # Early stop if break flag is true
         if break_flag: break
-
-    # End training
-    if FLAGS.progress_bar: console.clear_line()
-
-    # Write HP-tuning metric
-    if FLAGS.hpt:
-      summary = self._session.run(self._best_metric_sum)
-      self._summary_writer.add_summary(summary, self.counter)
-
-    if FLAGS.summary or FLAGS.hpt: self._summary_writer.flush()
-    # TODO: shutdown at an appropriate time
-    # self.shutdown()
 
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""

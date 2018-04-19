@@ -11,7 +11,6 @@ import tframe as tfr
 from tframe import console
 from tframe import TFData
 from tframe.enums import InputTypes, SaveMode
-from tframe.utils import imtool
 from tframe.core import with_graph
 from tframe.config import Config, Flag
 
@@ -19,7 +18,14 @@ from tframe.trainers.metric import Metric
 
 
 class Trainer(object):
-  """Base class of trainer for training tframe models"""
+  """Base class of trainer for training tframe models.
+     Model save mechanism when save_mode is
+       (1) SaveMode.NAIVE:
+           Model will be saved only at the end of each round naively
+       (2) SaveMode.ON_RECORD:
+           Model will be saved only when a new metric record appears
+           after model finishes its warm-up rounds
+   """
   def __init__(
       self,
       model,
@@ -76,6 +82,15 @@ class Trainer(object):
   def total_rounds(self):
     # TODO: Batch size must be kept the same among different trials
     return self.counter / self.training_set.batches_per_epoch
+
+  @property
+  def _save_model_when_record_appears(self):
+    return (self.th.save_model and self.th.save_mode is SaveMode.ON_RECORD
+            and self.total_rounds > self.th.warm_up_rounds)
+
+  @property
+  def _save_model_at_round_end(self):
+    return self.th.save_model and self.th.save_mode is SaveMode.NAIVE
 
   # endregion : Properties
 
@@ -151,16 +166,17 @@ class Trainer(object):
       console.section('{} {}'.format(hub.round_name, rnd + 1))
       hub.tic()
       # Begin inner loop
-      self._inner_loop(rnd)
+      self._inner_loop(rnd + 1)
       # End of round
       console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
         hub.round_name, hub.toc()))
       # Maybe give a report on metric
-      if hub.validation_on: self.model.metric.end_round()
+      if hub.validation_on:
+        self.model.metric.end_round(rnd + 1)
+        if self.model.metric.get_idle_rounds(rnd + 1) > self.th.idle_tol:
+          self.th.raise_stop_flag()
       # Maybe save model
-      if hub.save_mode is SaveMode.NAIVE:
-        self.model.agent.save_model()
-        console.show_status('Model saved')
+      if self._save_model_at_round_end: self._save_model()
       # Early stop
       if hub.stop: break
 
@@ -174,7 +190,8 @@ class Trainer(object):
       # Print progress
       self._print_progress(rnd, loss_dict)
       # Validation
-      self._validate_model()
+      if self._validate_model(rnd) and self._save_model_when_record_appears:
+        self._save_model(inter_cut=True)
       # Take snapshot
       self._snapshot()
 
@@ -194,6 +211,8 @@ class Trainer(object):
   # region : After training
 
   def _end_training(self):
+    if self.th.progress_bar: console.clear_line()
+
     # If this is a hp-tuning task, write record summary
     if self.th.hp_tuning:
       assert not self.th.summary
@@ -249,23 +268,18 @@ class Trainer(object):
       self.th.round_name, rnd + 1, self.total_rounds, loss_string),
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
-  def _validate_model(self):
-    if not self.th.validation_on: return
-    if np.mod(self.counter, self.th.validate_cycle) != 0: return
+  def _validate_model(self, rnd):
+    if not self.th.validation_on: return False
+    if np.mod(self.counter, self.th.validate_cycle) != 0: return False
 
     # Get metric
     metric_dict = self.model.validate_model(self.validation_set)
     metric = metric_dict.values()[0]
-    new_record = self.model.metric.take_down(metric)
+    new_record = self.model.metric.take_down(metric, rnd)
     prompt = '[New Record]' if new_record else '[Validate]'
     self._inter_cut(self._dict_to_string(metric_dict), prompt=prompt)
 
-    # If necessary, save model
-    if (new_record and self.th.save_model
-        and self.th.save_mode is SaveMode.ON_RECORD
-        and self.total_rounds > self.th.warm_up_rounds):
-      self.model.agent.save_model()
-      self._inter_cut('Model saved')
+    return new_record
 
   def _snapshot(self):
     if not self.th.snapshot: return
@@ -277,6 +291,11 @@ class Trainer(object):
     filename = 'train_{:.2f}_{}.png'.format(self.total_rounds, unit)
     self.model.agent.save_plot(fig, filename)
     self._inter_cut("Images saved to '{}'".format(filename), '[Snapshot]')
+
+  def _save_model(self, inter_cut=False):
+    self.model.agent.save_model()
+    print_method = self._inter_cut if inter_cut else console.show_status
+    print_method('Model saved')
 
   # endregion : Private Methods
 
@@ -297,12 +316,12 @@ class TrainerHub(Config):
   snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
-  early_stop = Flag.boolean(False, 'Early stop option')
+  early_stop = Flag.boolean(True, 'Early stop option')
+  idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on')
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']")
   warm_up_rounds = Flag.integer(5, 'If save mode is on_record, model will not'
                                    'be saved until warm-up finishes')
-  idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on')
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
   round = Flag.integer(1, 'General concept of total outer loops, used'
@@ -368,8 +387,8 @@ class TrainerHub(Config):
     assert self._start_time is not None
     return time.time() - self._start_time
 
-  def report(self):
-    pass
+  def raise_stop_flag(self):
+    self._stop = True
 
   # endregion : Public Methods
 

@@ -75,12 +75,16 @@ class OperationSlot(Slot):
 class VariableSlot(TensorSlot):
   def __init__(self, model, name='variable'):
     super().__init__(model, name)
-    # Attributes
+    # Attributes TODO: can be simplified
     self._never_assigned = True
 
   @property
   def never_assigned(self):
     return self._never_assigned
+
+  def plug(self, op, **kwargs):
+    super(VariableSlot, self).plug(op)
+    self._never_assigned = self.fetch() is None
 
   def assign(self, value):
     self.run(tf.assign(self._op, value))

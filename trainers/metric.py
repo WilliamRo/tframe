@@ -19,6 +19,7 @@ class Metric(TensorSlot):
     #
     self._as_loss = None
     self.symbol = None
+    self._record_round = 0
     # :: Attribute for take down metric history
     self._metric_logs = [[]]
     self._record = VariableSlot(self._model)
@@ -51,12 +52,15 @@ class Metric(TensorSlot):
 
   # region : Public Methods
 
+  def get_idle_rounds(self, rnd):
+    return rnd - self._record_round
+
   def is_better_than(self, metric1, metric2, gap=0):
     assert self._as_loss is not None
     if self._as_loss: return metric1 < metric2 - gap
     else: return metric1 > metric2 + gap
 
-  def end_round(self):
+  def end_round(self, rnd):
     new_record = False
     assert isinstance(self._metric_logs[-1], list)
     metric_mean = np.mean(self._metric_logs.pop())
@@ -83,18 +87,24 @@ class Metric(TensorSlot):
       metric_mean, token, mean_record))
     self._show_trend()
 
+    # Show record
+    console.supplement(
+      '[Best {:.3f}] {} rounds since last record appears.'.format(
+        self.record, self.get_idle_rounds(rnd)))
+
     # Append log container for new round
     self._metric_logs.append([])
 
     return new_record
 
-  def take_down(self, metric):
+  def take_down(self, metric, rnd):
     new_record = False
     # Add new metric to log
     self._add_to_log(metric)
 
     # Update metric record
     if self._record.never_assigned or self.is_better_than(metric, self.record):
+      self._record_round = rnd
       self.record = metric
       new_record = True
 
@@ -120,9 +130,9 @@ class Metric(TensorSlot):
   def _init_tensors(self):
     with self._model.graph:
       self._record.plug(tf.Variable(
-        initial_value=0.0, trainable=False, name='metric_record'))
+        initial_value=None, trainable=False, name='metric_record'))
       self._mean_record.plug(tf.Variable(
-        initial_value=0.0, trainable=False, name='metric_mean_record'))
+        initial_value=None, trainable=False, name='metric_mean_record'))
       self._record_summary.plug(tf.summary.scalar(
         'metric_record_sum', self._record.tensor))
 
