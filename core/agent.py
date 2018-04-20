@@ -7,7 +7,7 @@ import os
 import tensorflow as tf
 import tframe as tfr
 
-from tframe import config
+from tframe import hub
 from tframe import console
 from tframe import pedia
 
@@ -23,15 +23,14 @@ class Agent(object):
     # .. set to it
     assert isinstance(model, tfr.models.Model)
     self._model = model
-    self._graph = None
     self._session = None
-    self._init_session_and_graph(graph)
+    self._graph = None
     # Graph variables
     self._is_training = None
-    self._init_graph_variable()
+    self._init_graph(graph)
     # An agent saves model and writes summary
-    self._saver = tf.train.Saver()
-    self._summary_writer = tf.summary.FileWriter(self.log_dir)
+    self._saver = None
+    self._summary_writer = None
 
   # region : Properties
 
@@ -48,7 +47,13 @@ class Agent(object):
     return self._session
 
   @property
+  def saver(self):
+    assert isinstance(self._saver, tf.train.Saver)
+    return self._saver
+
+  @property
   def summary_writer(self):
+    assert isinstance(self._summary_writer, tf.summary.FileWriter)
     return self._summary_writer
 
   # endregion : Accessors
@@ -57,16 +62,16 @@ class Agent(object):
 
   @property
   def log_dir(self):
-    return check_path(config.job_dir, config.record_dir,
-                      config.log_folder_name, self._model.mark)
+    return check_path(hub.job_dir, hub.record_dir,
+                      hub.log_folder_name, self._model.mark)
   @property
   def ckpt_dir(self):
-    return check_path(config.job_dir, config.record_dir,
-                      config.ckpt_folder_name, self._model.mark)
+    return check_path(hub.job_dir, hub.record_dir,
+                      hub.ckpt_folder_name, self._model.mark)
   @property
   def snapshot_dir(self):
-    return check_path(config.job_dir, config.record_dir,
-                      config.snapshot_folder_name, self._model.mark)
+    return check_path(hub.job_dir, hub.record_dir,
+                      hub.snapshot_folder_name, self._model.mark)
   @property
   def model_path(self):
     return os.path.join(
@@ -91,13 +96,14 @@ class Agent(object):
                     self._model.counter)
 
   def launch_model(self, overwrite=False):
-    config.smooth_out_conflicts()
+    hub.smooth_out_conflicts()
+    if hub.suppress_logging: console.suppress_logging()
     # Before launch session, do some cleaning work
-    if overwrite and config.overwrite:
+    if overwrite and hub.overwrite:
       paths = []
-      if config.summary: paths.append(self.log_dir)
-      if config.save_model: paths.append(self.ckpt_dir)
-      if config.snapshot: paths.append(self.snapshot_dir)
+      if hub.summary: paths.append(self.log_dir)
+      if hub.save_model: paths.append(self.ckpt_dir)
+      if hub.snapshot: paths.append(self.snapshot_dir)
       clear_paths(paths)
 
     # Launch session on self.graph
@@ -105,8 +111,8 @@ class Agent(object):
     self._session = tf.Session(graph=self._graph)
     console.show_status('Session launched')
     # Prepare some tools
-    if config.save_model: self._saver = tf.train.Saver()
-    if config.summary or config.hp_tuning:
+    if hub.save_model: self._saver = tf.train.Saver()
+    if hub.summary or hub.hp_tuning:
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
 
     # Try to load exist model
@@ -116,16 +122,17 @@ class Agent(object):
       # If checkpoint does not exist, initialize all variables
       self._session.run(tf.global_variables_initializer())
       # Add graph
-      if config.summary: self._summary_writer.add_graph(self._session.graph)
+      if hub.summary: self._summary_writer.add_graph(self._session.graph)
       # Write model description to file
-      if config.snapshot:
+      if hub.snapshot:
         description_path = os.path.join(self.snapshot_dir, 'description.txt')
         write_file(description_path, self._model.description)
 
+    self._model.launched = True
     return load_flag
 
   def shutdown(self):
-    if config.summary or config.hp_tuning:
+    if hub.summary or hub.hp_tuning:
       self._summary_writer.close()
     self.session.close()
 
@@ -139,20 +146,20 @@ class Agent(object):
 
   # region : Private Methods
 
-  def _init_session_and_graph(self, graph):
+  def _init_graph(self, graph):
     if graph is not None:
       assert isinstance(graph, tf.Graph)
       self._graph = graph
     else: self._graph = tf.Graph()
-    self._session = tf.Session(self._graph)
+    # Initialize graph variables
+    with self.graph.as_default():
+      self._is_training = tf.placeholder(
+        dtype=tf.bool, name=pedia.is_training)
+
     # TODO
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
     self._graph.is_training = self._is_training
     tfr.current_graph = self._graph
-
-  def _init_graph_variable(self):
-    with self.graph.as_default():
-      self._is_training = tf.placeholder(dtype=tf.bool, name=pedia.is_training)
 
   # endregion : Private Methods

@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from tframe import activations
 from tframe import initializers
-from tframe import config
+from tframe import hub
 
 from tframe.nets import RecurrentNet
 
@@ -61,12 +61,12 @@ class BasicRNNCell(RecurrentNet):
     input_size = input_shape[1]
 
     # Initiate bias
-    bias = (tf.get_variable('b', shape=[self._state_size], dtype=config.dtype,
+    bias = (tf.get_variable('b', shape=[self._state_size], dtype=hub.dtype,
                             initializer=self._bias_initializer)
             if self._use_bias else None)
 
     get_variable = lambda name, shape: tf.get_variable(
-      name, shape, dtype=config.dtype, initializer=self._weight_initializer)
+      name, shape, dtype=hub.dtype, initializer=self._weight_initializer)
     if self._inner_struct == 'add':
       W_h = get_variable('W_h', [self._state_size, self._state_size])
       W_x = get_variable('W_x', [input_size, self._state_size])

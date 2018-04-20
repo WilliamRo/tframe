@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from tframe import pedia
-from tframe import with_graph
+from tframe.core import with_graph
 
 from tframe import Predictor
 from tframe.nets.net import Net
@@ -17,7 +17,7 @@ from tframe import losses
 from tframe import metrics
 from tframe import TFData
 
-from tframe import FLAGS
+from tframe import hub
 
 
 class Bamboo(Predictor):
@@ -90,7 +90,7 @@ class Bamboo(Predictor):
     self.show_building_info(FeedforwardNet=self)
 
     # Launch session
-    self.launch_model(FLAGS.overwrite and FLAGS.train)
+    self.launch_model(hub.overwrite)
 
     # Set built flag
     self._output_list = output_list

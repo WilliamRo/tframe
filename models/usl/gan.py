@@ -17,7 +17,7 @@ from tframe.utils.maths import interpolations
 from tframe.layers import merge
 
 from tframe import pedia
-from tframe import config
+from tframe import hub
 from tframe.core import with_graph
 
 
@@ -161,7 +161,7 @@ class GAN(Model):
     self._snapshot_function = self._default_snapshot_function
 
     # Launch session
-    self.launch_model(config.overwrite)
+    self.launch_model(hub.overwrite)
 
   def _define_losses(self, loss, alpha):
     if callable(loss):
@@ -202,11 +202,11 @@ class GAN(Model):
   def _add_summaries(self):
     # Get activation summaries
     act_sum_G = ([act_sum for act_sum in pedia.memo[pedia.activation_sum]
-                 if pedia.Generator in act_sum.name] if config.activation_sum
+                 if pedia.Generator in act_sum.name] if hub.activation_sum
                  else [])
     act_sum_D = ([act_sum for act_sum in pedia.memo[pedia.activation_sum]
                  if pedia.Discriminator in act_sum.name]
-                 if config.activation_sum else [])
+                 if hub.activation_sum else [])
 
     # Get other summaries
     sum_z = tf.summary.histogram('z_sum', self.G.input_[0].place_holder)
@@ -233,7 +233,7 @@ class GAN(Model):
   def pretrain(self, **kwargs):
     """Check data sets"""
 
-    self._sample_num = (config.sample_num if config.sample_num > 0
+    self._sample_num = (hub.sample_num if hub.sample_num > 0
                         else kwargs.get('sample_num', 9))
 
     if not self._conditional:
@@ -367,7 +367,7 @@ class GAN(Model):
     assert isinstance(self._session, tf.Session)
 
     # Get sample number
-    sample_num = (config.sample_num if config.sample_num > 0 else
+    sample_num = (hub.sample_num if hub.sample_num > 0 else
                   max(1, sample_num))
     if self._conditional and not labels is None:
       labels = misc.convert_to_one_hot(labels, self._classes)

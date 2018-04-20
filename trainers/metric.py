@@ -3,17 +3,15 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-
 import tensorflow as tf
 
 from tframe import console
-
 from tframe.core import TensorSlot, VariableSlot, SummarySlot
 
 
 class Metric(TensorSlot):
 
-  def __init__(self, model, name):
+  def __init__(self, model, name='metric'):
     # Call parent's constructor
     super().__init__(model, name)
     #
@@ -135,11 +133,11 @@ class Metric(TensorSlot):
   # region : Private Methods
 
   def _init_tensors(self):
-    with self._model.graph:
+    with self._model.graph.as_default():
       self._record.plug(tf.Variable(
-        initial_value=None, trainable=False, name='metric_record'))
+        initial_value=-1.0, trainable=False, name='metric_record'))
       self._mean_record.plug(tf.Variable(
-        initial_value=None, trainable=False, name='metric_mean_record'))
+        initial_value=-1.0, trainable=False, name='metric_mean_record'))
       self._record_summary.plug(tf.summary.scalar(
         'metric_record_sum', self._record.tensor))
 

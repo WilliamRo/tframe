@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe import config
+from tframe import hub
 
 from tframe.models.model import Model
 from tframe.nets import RecurrentNet
@@ -34,7 +34,7 @@ class Recurrent(Model, RecurrentNet):
     #  so that it can be initialized within the appropriate graph
 
     # Do some initialization
-    self._mascot = tf.placeholder(dtype=config.dtype, name='mascot')
+    self._mascot = tf.placeholder(dtype=hub.dtype, name='mascot')
 
     # :: Define output
     # Make sure input has been defined

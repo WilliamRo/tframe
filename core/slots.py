@@ -9,6 +9,8 @@ import tframe as tfr
 class Slot(object):
   """Slots exist in tframe models. Once plugged in with tensorflow op
     during model building stage, they are called 'activated'."""
+  op_classes = []
+
   def __init__(self, model, name):
     assert isinstance(model, tfr.models.Model)
     self._model = model
@@ -30,14 +32,28 @@ class Slot(object):
   # region : Public Methods
 
   def plug(self, op, **kwargs):
+    if op.__class__ not in self.op_classes:
+      raise TypeError('!! op should be in {}'.format(self.op_classes))
     self._op = op
 
   def run(self, fetches=None, feed_dict=None):
-    fetches = self._op if fetches is None else fetches
     if not self.activated:
       raise AssertionError('!! This slot is not activated')
+
+    fetches = self._op if fetches is None else fetches
+    if not isinstance(fetches, (tuple, list)): fetches = [fetches]
+    assert isinstance(fetches, (list, tuple))
+    ops = []
+    for entity in fetches:
+      op = entity
+      if isinstance(op, Slot): op = entity.op
+      elif op.__class__ not in [
+        tf.Tensor, tf.Operation, tf.summary.Summary, tf.Variable]:
+        raise TypeError('!! Unknown type {}'.format(op.__class__))
+      ops.append(op)
+
     with self._model.graph.as_default():
-      return self._model.session.run(fetches, feed_dict=feed_dict)
+      return self._model.session.run(ops, feed_dict=feed_dict)
 
   def fetch(self, feed_dict=None):
     return self.run(feed_dict=feed_dict)
@@ -46,6 +62,7 @@ class Slot(object):
 
 
 class TensorSlot(Slot):
+  op_classes = [tf.Tensor]
   def __init__(self, model, name='tensor'):
     super().__init__(model, name)
 
@@ -55,6 +72,7 @@ class TensorSlot(Slot):
 
 
 class SummarySlot(Slot):
+  op_classes = [tf.Tensor]
   def __init__(self, model, name='summary'):
     super().__init__(model, name)
 
@@ -64,6 +82,7 @@ class SummarySlot(Slot):
 
 
 class OperationSlot(Slot):
+  op_classes = [tf.Operation]
   def __init__(self, model, name='operation'):
     super().__init__(model, name)
 
@@ -73,19 +92,19 @@ class OperationSlot(Slot):
 
 
 class VariableSlot(TensorSlot):
+  op_classes = [tf.Variable]
+  # TODO: need to be more appropriate
+  _null_value = -1.0
   def __init__(self, model, name='variable'):
     super().__init__(model, name)
-    # Attributes TODO: can be simplified
-    self._never_assigned = True
+
+  @property
+  def variable(self):
+    return self._op
 
   @property
   def never_assigned(self):
-    return self._never_assigned
-
-  def plug(self, op, **kwargs):
-    super(VariableSlot, self).plug(op)
-    self._never_assigned = self.fetch() is None
+    return self.fetch() == self._null_value
 
   def assign(self, value):
     self.run(tf.assign(self._op, value))
-    self._never_assigned = False

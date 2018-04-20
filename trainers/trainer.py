@@ -120,14 +120,12 @@ class Trainer(object):
     self._init_trainer_hub(hub, **kwargs)
     # Do some check-up
     self._check_data(), self._sanity_check(), self.th.sanity_check()
-    # TODO: Set batch size
     # Run model's pre-train method
     self.model.pretrain(**kwargs)
     # Show configurations
     self._show_configurations()
     # Check model.session
     self._check_model()
-    # TODO: merged summary
 
     # Train with graph
     with self.session.as_default(): self._outer_loop()

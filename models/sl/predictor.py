@@ -13,9 +13,10 @@ from tframe import pedia
 from tframe import metrics
 from tframe import TFData
 
-from tframe import config
+from tframe import hub
 from tframe import InputTypes
 from tframe.core import with_graph
+from tframe.core import TensorSlot
 
 
 class Predictor(Feedforward, Recurrent):
@@ -34,7 +35,7 @@ class Predictor(Feedforward, Recurrent):
     # Call parent's constructor
     net_type.__init__(self, mark)
     # Attributes
-    self._targets = None
+    self._targets = TensorSlot(self, 'targets')
 
   # region : Properties
 
@@ -64,11 +65,13 @@ class Predictor(Feedforward, Recurrent):
 
     # Summary placeholder
     default_summaries = []
-    # print summaries are produced during the execution of print function,
-    # .. i.e. the metric summary
-    print_summaries = []
+    validation_summaries = []
 
     # Initiate targets and add it to collection
+    # TODO
+    targets = tf.placeholder(
+      self._outputs.dtype, self._outputs.get_shape(), name='targets')
+
     self._targets = tf.placeholder(
       self._outputs.dtype, self._outputs.get_shape(), name='targets')
     tf.add_to_collection(pedia.default_feed_dict, self._targets)
@@ -89,12 +92,12 @@ class Predictor(Feedforward, Recurrent):
       pedia.memo[pedia.metric_name] = metric_name
       with tf.name_scope('Metric'):
         self._metric = metric_function(self._targets, self._outputs)
-        print_summaries.append(tf.summary.scalar('metric_sum', self._metric))
+        validation_summaries.append(tf.summary.scalar('metric_sum', self._metric))
 
     # Merge summaries
     self._merged_summary = tf.summary.merge(default_summaries)
-    if len(print_summaries) > 0:
-      self._print_summary = tf.summary.merge(print_summaries)
+    if len(validation_summaries) > 0:
+      self._print_summary = tf.summary.merge(validation_summaries)
 
     # Define train step
     self._define_train_step(optimizer)
@@ -104,7 +107,7 @@ class Predictor(Feedforward, Recurrent):
     self.show_building_info(**kwargs)
 
     # Launch session
-    self.launch_model(config.overwrite)
+    self.launch_model(hub.overwrite)
 
     # Set built flag
     self._built = True
@@ -113,18 +116,18 @@ class Predictor(Feedforward, Recurrent):
 
   # region : Public Methods
 
-  def predict(self, data, only_output=False, **kwargs):
+  def predict(self, data, additional_fetches=None, **kwargs):
     # Sanity check
     if not isinstance(data, TFData):
       raise TypeError('!! Input data must be an instance of TFData')
     if not self.built: raise ValueError('!! Model not built yet')
-    if self._session is None:
-      self.launch_model(overwrite=False)
+    if not self.launched: self.launch_model(overwrite=False)
 
-    only_output = only_output or data.targets is None
-    fetches = [self._outputs] + [] if only_output else [self._loss]
+    fetches = [self._outputs]
+    if additional_fetches is not None:
+      fetches += list(additional_fetches)
     feed_dict = self._get_default_feed_dict(data, is_training=False)
-    return self._session.run(fetches, feed_dict=feed_dict)
+    return self._outputs.run(fetches, feed_dict=feed_dict)
 
   # endregion : Public Methods
 

@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from tframe import TFData
-from tframe import config
+from tframe import hub
 from tframe import console
 from tframe import pedia
 
@@ -31,7 +31,7 @@ class Model(object):
 
   def __init__(self, mark=None):
     # Model mark usually helps to decide the folder name
-    self.mark = config.mark or mark
+    self.mark = hub.mark or mark
     assert mark is not None
 
     # Each model has an agent to deal with some tensorflow stuff
@@ -58,6 +58,7 @@ class Model(object):
 
     # Public attributes
     self.counter = None
+    self.launched = False
 
   # region : Properties
 
@@ -127,7 +128,7 @@ class Model(object):
             validation_set=None, print_cycle=0, snapshot_cycle=0,
             snapshot_function=None, probe=None, **kwargs):
     """"""
-    trainer_class = SmartTrainer if config.smart_train else Trainer
+    trainer_class = SmartTrainer if hub.smart_train else Trainer
     trainer = trainer_class(self, training_set=training_set,
                             validation_set=validation_set,
                             snapshot=snapshot_function, probe=probe)
@@ -161,6 +162,7 @@ class Model(object):
   # region : Public Methods
 
   def tune_lr(self, new_lr=None, coef=1.0):
+    #TODO
     if self._optimizer is None:
       raise ValueError('!! Optimizer not defined yet')
     if self._optimizer.__class__ in [tf.train.AdamOptimizer]:

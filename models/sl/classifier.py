@@ -5,7 +5,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tframe import config
+from tframe import hub
 from tframe import pedia
 
 from tframe.core.decorators import with_graph
@@ -26,7 +26,7 @@ class Classifier(Predictor):
   @with_graph
   def build(self, loss='cross_entropy', optimizer=None, *args):
     # TODO: ... do some compromise
-    config.block_validation = True
+    hub.block_validation = True
     # Call parent's method to build using the default loss function
     #  -- cross entropy
     Predictor.build(self, loss, optimizer, metric='accuracy',

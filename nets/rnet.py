@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe import config
+from tframe import hub
 from tframe.nets.net import Net
 
 
@@ -45,7 +45,7 @@ class RecurrentNet(Net):
         # The initialization of init_state must be done under with_graph
         # .. decorator
         self._init_state = tf.placeholder(
-          dtype=config.dtype, shape=(None, self._state_size), name='init_state')
+          dtype=hub.dtype, shape=(None, self._state_size), name='init_state')
       return self._init_state
 
   # endregion : Properties
@@ -117,7 +117,7 @@ class RecurrentNet(Net):
       if state is None:
         assert batch_size is not None
         state = tf.zeros(shape=(batch_size, self._state_size),
-                         dtype=config.dtype)
+                         dtype=hub.dtype)
       return {self._init_state: state}
 
   # endregion : Public Methods

@@ -12,11 +12,10 @@ from tframe.nets.net import Net
 from tframe import console
 
 from tframe import pedia
-from tframe import FLAGS
 from tframe import losses
 from tframe import metrics
 from tframe import TFData
-from tframe import with_graph
+from tframe.core import with_graph
 
 from tframe.layers.layer import Layer
 from tframe.layers import Input
