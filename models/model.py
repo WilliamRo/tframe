@@ -141,10 +141,13 @@ class Model(object):
   @with_graph
   def train(self, training_set, trainer_hub=None, validation_set=None,
             snapshot=None, probe=None, **kwargs):
-    trainer_hub = trainer_hub or hub
-    if not isinstance(trainer_hub, TrainerHub):
-      raise TypeError('!! Input hub must be an instance of TrainerHub')
-    trainer = trainer_hub.trainer_class(
+    if trainer_hub is None:
+      trainer_class = SmartTrainer if hub.smart_train else Trainer
+    else:
+      if not isinstance(trainer_hub, TrainerHub):
+        raise TypeError('!! Input hub must be an instance of TrainerHub')
+      trainer_class = trainer_hub.trainer_class
+    trainer = trainer_class(
       self, training_set=training_set, validation_set=validation_set,
       snapshot=snapshot, probe=probe)
     trainer.train(hub=trainer_hub, **kwargs)

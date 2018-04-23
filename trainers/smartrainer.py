@@ -85,11 +85,19 @@ class SmartTrainerHub(TrainerHub):
     # Call parent's constructor
     TrainerHub.__init__(self, trainer, as_global=as_global)
     # Freeze options
-    if self.smart_train:
-      self.get_flag('save_mode').freeze(SaveMode.ON_RECORD)
-      self.get_flag('early_stop').freeze(True)
+    if self.smart_train: self._freeze_flags()
     # Append attributes
     self.bad_apples = 0
+
+  # TODO
+  def __setattr__(self, name, value):
+    if name == 'smart_train' and value is True:
+      self._freeze_flags()
+    super().__setattr__(name, value)
+
+  def _freeze_flags(self):
+    self.get_flag('save_mode').freeze(SaveMode.ON_RECORD)
+    self.get_flag('early_stop').freeze(True)
 
 
 SmartTrainerHub.register()

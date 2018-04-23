@@ -37,6 +37,8 @@ class Slot(object):
     self._op = op
 
   def substitute(self, op):
+    if op.__class__ not in self.op_classes:
+      raise TypeError('!! op should be in {}'.format(self.op_classes))
     self._op = op
 
   def run(self, fetches=None, feed_dict=None):
