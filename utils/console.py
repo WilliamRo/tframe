@@ -11,6 +11,8 @@ _config = {
   'default_line_width': 80,
   'default_title': 'main',
   'status_prompt': '>>',
+  'warning': ' !',
+  'error': '!!',
   'sub_prompt': '...',
   'tail_width': 13
 }
@@ -39,8 +41,16 @@ def section(contents):
   print("=" * _config['default_line_width'])
 
 
-def show_status(content):
-  print("%s %s" % (_config['status_prompt'], content))
+def show_status(content, symbol=_config['status_prompt']):
+  print("%s %s" % (symbol, content))
+
+
+def warning(content):
+  print("%s %s" % (_config['warning'], content))
+
+
+def error(content):
+  print("%s %s" % (_config['error'], content))
 
 
 def supplement(content, level=1):

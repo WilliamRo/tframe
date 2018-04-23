@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import tframe as tfr
 from tframe.enums import EnumPro
 
 flags = tf.app.flags
@@ -175,6 +176,10 @@ class Config(object):
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')
 
+  def __init__(self, as_global=False):
+    if as_global:
+      tfr.hub.redirect(self)
+
   # region : Properties
 
   @property
@@ -211,8 +216,12 @@ class Config(object):
       if value not in list(attr.enum_class):
         raise TypeError(
           '!! Can not set {} for enum flag {}'.format(value, name))
-    # Replace the attr with a new Flag
-    object.__setattr__(self, name, attr.new_value(value))
+
+    attr._value = value
+
+    # Replace the attr with a new Flag TODO: why?
+    # object.__setattr__(self, name, attr.new_value(value))
+
 
   # endregion : Override
 
@@ -224,6 +233,14 @@ class Config(object):
              if isinstance(value, Flag) and value.should_register}
     for name, flg in queue.items(): flg.register(name)
 
+  def redirect(self, config):
+    assert isinstance(config, Config)
+    flag_names = [name for name, value in self.__dict__.items()
+                  if isinstance(value, Flag)]
+    for name in flag_names:
+      object.__setattr__(self, name, config.get_flag(name))
+
+
   def smooth_out_conflicts(self):
     """"""
     if '://' in self.job_dir: self.on_cloud = True
@@ -234,5 +251,14 @@ class Config(object):
       self.summary = False
       self.save_model = False
     if not self.train and self.on_cloud: self.overwrite = False
+
+  def get_attr(self, name):
+    return object.__getattribute__(self, name)
+
+  def get_flag(self, name):
+    flag = super().__getattribute__(name)
+    if not isinstance(flag, Flag):
+      raise TypeError('!! flag {} not found'.format(name))
+    return flag
 
   # endregion : Public Methods

@@ -77,12 +77,14 @@ class SmartTrainerHub(TrainerHub):
   lr_decay = Flag.float(0.6, 'Learning rate decay coefficient')
   max_bad_apples = Flag.integer(4, 'Max bad apple number')
 
-  def __init__(self, trainer=None):
+  trainer_class = SmartTrainer
+
+  def __init__(self, trainer=None, as_global=False):
     # Call parent's constructor
-    TrainerHub.__init__(self, trainer)
+    TrainerHub.__init__(self, trainer, as_global=as_global)
     # Freeze options
-    self.save_mode.freeze(SaveMode.ON_RECORD)
-    self.early_stop.freeze(True)
+    self.get_flag('save_mode').freeze(SaveMode.ON_RECORD)
+    self.get_flag('early_stop').freeze(True)
     # Append attributes
     self.bad_apples = 0
 

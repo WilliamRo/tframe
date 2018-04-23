@@ -36,6 +36,9 @@ class Slot(object):
       raise TypeError('!! op should be in {}'.format(self.op_classes))
     self._op = op
 
+  def substitute(self, op):
+    self.plug(op)
+
   def run(self, fetches=None, feed_dict=None):
     if not self.activated:
       raise AssertionError('!! This slot is not activated')
@@ -56,7 +59,10 @@ class Slot(object):
       return self._model.session.run(ops, feed_dict=feed_dict)
 
   def fetch(self, feed_dict=None):
-    return self.run(feed_dict=feed_dict)
+    result = self.run(feed_dict=feed_dict)
+    if isinstance(result, (list, tuple)):
+      result = result[0]
+    return result
 
   # endregion : Public Methods
 
@@ -66,9 +72,33 @@ class TensorSlot(Slot):
   def __init__(self, model, name='tensor'):
     super().__init__(model, name)
 
+  # region : Properties
+
   @property
   def tensor(self):
     return self._op
+
+  @property
+  def shape_list(self):
+    if not self.activated:
+      raise ValueError('!! slot has not been activated yet')
+    assert isinstance(self._op, tf.Tensor)
+    return self._op.shape.as_list()
+
+  @property
+  def dtype(self):
+    if not self.activated:
+      raise ValueError('!! slot has not been activated yet')
+    assert isinstance(self._op, tf.Tensor)
+    return self._op.dtype
+
+  # endregion : Properties
+
+  def plug(self, op, collection=None):
+    super().plug(op)
+    # Add to tensorflow collection
+    if collection is not None:
+      tf.add_to_collection(collection, self._op)
 
 
 class SummarySlot(Slot):

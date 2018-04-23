@@ -7,20 +7,21 @@ import tensorflow as tf
 from tframe import hub
 
 from tframe.models.model import Model
-from tframe.nets import RecurrentNet
+from tframe.nets import RNet
 from tframe.layers import Input
 
 from tframe.core.decorators import with_graph
+from tframe.core import TensorSlot
 
 
-class Recurrent(Model, RecurrentNet):
+class Recurrent(Model, RNet):
   """Recurrent neural network base class"""
   # TODO: where will this variable be used?
   model_name = 'RNN'
 
   def __init__(self, mark=None):
     Model.__init__(self, mark)
-    RecurrentNet.__init__(self, 'RecurrentNet')
+    RNet.__init__(self, 'RecurrentNet')
     # Attributes
     # mascot will be initiated as a placeholder with no shape specified
     # .. and will be put into initializer argument of tf.scan
@@ -52,7 +53,7 @@ class Recurrent(Model, RecurrentNet):
     # Transpose scan outputs to get final outputs
     assert isinstance(scan_outputs, tf.Tensor)
     perm = list(range(len(scan_outputs.shape.as_list())))
-    self._outputs = tf.transpose(scan_outputs, [1, 0] + perm[2:])
+    self.outputs.plug(tf.transpose(scan_outputs, [1, 0] + perm[2:]))
 
     # Set built flag
     self._built = True

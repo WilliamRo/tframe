@@ -62,16 +62,16 @@ class Agent(object):
 
   @property
   def log_dir(self):
-    return check_path(hub.job_dir, hub.record_dir,
-                      hub.log_folder_name, self._model.mark)
+    return check_path(hub.job_dir, hub.record_dir, hub.log_folder_name,
+                      self._model.mark, create_path=hub.summary)
   @property
   def ckpt_dir(self):
-    return check_path(hub.job_dir, hub.record_dir,
-                      hub.ckpt_folder_name, self._model.mark)
+    return check_path(hub.job_dir, hub.record_dir, hub.ckpt_folder_name,
+                      self._model.mark, create_path=hub.save_model)
   @property
   def snapshot_dir(self):
-    return check_path(hub.job_dir, hub.record_dir,
-                      hub.snapshot_folder_name, self._model.mark)
+    return check_path(hub.job_dir, hub.record_dir, hub.snapshot_folder_name,
+                      self._model.mark, create_path=hub.snapshot)
   @property
   def model_path(self):
     return os.path.join(

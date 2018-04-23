@@ -90,6 +90,10 @@ class Trainer(object):
     return self.counter / self.training_set.batches_per_epoch
 
   @property
+  def graph(self):
+    return self.model.graph
+
+  @property
   def _save_model_when_record_appears(self):
     return (self.th.save_model and self.th.save_mode is SaveMode.ON_RECORD
             and self.total_rounds > self.th.warm_up_rounds)
@@ -157,7 +161,7 @@ class Trainer(object):
     console.supplement('batch size: {}'.format(self.th.batch_size))
 
   def _check_model(self):
-    if self.model.session is None:
+    if not self.model.launched:
       self.model.launch_model(self.th.overwrite)
 
   # endregion : Before training
@@ -257,7 +261,7 @@ class Trainer(object):
     # Clear progress bar
     if self.th.progress_bar: console.clear_line()
     # Show content
-    print('{} {}'.format(prompt, content))
+    console.show_status(content, symbol=prompt)
     # Print progress bar
     if self.th.progress_bar:
       assert isinstance(self._training_set, TFData)
@@ -276,7 +280,7 @@ class Trainer(object):
 
     loss_string = self._dict_to_string(loss_dict)
     content = '{} {} ({:.1f} Total) {}'.format(
-      self.th.round_name, rnd + 1, self.total_rounds, loss_string),
+      self.th.round_name, rnd, self.total_rounds, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
   def _validate_model(self, rnd):
@@ -285,7 +289,7 @@ class Trainer(object):
 
     # Get metric
     metric_dict = self.model.validate_model(self.validation_set)
-    metric = metric_dict.values()[0]
+    metric = list(metric_dict.values())[0]
     new_record = self.metric.take_down(metric, rnd)
     prompt = '[New Record]' if new_record else '[Validate]'
     self._inter_cut(self._dict_to_string(metric_dict), prompt=prompt)
@@ -339,8 +343,12 @@ class TrainerHub(Config):
                           ' when outer loop is not called epochs')
 
   # endregion : Class Attributes
+  trainer_class = Trainer
 
-  def __init__(self, trainer=None):
+  def __init__(self, trainer=None, as_global=False):
+    # Call parent's constructor
+    Config.__init__(self, as_global)
+
     self.trainer = trainer
     self.record_rnd = 0
     # metric log is a list of list

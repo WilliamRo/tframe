@@ -8,7 +8,7 @@ from tframe import hub
 from tframe.nets.net import Net
 
 
-class RecurrentNet(Net):
+class RNet(Net):
   """Recurrent net which outputs states besides common result"""
   def __init__(self, name):
     # Call parent's constructor
@@ -23,7 +23,7 @@ class RecurrentNet(Net):
   @property
   def rnn_cells(self):
     assert self.is_root
-    return [net for net in self.children if isinstance(net, RecurrentNet)]
+    return [net for net in self.children if isinstance(net, RNet)]
 
   @property
   def rnn_cell_num(self):
@@ -76,7 +76,7 @@ class RecurrentNet(Net):
     state_cursor = 0
     for net in self.children:
       assert isinstance(net, Net)
-      if isinstance(net, RecurrentNet):
+      if isinstance(net, RNet):
         # rnn_cells in self.children accept state and input
         # .. and gives (output, state)
         output, state = net(pre_states[state_cursor], output)

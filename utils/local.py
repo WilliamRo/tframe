@@ -10,7 +10,7 @@ from tframe import hub
 from . import console
 
 
-def check_path(*paths):
+def check_path(*paths, create_path=True):
   assert len(paths) > 0
   if len(paths) == 1:
     paths = re.split(r'/|\\', paths[0])
@@ -21,7 +21,7 @@ def check_path(*paths):
   path = ""
   for p in paths:
     path = os.path.join(path, p)
-    if not os.path.exists(path) and hub.should_create_path:
+    if not os.path.exists(path) and hub.should_create_path and create_path:
       os.mkdir(path)
 
   return path
@@ -58,10 +58,10 @@ def load_checkpoint(path, session, saver):
     console.show_status("Loaded {}".format(ckpt_name))
     return True, counter
   else:
-    if hub.train:
+    if hub.train and hub.save_model:
       console.show_status('New checkpoints will be created ...')
     else:
-      console.show_status('! Can not found model checkpoint')
+      console.warning('Can not found model checkpoint')
     return False, 0
 
 

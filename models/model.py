@@ -19,8 +19,8 @@ from tframe.core import Group
 from tframe.nets.net import Net
 
 from tframe.trainers.metric import Metric
-from tframe.trainers.trainer import Trainer
-from tframe.trainers.smartrainer import SmartTrainer
+from tframe.trainers.trainer import Trainer, TrainerHub
+from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
 
 
 class Model(object):
@@ -79,6 +79,21 @@ class Model(object):
     return self._metric
 
   @property
+  def outputs(self):
+    assert isinstance(self._outputs, TensorSlot)
+    return self._outputs
+
+  @property
+  def loss(self):
+    assert isinstance(self._loss, TensorSlot)
+    return self._loss
+
+  @property
+  def train_step(self):
+    assert isinstance(self._train_step, OperationSlot)
+    return self._train_step
+
+  @property
   def built(self):
     assert isinstance(self._built, bool)
     return self._built
@@ -124,17 +139,15 @@ class Model(object):
     pass
 
   @with_graph
-  def train(self, epoch=1, batch_size=128, training_set=None,
-            validation_set=None, print_cycle=0, snapshot_cycle=0,
-            snapshot_function=None, probe=None, **kwargs):
-    """"""
-    trainer_class = SmartTrainer if hub.smart_train else Trainer
-    trainer = trainer_class(self, training_set=training_set,
-                            validation_set=validation_set,
-                            snapshot=snapshot_function, probe=probe)
-    trainer.train(epoch=epoch, batch_size=batch_size, print_cycle=print_cycle,
-                  snapshot_cycle=snapshot_cycle, **kwargs)
-
+  def train(self, training_set, trainer_hub=None, validation_set=None,
+            snapshot=None, probe=None, **kwargs):
+    trainer_hub = trainer_hub or hub
+    if not isinstance(trainer_hub, TrainerHub):
+      raise TypeError('!! Input hub must be an instance of TrainerHub')
+    trainer = trainer_hub.trainer_class(
+      self, training_set=training_set, validation_set=validation_set,
+      snapshot=snapshot, probe=probe)
+    trainer.train(hub=trainer_hub, **kwargs)
 
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""

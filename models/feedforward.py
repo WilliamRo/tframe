@@ -7,6 +7,8 @@ from tframe.core.decorators import with_graph
 from tframe.models.model import Model
 from tframe.nets.net import Net
 
+from tframe.core import TensorSlot
+
 
 class Feedforward(Model, Net):
   """Feedforward network, also known as multilayer perceptron"""
@@ -19,8 +21,9 @@ class Feedforward(Model, Net):
   @with_graph
   def build(self):
     # Feed forward to get outputs
-    self._outputs = self()
+    self.outputs.plug(self())
 
+    # Set built flag
     self._built = True
 
 

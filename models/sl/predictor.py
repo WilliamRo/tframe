@@ -7,7 +7,6 @@ import tensorflow as tf
 from tframe.models.feedforward import Feedforward
 from tframe.models.recurrent import Recurrent
 
-from tframe import console
 from tframe import losses
 from tframe import pedia
 from tframe import metrics
@@ -59,7 +58,7 @@ class Predictor(Feedforward, Recurrent):
 
   @with_graph
   def build(self, loss='cross_entropy', optimizer=None,
-            metric=None, metric_name='Metric'):
+            metric=None, metric_is_like_loss=True, metric_name='Metric'):
     # Call parent's build method
     self.master.build(self)
 
@@ -68,36 +67,38 @@ class Predictor(Feedforward, Recurrent):
     validation_summaries = []
 
     # Initiate targets and add it to collection
-    # TODO
     targets = tf.placeholder(
-      self._outputs.dtype, self._outputs.get_shape(), name='targets')
-
-    self._targets = tf.placeholder(
-      self._outputs.dtype, self._outputs.get_shape(), name='targets')
-    tf.add_to_collection(pedia.default_feed_dict, self._targets)
+      self.outputs.dtype, self.outputs.shape_list, name='targets')
+    self._targets.plug(targets, collection=pedia.default_feed_dict)
 
     # Define loss
     loss_function = losses.get(loss)
     with tf.name_scope('Loss'):
-      self._loss = loss_function(self._targets, self._outputs)
+      loss_tensor = loss_function(self._targets.tensor, self.outputs.tensor)
       # TODO: with or without regularization loss?
       default_summaries.append(tf.summary.scalar('loss_sum', self._loss))
       # Try to add regularization loss
       reg_loss = self.regularization_loss
-      self._loss = self._loss if reg_loss is None else self._loss + reg_loss
+      if reg_loss is not None: loss_tensor += reg_loss
+      # Plug in
+      self.loss.plug(loss_tensor)
 
     # Define metric
     metric_function = metrics.get(metric)
     if metric_function is not None:
-      pedia.memo[pedia.metric_name] = metric_name
       with tf.name_scope('Metric'):
-        self._metric = metric_function(self._targets, self._outputs)
-        validation_summaries.append(tf.summary.scalar('metric_sum', self._metric))
+        metric_tensor = metric_function(
+          self._targets.tensor, self._outputs.tensor)
+        self._metric.plug(metric_tensor, as_loss=metric_is_like_loss,
+                          symbol=metric_name)
+        validation_summaries.append(
+          tf.summary.scalar('metric_sum', self._metric.tensor))
 
     # Merge summaries
-    self._merged_summary = tf.summary.merge(default_summaries)
+    merged_summary = tf.summary.merge(default_summaries)
+    self._merged_summary.plug(merged_summary)
     if len(validation_summaries) > 0:
-      self._print_summary = tf.summary.merge(validation_summaries)
+      self._validation_summary.plug(tf.summary.merge(validation_summaries))
 
     # Define train step
     self._define_train_step(optimizer)

@@ -8,10 +8,10 @@ from tframe import activations
 from tframe import initializers
 from tframe import hub
 
-from tframe.nets import RecurrentNet
+from tframe.nets import RNet
 
 
-class BasicRNNCell(RecurrentNet):
+class BasicRNNCell(RNet):
   """Basic RNN cell
      TODO: Temporarily defined as a net
   """
@@ -35,7 +35,7 @@ class BasicRNNCell(RecurrentNet):
     :param bias_initializer: bias initializer identifier
     """
     # Call parent's constructor
-    RecurrentNet.__init__(self, 'basicell')
+    RNet.__init__(self, 'basicell')
 
     # Attributes
     self._state_size = state_size

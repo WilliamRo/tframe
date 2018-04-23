@@ -2,21 +2,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import division
 
-import numpy as np
 import tensorflow as tf
 
 from tframe import pedia
 from tframe.core import with_graph
+from tframe.core import TensorSlot
+from tframe.trainers import Metric
 
 from tframe import Predictor
 from tframe.nets.net import Net
 from tframe.models import Feedforward
 
-from tframe import console
 from tframe import losses
 from tframe import metrics
-from tframe import TFData
-
 from tframe import hub
 
 
@@ -25,62 +23,66 @@ class Bamboo(Predictor):
     # Call parent's initializer
     Predictor.__init__(self, mark)
     # Private fields
+    self._branch_index = -1
     self._output_list = []
     self._losses = []
-    self._metrics = []
     self._train_ops = []
-    self._branch_index = 0
+    self._metrics = []
 
 
   def set_branch_index(self, index):
     # Sanity check
-    if not 0 <= index < len(self._losses):
+    if not 0 <= index < len(self._losses) and index != -1:
       raise IndexError('!! branch index should be between {} and {}'.format(
         0, len(self._losses)))
 
     self._branch_index = index
-    self._loss = self._losses[index]
-    self._metric = self._metrics[index]
-    self._train_step = self._train_ops[index]
-    self._outputs = self._output_list[index]
+    self.outputs.substitute(self._output_list[index])
+    self.loss.substitute(self._losses[index])
+    self.train_step.substitute(self._train_ops[index])
+    self.metric.substitute(self._metrics[index])
 
 
   @with_graph
   def build(self, loss='cross_entropy', optimizer=None,
-            metric=None, metric_name='Metric'):
+            metric=None, metric_is_like_loss=True, metric_name='Metric'):
     Feedforward.build(self)
     # Check branch shapes
-    output_shape = self._outputs.get_shape().as_list()
+    output_shape = self.outputs.shape_list
     for b_out in self.branch_outputs:
       assert isinstance(b_out, tf.Tensor)
       if b_out.get_shape().as_list() != output_shape:
         raise ValueError('!! Branch outputs in bamboo should have the same'
                          ' shape as the trunk output')
     # Initiate targets and add it to collection
-    self._targets = tf.placeholder(self._outputs.dtype, output_shape,
-                                   name='targets')
-    tf.add_to_collection(pedia.default_feed_dict, self._targets)
+    targets = tf.placeholder(self._outputs.dtype, output_shape, name='targets')
+    self._targets.plug(targets, collection=pedia.default_feed_dict)
 
     # Generate output list
-    output_list = self.branch_outputs + [self._outputs]
+    self._output_list = self.branch_outputs + [self.outputs.tensor]
 
     # Define losses
     loss_function = losses.get(loss)
     with tf.name_scope('Loss'):
       # Add branch outputs
-      for output in output_list:
-        self._losses.append(loss_function(self._targets, output))
+      for output in self._output_list:
+        assert isinstance(output, tf.Tensor)
+        self._losses.append(loss_function(self._targets.tensor, output))
 
     # Define metrics
     metric_function = metrics.get(metric)
     if metric_function is not None:
-      pedia.memo[pedia.metric_name] = metric_name
       with tf.name_scope('Metric'):
-        for output in output_list:
-          self._metrics.append(metric_function(self._targets, output))
+        for output in  self._output_list:
+          self._metrics.append(metric_function(self._targets.tensor, output))
+        self.metric.plug(
+          self._metrics[-1], as_loss=metric_is_like_loss, symbol=metric_name)
 
     # Define train step
     self._define_train_step(optimizer)
+
+    # Set default branch
+    self.set_branch_index(-1)
 
     # Sanity check
     assert len(self._losses) == len(self._metrics) == len(
@@ -89,11 +91,7 @@ class Bamboo(Predictor):
     # Print status and model structure
     self.show_building_info(FeedforwardNet=self)
 
-    # Launch session
-    self.launch_model(hub.overwrite)
-
     # Set built flag
-    self._output_list = output_list
     self._built = True
 
 
@@ -122,7 +120,8 @@ class Bamboo(Predictor):
     self.set_branch_index(branch_index)
     # TODO
     freeze = kwargs.get('freeze', True)
-    if not freeze: self._train_step = self._optimizer.minimize(self._loss)
+    if not freeze:
+      self.train_step.substitute(self._optimizer.minimize(self.loss.tensor))
     # Call parent's train method
     Predictor.train(self, *args, **kwargs)
 
