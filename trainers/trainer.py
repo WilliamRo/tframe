@@ -150,7 +150,12 @@ class Trainer(object):
     # Check validation cycle
     if self.th.validation_per_round > 0 and self.validation_set is not None:
       # TODO
-      pass
+      num_steps = None
+      if self.model.input_type is InputTypes.RNN_BATCH:
+        num_steps = self.th.num_steps
+      self.training_set.set_batch_size(self.th.batch_size, num_steps)
+      round_len = self.training_set.batches_per_epoch
+      self.th.validate_cycle = round_len // self.th.validation_per_round
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""

@@ -244,10 +244,14 @@ class TFData(object):
     elif self._cursor >= self.sample_num:
       self._cursor -= self.sample_num
 
-  def set_batch_size(self, batch_size):
+  def set_batch_size(self, batch_size, num_steps=None):
     if not isinstance(batch_size, int) or batch_size < 1:
       raise TypeError('batch size must be a positive integer')
     self._batch_size = batch_size
+    # TODO
+    if num_steps is not None:
+      self._is_for_rnn = True
+      self._epoch_size = self.sample_num // batch_size // num_steps
 
   def next_batch(self, batch_size=None, shuffle=False):
     if batch_size is None:
