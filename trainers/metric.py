@@ -125,6 +125,7 @@ class Metric(TensorSlot):
   def plug(self, op, as_loss=True, symbol='metric'):
     self._as_loss = as_loss
     self.symbol = symbol
+    self.name = symbol
     super().plug(op)
     self._init_tensors()
 

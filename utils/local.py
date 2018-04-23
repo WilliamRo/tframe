@@ -66,7 +66,8 @@ def load_checkpoint(path, session, saver):
 
 
 def save_checkpoint(path, session, saver, step):
-  saver.save_model(session, path, step)
+  assert isinstance(saver, tf.train.Saver)
+  saver.save(session, path, step)
 
 
 def write_file(path, content, append=False):

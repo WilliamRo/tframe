@@ -6,8 +6,6 @@ import tensorflow as tf
 
 from tframe import pedia
 from tframe.core import with_graph
-from tframe.core import TensorSlot
-from tframe.trainers import Metric
 
 from tframe import Predictor
 from tframe.nets.net import Net
@@ -15,7 +13,6 @@ from tframe.models import Feedforward
 
 from tframe import losses
 from tframe import metrics
-from tframe import hub
 
 
 class Bamboo(Predictor):

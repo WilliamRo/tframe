@@ -147,6 +147,10 @@ class Trainer(object):
       self.th = hub
       self.th.trainer = self
     else: self.th.set_up(**kwargs)
+    # Check validation cycle
+    if self.th.validation_per_round > 0 and self.validation_set is not None:
+      # TODO
+      pass
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -177,6 +181,7 @@ class Trainer(object):
       # Begin inner loop
       self._inner_loop(rnd)
       # End of round
+      if hub.progress_bar: console.clear_line()
       console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
         hub.round_name, hub.toc()))
       # Maybe give a report on metric
@@ -328,6 +333,8 @@ class TrainerHub(Config):
 
   print_cycle = Flag.integer(0, 'Print cycle')
   validate_cycle = Flag.integer(0, 'Validate cycle')
+  validation_per_round = Flag.integer(0, 'Validation per round',
+                                      name='val_per_rnd')
   snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 

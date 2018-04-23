@@ -48,11 +48,13 @@ class SmartTrainer(Trainer):
   def _sanity_check(self):
     # Smart training relies on model.metric on the validation data set,
     # .. so their existence should be guaranteed
+    if not self.th.smart_train: return
     if not self.th.validation_on:
       raise AssertionError('!! validation must be on during smart training')
 
   def _advanced_strategy(self, rnd):
     """This method will be called after Metric.end_round method"""
+    if not self.th.smart_train: return
     if self.metric.trend_is_promising and self.th.bad_apples > 0:
       self.th.bad_apples -= 1
     if self.metric.get_idle_rounds(rnd) > 0:
@@ -83,8 +85,9 @@ class SmartTrainerHub(TrainerHub):
     # Call parent's constructor
     TrainerHub.__init__(self, trainer, as_global=as_global)
     # Freeze options
-    self.get_flag('save_mode').freeze(SaveMode.ON_RECORD)
-    self.get_flag('early_stop').freeze(True)
+    if self.smart_train:
+      self.get_flag('save_mode').freeze(SaveMode.ON_RECORD)
+      self.get_flag('early_stop').freeze(True)
     # Append attributes
     self.bad_apples = 0
 

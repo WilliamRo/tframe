@@ -37,7 +37,7 @@ class Slot(object):
     self._op = op
 
   def substitute(self, op):
-    self.plug(op)
+    self._op = op
 
   def run(self, fetches=None, feed_dict=None):
     if not self.activated:
