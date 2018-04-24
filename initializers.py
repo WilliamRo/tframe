@@ -9,6 +9,10 @@ def glorot_uniform():
   return init_ops.glorot_uniform_initializer()
 
 
+def identity():
+  return init_ops.identity_initializer()
+
+
 def get(identifier):
   if identifier is None or isinstance(identifier, init_ops.Initializer):
     return identifier
@@ -17,6 +21,8 @@ def get(identifier):
     identifier = identifier.lower()
     if identifier in ['glorot_uniform', 'xavier_uniform']:
       return glorot_uniform()
+    elif identifier in ['id', 'identity']:
+      return identity()
     else:
       # Find initializer in tensorflow.python.ops.init_ops
       initializer = (

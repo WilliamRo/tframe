@@ -12,7 +12,7 @@ flags = tf.app.flags
 
 class Flag(object):
   def __init__(self, default_value, description, register=None, name=None,
-               **kwargs):
+               is_key=False, **kwargs):
     """
     ... another way to design this class is to let name attribute be assigned
     when registered, but we need to allow FLAGS names such as 'job-dir' to be
@@ -20,18 +20,33 @@ class Flag(object):
     :param name:
     :param default_value:
     :param description:
+    :param is_key: (1) True: force to show;
+                    (2) False: force to hide;
+                    (3) None: show if has been modified
     :param register: if is None, this flag can not be passed via tf FLAGS
     """
     self._default_value = default_value
     self._description = description
     self._register = register
     self._name = name
+    self._is_key = is_key
     self._kwargs = kwargs
 
     self._value = default_value
     self._frozen = False
 
   # region : Properties
+
+  @property
+  def ready_to_be_key(self):
+    return self._is_key is None
+
+  @property
+  def is_key(self):
+    if self._is_key is False: return False
+    if not self.should_register: return self._is_key is True
+    assert hasattr(flags.FLAGS, self._name)
+    return self._is_key is True or getattr(flags.FLAGS, self._name) is not None
 
   @property
   def frozen(self):
@@ -70,34 +85,38 @@ class Flag(object):
   # region : Class Methods
 
   @classmethod
-  def whatever(cls, default_value, description):
-    return Flag(default_value, description)
+  def whatever(cls, default_value, description, is_key=False):
+    return Flag(default_value, description, is_key=is_key)
 
   @classmethod
   def string(cls, default_value, description, name=None):
     return Flag(default_value, description, flags.DEFINE_string, name)
 
   @classmethod
-  def boolean(cls, default_value, description, name=None):
-    return Flag(default_value, description, flags.DEFINE_boolean, name)
+  def boolean(cls, default_value, description, name=None, is_key=False):
+    return Flag(default_value, description, flags.DEFINE_boolean, name,
+                is_key=is_key)
 
   @classmethod
-  def integer(cls, default_value, description, name=None):
-    return Flag(default_value, description, flags.DEFINE_integer, name)
+  def integer(cls, default_value, description, name=None, is_key=False):
+    return Flag(default_value, description, flags.DEFINE_integer, name,
+                is_key=is_key)
 
   @classmethod
-  def float(cls, default_value, description, name=None):
-    return Flag(default_value, description, flags.DEFINE_float, name)
+  def float(cls, default_value, description, name=None, is_key=False):
+    return Flag(default_value, description, flags.DEFINE_float, name,
+                is_key=is_key)
 
   @classmethod
   def list(cls, default_value, description, name=None):
     return Flag(default_value, description, flags.DEFINE_list, name)
 
   @classmethod
-  def enum(cls, default_value, enum_class, description, name=None):
+  def enum(cls, default_value, enum_class, description, name=None,
+           is_key=False):
     assert issubclass(enum_class, EnumPro)
     return Flag(default_value, description, flags.DEFINE_enum, name,
-                enum_class=enum_class)
+                enum_class=enum_class, is_key=is_key)
 
   # endregion : Class Methods
 
@@ -135,19 +154,22 @@ class Config(object):
   # :: Define class attributes
   # Old config
   record_dir = Flag.string('records', 'Root path for records')
+  note_folder_name = Flag.string('notes', '...')
   log_folder_name = Flag.string('logs', '...')
   ckpt_folder_name = Flag.string('checkpoints', '...')
   snapshot_folder_name = Flag.string('snapshots', '...')
 
   block_validation = Flag.whatever(False, '???')
-  dtype = Flag.whatever(tf.float32, 'Default dtype for tensors')
+  dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=True)
 
   # Migrated from tframe\__init__.py
+  note = Flag.boolean(False, 'Whether to take notes')
   summary = Flag.boolean(True, 'Whether to write summary')
   save_model = Flag.boolean(True, 'Whether to save model during training')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
   train = Flag.boolean(True, 'Whether this is a training task')
-  smart_train = Flag.boolean(False, 'Whether to use smart trainer')
+  smart_train = Flag.boolean(False, 'Whether to use smart trainer',
+                             is_key=None)
   overwrite = Flag.boolean(False, 'Whether to overwrite records')
   job_dir = Flag.string(
     './', 'The root directory where the records should be put',
@@ -170,7 +192,7 @@ class Config(object):
 
   # Configs usually provided during method calling
   mark = Flag.string(None, 'Model identifier')
-  learning_rate = Flag.float(None, 'Learning rate', name='lr')
+  learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
@@ -185,6 +207,18 @@ class Config(object):
   @property
   def should_create_path(self):
     return self.train and not self.on_cloud
+  
+  @property
+  def config_strings(self):
+    css = []
+    for name in self.__dir__():
+      if name == 'config_strings': continue
+      attr = self.get_attr(name)
+      if not isinstance(attr, Flag): continue
+      if attr.is_key:
+        css.append('{}: {}'.format(name, attr.value))
+
+    return css
 
   # endregion : Properties
 
@@ -218,8 +252,9 @@ class Config(object):
           '!! Can not set {} for enum flag {}'.format(value, name))
 
     attr._value = value
+    if attr.ready_to_be_key: attr._is_key = True
 
-    # Replace the attr with a new Flag TODO: why?
+    # Replace the attr with a new Flag TODO: tasks with multi hubs?
     # object.__setattr__(self, name, attr.new_value(value))
 
 
@@ -240,12 +275,13 @@ class Config(object):
     for name in flag_names:
       object.__setattr__(self, name, config.get_flag(name))
 
-
   def smooth_out_conflicts(self):
     """"""
     if '://' in self.job_dir: self.on_cloud = True
-    if self.on_cloud:
+    if self.on_cloud or self.hp_tuning:
+      self.note = False
       self.progress_bar = False
+    if self.on_cloud:
       self.snapshot = False
     if self.hp_tuning:
       self.summary = False

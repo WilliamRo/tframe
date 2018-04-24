@@ -26,19 +26,7 @@ class Bamboo(Predictor):
     self._train_ops = []
     self._metrics = []
 
-
-  def set_branch_index(self, index):
-    # Sanity check
-    if not 0 <= index < len(self._losses) and index != -1:
-      raise IndexError('!! branch index should be between {} and {}'.format(
-        0, len(self._losses)))
-
-    self._branch_index = index
-    self.outputs.substitute(self._output_list[index])
-    self.loss.substitute(self._losses[index])
-    self.train_step.substitute(self._train_ops[index])
-    self.metric.substitute(self._metrics[index])
-
+  # region : Build
 
   @with_graph
   def build(self, loss='cross_entropy', optimizer=None,
@@ -91,7 +79,6 @@ class Bamboo(Predictor):
     # Set built flag
     self._built = True
 
-
   @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):
     assert len(self._losses) > 0
@@ -111,6 +98,9 @@ class Bamboo(Predictor):
 
     assert len(self._losses) == len(self._train_ops)
 
+  # endregion : Build
+
+  # region : Train
 
   @with_graph
   def train(self, *args, branch_index=0, **kwargs):
@@ -122,12 +112,42 @@ class Bamboo(Predictor):
     # Call parent's train method
     Predictor.train(self, *args, **kwargs)
 
+  def grow(self):
+    pass
+
+  # endregion : Train
+
+  # region : Private Methods
+
+  def _clone_branch(self, index):
+    """Branch clone needs two branches have the same structure"""
+    branches = [net for net in self.children if net.is_branch]
+    branches += self.children[-1]
+    assert index < len(branches)
+
+  # endregion : Private Methods
+
+  # region : Public Methods
+
+  def set_branch_index(self, index):
+    # Sanity check
+    if not 0 <= index < len(self._losses) and index != -1:
+      raise IndexError('!! branch index should be between {} and {}'.format(
+        0, len(self._losses)))
+
+    self._branch_index = index
+    self.outputs.substitute(self._output_list[index])
+    self.loss.substitute(self._losses[index])
+    self.train_step.substitute(self._train_ops[index])
+    self.metric.substitute(self._metrics[index])
 
   def predict(self, data, **kwargs):
     index = kwargs.get('branch_index', 0)
     self.set_branch_index(index)
     # Call parent's predict method
     return Predictor.predict(self, data, **kwargs)
+
+  # endregion : Public Methods
 
 
 

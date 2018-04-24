@@ -166,8 +166,8 @@ class Trainer(object):
     console.show_status('Configurations:')
     console.supplement('Training set feature shape: {}'.format(
       self._training_set.features.shape))
-    console.supplement('epochs: {}'.format(self.th.epoch))
-    console.supplement('batch size: {}'.format(self.th.batch_size))
+    for config in self.th.config_strings:
+      console.supplement(config)
 
   def _check_model(self):
     if not self.model.launched:
@@ -331,28 +331,30 @@ class TrainerHub(Config):
 
   # region : Class Attributes
 
-  epoch = Flag.integer(1, 'Epoch number to train')
-  batch_size = Flag.integer(1, 'Batch size')
-  num_steps = Flag.integer(1, 'Number of time steps')
-  shuffle = Flag.boolean(True, 'Whether to shuffle')
+  epoch = Flag.integer(1, 'Epoch number to train', is_key=None)
+  batch_size = Flag.integer(1, 'Batch size', is_key=None)
+  num_steps = Flag.integer(1, 'Number of time steps', is_key=None)
+  shuffle = Flag.boolean(True, 'Whether to shuffle', is_key=None)
 
   print_cycle = Flag.integer(0, 'Print cycle')
-  validate_cycle = Flag.integer(0, 'Validate cycle')
+  validate_cycle = Flag.integer(0, 'Validate cycle', is_key=None)
   validation_per_round = Flag.integer(0, 'Validation per round',
-                                      name='val_per_rnd')
+                                      name='val_per_rnd', is_key=None)
   snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
-  early_stop = Flag.boolean(True, 'Early stop option')
-  idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on')
+  early_stop = Flag.boolean(True, 'Early stop option', is_key=None)
+  idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on',
+                          is_key=None)
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
-                        "Save mode, \in  ['naive', 'on_record']")
+                        "Save mode, \in  ['naive', 'on_record']", is_key=None)
   warm_up_rounds = Flag.integer(5, 'If save mode is on_record, model will not'
-                                   'be saved until warm-up finishes')
+                                   'be saved until warm-up finishes',
+                                is_key=None)
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
   round = Flag.integer(1, 'General concept of total outer loops, used'
-                          ' when outer loop is not called epochs')
+                          ' when outer loop is not called epochs', is_key=None)
 
   # endregion : Class Attributes
   trainer_class = Trainer

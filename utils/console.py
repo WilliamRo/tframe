@@ -13,7 +13,7 @@ _config = {
   'status_prompt': '>>',
   'warning': ' !',
   'error': '!!',
-  'sub_prompt': '...',
+  'sub_prompt': '..',
   'tail_width': 13
 }
 _config['bar_width'] = _config['default_line_width'] - _config['tail_width'] - 2

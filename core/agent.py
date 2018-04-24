@@ -31,6 +31,7 @@ class Agent(object):
     # An agent saves model and writes summary
     self._saver = None
     self._summary_writer = None
+    self._note_writer = None
 
   # region : Properties
 
@@ -60,6 +61,10 @@ class Agent(object):
 
   # region : Paths
 
+  @property
+  def note_dir(self):
+    return check_path(hub.job_dir, hub.record_dir, hub.note_folder_name,
+                      self._model.mark, create_path=hub.note)
   @property
   def log_dir(self):
     return check_path(hub.job_dir, hub.record_dir, hub.log_folder_name,
@@ -104,6 +109,7 @@ class Agent(object):
       if hub.summary: paths.append(self.log_dir)
       if hub.save_model: paths.append(self.ckpt_dir)
       if hub.snapshot: paths.append(self.snapshot_dir)
+      if hub.note: paths.append(self.note_dir)
       clear_paths(paths)
 
     # Launch session on self.graph
@@ -114,6 +120,8 @@ class Agent(object):
     self._saver = tf.train.Saver()
     if hub.summary or hub.hp_tuning:
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
+    if hub.note:
+      self._note_writer = open('{}/notes.txt'.format(self.note_dir), 'a')
 
     # Try to load exist model
     load_flag, self._model.counter = self.load()
@@ -134,10 +142,20 @@ class Agent(object):
   def shutdown(self):
     if hub.summary or hub.hp_tuning:
       self._summary_writer.close()
+    if hub.note:
+      assert self._note_writer is not None
+      self._note_writer.close()
     self.session.close()
 
   def write_summary(self, summary):
     self._summary_writer.add_summary(summary, self._model.counter)
+
+  def take_notes(self, content):
+    if not hub.note:
+      raise AssertionError('!! note option has not been turned on')
+    if not isinstance(content, str):
+      raise TypeError('!! content must be a string')
+    self._note_writer.write(content + '\n')
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))

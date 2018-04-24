@@ -61,6 +61,7 @@ class SmartTrainer(Trainer):
       self.th.bad_apples += 1
       if self.th.bad_apples > self.th.max_bad_apples:
         # Decay learning rate and reset bad apples
+        # self.model.agent.load()
         self.model.tune_lr(coef=self.th.lr_decay)
         self.th.bad_apples = 0
     else:
@@ -76,8 +77,8 @@ class SmartTrainer(Trainer):
 class SmartTrainerHub(TrainerHub):
   """"""
   # Class attributes
-  lr_decay = Flag.float(0.6, 'Learning rate decay coefficient')
-  max_bad_apples = Flag.integer(4, 'Max bad apple number')
+  lr_decay = Flag.float(0.6, 'Learning rate decay coefficient', is_key=None)
+  max_bad_apples = Flag.integer(4, 'Max bad apple number', is_key=None)
 
   trainer_class = SmartTrainer
 
