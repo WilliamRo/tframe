@@ -124,18 +124,20 @@ class Trainer(object):
     self._init_trainer_hub(hub, **kwargs)
     # Do some check-up
     self._check_data(), self._sanity_check(), self.th.sanity_check()
+    # Check model.session
+    self._check_model()
     # Run model's pre-train method
     self.model.pretrain(**kwargs)
     # Show configurations
     self._show_configurations()
-    # Check model.session
-    self._check_model()
+    # Maybe take down some notes
+    self._take_notes_before_loops()
 
     # Train with graph
-    with self.session.as_default(): self._outer_loop()
+    with self.session.as_default(): rounds = self._outer_loop()
 
     # :: After training
-    self._end_training()
+    self._end_training(rounds)
 
   # region : Before training
 
@@ -162,12 +164,18 @@ class Trainer(object):
     pass
 
   def _show_configurations(self):
-    # TODO: to be modified
     console.show_status('Configurations:')
+    if self.th.note:
+      self.model.agent.take_notes('Configurations:', date_time=False)
     console.supplement('Training set feature shape: {}'.format(
       self._training_set.features.shape))
     for config in self.th.config_strings:
       console.supplement(config)
+      if self.th.note:
+        self.model.agent.take_notes('.. {}'.format(config), date_time=False)
+
+  def _take_notes_before_loops(self):
+    if not self.th.note: return
 
   def _check_model(self):
     if not self.model.launched:
@@ -179,6 +187,7 @@ class Trainer(object):
 
   def _outer_loop(self):
     hub = self.th
+    rnd = 0
     for rnd_ in range(hub.total_outer_loops):
       rnd = rnd_ + 1
       console.section('{} {}'.format(hub.round_name, rnd))
@@ -200,6 +209,7 @@ class Trainer(object):
       if self._save_model_at_round_end: self._save_model()
       # Early stop
       if hub.stop: break
+    return rnd
 
   def _inner_loop(self, rnd):
     # Begin iteration
@@ -235,17 +245,26 @@ class Trainer(object):
 
   # region : After training
 
-  def _end_training(self):
+  def _end_training(self, rounds):
     if self.th.progress_bar: console.clear_line()
-
     # If this is a hp-tuning task, write record summary
     if self.th.hp_tuning:
       assert not self.th.summary
       self.metric.write_record_summary()
-
     # Flush summary
     if self.th.summary or self.th.hp_tuning:
       self.model.agent.summary_writer.flush()
+    # Maybe take some notes
+    if self.th.note:
+      self.model.agent.take_notes(
+        'End training after {} rounds ({} total)'.format(
+          rounds, self.total_rounds))
+      # TODO: consider bamboo
+      metric = self.model.metric
+      if self.th.validation_on and metric.activated:
+        notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
+          metric.record, metric.mean_record)
+        self.model.agent.take_notes(notes, date_time=False)
 
   # endregion : After training
 

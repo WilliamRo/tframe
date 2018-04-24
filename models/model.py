@@ -164,18 +164,13 @@ class Model(object):
 
   # endregion : Training
 
-  # region : Static Methods
+  # region : Public Methods
 
-  @staticmethod
-  def show_building_info(**kwargs):
+  def show_building_info(self, **kwargs):
     console.show_status('Model built successfully:')
     for k, v in kwargs.items():
       assert isinstance(v, Net)
       console.supplement('{}: {}'.format(k, v.structure_string()))
-
-  # endregion : Static Methods
-
-  # region : Public Methods
 
   def tune_lr(self, new_lr=None, coef=1.0):
     #TODO

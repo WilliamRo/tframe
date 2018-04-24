@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import time
 
 import tensorflow as tf
 import tframe as tfr
@@ -122,6 +123,9 @@ class Agent(object):
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
     if hub.note:
       self._note_writer = open('{}/notes.txt'.format(self.note_dir), 'a')
+      self.take_notes('=' * 79, date_time=False)
+      self.take_notes('Model structure: ', date_time=False)
+      self.take_notes(self._model.description, date_time=False)
 
     # Try to load exist model
     load_flag, self._model.counter = self.load()
@@ -137,6 +141,8 @@ class Agent(object):
         write_file(description_path, self._model.description)
 
     self._model.launched = True
+    if hub.note:
+      self.take_notes('Model launched')
     return load_flag
 
   def shutdown(self):
@@ -150,12 +156,17 @@ class Agent(object):
   def write_summary(self, summary):
     self._summary_writer.add_summary(summary, self._model.counter)
 
-  def take_notes(self, content):
+  def take_notes(self, content, date_time=True):
     if not hub.note:
       raise AssertionError('!! note option has not been turned on')
     if not isinstance(content, str):
       raise TypeError('!! content must be a string')
+    if date_time:
+      time_str = time.strftime('[{}-{}-%d %H:%M:%S]'.format(
+        time.strftime('%Y')[2:], time.strftime('%B')[:3]))
+      content = '{} {}'.format(time_str, content)
     self._note_writer.write(content + '\n')
+    self._note_writer.flush()
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))
