@@ -76,7 +76,7 @@ class Predictor(Feedforward, Recurrent):
     with tf.name_scope('Loss'):
       loss_tensor = loss_function(self._targets.tensor, self.outputs.tensor)
       # TODO: with or without regularization loss?
-      default_summaries.append(tf.summary.scalar('loss_sum', self._loss))
+      default_summaries.append(tf.summary.scalar('loss_sum', loss_tensor))
       # Try to add regularization loss
       reg_loss = self.regularization_loss
       if reg_loss is not None: loss_tensor += reg_loss

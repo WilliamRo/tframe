@@ -34,8 +34,7 @@ class Agent(object):
     self._saver = None
     self._summary_writer = None
     # An agent holds a default note
-    self._note = None
-    if hub.note: self._note = Note()
+    self._note = Note()
 
   # region : Properties
 
@@ -152,8 +151,6 @@ class Agent(object):
     self._summary_writer.add_summary(summary, self._model.counter)
 
   def take_notes(self, content, date_time=True, prompt=None):
-    if not hub.note:
-      raise AssertionError('!! note option has not been turned on')
     if not isinstance(content, str):
       raise TypeError('!! content must be a string')
     if isinstance(prompt, str):
@@ -164,13 +161,18 @@ class Agent(object):
         time.strftime('%Y')[2:], time.strftime('%B')[:3]))
       content = '{} {}'.format(time_str, content)
 
-    self._note.write_line(content + '\n')
+    self._note.write_line(content)
 
   def export_notes(self):
     assert hub.note
     writer = open('{}/notes.txt'.format(self.note_dir), 'a')
     writer.write('=' * 79 + '\n')
+    writer.write(self._note.content)
     writer.close()
+
+  def show_notes(self):
+    console.section('Notes')
+    console.write_line(self._note.content)
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))

@@ -165,17 +165,15 @@ class Trainer(object):
 
   def _show_configurations(self):
     console.show_status('Configurations:')
-    if self.th.note:
-      self.model.agent.take_notes('Configurations:', date_time=False)
+    self.model.agent.take_notes('Configurations:', date_time=False)
     console.supplement('Training set feature shape: {}'.format(
       self._training_set.features.shape))
     for config in self.th.config_strings:
       console.supplement(config)
-      if self.th.note:
-        self.model.agent.take_notes('.. {}'.format(config), date_time=False)
+      self.model.agent.take_notes('.. {}'.format(config), date_time=False)
 
   def _take_notes_before_loops(self):
-    if not self.th.note: return
+    if not self.th.export_note: return
 
   def _check_model(self):
     if not self.model.launched:
@@ -254,19 +252,20 @@ class Trainer(object):
     # Flush summary
     if self.th.summary or self.th.hp_tuning:
       self.model.agent.summary_writer.flush()
-    # Maybe take some notes
-    if self.th.note:
-      self.model.agent.take_notes(
-        'End training after {} rounds ({} total)'.format(
-          rounds, self.total_rounds))
-      # TODO: consider bamboo
-      metric = self.model.metric
-      if self.th.validation_on and metric.activated:
-        notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
-          metric.record, metric.mean_record)
-        self.model.agent.take_notes(notes, date_time=False)
-      # Export notes
-      self.model.agent.export_notes()
+    # Take notes
+    self.model.agent.take_notes(
+      'End training after {} rounds ({:.1f} total)'.format(
+        rounds, self.total_rounds))
+    # TODO: consider bamboo
+    metric = self.model.metric
+    if self.th.validation_on and metric.activated:
+      notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
+        metric.record, metric.mean_record)
+      self.model.agent.take_notes(notes, date_time=False)
+    # Show notes
+    self.model.agent.show_notes()
+    # Export notes
+    if self.th.export_note: self.model.agent.export_notes()
 
   # endregion : After training
 

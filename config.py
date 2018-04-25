@@ -63,7 +63,11 @@ class Flag(object):
     if f_value is None: return self._value
     # If self is en enum Flag, then f_value must be a string in
     # .. self.enum_class.value_list(), so we need to get its member
-    if self.is_enum: return self.enum_class.get_member(f_value)
+    if self.is_enum: f_value = self.enum_class.get_member(f_value)
+    if self.frozen and self._value != f_value:
+      raise AssertionError(
+        "!! Invalid tensorflow FLAGS value {0}={1} 'cause {0} has been "
+        "frozen to {2}".format(self._name, f_value, self._value))
     return f_value
 
   @property
@@ -163,7 +167,7 @@ class Config(object):
   dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=True)
 
   # Migrated from tframe\__init__.py
-  note = Flag.boolean(False, 'Whether to take notes')
+  export_note = Flag.boolean(False, 'Whether to take notes')
   summary = Flag.boolean(True, 'Whether to write summary')
   save_model = Flag.boolean(True, 'Whether to save model during training')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
@@ -243,8 +247,9 @@ class Config(object):
       return
 
     # Now attr is definitely a Flag
-    if attr.frozen:
-      raise AssertionError('!! config {} has been frozen'.format(name))
+    if attr.frozen and value != attr._value:
+      raise AssertionError(
+        '!! config {} has been frozen to {}'.format(name, attr._value))
     # If attr is a enum Flag, make sure value is legal
     if attr.is_enum:
       if value not in list(attr.enum_class):
@@ -273,13 +278,15 @@ class Config(object):
     flag_names = [name for name, value in self.__dict__.items()
                   if isinstance(value, Flag)]
     for name in flag_names:
+      value = getattr(config, name)
       object.__setattr__(self, name, config.get_flag(name))
+      self.__setattr__(name, value)
 
   def smooth_out_conflicts(self):
     """"""
     if '://' in self.job_dir: self.on_cloud = True
     if self.on_cloud or self.hp_tuning:
-      self.note = False
+      self.export_note = False
       self.progress_bar = False
     if self.on_cloud:
       self.snapshot = False

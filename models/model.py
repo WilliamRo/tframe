@@ -130,11 +130,10 @@ class Model(object):
       assert isinstance(line, str)
       console.supplement(line)
     # Maybe take some notes
-    if hub.note:
-      self.agent.take_notes('Model built successfully')
-      self.agent.take_notes('Structure:', prompt='::')
-      for line in description:
-        self.agent.take_notes(line, prompt='.. ')
+    self.agent.take_notes('Model built successfully')
+    self.agent.take_notes('Structure:', prompt='::')
+    for line in description:
+      self.agent.take_notes(line, prompt='.. ')
 
   def _build(self, *args, **kwargs):
     """Abstract method, must be implemented in different models"""
