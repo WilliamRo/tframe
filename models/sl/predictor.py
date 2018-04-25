@@ -33,6 +33,7 @@ class Predictor(Feedforward, Recurrent):
     self.master = net_type
     # Call parent's constructor
     net_type.__init__(self, mark)
+    self._default_net = self
     # Attributes
     self._targets = TensorSlot(self, 'targets')
 
@@ -40,8 +41,7 @@ class Predictor(Feedforward, Recurrent):
 
   @property
   def description(self):
-    # Call Net's method
-    return self.structure_string()
+    return '{}: {}'.format(self.master.__name__, self.structure_string())
 
   @property
   def input_type(self):
@@ -57,10 +57,10 @@ class Predictor(Feedforward, Recurrent):
   # region : Build
 
   @with_graph
-  def build(self, loss='cross_entropy', optimizer=None,
-            metric=None, metric_is_like_loss=True, metric_name='Metric'):
+  def _build(self, loss='cross_entropy', optimizer=None,
+             metric=None, metric_is_like_loss=True, metric_name='Metric'):
     # Call parent's build method
-    self.master.build(self)
+    self.master._build(self)
 
     # Summary placeholder
     default_summaries = []
@@ -102,16 +102,6 @@ class Predictor(Feedforward, Recurrent):
 
     # Define train step
     self._define_train_step(optimizer)
-
-    # Print status and model structure
-    kwargs = {'{}'.format(self.master.__name__): self}
-    self.show_building_info(**kwargs)
-
-    # Launch session
-    self.launch_model(hub.overwrite)
-
-    # Set built flag
-    self._built = True
 
   # endregion : Build
 

@@ -79,8 +79,8 @@ class VolterraNet(Model):
   # region : Building
 
   @with_graph
-  def build(self, loss='euclid', optimizer=None, homo_strength=1.0,
-            metric=None, metric_name='Metric'):
+  def _build(self, loss='euclid', optimizer=None, homo_strength=1.0,
+             metric=None, metric_name='Metric'):
     """Build model"""
     # Set summary place holder
     default_summaries = []
@@ -164,7 +164,7 @@ class VolterraNet(Model):
     self._define_train_step(optimizer)
 
     # Print status and model structure
-    self.show_building_info(
+    self._show_building_info(
       **{'T[{}]'.format(key): val for key, val in self.operators.items()})
 
     # Launch session

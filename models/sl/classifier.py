@@ -24,13 +24,13 @@ class Classifier(Predictor):
 
 
   @with_graph
-  def build(self, loss='cross_entropy', optimizer=None, *args):
+  def _build(self, loss='cross_entropy', optimizer=None, *args):
     # TODO: ... do some compromise
     hub.block_validation = True
     # Call parent's method to build using the default loss function
     #  -- cross entropy
-    Predictor.build(self, loss, optimizer, metric='accuracy',
-                    metric_name=pedia.Accuracy)
+    Predictor._build(self, loss, optimizer, metric='accuracy',
+                     metric_name=pedia.Accuracy)
 
     self._sum_train_acc = tf.summary.scalar('train_acc', self._metric)
     self._sum_val_acc = tf.summary.scalar('val_acc', self._metric)

@@ -29,9 +29,9 @@ class Bamboo(Predictor):
   # region : Build
 
   @with_graph
-  def build(self, loss='cross_entropy', optimizer=None,
-            metric=None, metric_is_like_loss=True, metric_name='Metric'):
-    Feedforward.build(self)
+  def _build(self, loss='cross_entropy', optimizer=None,
+             metric=None, metric_is_like_loss=True, metric_name='Metric'):
+    Feedforward._build(self)
     # Check branch shapes
     output_shape = self.outputs.shape_list
     for b_out in self.branch_outputs:
@@ -74,7 +74,7 @@ class Bamboo(Predictor):
       self.branch_outputs) + 1
 
     # Print status and model structure
-    self.show_building_info(FeedforwardNet=self)
+    self._show_building_info(FeedforwardNet=self)
 
     # Set built flag
     self._built = True

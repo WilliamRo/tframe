@@ -40,8 +40,8 @@ class TDPlayer(Feedforward, Player):
   # region : Build
 
   @with_graph
-  def build(self, lamda=0.5, learning_rate=0.01):
-    Feedforward.build(self)
+  def _build(self, lamda=0.5, learning_rate=0.01):
+    Feedforward._build(self)
     # Initialize target placeholder
     self._next_value = tf.placeholder(
       self._outputs.dtype, self._outputs.get_shape(), name='next_value')
@@ -74,7 +74,7 @@ class TDPlayer(Feedforward, Player):
       self._update_op = tf.group(*update_op, name='train')
 
     # Print status and model structure
-    self.show_building_info(FeedforwardNet=self)
+    self._show_building_info(FeedforwardNet=self)
 
     # Launch session
     self.launch_model(FLAGS.overwrite and FLAGS.train)

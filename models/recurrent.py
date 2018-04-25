@@ -30,7 +30,7 @@ class Recurrent(Model, RNet):
   # region : Build
 
   @with_graph
-  def build(self):
+  def _build(self):
     # self.init_state should be called for the first time inside this method
     #  so that it can be initialized within the appropriate graph
 
@@ -54,8 +54,5 @@ class Recurrent(Model, RNet):
     assert isinstance(scan_outputs, tf.Tensor)
     perm = list(range(len(scan_outputs.shape.as_list())))
     self.outputs.plug(tf.transpose(scan_outputs, [1, 0] + perm[2:]))
-
-    # Set built flag
-    self._built = True
 
   # endregion: Build

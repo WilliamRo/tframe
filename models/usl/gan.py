@@ -91,7 +91,7 @@ class GAN(Model):
   # region : Building
 
   @with_graph
-  def build(self, loss='cross_entropy', G_optimizer=None, D_optimizer=None,
+  def _build(self, loss='cross_entropy', G_optimizer=None, D_optimizer=None,
              smooth_factor=0.9):
     """
     Build model
@@ -155,7 +155,7 @@ class GAN(Model):
     self._add_summaries()
 
     # Print status and model structure
-    self.show_building_info(Generator=self.G, Discriminator=self.D)
+    self._show_building_info(Generator=self.G, Discriminator=self.D)
 
     # Set default snapshot function
     self._snapshot_function = self._default_snapshot_function

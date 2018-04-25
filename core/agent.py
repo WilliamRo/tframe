@@ -13,6 +13,7 @@ from tframe import console
 from tframe import pedia
 
 from tframe.utils import imtool
+from tframe.utils import Note
 from tframe.utils.local import check_path, clear_paths, write_file
 from tframe.utils.local import save_checkpoint, load_checkpoint
 
@@ -32,7 +33,9 @@ class Agent(object):
     # An agent saves model and writes summary
     self._saver = None
     self._summary_writer = None
-    self._note_writer = None
+    # An agent holds a default note
+    self._note = None
+    if hub.note: self._note = Note()
 
   # region : Properties
 
@@ -121,11 +124,6 @@ class Agent(object):
     self._saver = tf.train.Saver()
     if hub.summary or hub.hp_tuning:
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
-    if hub.note:
-      self._note_writer = open('{}/notes.txt'.format(self.note_dir), 'a')
-      self.take_notes('=' * 79, date_time=False)
-      self.take_notes('Model structure: ', date_time=False)
-      self.take_notes(self._model.description, date_time=False)
 
     # Try to load exist model
     load_flag, self._model.counter = self.load()
@@ -148,25 +146,31 @@ class Agent(object):
   def shutdown(self):
     if hub.summary or hub.hp_tuning:
       self._summary_writer.close()
-    if hub.note:
-      assert self._note_writer is not None
-      self._note_writer.close()
     self.session.close()
 
   def write_summary(self, summary):
     self._summary_writer.add_summary(summary, self._model.counter)
 
-  def take_notes(self, content, date_time=True):
+  def take_notes(self, content, date_time=True, prompt=None):
     if not hub.note:
       raise AssertionError('!! note option has not been turned on')
     if not isinstance(content, str):
       raise TypeError('!! content must be a string')
+    if isinstance(prompt, str):
+      date_time = False
+      content = '{} {}'.format(prompt, content)
     if date_time:
       time_str = time.strftime('[{}-{}-%d %H:%M:%S]'.format(
         time.strftime('%Y')[2:], time.strftime('%B')[:3]))
       content = '{} {}'.format(time_str, content)
-    self._note_writer.write(content + '\n')
-    self._note_writer.flush()
+
+    self._note.write_line(content + '\n')
+
+  def export_notes(self):
+    assert hub.note
+    writer = open('{}/notes.txt'.format(self.note_dir), 'a')
+    writer.write('=' * 79 + '\n')
+    writer.close()
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))

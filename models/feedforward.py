@@ -19,11 +19,7 @@ class Feedforward(Model, Net):
     Net.__init__(self, 'FeedforwardNet')
 
   @with_graph
-  def build(self):
+  def _build(self):
     # Feed forward to get outputs
     self.outputs.plug(self())
-
-    # Set built flag
-    self._built = True
-
 

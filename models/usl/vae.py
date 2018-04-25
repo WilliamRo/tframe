@@ -72,7 +72,7 @@ class VAE(Model):
   # region : Building
 
   @with_graph
-  def build(self, optimizer=None):
+  def _build(self, optimizer=None):
     # Generate mean and var from encoder
     z_mu, z_logvar = self.Encoder()
     # Sample z~N(mu, var)
@@ -128,7 +128,7 @@ class VAE(Model):
       self._train_step = optimizer.minimize(vae_loss)
 
     # Print status and model structure
-    self.show_building_info(Encoder=self.Q, Decoder=self.P)
+    self._show_building_info(Encoder=self.Q, Decoder=self.P)
 
     # Set default snapshot function TODO
     self._snapshot_function = self._default_snapshot_function

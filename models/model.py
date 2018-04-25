@@ -53,6 +53,7 @@ class Model(object):
       self, self._metric, self._validation_summary, name='Validate-group')
 
     # Private attributes
+    self._default_net = None
     self._optimizer = None
     self._built = False
 
@@ -117,6 +118,25 @@ class Model(object):
   # region : Building
 
   def build(self, *args, **kwargs):
+    self._build(*args, **kwargs)
+    # Set built flag
+    self._built = True
+    # Show build info
+    console.show_status('Model built successfully:')
+    description = self.description
+    if not isinstance(description, (tuple, list)):
+      description = [description]
+    for line in description:
+      assert isinstance(line, str)
+      console.supplement(line)
+    # Maybe take some notes
+    if hub.note:
+      self.agent.take_notes('Model built successfully')
+      self.agent.take_notes('Structure:', prompt='::')
+      for line in description:
+        self.agent.take_notes(line, prompt='.. ')
+
+  def _build(self, *args, **kwargs):
     """Abstract method, must be implemented in different models"""
     raise  NotImplementedError('!! build method not implemented')
 
@@ -165,12 +185,6 @@ class Model(object):
   # endregion : Training
 
   # region : Public Methods
-
-  def show_building_info(self, **kwargs):
-    console.show_status('Model built successfully:')
-    for k, v in kwargs.items():
-      assert isinstance(v, Net)
-      console.supplement('{}: {}'.format(k, v.structure_string()))
 
   def tune_lr(self, new_lr=None, coef=1.0):
     #TODO

@@ -265,6 +265,8 @@ class Trainer(object):
         notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
           metric.record, metric.mean_record)
         self.model.agent.take_notes(notes, date_time=False)
+      # Export notes
+      self.model.agent.export_notes()
 
   # endregion : After training
 
