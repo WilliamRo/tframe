@@ -112,7 +112,7 @@ class Agent(object):
       if hub.summary: paths.append(self.log_dir)
       if hub.save_model: paths.append(self.ckpt_dir)
       if hub.snapshot: paths.append(self.snapshot_dir)
-      if hub.note: paths.append(self.note_dir)
+      if hub.export_note: paths.append(self.note_dir)
       clear_paths(paths)
 
     # Launch session on self.graph
@@ -138,8 +138,7 @@ class Agent(object):
         write_file(description_path, self._model.description)
 
     self._model.launched = True
-    if hub.note:
-      self.take_notes('Model launched')
+    self.take_notes('Model launched')
     return load_flag
 
   def shutdown(self):
