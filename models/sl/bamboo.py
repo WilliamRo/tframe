@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import division
+from __future__ import print_function
 
 import tensorflow as tf
 
@@ -72,12 +72,6 @@ class Bamboo(Predictor):
     # Sanity check
     assert len(self._losses) == len(self._metrics) == len(
       self.branch_outputs) + 1
-
-    # Print status and model structure
-    self._show_building_info(FeedforwardNet=self)
-
-    # Set built flag
-    self._built = True
 
   @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):
