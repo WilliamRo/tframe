@@ -17,6 +17,8 @@ from tframe.utils import Note
 from tframe.utils.local import check_path, clear_paths, write_file
 from tframe.utils.local import save_checkpoint, load_checkpoint
 
+from tframe.core.decorators import with_graph
+
 
 class Agent(object):
   """An Agent works for TFrame Model, handling tensorflow stuffs"""
@@ -67,7 +69,7 @@ class Agent(object):
   @property
   def note_dir(self):
     return check_path(hub.job_dir, hub.record_dir, hub.note_folder_name,
-                      self._model.mark, create_path=hub.note)
+                      self._model.mark, create_path=hub.export_note)
   @property
   def log_dir(self):
     return check_path(hub.job_dir, hub.record_dir, hub.log_folder_name,
@@ -103,6 +105,7 @@ class Agent(object):
     save_checkpoint(self.model_path, self.session, self._saver,
                     self._model.counter)
 
+  @with_graph
   def launch_model(self, overwrite=False):
     hub.smooth_out_conflicts()
     if hub.suppress_logging: console.suppress_logging()
@@ -163,11 +166,13 @@ class Agent(object):
     self._note.write_line(content)
 
   def export_notes(self):
-    assert hub.note
-    writer = open('{}/notes.txt'.format(self.note_dir), 'a')
+    assert hub.export_note
+    file_path = '{}/notes.txt'.format(self.note_dir)
+    writer = open(file_path, 'a')
     writer.write('=' * 79 + '\n')
     writer.write(self._note.content)
     writer.close()
+    console.show_status('Notes exported to {}'.format(file_path))
 
   def show_notes(self):
     console.section('Notes')

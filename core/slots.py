@@ -58,7 +58,9 @@ class Slot(object):
       ops.append(op)
 
     with self._model.graph.as_default():
-      return self._model.session.run(ops, feed_dict=feed_dict)
+      result = self._model.session.run(ops, feed_dict=feed_dict)
+      if isinstance(result, (tuple, list)): result = result[0]
+      return result
 
   def fetch(self, feed_dict=None):
     result = self.run(feed_dict=feed_dict)

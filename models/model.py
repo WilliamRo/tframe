@@ -131,9 +131,9 @@ class Model(object):
       console.supplement(line)
     # Maybe take some notes
     self.agent.take_notes('Model built successfully')
-    self.agent.take_notes('Structure:', prompt='::')
+    self.agent.take_notes('Structure:', date_time=False)
     for line in description:
-      self.agent.take_notes(line, prompt='.. ')
+      self.agent.take_notes(line, date_time=False)
 
   def _build(self, *args, **kwargs):
     """Abstract method, must be implemented in different models"""
