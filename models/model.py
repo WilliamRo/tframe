@@ -214,7 +214,7 @@ class Model(object):
 
     # Show status
     console.show_status(
-      'Learning rate updated: {:.3e} => {:.3e}'.format(old_lr, new_lr))
+      'Learning rate updated: {:.2e} => {:.2e}'.format(old_lr, new_lr))
 
     return new_lr
 

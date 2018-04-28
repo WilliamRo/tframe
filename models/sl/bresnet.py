@@ -162,11 +162,10 @@ class BResNet(Predictor):
       self.agent.take_notes(notes, date_time=False)
 
   def end_round(self, rnd):
-    console.write_line('- ' * 40)
     for i, metric in enumerate(self._metrics):
       assert isinstance(metric, Metric) and metric.activated
       if metric.sleep: continue
-      console.show_status('Branch {}'.format(i), symbol='::')
+      console.show_status('Branch {} {}'.format(i, '- ' * 34), symbol='::')
       metric.end_round(rnd)
       console.write_line('- ' * 40)
 
