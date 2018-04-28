@@ -102,13 +102,14 @@ class Metric(TensorSlot):
 
     return new_record
 
-  def take_down(self, metric, rnd):
+  def take_down(self, metric, rnd, gap=0):
     new_record = False
     # Add new metric to log
     self._add_to_log(metric)
 
     # Update metric record
-    if self._record.never_assigned or self.is_better_than(metric, self.record):
+    if (self._record.never_assigned or
+        self.is_better_than(metric, self.record, gap=gap)):
       self._record_round = rnd
       self.record = metric
       new_record = True

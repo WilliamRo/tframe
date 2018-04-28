@@ -181,6 +181,15 @@ class Model(object):
     feed_dict = self._get_default_feed_dict(validation_set, is_training=False)
     return self._validate_group.run(feed_dict)
 
+  def take_down_metric(self):
+    if not self.metric.activated: return
+    notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
+      self.metric.record, self.metric.mean_record)
+    self.agent.take_notes(notes, date_time=False)
+
+  def bust(self):
+    return True
+
   # endregion : Training
 
   # region : Public Methods
@@ -203,6 +212,8 @@ class Model(object):
     # Show status
     console.show_status(
       'Learning rate updated: {:.8f} => {:.8f}'.format(old_lr, new_lr))
+
+    return new_lr
 
   def shutdown(self):
     self.agent.shutdown()

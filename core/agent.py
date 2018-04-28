@@ -99,6 +99,9 @@ class Agent(object):
     return feed_dict
 
   def load(self):
+    # TODO: when save_model option is turned off and the user want to
+    #   try loading the exist model, set overwrite to False
+    if not hub.save_model and hub.overwrite: return False, 0
     return load_checkpoint(self.ckpt_dir, self.session, self._saver)
 
   def save_model(self):

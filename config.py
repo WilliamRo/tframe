@@ -93,8 +93,9 @@ class Flag(object):
     return Flag(default_value, description, is_key=is_key)
 
   @classmethod
-  def string(cls, default_value, description, name=None):
-    return Flag(default_value, description, flags.DEFINE_string, name)
+  def string(cls, default_value, description, name=None, is_key=False):
+    return Flag(default_value, description, flags.DEFINE_string, name,
+                is_key=is_key)
 
   @classmethod
   def boolean(cls, default_value, description, name=None, is_key=False):
@@ -197,6 +198,9 @@ class Config(object):
   # Configs usually provided during method calling
   mark = Flag.string(None, 'Model identifier')
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
+  regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
+  reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
+                            is_key=None)
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '

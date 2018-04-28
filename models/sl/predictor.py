@@ -67,9 +67,7 @@ class Predictor(Feedforward, Recurrent):
     validation_summaries = []
 
     # Initiate targets and add it to collection
-    targets = tf.placeholder(
-      self.outputs.dtype, self.outputs.shape_list, name='targets')
-    self._targets.plug(targets, collection=pedia.default_feed_dict)
+    self._plug_target_in(self.outputs.shape_list)
 
     # Define loss
     loss_function = losses.get(loss)
@@ -102,6 +100,10 @@ class Predictor(Feedforward, Recurrent):
 
     # Define train step
     self._define_train_step(optimizer)
+
+  def _plug_target_in(self, shape):
+    target_tensor = tf.placeholder(hub.dtype, shape, name='targets')
+    self._targets.plug(target_tensor, collection=pedia.default_feed_dict)
 
   # endregion : Build
 

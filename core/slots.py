@@ -16,6 +16,7 @@ class Slot(object):
     self._model = model
     self._op = None
     self.name = name
+    self.sleep = False
 
   # region : Properties
 
@@ -28,6 +29,13 @@ class Slot(object):
     return self._op
 
   # endregion : Properties
+
+  # region : Overriding
+
+  def __str__(self):
+    return self.name
+
+  # endregion : Overriding
 
   # region : Public Methods
 

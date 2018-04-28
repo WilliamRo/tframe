@@ -122,12 +122,12 @@ class Trainer(object):
   def train(self, hub=None, **kwargs):
     # Set trainer hub
     self._init_trainer_hub(hub, **kwargs)
+    # Run model's pre-train method
+    self.model.pretrain(**kwargs)
     # Do some check-up
     self._check_data(), self._sanity_check(), self.th.sanity_check()
     # Check model.session
     self._check_model()
-    # Run model's pre-train method
-    self.model.pretrain(**kwargs)
     # Show configurations
     self._show_configurations()
     # Maybe take down some notes
@@ -138,6 +138,7 @@ class Trainer(object):
 
     # :: After training
     self._end_training(rounds)
+    self._handle_notes()
 
   # region : Before training
 
@@ -186,8 +187,8 @@ class Trainer(object):
   def _outer_loop(self):
     hub = self.th
     rnd = 0
-    for rnd_ in range(hub.total_outer_loops):
-      rnd = rnd_ + 1
+    for _ in range(hub.total_outer_loops):
+      rnd += 1
       console.section('{} {}'.format(hub.round_name, rnd))
       hub.tic()
       # Begin inner loop
@@ -206,7 +207,8 @@ class Trainer(object):
       # Maybe save model
       if self._save_model_at_round_end: self._save_model()
       # Early stop
-      if hub.stop: break
+      if hub.stop and self.model.bust(): break
+
     return rnd
 
   def _inner_loop(self, rnd):
@@ -256,12 +258,10 @@ class Trainer(object):
     self.model.agent.take_notes(
       'End training after {} rounds ({:.1f} total)'.format(
         rounds, self.total_rounds))
-    # TODO: consider bamboo
-    metric = self.model.metric
-    if self.th.validation_on and metric.activated:
-      notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
-        metric.record, metric.mean_record)
-      self.model.agent.take_notes(notes, date_time=False)
+    # Add metric info into notes
+    if self.th.validation_on: self.model.take_down_metric()
+
+  def _handle_notes(self):
     # Show notes
     self.model.agent.show_notes()
     # Export notes
@@ -305,7 +305,7 @@ class Trainer(object):
     return ', '.join(string_array)
 
   def _print_progress(self, rnd, loss_dict):
-    if self.th.print_cycle == 0: return
+    if loss_dict is None or self.th.print_cycle == 0: return
     if np.mod(self.counter - 1, self.th.print_cycle) != 0: return
 
     loss_string = self._dict_to_string(loss_dict)
@@ -319,10 +319,22 @@ class Trainer(object):
 
     # Get metric
     metric_dict = self.model.validate_model(self.validation_set)
-    metric = list(metric_dict.values())[0]
-    new_record = self.metric.take_down(metric, rnd)
-    prompt = '[New Record]' if new_record else '[Validate]'
-    self._inter_cut(self._dict_to_string(metric_dict), prompt=prompt)
+    new_record = None
+    content = ''
+    attachments = []
+    for metric_slot, val in metric_dict.items():
+      assert isinstance(metric_slot, Metric)
+      if new_record is None:
+        new_record = self.metric.take_down(val, rnd, gap=self.th.record_gap)
+        content = self._dict_to_string({metric_slot: val})
+      else:
+        metric_slot.take_down(val, rnd, gap=self.th.record_gap)
+        attachments.append('{:.3f}'.format(val))
+
+    if len(attachments) > 0:
+      content = '{} ({})'.format(content, ', '.join(attachments))
+    if new_record: content += ' <New Record>'
+    self._inter_cut(content, prompt='[Validate]')
 
     return new_record
 
@@ -364,6 +376,7 @@ class TrainerHub(Config):
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
   early_stop = Flag.boolean(True, 'Early stop option', is_key=None)
+  record_gap = Flag.float(0.001, 'Minimum improvement')
   idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on',
                           is_key=None)
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,

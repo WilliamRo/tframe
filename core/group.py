@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import collections
 
 import tframe as tfr
 from tframe import hub
@@ -36,19 +36,19 @@ class Group(object):
           not slot.activated or not hub.summary): continue
       if not slot.activated:
         raise AssertionError('!! {} must be activated'.format(slot.name))
-      fetches.append(slot)
+      if not slot.sleep: fetches.append(slot)
 
     with self._model.graph.as_default():
       results = self._model.session.run(
         [slot.op for slot in fetches], feed_dict=feed_dict)
 
     # Check results
-    tensor_dict = {}
+    tensor_dict = collections.OrderedDict()
     for slot, val in zip(fetches, results):
       if isinstance(slot, SummarySlot):
         self._model.agent.write_summary(val)
       elif isinstance(slot, TensorSlot):
-        tensor_dict[slot.name] = val
+        tensor_dict[slot] = val
 
     # Return tensor dictionary
     return tensor_dict

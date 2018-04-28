@@ -42,6 +42,7 @@ class SmartTrainer(Trainer):
       self, model, training_set, validation_set, snapshot, probe)
     # Override trainer hub with SmartTrainerHub
     self.th = SmartTrainerHub(self)
+    self.lr = self.th.learning_rate
 
   # region : Train
 
@@ -62,14 +63,22 @@ class SmartTrainer(Trainer):
       if self.th.bad_apples > self.th.max_bad_apples:
         # Decay learning rate and reset bad apples
         # self.model.agent.load()
-        self.model.tune_lr(coef=self.th.lr_decay)
+        self.lr = self.model.tune_lr(coef=self.th.lr_decay)
         self.th.bad_apples = 0
     else:
       # Reset bad apples when new record appears
       self.th.bad_apples = 0
 
     # Show bad apple count
-    console.supplement('{} bad apples found.'.format(self.th.bad_apples))
+    console.supplement('{} bad apples found (lr = {:.2e})'.format(
+      self.th.bad_apples, self.lr))
+
+  def _handle_notes(self):
+    if self.th.smart_train:
+      self.model.agent.take_notes('Final learning rate: {:.2e}'.format(
+        self.lr), date_time=False)
+    # Call parent's method
+    Trainer._handle_notes(self)
 
   # endregion : Train
 

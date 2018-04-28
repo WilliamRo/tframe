@@ -40,8 +40,7 @@ class Bamboo(Predictor):
         raise ValueError('!! Branch outputs in bamboo should have the same'
                          ' shape as the trunk output')
     # Initiate targets and add it to collection
-    targets = tf.placeholder(self._outputs.dtype, output_shape, name='targets')
-    self._targets.plug(targets, collection=pedia.default_feed_dict)
+    self._plug_target_in(output_shape)
 
     # Generate output list
     self._output_list = self.branch_outputs + [self.outputs.tensor]
@@ -58,7 +57,7 @@ class Bamboo(Predictor):
     metric_function = metrics.get(metric)
     if metric_function is not None:
       with tf.name_scope('Metric'):
-        for output in  self._output_list:
+        for output in self._output_list:
           self._metrics.append(metric_function(self._targets.tensor, output))
         self.metric.plug(
           self._metrics[-1], as_loss=metric_is_like_loss, symbol=metric_name)
