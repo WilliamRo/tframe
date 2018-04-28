@@ -4,8 +4,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tframe import console
 from tframe import Predictor
-
 from tframe import losses
 from tframe import metrics
 
@@ -132,13 +132,13 @@ class BResNet(Predictor):
     for i, train_step in enumerate(self._train_steps):
       assert isinstance(train_step, OperationSlot)
       train_step.sleep = False
-      if i > 0: train_step.sleep = True
+      # if i > 0: train_step.sleep = True
     for metric in self._metrics:
       assert isinstance(metric, Metric)
       metric.sleep = False
     self._metric = self._metrics[self._master]
 
-  def bust(self):
+  def bust(self, rnd):
     if self._master + 1 == self.num_branches: return True
     # Let the busted branch sleep
     self._losses[self._master].sleep = True
@@ -149,6 +149,8 @@ class BResNet(Predictor):
     master_metric = self._metrics[self._master]
     assert isinstance(master_metric, Metric)
     self._metric = master_metric
+    # TODO
+    self._metric._record_round = 0
 
     return False
 
@@ -158,6 +160,15 @@ class BResNet(Predictor):
       notes = 'Branch {}: Record: {:.3f}, Mean Record: {:.3f}'.format(
         i, metric.record, metric.mean_record)
       self.agent.take_notes(notes, date_time=False)
+
+  def end_round(self, rnd):
+    console.write_line('- ' * 40)
+    for i, metric in enumerate(self._metrics):
+      assert isinstance(metric, Metric) and metric.activated
+      if metric.sleep: continue
+      console.show_status('Branch {}'.format(i), symbol='::')
+      metric.end_round(rnd)
+      console.write_line('- ' * 40)
 
   # endregion : Train
 

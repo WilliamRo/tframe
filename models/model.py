@@ -187,7 +187,10 @@ class Model(object):
       self.metric.record, self.metric.mean_record)
     self.agent.take_notes(notes, date_time=False)
 
-  def bust(self):
+  def end_round(self, rnd):
+    self.metric.end_round(rnd)
+
+  def bust(self, rnd):
     return True
 
   # endregion : Training
@@ -211,7 +214,7 @@ class Model(object):
 
     # Show status
     console.show_status(
-      'Learning rate updated: {:.8f} => {:.8f}'.format(old_lr, new_lr))
+      'Learning rate updated: {:.3e} => {:.3e}'.format(old_lr, new_lr))
 
     return new_lr
 

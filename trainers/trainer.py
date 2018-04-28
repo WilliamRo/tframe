@@ -199,7 +199,7 @@ class Trainer(object):
         hub.round_name, hub.toc()))
       # Maybe give a report on metric
       if hub.validation_on:
-        self.metric.end_round(rnd)
+        self.model.end_round(rnd)
         if self.metric.get_idle_rounds(rnd) > self.th.idle_tol:
           self.th.raise_stop_flag()
       # Advanced strategy
@@ -207,7 +207,7 @@ class Trainer(object):
       # Maybe save model
       if self._save_model_at_round_end: self._save_model()
       # Early stop
-      if hub.stop and self.model.bust(): break
+      if hub.stop and self.model.bust(rnd): break
 
     return rnd
 
