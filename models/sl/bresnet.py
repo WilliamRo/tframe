@@ -150,7 +150,7 @@ class BResNet(Predictor):
     assert isinstance(master_metric, Metric)
     self._metric = master_metric
     # TODO
-    self._metric._record_round = 0
+    self._metric._record_round = rnd
 
     return False
 
@@ -158,16 +158,16 @@ class BResNet(Predictor):
     for i, metric in enumerate(self._metrics):
       assert isinstance(metric, Metric) and metric.activated
       notes = 'Branch {}: Record: {:.3f}, Mean Record: {:.3f}'.format(
-        i, metric.record, metric.mean_record)
+        i + 1, metric.record, metric.mean_record)
       self.agent.take_notes(notes, date_time=False)
 
   def end_round(self, rnd):
     for i, metric in enumerate(self._metrics):
       assert isinstance(metric, Metric) and metric.activated
       if metric.sleep: continue
-      console.show_status('Branch {} {}'.format(i, '- ' * 34), symbol='::')
+      console.show_status('Branch {} {}'.format(i + 1, '- ' * 34), symbol='::')
       metric.end_round(rnd)
-      console.write_line('- ' * 40)
+    console.write_line('- ' * 40)
 
   # endregion : Train
 
