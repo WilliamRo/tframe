@@ -52,7 +52,7 @@ class BResNet(Predictor):
     # Define output tensors
     for i, output in enumerate(self.branch_outputs):
       if i == 0: output_tensor = output
-      else: output_tensor = output + self.branch_outputs[i - 1]
+      else: output_tensor = output + self._boutputs[i - 1].tensor
       slot = TensorSlot(self, name='output_{}'.format(i + 1))
       slot.plug(output_tensor)
       self._boutputs.append(slot)
@@ -126,12 +126,13 @@ class BResNet(Predictor):
 
   def pretrain(self, **kwargs):
     self._master = 0
-    for loss in self._losses:
+    for i, loss in enumerate(self._losses):
       assert isinstance(loss, TensorSlot)
       loss.sleep = False
-    for train_step in self._train_steps:
+    for i, train_step in enumerate(self._train_steps):
       assert isinstance(train_step, OperationSlot)
       train_step.sleep = False
+      if i > 0: train_step.sleep = True
     for metric in self._metrics:
       assert isinstance(metric, Metric)
       metric.sleep = False
