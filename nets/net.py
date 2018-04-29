@@ -121,7 +121,7 @@ class Net(Function):
     if self._inter_type != pedia.cascade or self.is_branch: result += ')'
 
     # Add output scale
-    if self.is_root:
+    if self.is_root and not self._inter_type == pedia.fork:
       result += ' => output_{}'.format(self.children[-1]._output_scale)
 
     # Return
@@ -175,7 +175,9 @@ class Net(Function):
       else: output_list.append(output)
 
     # Calculate output
-    if self._inter_type == pedia.fork: output = output_list
+    if self._inter_type == pedia.fork:
+      output = output_list
+      self.branch_outputs = output
     elif self._inter_type == pedia.sum: output = tf.add_n(output_list)
     elif self._inter_type == pedia.prod:
       output = output_list.pop()

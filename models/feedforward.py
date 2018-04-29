@@ -2,10 +2,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
+
 from tframe.core.decorators import with_graph
 
 from tframe.models.model import Model
 from tframe.nets.net import Net
+from tframe import pedia
 
 from tframe.core import TensorSlot
 
@@ -21,5 +24,8 @@ class Feedforward(Model, Net):
   @with_graph
   def _build(self):
     # Feed forward to get outputs
-    self.outputs.plug(self())
+    output = self()
+    if not self._inter_type == pedia.fork:
+      assert isinstance(output, tf.Tensor)
+      self.outputs.plug(output)
 

@@ -8,6 +8,7 @@ from tframe import console
 from tframe import Predictor
 from tframe import losses
 from tframe import metrics
+from tframe import pedia
 
 from tframe.core import with_graph
 from tframe.core import OperationSlot, TensorSlot
@@ -110,7 +111,7 @@ class BResNet(Predictor):
       for i, net in enumerate(self.children):
         assert isinstance(net, Net)
         var_list += net.var_list
-        if net.is_branch:
+        if net.is_branch or self._inter_type == pedia.fork:
           slot = OperationSlot(
             self, name='train_step_{}'.format(loss_index + 1))
           slot.plug(optimizer.minimize(
@@ -125,17 +126,16 @@ class BResNet(Predictor):
   # region : Train
 
   def pretrain(self, **kwargs):
-    self._master = 0
+    self._master = kwargs.get('start_at', 0)
     for i, loss in enumerate(self._losses):
       assert isinstance(loss, TensorSlot)
-      loss.sleep = False
+      loss.sleep = i < self._master
     for i, train_step in enumerate(self._train_steps):
       assert isinstance(train_step, OperationSlot)
-      train_step.sleep = False
-      # if i > 0: train_step.sleep = True
-    for metric in self._metrics:
+      train_step.sleep = i < self._master
+    for i, metric in enumerate(self._metrics):
       assert isinstance(metric, Metric)
-      metric.sleep = False
+      metric.sleep = i < self._master
     self._metric = self._metrics[self._master]
 
   def bust(self, rnd):
@@ -165,7 +165,7 @@ class BResNet(Predictor):
     for i, metric in enumerate(self._metrics):
       assert isinstance(metric, Metric) and metric.activated
       if metric.sleep: continue
-      console.show_status('Branch {} {}'.format(i + 1, '- ' * 34), symbol='::')
+      console.write_line('Branch {}  {}'.format(i + 1, '- ' * 35))
       metric.end_round(rnd)
     console.write_line('- ' * 40)
 
