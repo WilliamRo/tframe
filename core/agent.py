@@ -168,12 +168,12 @@ class Agent(object):
 
     self._note.write_line(content)
 
-  def export_notes(self):
+  def export_notes(self, filename='notes'):
     assert hub.export_note
-    file_path = '{}/notes.txt'.format(self.note_dir)
+    file_path = '{}/{}.txt'.format(self.note_dir, filename)
     writer = open(file_path, 'a')
     writer.write('=' * 79 + '\n')
-    writer.write(self._note.content)
+    writer.write(self._note.content + '\n')
     writer.close()
     console.show_status('Notes exported to {}'.format(file_path))
 

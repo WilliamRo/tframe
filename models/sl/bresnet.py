@@ -24,6 +24,8 @@ class BResNet(Predictor):
     # Call parent's initializer
     Predictor.__init__(self, mark)
     # Private attributes
+    # .. Options
+    self._strict_residual = True
     # .. tframe objects
     self._master = 0
     self._boutputs = []
@@ -52,7 +54,7 @@ class BResNet(Predictor):
 
     # Define output tensors
     for i, output in enumerate(self.branch_outputs):
-      if i == 0: output_tensor = output
+      if i == 0 or not self._strict_residual: output_tensor = output
       else: output_tensor = output + self._boutputs[i - 1].tensor
       slot = TensorSlot(self, name='output_{}'.format(i + 1))
       slot.plug(output_tensor)

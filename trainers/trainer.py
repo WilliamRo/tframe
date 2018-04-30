@@ -265,7 +265,11 @@ class Trainer(object):
     # Show notes
     self.model.agent.show_notes()
     # Export notes
-    if self.th.export_note: self.model.agent.export_notes()
+    if self.th.export_note:
+      filename = self.th.mark
+      if self.th.validation_on and self.metric.activated:
+        filename += '={:.3f}'.format(self.metric.record)
+      self.model.agent.export_notes(filename)
 
   # endregion : After training
 
