@@ -25,7 +25,7 @@ class BResNet(Predictor):
     Predictor.__init__(self, mark)
     # Private attributes
     # .. Options
-    self._strict_residual = True
+    self.strict_residual = True
     # .. tframe objects
     self._master = 0
     self._boutputs = []
@@ -38,6 +38,11 @@ class BResNet(Predictor):
   @property
   def num_branches(self):
     return len(self._boutputs)
+
+  @property
+  def record(self):
+    if len(self._metrics) == 0: return None
+    else: return max([metric.record for metric in self._metrics])
 
   # endregion : Properties
 
@@ -54,7 +59,8 @@ class BResNet(Predictor):
 
     # Define output tensors
     for i, output in enumerate(self.branch_outputs):
-      if i == 0 or not self._strict_residual: output_tensor = output
+      if i == 0 or not self.strict_residual:
+        output_tensor = output
       else: output_tensor = output + self._boutputs[i - 1].tensor
       slot = TensorSlot(self, name='output_{}'.format(i + 1))
       slot.plug(output_tensor)

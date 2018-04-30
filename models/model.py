@@ -99,6 +99,11 @@ class Model(object):
     assert isinstance(self._built, bool)
     return self._built
 
+  @property
+  def record(self):
+    if not self.metric.activated: return None
+    else: return self.metric.record
+
   # endregion : Accessor
 
   # region : Properties to be overrode

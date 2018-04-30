@@ -268,7 +268,7 @@ class Trainer(object):
     if self.th.export_note:
       filename = self.th.mark
       if self.th.validation_on and self.metric.activated:
-        filename += '={:.3f}'.format(self.metric.record)
+        filename += '={:.3f}'.format(self.model.record)
       self.model.agent.export_notes(filename)
 
   # endregion : After training
