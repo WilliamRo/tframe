@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import tensorflow as tf
 
 from tframe import TFData
@@ -16,9 +15,8 @@ from tframe.core import Agent
 from tframe.core import TensorSlot, SummarySlot, OperationSlot
 from tframe.core import Group
 
-from tframe.nets.net import Net
-
 from tframe.trainers.metric import Metric
+from tframe.trainers.scheme import TrainScheme
 from tframe.trainers.trainer import Trainer, TrainerHub
 from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
 
@@ -56,6 +54,7 @@ class Model(object):
     self._default_net = None
     self._optimizer = None
     self._built = False
+    self._scheme = None
 
     # Public attributes
     self.counter = None
@@ -160,7 +159,10 @@ class Model(object):
 
   def pretrain(self, **kwargs):
     """Method run in early training process, should be overrode"""
-    pass
+    if self._scheme is not None:
+      assert isinstance(self._scheme, TrainScheme)
+      trial = self._scheme.dequeue()
+      if trial is not None: trial.initialize(self)
 
   @with_graph
   def train(self, training_set, trainer_hub=None, validation_set=None,
@@ -196,6 +198,13 @@ class Model(object):
     self.metric.end_round(rnd)
 
   def bust(self, rnd):
+    if self._scheme is not None:
+      assert isinstance(self._scheme, TrainScheme)
+      trial = self._scheme.dequeue()
+      if trial is not None:
+        trial.initialize(self)
+        return False
+      else: return True
     return True
 
   # endregion : Training
@@ -222,6 +231,11 @@ class Model(object):
       'Learning rate updated: {:.2e} => {:.2e}'.format(old_lr, new_lr))
 
     return new_lr
+
+  def set_scheme(self, scheme):
+    if not isinstance(scheme, TrainScheme):
+      raise TypeError('!! scheme must be an instance of TrainScheme')
+    self._scheme = scheme
 
   def shutdown(self):
     self.agent.shutdown()

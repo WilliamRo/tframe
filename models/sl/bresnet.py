@@ -134,6 +134,11 @@ class BResNet(Predictor):
   # region : Train
 
   def pretrain(self, **kwargs):
+    # Try to use train scheme
+    if self._scheme is not None:
+      super().pretrain()
+      return
+    # Use default scheme
     self._master = kwargs.get('start_at', 0)
     for i, loss in enumerate(self._losses):
       assert isinstance(loss, TensorSlot)
@@ -147,6 +152,10 @@ class BResNet(Predictor):
     self._metric = self._metrics[self._master]
 
   def bust(self, rnd):
+    # Try to use scheme
+    if self._scheme is not None:
+      return super().bust(rnd)
+    # Use default scheme
     if self._master + 1 == self.num_branches: return True
     # Let the busted branch sleep
     self._losses[self._master].sleep = True
