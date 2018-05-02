@@ -223,6 +223,8 @@ class Trainer(object):
       # Validation
       if self._validate_model(rnd) and self._save_model_when_record_appears:
         self._save_model(inter_cut=True)
+      # Probe
+      self._run_probe()
       # Take snapshot
       self._snapshot()
 
@@ -317,6 +319,11 @@ class Trainer(object):
       self.th.round_name, rnd, self.total_rounds, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
+  def _run_probe(self):
+    if self._probe is None or self.th.probe_cycle == 0: return False
+    if np.mod(self.counter, self.th.probe_cycle) != 0: return False
+    self._probe(self)
+
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
     if np.mod(self.counter, self.th.validate_cycle) != 0: return False
@@ -377,6 +384,7 @@ class TrainerHub(Config):
   validation_per_round = Flag.integer(0, 'Validation per round',
                                       name='val_per_rnd', is_key=None)
   snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
+  probe_cycle = Flag.integer(0, 'Probe cycle')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
   early_stop = Flag.boolean(True, 'Early stop option', is_key=None)
