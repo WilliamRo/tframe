@@ -322,7 +322,9 @@ class Trainer(object):
   def _run_probe(self):
     if self._probe is None or self.th.probe_cycle == 0: return False
     if np.mod(self.counter, self.th.probe_cycle) != 0: return False
-    self._probe(self)
+    content = self._probe(self)
+    if content is None or content == '': return
+    self._inter_cut(content, prompt='[Probe]', start_time=self.th.start_time)
 
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
