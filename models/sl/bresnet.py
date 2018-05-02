@@ -45,7 +45,10 @@ class BResNet(Predictor):
   @property
   def record(self):
     if len(self._metrics) == 0: return None
-    else: return max([metric.record for metric in self._metrics])
+    else:
+      records = [metric.record for metric in self._metrics]
+      if self._metrics[0].like_loss: return min(records)
+      else: return max(records)
 
   # endregion : Properties
 

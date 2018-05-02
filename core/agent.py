@@ -142,6 +142,8 @@ class Agent(object):
       if hub.snapshot:
         description_path = os.path.join(self.snapshot_dir, 'description.txt')
         write_file(description_path, self._model.description)
+      # Show status
+      console.show_status('New model initiated')
 
     self._model.launched = True
     self.take_notes('Model launched')

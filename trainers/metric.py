@@ -31,6 +31,10 @@ class Metric(TensorSlot):
   # region : Properties
 
   @property
+  def like_loss(self):
+    return self._as_loss
+
+  @property
   def record(self):
     return self._record.fetch()
 
