@@ -20,6 +20,7 @@ keep_prob = 'keep_prob'
 
 linear = 'linear'
 
+train_step_summaries = 'train_step_summaries '
 metric_name = 'metric_name'
 
 predictions = 'predictions'
@@ -37,6 +38,7 @@ test = 'test'
 training = 'training'
 
 validation = 'validation'
+validation_summaries = 'validation_summaries'
 
 with_logits = 'with_logits'
 

@@ -40,9 +40,9 @@ class Model(object):
 
     self._loss = TensorSlot(self, 'Train loss')
     self._train_step = OperationSlot(self)
-    self._merged_summary = SummarySlot(self)
+    self._train_step_summary = SummarySlot(self)
     self._update_group = Group(
-      self, self._loss, self._train_step, self._merged_summary,
+      self, self._loss, self._train_step, self._train_step_summary,
       name='Update-group')
 
     self._metric = Metric(self, 'metric')
@@ -152,6 +152,14 @@ class Model(object):
       self._optimizer = optimizer
       self._train_step.plug(
         optimizer.minimize(self._loss.op, var_list=var_list))
+
+  def _merge_summaries(self):
+    train_step_summaries = tf.get_collection(pedia.train_step_summaries)
+    validation_summaries = tf.get_collection(pedia.validation_summaries)
+    if len(train_step_summaries) > 0:
+      self._train_step_summary.plug(tf.summary.merge(train_step_summaries))
+    if len(validation_summaries) > 0:
+      self._validation_summary.plug(tf.summary.merge(validation_summaries))
 
   # endregion : Building
 

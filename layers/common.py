@@ -31,10 +31,10 @@ class Activation(Layer):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
     outputs = self._activation(inputs)
-    if hub.activation_sum:
+    if hub.activation_sum and hub.summary:
       with tf.name_scope(pedia.summaries):
         act_sum = tf.summary.histogram('activations', tf.abs(outputs))
-        pedia.memo[pedia.activation_sum] += [act_sum]
+        tf.add_to_collection(pedia.train_step_summaries, act_sum)
     return outputs
 
   @staticmethod

@@ -62,10 +62,6 @@ class Predictor(Feedforward, Recurrent):
     # Call parent's build method
     self.master._build(self)
 
-    # Summary placeholder
-    default_summaries = []
-    validation_summaries = []
-
     # Initiate targets and add it to collection
     self._plug_target_in(self.outputs.shape_list)
 
@@ -74,7 +70,9 @@ class Predictor(Feedforward, Recurrent):
     with tf.name_scope('Loss'):
       loss_tensor = loss_function(self._targets.tensor, self.outputs.tensor)
       # TODO: with or without regularization loss?
-      default_summaries.append(tf.summary.scalar('loss_sum', loss_tensor))
+      if hub.summary:
+        tf.add_to_collection(pedia.train_step_summaries,
+                             tf.summary.scalar('loss_sum', loss_tensor))
       # Try to add regularization loss
       reg_loss = self.regularization_loss
       if reg_loss is not None: loss_tensor += reg_loss
@@ -89,14 +87,13 @@ class Predictor(Feedforward, Recurrent):
           self._targets.tensor, self._outputs.tensor)
         self._metric.plug(metric_tensor, as_loss=metric_is_like_loss,
                           symbol=metric_name)
-        validation_summaries.append(
-          tf.summary.scalar('metric_sum', self._metric.tensor))
+        if hub.summary:
+          tf.add_to_collection(
+            pedia.validation_summaries,
+            tf.summary.scalar('metric_sum', self._metric.tensor))
 
     # Merge summaries
-    merged_summary = tf.summary.merge(default_summaries)
-    self._merged_summary.plug(merged_summary)
-    if len(validation_summaries) > 0:
-      self._validation_summary.plug(tf.summary.merge(validation_summaries))
+    self._merge_summaries()
 
     # Define train step
     self._define_train_step(optimizer)

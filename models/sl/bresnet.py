@@ -9,9 +9,10 @@ from tframe import Predictor
 from tframe import losses
 from tframe import metrics
 from tframe import pedia
+from tframe import hub
 
 from tframe.core import with_graph
-from tframe.core import OperationSlot, TensorSlot
+from tframe.core import OperationSlot, TensorSlot, SummarySlot
 from tframe.core import Group
 from tframe.trainers import Metric
 from tframe.models import Feedforward
@@ -32,6 +33,8 @@ class BResNet(Predictor):
     self._losses = []
     self._train_steps = []
     self._metrics = []
+    self._train_step_summaries = []
+    self._validation_summaries = []
 
   # region : Properties
 
@@ -71,9 +74,16 @@ class BResNet(Predictor):
     with tf.name_scope('Loss'):
       for i, output in enumerate(self._boutputs):
         assert isinstance(output, TensorSlot)
+        loss_tensor = loss_function(self._targets.tensor, output.tensor)
         slot = TensorSlot(self, name='loss_{}'.format(i + 1))
-        slot.plug(loss_function(self._targets.tensor, output.tensor))
+        slot.plug(loss_tensor)
         self._losses.append(slot)
+        # Add summary
+        if hub.summary:
+          name = 'loss_sum_{}'.format(i + 1)
+          sum_slot = SummarySlot(self, name)
+          sum_slot.plug(tf.summary.scalar(name, loss_tensor))
+          self._train_step_summaries.append(sum_slot)
 
     # Define metric tensors
     metric_function = metrics.get(metric)
@@ -81,18 +91,33 @@ class BResNet(Predictor):
       with tf.name_scope('Metric'):
         for i, output in enumerate(self._boutputs):
           assert isinstance(output, TensorSlot)
+          metric_tensor = metric_function(self._targets.tensor, output.tensor)
           slot = Metric(self, name='metric_{}'.format(i + 1))
-          slot.plug(metric_function(self._targets.tensor, output.tensor),
-                    as_loss=metric_is_like_loss,
+          slot.plug(metric_tensor, as_loss=metric_is_like_loss,
                     symbol='{}{}'.format(metric_name, i + 1))
           self._metrics.append(slot)
+          # Add summary
+          if hub.summary:
+            name = 'metric_sum_{}'.format(i + 1)
+            sum_slot = SummarySlot(self, name)
+            sum_slot.plug(tf.summary.scalar(name, metric_tensor))
+            self._validation_summaries.append(sum_slot)
 
     # Define train step
     self._define_train_step(optimizer)
 
     # Define groups
-    self._update_group = Group(self, *self._losses, *self._train_steps)
-    self._validate_group = Group(self, *self._metrics)
+    # TODO when train a single branch with summary on, error may occur
+    # .. due to that the higher branch summary can not get its value
+    act_summaries = []
+    if hub.activation_sum:
+      slot = SummarySlot(self, 'act_summary')
+      slot.plug(tf.summary.merge(tf.get_collection(pedia.train_step_summaries)))
+      act_summaries.append(slot)
+    self._update_group = Group(self, *self._losses, *self._train_steps,
+                               *self._train_step_summaries, *act_summaries)
+    self._validate_group = Group(self, *self._metrics,
+                                 *self._validation_summaries)
 
   def _check_branch_outputs(self):
     # Make sure at least one branch exists
@@ -140,15 +165,8 @@ class BResNet(Predictor):
       return
     # Use default scheme
     self._master = kwargs.get('start_at', 0)
-    for i, loss in enumerate(self._losses):
-      assert isinstance(loss, TensorSlot)
-      loss.sleep = i < self._master
-    for i, train_step in enumerate(self._train_steps):
-      assert isinstance(train_step, OperationSlot)
-      train_step.sleep = i < self._master
-    for i, metric in enumerate(self._metrics):
-      assert isinstance(metric, Metric)
-      metric.sleep = i < self._master
+    for i in range(len(self._losses)):
+      self._turn_branch_on_off(i, i >= self._master)
     self._metric = self._metrics[self._master]
 
   def bust(self, rnd):
@@ -158,9 +176,7 @@ class BResNet(Predictor):
     # Use default scheme
     if self._master + 1 == self.num_branches: return True
     # Let the busted branch sleep
-    self._losses[self._master].sleep = True
-    self._train_steps[self._master].sleep = True
-    self._metrics[self._master].sleep = True
+    self._turn_branch_on_off(self._master, False)
     self._master += 1
     # Set master metric
     master_metric = self._metrics[self._master]
@@ -196,10 +212,14 @@ class BResNet(Predictor):
 
   # endregion : Public Methods
 
+  # region : Private Methods
 
+  def _turn_branch_on_off(self, index, on):
+    self._losses[index].sleep = not on
+    self._train_steps[index].sleep = not on
+    self._metrics[index].sleep = not on
+    if hub.summary:
+      self._train_step_summaries[index].sleep = not on
+      self._validation_summaries[index].sleep = not on
 
-
-
-
-
-
+  # endregion : Private Methods
