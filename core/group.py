@@ -53,16 +53,18 @@ class Group(object):
     # Return tensor dictionary
     return tensor_dict
 
+  def add(self, slot):
+    if not isinstance(slot, Slot):
+      raise TypeError('!! member added to a group must be a Slot')
+    self._slots.append(slot)
+
   # endregion : Public Methods
 
   # region : Private Methods
 
   def _init_slots(self, slots):
     if len(slots) == 0: raise ValueError('!! not slot found')
-    for slot in slots:
-      if not isinstance(slot, Slot):
-        raise TypeError('!! slot must be an instance of Slot')
-      self._slots.append(slot)
+    for slot in slots: self.add(slot)
 
   # endregion : Private Methods
 

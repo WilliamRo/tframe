@@ -23,6 +23,7 @@ class Recurrent(Model, RNet):
     Model.__init__(self, mark)
     RNet.__init__(self, 'RecurrentNet')
     # Attributes
+    self._state = NestedTensorSlot(self, 'State')
     # mascot will be initiated as a placeholder with no shape specified
     # .. and will be put into initializer argument of tf.scan
     self._mascot = None
@@ -53,6 +54,7 @@ class Recurrent(Model, RNet):
     # Activate state slot
     assert isinstance(self._state, NestedTensorSlot)
     self._state.plug(Recurrent._get_last_state(state_sequences))
+    self._update_group.add(self._state)
     # Transpose scan outputs to get final outputs
     assert isinstance(scan_outputs, tf.Tensor)
     perm = list(range(len(scan_outputs.shape.as_list())))

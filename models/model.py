@@ -40,11 +40,10 @@ class Model(object):
     self._outputs = TensorSlot(self)
 
     self._loss = TensorSlot(self, 'Train loss')
-    self._state = NestedTensorSlot(self, 'State')
     self._train_step = OperationSlot(self)
     self._train_step_summary = SummarySlot(self)
     self._update_group = Group(
-      self, self._loss, self._train_step, self._train_step_summary, self._state,
+      self, self._loss, self._train_step, self._train_step_summary,
       name='Update-group')
 
     self._metric = Metric(self, 'metric')
