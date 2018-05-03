@@ -7,7 +7,7 @@ import collections
 import tframe as tfr
 from tframe import hub
 
-from tframe.core import Slot, TensorSlot, VariableSlot
+from tframe.core import Slot, TensorSlot, NestedTensorSlot
 from tframe.core import SummarySlot, OperationSlot
 
 
@@ -47,7 +47,7 @@ class Group(object):
     for slot, val in zip(fetches, results):
       if isinstance(slot, SummarySlot):
         self._model.agent.write_summary(val)
-      elif isinstance(slot, TensorSlot):
+      elif isinstance(slot, (TensorSlot, NestedTensorSlot)):
         tensor_dict[slot] = val
 
     # Return tensor dictionary

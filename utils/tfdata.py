@@ -298,7 +298,7 @@ class TFData(object):
     self._epoch_size = L // num_steps
     for i in range(self._epoch_size):
       x = data_x[:, i * num_steps:(i + 1) * num_steps]
-      y = data_x[:, i * num_steps:(i + 1) * num_steps]
+      y = data_y[:, i * num_steps:(i + 1) * num_steps]
       self._cursor = i + 1
       yield TFData(features=x, targets=y)
 

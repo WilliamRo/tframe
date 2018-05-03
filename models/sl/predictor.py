@@ -17,6 +17,8 @@ from tframe import InputTypes
 from tframe.core import with_graph
 from tframe.core import TensorSlot
 
+from tframe.trainers import TrainerHub
+
 
 class Predictor(Feedforward, Recurrent):
   """A feedforward or a recurrent predictor"""
@@ -104,6 +106,25 @@ class Predictor(Feedforward, Recurrent):
 
   # endregion : Build
 
+  # region : Train
+
+  def begin_round(self, **kwargs):
+    if self.master is Recurrent:
+      th = kwargs.get('th')
+      assert isinstance(th, TrainerHub)
+      self.reset_state(th.batch_size)
+
+  def update_model(self, data_batch, **kwargs):
+    if self.master is Feedforward:
+      return Feedforward.update_model(self, data_batch, **kwargs)
+    # Update recurrent model
+    feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
+    results = self._update_group.run(feed_dict)
+    self._state_array = results.pop(self._state)
+    return results
+
+  # endregion : Train
+
   # region : Public Methods
 
   def predict(self, data, additional_fetches=None, **kwargs):
@@ -120,6 +141,17 @@ class Predictor(Feedforward, Recurrent):
     return self._outputs.run(fetches, feed_dict=feed_dict)
 
   # endregion : Public Methods
+
+  # region : Private Methods
+
+  def _get_default_feed_dict(self, batch, is_training):
+    feed_dict = Feedforward._get_default_feed_dict(self, batch, is_training)
+    if self.master is Recurrent:
+      batch_size = None if is_training else 1
+      feed_dict.update(self._get_state_dict(batch_size=batch_size))
+    return feed_dict
+
+  # endregion : Private Methods
 
 
 

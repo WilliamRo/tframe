@@ -15,6 +15,7 @@ class BasicRNNCell(RNet):
   """Basic RNN cell
      TODO: Temporarily defined as a net
   """
+  net_name = 'basic_cell'
 
   def __init__(
       self,
@@ -35,7 +36,7 @@ class BasicRNNCell(RNet):
     :param bias_initializer: bias initializer identifier
     """
     # Call parent's constructor
-    RNet.__init__(self, 'basicell')
+    RNet.__init__(self, BasicRNNCell.net_name)
 
     # Attributes
     self._state_size = state_size
@@ -48,7 +49,7 @@ class BasicRNNCell(RNet):
 
 
   def structure_string(self, detail=True, scale=True):
-    return self.group_name + '_{}'.format(self._state_size) if scale else ''
+    return self.net_name + '_{}'.format(self._state_size) if scale else ''
 
 
   def _link(self, pre_state, input_, **kwargs):

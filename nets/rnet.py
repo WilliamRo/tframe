@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe import hub
@@ -10,11 +11,14 @@ from tframe.nets.net import Net
 
 class RNet(Net):
   """Recurrent net which outputs states besides common result"""
+  net_name = 'rnet'
+
   def __init__(self, name):
     # Call parent's constructor
     Net.__init__(self, name)
 
     # Attributes
+    self._state_array = None
     self._state_size = None
     self._init_state = None
 
@@ -31,26 +35,27 @@ class RNet(Net):
 
   @property
   def init_state(self):
+    if self._init_state is not None: return self._init_state
+    # Initiate init_state
     if self.is_root:
       states = []
       with tf.name_scope('InitStates'):
         for rnn_cell in self.rnn_cells:
           states.append(rnn_cell.init_state)
       assert len(states) == self.rnn_cell_num
-      return states
+      return tuple(states)
     else:
-      # If initial state is a tuple or list, this property must be overrode
-      if self._init_state is None:
-        assert self._state_size is not None
-        # The initialization of init_state must be done under with_graph
-        # .. decorator
-        self._init_state = tf.placeholder(
-          dtype=hub.dtype, shape=(None, self._state_size), name='init_state')
+      # If initial state is a tuple, this property must be overriden
+      assert self._state_size is not None
+      # The initialization of init_state must be done under with_graph
+      # .. decorator
+      self._init_state = tf.placeholder(
+        dtype=hub.dtype, shape=(None, self._state_size), name='init_state')
       return self._init_state
 
   # endregion : Properties
 
-  # region : Methods Overrode
+  # region : Overriden Methods
 
   def _link(self, pre_outputs, input_, **kwargs):
     """
@@ -86,39 +91,36 @@ class RNet(Net):
         output = net(output)
 
     assert len(states) == len(pre_states)
-    return output, states
+    return output, tuple(states)
 
-  # endregion : Methods Overrode
+  # endregion : Overriden Methods
 
   # region : Public Methods
 
-  def get_state_dict(self, state=None, batch_size=None):
-    """
-    Get state dictionary
-    :param state: if provided, batch_size will be ignored
-    :param batch_size: if specified, a zero-state dictionary will be returned
-    :return: state dictionary
-    """
-    if self.is_root:
-      state_dict = {}
-      if state is not None:
-        assert len(state) == self.rnn_cell_num
-        for i, rnn_cell in enumerate(self.rnn_cells):
-          state_dict.update(rnn_cell.get_state_dict(state=state[i]))
-      else:
-        assert batch_size is not None
-        for rnn_cell in self.rnn_cells:
-          state_dict.update(rnn_cell.get_state_dict(batch_size=batch_size))
-      return state_dict
-    else:
-      # If init state is a tuple or a list, this method must be overrode
-      assert self._init_state is not None
-      assert self._state_size is not None
-      if state is None:
-        assert batch_size is not None
-        state = tf.zeros(shape=(batch_size, self._state_size),
-                         dtype=hub.dtype)
-      return {self._init_state: state}
+  def reset_state(self, batch_size):
+    assert self.is_root
+    self._state_array = self._get_zero_state(batch_size)
 
   # endregion : Public Methods
+
+  # region : Private Methods
+
+  def _get_zero_state(self, batch_size):
+    if self.is_root:
+      state_array = []
+      for rnn_cell in self.rnn_cells:
+        state_array.append(rnn_cell._get_zero_state(batch_size))
+      return tuple(state_array)
+    else:
+      # If state is a tuple, this method must be overriden
+      assert self._state_size is not None
+      return np.zeros(shape=(batch_size, self._state_size))
+
+  def _get_state_dict(self, batch_size=None):
+    assert self.is_root
+    state = (self._state_array if batch_size is None
+             else self._get_zero_state(batch_size))
+    return {self.init_state: state}
+
+  # endregion : Private Methods
 

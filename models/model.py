@@ -12,7 +12,8 @@ from tframe import pedia
 from tframe.enums import InputTypes
 from tframe.core import with_graph
 from tframe.core import Agent
-from tframe.core import TensorSlot, SummarySlot, OperationSlot
+from tframe.core import TensorSlot, NestedTensorSlot
+from tframe.core import SummarySlot, OperationSlot
 from tframe.core import Group
 
 from tframe.trainers.metric import Metric
@@ -39,10 +40,11 @@ class Model(object):
     self._outputs = TensorSlot(self)
 
     self._loss = TensorSlot(self, 'Train loss')
+    self._state = NestedTensorSlot(self, 'State')
     self._train_step = OperationSlot(self)
     self._train_step_summary = SummarySlot(self)
     self._update_group = Group(
-      self, self._loss, self._train_step, self._train_step_summary,
+      self, self._loss, self._train_step, self._train_step_summary, self._state,
       name='Update-group')
 
     self._metric = Metric(self, 'metric')
@@ -201,6 +203,9 @@ class Model(object):
     notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
       self.metric.record, self.metric.mean_record)
     self.agent.take_notes(notes, date_time=False)
+
+  def begin_round(self, **kwargs):
+    pass
 
   def end_round(self, rnd):
     self.metric.end_round(rnd)

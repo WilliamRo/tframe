@@ -62,6 +62,7 @@ class Slot(object):
       if isinstance(op, Slot): op = entity.op
       elif op.__class__ not in [
         tf.Tensor, tf.Operation, tf.summary.Summary, tf.Variable]:
+        # Nested tensor slots shall not be run
         raise TypeError('!! Unknown type {}'.format(op.__class__))
       ops.append(op)
 
@@ -111,6 +112,25 @@ class TensorSlot(Slot):
     # Add to tensorflow collection
     if collection is not None:
       tf.add_to_collection(collection, self._op)
+
+
+class NestedTensorSlot(Slot):
+  op_classes = [tf.Tensor]
+  
+  @property
+  def nested_tensors(self):
+    return self._op
+
+  def plug(self, op, **kwargs):
+    self._check_op(op)
+    self._op = op
+
+  @staticmethod
+  def _check_op(entity):
+    if isinstance(entity, (list, tuple)):
+      for obj in entity: NestedTensorSlot._check_op(obj)
+    elif entity.__class__ not in NestedTensorSlot.op_classes:
+      raise TypeError('!! Unknown object found during plugging')
 
 
 class SummarySlot(Slot):

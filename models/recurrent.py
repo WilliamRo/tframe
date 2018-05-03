@@ -11,7 +11,7 @@ from tframe.nets import RNet
 from tframe.layers import Input
 
 from tframe.core.decorators import with_graph
-from tframe.core import TensorSlot
+from tframe.core import TensorSlot, NestedTensorSlot
 
 
 class Recurrent(Model, RNet):
@@ -48,11 +48,40 @@ class Recurrent(Model, RNet):
     perm = list(range(len(input_placeholder.shape.as_list())))
     elems = tf.transpose(input_placeholder, [1, 0] + perm[2:])
     # Call scan to produce a dynamic op
-    scan_outputs, _ = tf.scan(
+    scan_outputs, state_sequences = tf.scan(
       self, elems, initializer=(self._mascot, self.init_state), name='Scan')
+    # Activate state slot
+    assert isinstance(self._state, NestedTensorSlot)
+    self._state.plug(Recurrent._get_last_state(state_sequences))
     # Transpose scan outputs to get final outputs
     assert isinstance(scan_outputs, tf.Tensor)
     perm = list(range(len(scan_outputs.shape.as_list())))
     self.outputs.plug(tf.transpose(scan_outputs, [1, 0] + perm[2:]))
 
+  @staticmethod
+  def _get_last_state(states):
+    if isinstance(states, (list, tuple)):
+      last_state = []
+      for obj in states: last_state.append(Recurrent._get_last_state(obj))
+      return last_state
+    else:
+      assert isinstance(states, tf.Tensor)
+      return states[-1]
+
   # endregion: Build
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

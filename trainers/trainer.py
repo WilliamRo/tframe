@@ -191,7 +191,9 @@ class Trainer(object):
       rnd += 1
       console.section('{} {}'.format(hub.round_name, rnd))
       hub.tic()
-      # Begin inner loop
+      # Begin round
+      self.model.begin_round(th=self.th)
+      # Do inner loop
       self._inner_loop(rnd)
       # End of round
       if hub.progress_bar: console.clear_line()
@@ -331,7 +333,10 @@ class Trainer(object):
     if np.mod(self.counter, self.th.validate_cycle) != 0: return False
 
     # Get metric
-    metric_dict = self.model.validate_model(self.validation_set)
+    val_set = self.validation_set
+    if self.model.input_type is InputTypes.RNN_BATCH:
+      val_set = val_set.as_rnn_data
+    metric_dict = self.model.validate_model(val_set)
     new_record = None
     content = ''
     attachments = []
