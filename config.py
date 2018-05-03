@@ -168,14 +168,13 @@ class Config(object):
   dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=True)
 
   # Migrated from tframe\__init__.py
+  train = Flag.boolean(True, 'Whether this is a training task')
+  smart_train = Flag.boolean(False, 'Whether to use smart trainer', is_key=None)
+  save_model = Flag.boolean(True, 'Whether to save model during training')
+  overwrite = Flag.boolean(False, 'Whether to overwrite records')
   export_note = Flag.boolean(False, 'Whether to take notes')
   summary = Flag.boolean(True, 'Whether to write summary')
-  save_model = Flag.boolean(True, 'Whether to save model during training')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
-  train = Flag.boolean(True, 'Whether this is a training task')
-  smart_train = Flag.boolean(False, 'Whether to use smart trainer',
-                             is_key=None)
-  overwrite = Flag.boolean(False, 'Whether to overwrite records')
   job_dir = Flag.string(
     './', 'The root directory where the records should be put',
     name='job-dir')
@@ -195,13 +194,22 @@ class Config(object):
     False, 'Whether this is a hyper-parameter tuning task',
     name='hpt')
 
+  # Monitor options
+  monitor_act = Flag.boolean(
+    False, 'Whether to monitor activation distribution or not')
+  monitor_grad = Flag.boolean(False, 'Whether to monitor gradients or not')
+
+  # Device related config
+  allow_growth = Flag.boolean(True, 'tf.ConfigProto().gpu_options.allow_growth')
+  gpu_memory_fraction = Flag.float(
+    0.4, 'config.gpu_options.per_process_gpu_memory_fraction')
+
   # Configs usually provided during method calling
   mark = Flag.string(None, 'Model identifier')
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
   reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
                             is_key=None)
-
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')

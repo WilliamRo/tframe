@@ -33,7 +33,7 @@ class Activation(Layer):
     outputs = self._activation(inputs)
     if hub.activation_sum and hub.summary:
       with tf.name_scope(pedia.summaries):
-        act_sum = tf.summary.histogram('activations', tf.abs(outputs))
+        act_sum = tf.summary.histogram('pre-act', inputs)
         tf.add_to_collection(pedia.train_step_summaries, act_sum)
     return outputs
 

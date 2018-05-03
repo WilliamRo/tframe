@@ -123,7 +123,11 @@ class Agent(object):
 
     # Launch session on self.graph
     console.show_status('Launching session ...')
-    self._session = tf.Session(graph=self._graph)
+    config = tf.ConfigProto()
+    if not hub.allow_growth:
+      value = hub.gpu_memory_fraction
+      config.gpu_options.per_process_gpu_memory_fraction = value
+    self._session = tf.Session(graph=self._graph, config=config)
     console.show_status('Session launched')
     # Prepare some tools
     self._saver = tf.train.Saver()
