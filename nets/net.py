@@ -46,6 +46,10 @@ class Net(Function):
             if '{}'.format(self._name) == var.name.split('/')[self._level]]
 
   @property
+  def weight_list(self):
+    return [var for var in self.var_list if 'weights' in var.name]
+
+  @property
   def group_name(self):
     return self._name
 

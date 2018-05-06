@@ -3,7 +3,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import numpy as np
 
+import tframe as tfr
 from tframe import TFData
 from tframe import hub
 from tframe import console
@@ -104,6 +106,14 @@ class Model(object):
     if not self.metric.activated: return None
     else: return self.metric.record
 
+  @property
+  def variable_to_save(self):
+    """Should be called in with_graph decorator"""
+    vars = (tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) +
+            tf.get_collection(tf.GraphKeys.SAVEABLE_OBJECTS))
+    return [var for var in vars
+            if var not in tf.get_collection(pedia.do_not_save)]
+
   # endregion : Accessor
 
   # region : Properties to be overrode
@@ -122,8 +132,14 @@ class Model(object):
 
   # region : Building
 
+  @with_graph
   def build(self, *args, **kwargs):
+    # Smooth out flags before important actions
+    hub.smooth_out_conflicts()
+    #
     self._build(*args, **kwargs)
+    # Initialize monitor
+    self._init_monitor()
     # Set built flag
     self._built = True
     # Show build info
@@ -143,6 +159,9 @@ class Model(object):
   def _build(self, *args, **kwargs):
     """Abstract method, must be implemented in different models"""
     raise  NotImplementedError('!! build method not implemented')
+
+  def _init_monitor(self):
+    if tfr.monitor.activated: tfr.monitor.init_monitor(self)
 
   @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):

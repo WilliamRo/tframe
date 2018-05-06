@@ -110,7 +110,6 @@ class Agent(object):
 
   @with_graph
   def launch_model(self, overwrite=False):
-    hub.smooth_out_conflicts()
     if hub.suppress_logging: console.suppress_logging()
     # Before launch session, do some cleaning work
     if overwrite and hub.overwrite:
@@ -130,7 +129,7 @@ class Agent(object):
     self._session = tf.Session(graph=self._graph, config=config)
     console.show_status('Session launched')
     # Prepare some tools
-    self._saver = tf.train.Saver()
+    self._saver = tf.train.Saver(var_list=self._model.variable_to_save)
     if hub.summary or hub.hp_tuning:
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
 
@@ -158,8 +157,10 @@ class Agent(object):
       self._summary_writer.close()
     self.session.close()
 
-  def write_summary(self, summary):
-    self._summary_writer.add_summary(summary, self._model.counter)
+  def write_summary(self, summary, step=None):
+    if not hub.summary: return
+    if step is None: step = self._model.counter
+    self._summary_writer.add_summary(summary, step)
 
   def take_notes(self, content, date_time=True, prompt=None):
     if not isinstance(content, str):

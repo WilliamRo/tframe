@@ -34,6 +34,14 @@ def shape_string(input_):
   return result
 
 
+def get_name_by_levels(name, levels):
+  assert isinstance(name, str)
+  assert isinstance(levels, (list, tuple))
+  scopes = name.split('/')
+  scopes = [scope for i, scope in enumerate(scopes) if i in levels]
+  return '/'.join(scopes)
+
+
 def convert_to_one_hot(labels, classes):
   labels = np.array(labels)
   if len(labels.shape) < 2:

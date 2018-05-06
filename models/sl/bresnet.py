@@ -113,7 +113,7 @@ class BResNet(Predictor):
     # TODO when train a single branch with summary on, error may occur
     # .. due to that the higher branch summary can not get its value
     act_summaries = []
-    if hub.activation_sum:
+    if hub.monitor_preact:
       slot = SummarySlot(self, 'act_summary')
       slot.plug(tf.summary.merge(tf.get_collection(pedia.train_step_summaries)))
       act_summaries.append(slot)

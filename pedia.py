@@ -6,6 +6,7 @@ cross_entropy = 'cross_entropy'
 
 default = 'default'
 default_feed_dict = 'default_feed_dict '
+do_not_save = 'do_not_save'
 Decoder = 'Decoder'
 Discriminator = 'Discriminator'
 
@@ -21,10 +22,14 @@ keep_prob = 'keep_prob'
 linear = 'linear'
 
 train_step_summaries = 'train_step_summaries '
+
 metric_name = 'metric_name'
+monitor = 'monitor'
 
 predictions = 'predictions'
 prod = 'prod'
+pre_activation = 'pre_activation'
+post_activation = 'post_activation'
 
 is_training = 'is_training'
 

@@ -144,7 +144,7 @@ class SummarySlot(Slot):
 
 
 class OperationSlot(Slot):
-  op_classes = [tf.Operation]
+  op_classes = [tf.Operation, tf.Tensor]
   def __init__(self, model, name='operation'):
     super().__init__(model, name)
 

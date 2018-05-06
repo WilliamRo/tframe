@@ -206,6 +206,8 @@ class Trainer(object):
           self.th.raise_stop_flag()
       # Advanced strategy
       self._advanced_strategy(rnd)
+      # Export monitor info
+      if tfr.monitor.activated: tfr.monitor.export()
       # Maybe save model
       if self._save_model_at_round_end: self._save_model()
       # Early stop
@@ -229,21 +231,6 @@ class Trainer(object):
       self._run_probe()
       # Take snapshot
       self._snapshot()
-
-  def _gen_batches(self):
-    if self.model.input_type is InputTypes.BATCH:
-      batches = self.training_set.gen_batches(
-        self.th.batch_size, self.th.shuffle)
-    elif self.model.input_type is InputTypes.RNN_BATCH:
-      batches = self.training_set.gen_rnn_batches(
-        self.th.batch_size, self.th.num_steps)
-    else:
-      raise TypeError('!! Unknown input type {}'.format(self.model.input_type))
-    return batches
-
-  def _advanced_strategy(self, rnd):
-    """Should be overridden"""
-    pass
 
   # endregion : During training
 
@@ -294,6 +281,21 @@ class Trainer(object):
     if f is not None and not callable(f):
       raise TypeError('!! {} must be callable'.format(name))
     return f
+
+  def _gen_batches(self):
+    if self.model.input_type is InputTypes.BATCH:
+      batches = self.training_set.gen_batches(
+        self.th.batch_size, self.th.shuffle)
+    elif self.model.input_type is InputTypes.RNN_BATCH:
+      batches = self.training_set.gen_rnn_batches(
+        self.th.batch_size, self.th.num_steps)
+    else:
+      raise TypeError('!! Unknown input type {}'.format(self.model.input_type))
+    return batches
+
+  def _advanced_strategy(self, rnd):
+    """Should be overridden"""
+    pass
 
   def _inter_cut(self, content, prompt='>>', start_time=None):
     # Clear progress bar

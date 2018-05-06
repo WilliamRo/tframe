@@ -180,9 +180,6 @@ class Config(object):
     name='job-dir')
   data_dir = Flag.string('', 'The data directory')
 
-  activation_sum = Flag.boolean(
-    False, 'Whether to enable activation summary',
-    name='act_sum')
   suppress_logging = Flag.boolean(
     True, 'Whether to set logging level down to get rid of the device '
           'information')
@@ -195,9 +192,12 @@ class Config(object):
     name='hpt')
 
   # Monitor options
-  monitor_act = Flag.boolean(
-    False, 'Whether to monitor activation distribution or not')
+  monitor = Flag.boolean(None, 'Whether to monitor or not (of highest '
+                               'priority)')
   monitor_grad = Flag.boolean(False, 'Whether to monitor gradients or not')
+  monitor_weight = Flag.boolean(False, 'Whether to monitor weights or not')
+  monitor_preact = Flag.boolean(False, 'Whether to enable pre-act summary')
+  monitor_postact = Flag.boolean(False, 'Whether to enable post-act summary')
 
   # Device related config
   allow_growth = Flag.boolean(True, 'tf.ConfigProto().gpu_options.allow_growth')
@@ -302,10 +302,17 @@ class Config(object):
       self.progress_bar = False
     if self.on_cloud:
       self.snapshot = False
+      self.monitor = False
     if self.hp_tuning:
       self.summary = False
       self.save_model = False
     if not self.train and self.on_cloud: self.overwrite = False
+
+    if self.monitor in (True, False):
+      self.monitor_grad = self.monitor
+      self.monitor_weight = self.monitor
+      self.monitor_preact = self.monitor
+      self.monitor_postact = self.monitor
 
   def get_attr(self, name):
     return object.__getattribute__(self, name)

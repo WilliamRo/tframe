@@ -6,6 +6,7 @@ import numpy as np
 import six
 import tensorflow as tf
 
+import tframe as tfr
 from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
 
@@ -31,10 +32,10 @@ class Activation(Layer):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
     outputs = self._activation(inputs)
-    if hub.activation_sum and hub.summary:
-      with tf.name_scope(pedia.summaries):
-        act_sum = tf.summary.histogram('pre-act', inputs)
-        tf.add_to_collection(pedia.train_step_summaries, act_sum)
+    if hub.summary and hub.monitor_preact:
+      tfr.monitor.add_preact_summary(inputs)
+    if hub.summary and hub.monitor_postact:
+      tfr.monitor.add_postact_summary(outputs)
     return outputs
 
   @staticmethod
@@ -145,6 +146,10 @@ class Linear(Layer):
     output = tf.matmul(input_, self.weights)
     if self._use_bias:
       output += self.biases
+
+    # Monitor
+    if hub.monitor_weight or hub.monitor_grad:
+      tfr.monitor.add_weight(self.weights)
 
     return output
 

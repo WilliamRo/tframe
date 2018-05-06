@@ -18,6 +18,9 @@ from .models import Classifier
 
 from . import core
 
+from .monitor import Monitor
+monitor = Monitor()
+
 
 # Record graph bound to the last initiated model
 # TODO
