@@ -210,6 +210,9 @@ class Config(object):
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
   reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
                             is_key=None)
+  actype1 = Flag.string('relu', 'Activation type 1', is_key=None)
+  actype2 = Flag.string('relu', 'Activation type 2', is_key=None)
+
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')

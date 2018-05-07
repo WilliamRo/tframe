@@ -51,11 +51,18 @@ class Monitor(object):
     shape = tensor.shape.as_list()
     # Currently tensors of 2-D are supported only
     assert len(shape) == 2
-    if shape[1] == 1:
-      # Make vector square
-      tensor = tf.concat([tensor] * shape[0], axis=1)
-      shape = tensor.shape.as_list()
-    image = tf.reshape(tf.abs(tensor), [1] + shape + [1])
+    axis, div, total = None, 9, 0
+    edge = int((div - 1) / 2)
+    if shape[0] == 1: axis, total = 0, shape[1]
+    elif shape[1] == 1: axis, total = 1, shape[0]
+    if axis is not None and total > div:
+      share = int(total / div)
+      pad = tf.zeros_like(tensor)
+      tensor = tf.concat(
+        [pad] * edge * share + [tensor] * share + [pad] * edge * share,
+        axis=axis)
+    shape = tensor.shape.as_list()
+    image = tf.reshape(tensor, [1] + shape + [1])
     # Initiate an image summary for image tensor
     image_summary = tf.summary.image(name, image, max_outputs=1)
     return image_summary
@@ -77,7 +84,7 @@ class Monitor(object):
   def _receive_post_activation(self):
     for tensor in self._postact_lounge:
       assert isinstance(tensor, tf.Tensor)
-      mean = tf.reshape(tf.reduce_mean(tf.abs(tensor), axis=0), shape=[-1, 1])
+      mean = tf.reshape(tf.reduce_mean(tf.abs(tensor), axis=0), [1, -1])
       shadow = self._create_shadow(mean)
       self._round_end_summaries.append(self._make_image_summary(
         shadow, self._get_default_name(tensor)))
@@ -116,7 +123,7 @@ class Monitor(object):
     with tf.name_scope('Weights'):
       for weight in self._weight_lounge:
         self._round_end_summaries.append(self._make_image_summary(
-          weight, self._get_default_name(weight)))
+          tf.abs(weight), self._get_default_name(weight)))
     # (4) Add gradients of loss with respect to each weight variable
     with tf.name_scope('Weight_Grads'):
       self._receive_weight_grad(model.loss.tensor)
