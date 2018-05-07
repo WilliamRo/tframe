@@ -103,8 +103,8 @@ class Trainer(object):
   @property
   def _save_model_when_record_appears(self):
     return (self.th.save_model and self.th.save_mode is SaveMode.ON_RECORD
-            and not self._warm_up)
-
+            and not self._warm_up and not (self.th.at_most_save_once_per_round
+                                           and self._record_count > 1))
   @property
   def _save_model_at_round_end(self):
     return self.th.save_model and self.th.save_mode is SaveMode.NAIVE
@@ -414,7 +414,8 @@ class TrainerHub(Config):
                           is_key=None)
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']", is_key=None)
-  warm_up_thres = Flag.integer(3, 'Warm up threshold', is_key=None)
+  warm_up_thres = Flag.integer(1, 'Warm up threshold', is_key=None)
+  at_most_save_once_per_round = Flag.integer(False, '...')
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
   round = Flag.integer(1, 'General concept of total outer loops, used'
