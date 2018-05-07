@@ -52,6 +52,10 @@ class Trainer(object):
     # Initiate trainer hub
     self.th = TrainerHub(self)
 
+    # Private Attributes
+    self._record_count = 0
+    self._warm_up = True
+
     # TODO
     tfr.trainer = self
 
@@ -99,7 +103,7 @@ class Trainer(object):
   @property
   def _save_model_when_record_appears(self):
     return (self.th.save_model and self.th.save_mode is SaveMode.ON_RECORD
-            and self.total_rounds > self.th.warm_up_rounds)
+            and not self._warm_up)
 
   @property
   def _save_model_at_round_end(self):
@@ -219,6 +223,7 @@ class Trainer(object):
     return rnd
 
   def _inner_loop(self, rnd):
+    self._record_count = 0
     # Begin iteration
     for batch in self._gen_batches():
       # Increase iteration counter
@@ -234,6 +239,8 @@ class Trainer(object):
       self._run_probe()
       # Take snapshot
       self._snapshot()
+    if self._warm_up and self._record_count < self.th.warm_up_thres:
+      self._warm_up = False
 
   # endregion : During training
 
@@ -356,7 +363,9 @@ class Trainer(object):
 
     if len(attachments) > 0:
       content = '{} ({})'.format(content, ', '.join(attachments))
-    if new_record: content += ' <New Record>'
+    if new_record:
+      content += ' <New Record>'
+      self._record_count += 1
     self._inter_cut(content, prompt='[Validate]')
 
     return new_record
@@ -405,9 +414,7 @@ class TrainerHub(Config):
                           is_key=None)
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']", is_key=None)
-  warm_up_rounds = Flag.integer(5, 'If save mode is on_record, model will not'
-                                   'be saved until warm-up finishes',
-                                is_key=None)
+  warm_up_thres = Flag.integer(3, 'Warm up threshold', is_key=None)
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
   round = Flag.integer(1, 'General concept of total outer loops, used'
