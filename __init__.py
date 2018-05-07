@@ -21,6 +21,9 @@ from . import core
 from .monitor import Monitor
 monitor = Monitor()
 
+# TODO:
+trainer = None
+
 
 # Record graph bound to the last initiated model
 # TODO

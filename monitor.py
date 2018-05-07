@@ -61,10 +61,9 @@ class Monitor(object):
     return image_summary
 
   @staticmethod
-  def _get_default_name(op, group):
+  def _get_default_name(op):
     assert isinstance(op, (tf.Tensor, tf.Variable))
-    assert isinstance(group, str)
-    return '{}/{}'.format(group, get_name_by_levels(op.name, (0, 1)))
+    return get_name_by_levels(op.name, (0, 1))
 
   def _receive_weight_grad(self, loss):
     assert isinstance(loss, tf.Tensor)
@@ -73,7 +72,7 @@ class Monitor(object):
                             self._grad_lounge):
       shadow = self._create_shadow(tf.abs(grad))
       self._round_end_summaries.append(self._make_image_summary(
-        shadow, self._get_default_name(weight, 'Weight_Grads')))
+        shadow, self._get_default_name(weight)))
 
   def _receive_post_activation(self):
     for tensor in self._postact_lounge:
@@ -81,7 +80,7 @@ class Monitor(object):
       mean = tf.reshape(tf.reduce_mean(tf.abs(tensor), axis=0), shape=[-1, 1])
       shadow = self._create_shadow(mean)
       self._round_end_summaries.append(self._make_image_summary(
-        shadow, self._get_default_name(tensor, 'Post_Activation')))
+        shadow, self._get_default_name(tensor)))
 
   # endregion : Private Methods
 
@@ -111,13 +110,16 @@ class Monitor(object):
     from tframe.models import Model
     assert isinstance(model, Model)
     # (2) Post-activation reception
-    self._receive_post_activation()
+    with tf.name_scope('Post_Activation'):
+      self._receive_post_activation()
     # (3) Weight reception
-    for weight in self._weight_lounge:
-      self._round_end_summaries.append(self._make_image_summary(
-        weight, self._get_default_name(weight, 'Weights')))
+    with tf.name_scope('Weights'):
+      for weight in self._weight_lounge:
+        self._round_end_summaries.append(self._make_image_summary(
+          weight, self._get_default_name(weight)))
     # (4) Add gradients of loss with respect to each weight variable
-    self._receive_weight_grad(model.loss.tensor)
+    with tf.name_scope('Weight_Grads'):
+      self._receive_weight_grad(model.loss.tensor)
     # (*) Wrap and register update_ops
     for op in self._update_ops:
       slot = OperationSlot(model)
@@ -126,7 +128,8 @@ class Monitor(object):
     # Organize round_end_group
     if len(self._round_end_summaries) > 0:
       slot = SummarySlot(model)
-      slot.plug(tf.summary.merge(self._round_end_summaries))
+      with tf.name_scope('Monitor'):
+        slot.plug(tf.summary.merge(self._round_end_summaries))
       self._round_end_group = Group(model, slot)
 
   def export(self):

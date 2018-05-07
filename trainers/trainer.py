@@ -52,6 +52,9 @@ class Trainer(object):
     # Initiate trainer hub
     self.th = TrainerHub(self)
 
+    # TODO
+    tfr.trainer = self
+
   # region : Properties
 
   @property

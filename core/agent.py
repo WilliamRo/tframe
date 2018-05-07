@@ -133,12 +133,12 @@ class Agent(object):
     if hub.summary or hub.hp_tuning:
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
 
+    # Initialize all variables
+    self._session.run(tf.global_variables_initializer())
     # Try to load exist model
     load_flag, self._model.counter = self.load()
     if not load_flag:
       assert self._model.counter == 0
-      # If checkpoint does not exist, initialize all variables
-      self._session.run(tf.global_variables_initializer())
       # Add graph
       if hub.summary: self._summary_writer.add_graph(self._session.graph)
       # Write model description to file
@@ -159,7 +159,9 @@ class Agent(object):
 
   def write_summary(self, summary, step=None):
     if not hub.summary: return
-    if step is None: step = self._model.counter
+    if step is None:
+      assert tfr.trainer is not None
+      step = int(tfr.trainer.total_rounds * 1000)
     self._summary_writer.add_summary(summary, step)
 
   def take_notes(self, content, date_time=True, prompt=None):
