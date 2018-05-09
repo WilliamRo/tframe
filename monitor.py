@@ -118,7 +118,7 @@ class Monitor(object):
     assert isinstance(model, Model)
     # (2) Post-activation reception
     with tf.name_scope('Post_Activation'):
-      self._receive_post_activation()
+        self._receive_post_activation()
     # (3) Weight reception
     with tf.name_scope('Weights'):
       for weight in self._weight_lounge:
@@ -126,7 +126,7 @@ class Monitor(object):
           tf.abs(weight), self._get_default_name(weight)))
     # (4) Add gradients of loss with respect to each weight variable
     with tf.name_scope('Weight_Grads'):
-      self._receive_weight_grad(model.loss.tensor)
+      if hub.monitor_grad: self._receive_weight_grad(model.loss.tensor)
     # (*) Wrap and register update_ops
     for op in self._update_ops:
       slot = OperationSlot(model)
