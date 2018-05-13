@@ -41,17 +41,17 @@ class Model(object):
     # Define slots
     self._outputs = TensorSlot(self)
 
-    self._loss = TensorSlot(self, 'Train loss')
-    self._train_step = OperationSlot(self)
-    self._train_step_summary = SummarySlot(self)
-    self._update_group = Group(
-      self, self._loss, self._train_step, self._train_step_summary,
-      name='Update-group')
-
     self._metric = Metric(self, 'metric')
     self._validation_summary = SummarySlot(self)
     self._validate_group = Group(
       self, self._metric, self._validation_summary, name='Validate-group')
+
+    self._loss = TensorSlot(self, 'Loss')
+    self._train_step = OperationSlot(self)
+    self._train_step_summary = SummarySlot(self)
+    self._update_group = Group(
+      self, self._loss, self._metric, self._train_step,
+      self._train_step_summary, name='Update-group')
 
     # Private attributes
     self._default_net = None
