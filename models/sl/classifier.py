@@ -9,6 +9,7 @@ from tframe import hub
 from tframe import pedia
 
 from tframe.core.decorators import with_graph
+from tframe.core import TensorSlot, Group
 from tframe.layers import Activation
 from tframe.models.sl.predictor import Predictor
 from tframe.utils import console
@@ -18,10 +19,10 @@ from tframe.utils.tfdata import TFData
 class Classifier(Predictor):
   def __init__(self, mark=None):
     Predictor.__init__(self, mark)
-    self._sum_train_acc = None
-    self._sum_val_acc = None
-    self._probabilities = None
-
+    # Private attributes
+    self._probabilities = TensorSlot(self, 'Probability')
+    self._evaluation_group = Group(self, self._metric, self._probabilities,
+                                   name='evaluation group')
 
   @with_graph
   def _build(self, loss='cross_entropy', optimizer=None, *args):
@@ -30,45 +31,36 @@ class Classifier(Predictor):
     # Call parent's method to build using the default loss function
     #  -- cross entropy
     Predictor._build(self, loss, optimizer, metric='accuracy',
-                     metric_name=pedia.Accuracy)
+                     metric_name=pedia.Accuracy, metric_is_like_loss=False)
+    assert self.outputs.activated
 
-    self._sum_train_acc = tf.summary.scalar('train_acc', self._metric)
-    self._sum_val_acc = tf.summary.scalar('val_acc', self._metric)
-
-    # Find last layer
-    if (isinstance(self.last_function, Activation)
+    # Plug tensor into probabilities slot
+    output_tensor = self.outputs.tensor
+    if not (isinstance(self.last_function, Activation)
         and self.last_function.abbreviation == 'softmax'):
-      self._probabilities = self._outputs
-    else:
-      self._probabilities = tf.nn.softmax(self._outputs, name='probabilities')
+      output_tensor = tf.nn.softmax(output_tensor, name='probabilities')
+    self._probabilities.plug(output_tensor)
 
 
-  def update_model(self, data_batch, **kwargs):
-    feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
-
-    self._session.run(self._train_step, feed_dict=feed_dict)
-
-    return {}
-
-
-  def evaluate_model(self, data, with_false=False):
-    if self._outputs is None:
-      raise ValueError('Model not built yet')
-    if self._session is None:
-      self.launch_model(overwrite=False)
+  def evaluate_model(self, data, export_false=False):
+    # Sanity check
+    self._sanity_check_before_use(data)
     if not self.metric_is_accuracy:
-      raise ValueError('Currently this only supports accuracy')
+      raise ValueError('!! metric must be accuracy')
 
-    possibilities, accuracy = self._session.run(
-      [self._probabilities, self._metric],
-      feed_dict=self._get_default_feed_dict(data, is_training=False))
-    accuracy *= 100
+    # Run group
+    feed_dict = self._get_default_feed_dict(data, False)
+    result_dict = self._evaluation_group.run(feed_dict=feed_dict)
+    probabilities = result_dict[self._probabilities]
+    accuracy = result_dict[self._metric] * 100
 
-    console.show_status('Accuracy on test set is {:.2f}%'.format(accuracy))
+    console.show_status(
+      'Accuracy on {} is {:.2f}%'.format(data.name, accuracy),
+      symbol='[Evaluation]')
 
-    if with_false:
+    if export_false:
       assert isinstance(data, TFData)
-      predictions = np.argmax(possibilities, axis=1).squeeze()
+      predictions = np.argmax(probabilities, axis=1).squeeze()
       data.update(predictions=predictions)
       labels = data.scalar_labels
       false_indices = [i for i in range(data.sample_num)
@@ -80,16 +72,13 @@ class Classifier(Predictor):
 
 
   def classify(self, data):
-    if self._outputs is None:
-      raise ValueError('Model not built yet')
-    if self._session is None:
-      self.launch_model(overwrite=False)
+    # Sanity check
+    self._sanity_check_before_use(data)
 
-    possibilities = self._session.run(
-      self._probabilities, feed_dict=self._get_default_feed_dict(
-        data, is_training=False))
+    feed_dict = self._get_default_feed_dict(data, False)
+    probabilities = self._probabilities.run(feed_dict=feed_dict)
 
-    return np.argmax(possibilities, axis=1).squeeze()
+    return np.argmax(probabilities, axis=1).squeeze()
 
 
 

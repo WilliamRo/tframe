@@ -62,7 +62,9 @@ class Predictor(Feedforward, Recurrent):
   def _build(self, loss='cross_entropy', optimizer=None,
              metric=None, metric_is_like_loss=True, metric_name='Metric'):
     # Call parent's build method
+    # Usually output tensor has been plugged into Model._outputs slot
     self.master._build(self)
+    assert self.outputs.activated
 
     # Initiate targets and add it to collection
     self._plug_target_in(self.outputs.shape_list)
@@ -129,10 +131,7 @@ class Predictor(Feedforward, Recurrent):
 
   def predict(self, data, additional_fetches=None, **kwargs):
     # Sanity check
-    if not isinstance(data, TFData):
-      raise TypeError('!! Input data must be an instance of TFData')
-    if not self.built: raise ValueError('!! Model not built yet')
-    if not self.launched: self.launch_model(overwrite=False)
+    self._sanity_check_before_use(data)
 
     fetches = [self._outputs]
     if additional_fetches is not None:
@@ -150,6 +149,12 @@ class Predictor(Feedforward, Recurrent):
       batch_size = None if is_training else 1
       feed_dict.update(self._get_state_dict(batch_size=batch_size))
     return feed_dict
+
+  def _sanity_check_before_use(self, data):
+    if not isinstance(data, TFData):
+      raise TypeError('!! Input data must be an instance of TFData')
+    if not self.built: raise ValueError('!! Model not built yet')
+    if not self.launched: self.launch_model(overwrite=False)
 
   # endregion : Private Methods
 
