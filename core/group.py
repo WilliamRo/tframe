@@ -34,9 +34,9 @@ class Group(object):
     for slot in self._slots:
       if isinstance(slot, SummarySlot) and (
           not slot.activated or not hub.summary): continue
-      if not slot.activated:
-        raise AssertionError('!! {} must be activated'.format(slot.name))
-      if not slot.sleep: fetches.append(slot)
+      # if not slot.activated:
+      #   raise AssertionError('!! {} must be activated'.format(slot.name))
+      if slot.activated and not slot.sleep: fetches.append(slot)
 
     with self._model.graph.as_default():
       results = self._model.session.run(
