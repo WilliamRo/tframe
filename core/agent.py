@@ -119,6 +119,7 @@ class Agent(object):
       if hub.snapshot: paths.append(self.snapshot_dir)
       if hub.export_note: paths.append(self.note_dir)
       clear_paths(paths)
+    if hub.summary: self._check_bash()
 
     # Launch session on self.graph
     console.show_status('Launching session ...')
@@ -212,5 +213,13 @@ class Agent(object):
     #   this placeholder will be got from default graph
     self._graph.is_training = self._is_training
     tfr.current_graph = self._graph
+
+  def _check_bash(self):
+    file_path = check_path(hub.job_dir, hub.record_dir,
+                           'win_launch_tensorboard.bat', create_path=False)
+    if not os.path.exists(file_path):
+      f = open(file_path, 'w')
+      f.write('tensorboard --logdir=./logs/')
+      f.close()
 
   # endregion : Private Methods
