@@ -21,7 +21,6 @@ class BasicRNNCell(RNet):
       self,
       state_size,
       activation='tanh',
-      inner_struct='add',
       use_bias=True,
       weight_initializer='xavier_uniform',
       bias_initializer='zeros',
@@ -40,7 +39,6 @@ class BasicRNNCell(RNet):
 
     # Attributes
     self._state_size = state_size
-    self._inner_struct = inner_struct
     self._activation = activations.get(activation, **kwargs)
     self._use_bias = use_bias
     self._weight_initializer = initializers.get(weight_initializer)
@@ -68,16 +66,9 @@ class BasicRNNCell(RNet):
 
     get_variable = lambda name, shape: tf.get_variable(
       name, shape, dtype=hub.dtype, initializer=self._weight_initializer)
-    if self._inner_struct == 'add':
-      W_h = get_variable('W_h', [self._state_size, self._state_size])
-      W_x = get_variable('W_x', [input_size, self._state_size])
-      tmp = tf.matmul(pre_state, W_h) + tf.matmul(input_, W_x)
-    elif self._inner_struct == 'concat':
-      W = get_variable('W', [self._state_size + input_size, self._state_size])
-      tmp = tf.matmul(tf.concat([input_, pre_state], axis=1), W)
-    else:
-      raise TypeError('!! Unknown inner structure {}'.format(
-        self._inner_struct))
+
+    W = get_variable('W', [self._state_size + input_size, self._state_size])
+    tmp = tf.matmul(tf.concat([input_, pre_state], axis=1), W)
 
     if self._use_bias: tmp += bias
     state = self._activation(tmp, name='state')
