@@ -26,10 +26,8 @@ class BasicRNNCell(RNet):
       bias_initializer='zeros',
       **kwargs):
     """
-
     :param state_size: state size: positive int
     :param activation: activation: string or callable
-    :param inner_struct: \in {'add', 'concat'}
     :param use_bias: whether to use bias
     :param weight_initializer: weight initializer identifier
     :param bias_initializer: bias initializer identifier
@@ -51,13 +49,8 @@ class BasicRNNCell(RNet):
 
 
   def _link(self, pre_state, input_, **kwargs):
-    assert isinstance(pre_state, tf.Tensor)
-    state_shape = pre_state.shape.as_list()
-    assert state_shape[1] == self._state_size
-    assert isinstance(input_, tf.Tensor)
-    input_shape = input_.shape.as_list()
-    assert len(input_shape) == 2
-    input_size = input_shape[1]
+    self._check_state(pre_state)
+    input_size = self._get_external_shape(input_)
 
     # Initiate bias
     bias = (tf.get_variable('b', shape=[self._state_size], dtype=hub.dtype,
@@ -68,11 +61,12 @@ class BasicRNNCell(RNet):
       name, shape, dtype=hub.dtype, initializer=self._weight_initializer)
 
     W = get_variable('W', [self._state_size + input_size, self._state_size])
-    tmp = tf.matmul(tf.concat([input_, pre_state], axis=1), W)
+    net = tf.matmul(tf.concat([input_, pre_state], axis=1), W)
 
-    if self._use_bias: tmp += bias
-    state = self._activation(tmp, name='state')
+    if self._use_bias: net = tf.nn.bias_add(net, bias)
+    state = self._activation(net, name='state')
 
+    self._kernel, self._bias = W, bias
     return state, state
 
 

@@ -21,6 +21,8 @@ class RNet(Net):
     self._state_array = None
     self._state_size = None
     self._init_state = None
+    self._kernel = None
+    self._bias = None
 
   # region : Properties
 
@@ -121,6 +123,21 @@ class RNet(Net):
     state = (self._state_array if batch_size is None
              else self._get_zero_state(batch_size))
     return {self.init_state: state}
+
+  def _check_state(self, state, size=1):
+    assert size > 0
+    if size == 1: state = (state,)
+    assert len(state) == size
+    for s in state:
+      assert isinstance(s, tf.Tensor)
+      assert s.shape.as_list()[1] == self._state_size
+
+  @staticmethod
+  def _get_external_shape(input_):
+    assert isinstance(input_, tf.Tensor)
+    input_shape = input_.shape.as_list()
+    assert len(input_shape) == 2
+    return input_shape[1]
 
   # endregion : Private Methods
 
