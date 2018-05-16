@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import tframe as tfr
 
 from tframe.models.feedforward import Feedforward
 from tframe.models.recurrent import Recurrent
@@ -49,10 +50,6 @@ class Predictor(Feedforward, Recurrent):
   def input_type(self):
     if self.master is Feedforward: return InputTypes.BATCH
     else: return InputTypes.RNN_BATCH
-
-  @property
-  def metric_is_accuracy(self):
-    return pedia.memo[pedia.metric_name] == pedia.Accuracy
 
   # endregion : Properties
 

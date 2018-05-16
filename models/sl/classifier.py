@@ -45,7 +45,8 @@ class Classifier(Predictor):
   def evaluate_model(self, data, export_false=False):
     # Sanity check
     self._sanity_check_before_use(data)
-    if not self.metric_is_accuracy:
+
+    if not self.metric.symbol == pedia.Accuracy:
       raise ValueError('!! metric must be accuracy')
 
     # Run group
