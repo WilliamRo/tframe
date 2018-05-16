@@ -212,7 +212,12 @@ class Config(object):
                             is_key=None)
   actype1 = Flag.string('relu', 'Activation type 1', is_key=None)
   actype2 = Flag.string('relu', 'Activation type 2', is_key=None)
-
+  input_gate = Flag.boolean(True, 'Whether to use input gate in LSTM',
+                            is_key=None)
+  forget_gate = Flag.boolean(True, 'Whether to use forget gate in LSTM',
+                             is_key=None)
+  output_gate = Flag.boolean(True, 'Whether to use output gate in LSTM',
+                             is_key=None)
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')
