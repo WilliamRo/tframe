@@ -207,11 +207,12 @@ class Agent(object):
     with self.graph.as_default():
       self._is_training = tf.placeholder(
         dtype=tf.bool, name=pedia.is_training)
+      tf.add_to_collection(pedia.is_training, self._is_training)
 
     # TODO
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
-    self._graph.is_training = self._is_training
+    # self._graph.is_training = self._is_training
     tfr.current_graph = self._graph
 
   def _check_bash(self):

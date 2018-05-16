@@ -8,6 +8,11 @@ import tensorflow as tf
 class Function(object):
   """A core concept in tframe"""
   master = None
+  superior = None
+
+  # @property TODO
+  # def graph(self):
+  #   return None
 
   def group_name(self):
     raise NotImplementedError('Property "group_name" has not implemented yet')

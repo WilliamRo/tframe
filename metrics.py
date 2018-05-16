@@ -7,6 +7,14 @@ import tensorflow as tf
 import tframe as tfr
 
 
+def _truncate(truth, output):
+  # TODO: only supported for some metrics
+  assert len(truth.shape.as_list()) > 2
+  i = tf.cond(tf.get_collection(tfr.pedia.is_training)[0],
+              lambda: 0, lambda: tfr.hub.val_preheat)
+  return truth[:, i:], output[:, i:]
+
+
 def accuracy(labels, outputs):
   assert isinstance(labels, tf.Tensor) and isinstance(outputs, tf.Tensor)
   label_shape = labels.get_shape().as_list()
@@ -19,25 +27,28 @@ def accuracy(labels, outputs):
   return tf.reduce_mean(tf.cast(correct_prediction, tf.float32),
                          name='accuracy')
 
-
 def delta(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  if tfr.hub.val_preheat > 0:
+    truth, output = _truncate(truth, output)
   return tf.norm(truth - output)
 
 
 def norm_error_ratio(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  if tfr.hub.val_preheat > 0:
+    truth, output = _truncate(truth, output)
   return tf.norm(truth - output) / tf.norm(truth) * 100
 
 
 def rms_error_ratio(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
   rms = lambda x: tf.sqrt(tf.reduce_mean(tf.square(x)))
-  err = truth - output
+  # TODO: pilot, tfr.hub.val_preheat > 0 only happens in RNN model
+  #       thus output.shape is [batch_size, step_num, *target_shape]
   if tfr.hub.val_preheat > 0:
-    err = err[tfr.hub.val_preheat:]
-    truth = truth[tfr.hub.val_preheat:]
-  return rms(err) / rms(truth) * 100
+    truth, output = _truncate(truth, output)
+  return rms(truth - output) / rms(truth) * 100
 
 
 def get(identifier):
@@ -58,3 +69,6 @@ def get(identifier):
     return f
   else:
     raise TypeError('identifier must be a function or a string')
+
+
+

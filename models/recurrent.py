@@ -22,6 +22,8 @@ class Recurrent(Model, RNet):
   def __init__(self, mark=None):
     Model.__init__(self, mark)
     RNet.__init__(self, 'RecurrentNet')
+    self.superior = self
+    self._default_net = self
     # Attributes
     self._state = NestedTensorSlot(self, 'State')
     # mascot will be initiated as a placeholder with no shape specified

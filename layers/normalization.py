@@ -82,7 +82,7 @@ class BatchNormalization(Layer):
 
     # endregion : Get input shape and validation check
 
-    is_training = tf.get_default_graph().is_training
+    is_training = tf.get_collection(pedia.is_training)[0]
 
     # Get parameters shape (only support most common use-case currently)
     if len(self.axis) != 1:

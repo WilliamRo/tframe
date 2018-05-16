@@ -60,11 +60,9 @@ class Dropout(Layer):
 
   @single_input
   def _link(self, input_, **kwargs):
-    is_training = tf.get_default_graph().is_training
     return tf.nn.dropout(
-      input_, tf.cond(is_training,
-                      lambda: self.train_keep_prob,
-                      lambda: 1.0))
+      input_, tf.cond(tf.get_collection(pedia.is_training)[0],
+                      lambda: self.train_keep_prob, lambda: 1.0))
 
 
 class Linear(Layer):

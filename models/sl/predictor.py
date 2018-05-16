@@ -36,7 +36,6 @@ class Predictor(Feedforward, Recurrent):
     self.master = net_type
     # Call parent's constructor
     net_type.__init__(self, mark)
-    self._default_net = self
     # Attributes
     self._targets = TensorSlot(self, 'targets')
 

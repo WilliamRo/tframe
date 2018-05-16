@@ -20,6 +20,8 @@ class Feedforward(Model, Net):
   def __init__(self, mark=None):
     Model.__init__(self, mark)
     Net.__init__(self, 'FeedforwardNet')
+    self.superior = self
+    self._default_net = self
 
   @with_graph
   def _build(self):
