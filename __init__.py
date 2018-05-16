@@ -6,6 +6,7 @@ from .config import Config
 Config.register()
 hub = Config()
 
+from .utils import checker
 from .utils import console
 from .utils import local
 from .utils.tfdata import TFData
@@ -16,7 +17,7 @@ from .import models
 from .models import Predictor
 from .models import Classifier
 
-from . import core
+from .import core
 
 from .monitor import Monitor
 monitor = Monitor()
