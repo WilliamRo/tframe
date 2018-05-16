@@ -206,6 +206,7 @@ class Config(object):
 
   # Configs usually provided during method calling
   mark = Flag.string(None, 'Model identifier')
+  model = Flag.whatever(None, 'A function which returns a built model')
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
   reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
@@ -218,6 +219,8 @@ class Config(object):
                              is_key=None)
   output_gate = Flag.boolean(True, 'Whether to use output gate in LSTM',
                              is_key=None)
+  val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
+
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')

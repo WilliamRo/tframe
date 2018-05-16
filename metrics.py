@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import six
 import tensorflow as tf
+import tframe as tfr
 
 
 def accuracy(labels, outputs):
@@ -32,7 +33,11 @@ def norm_error_ratio(truth, output):
 def rms_error_ratio(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
   rms = lambda x: tf.sqrt(tf.reduce_mean(tf.square(x)))
-  return rms(truth - output) / rms(truth) * 100
+  err = truth - output
+  if tfr.hub.val_preheat > 0:
+    err = err[tfr.hub.val_preheat:]
+    truth = truth[tfr.hub.val_preheat:]
+  return rms(err) / rms(truth) * 100
 
 
 def get(identifier):
