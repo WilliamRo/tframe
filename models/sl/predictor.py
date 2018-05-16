@@ -3,11 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-import tframe as tfr
 
 from tframe.models.feedforward import Feedforward
 from tframe.models.recurrent import Recurrent
 
+from tframe import console
 from tframe import losses
 from tframe import pedia
 from tframe import metrics
@@ -135,6 +135,21 @@ class Predictor(Feedforward, Recurrent):
       fetches += list(additional_fetches)
     feed_dict = self._get_default_feed_dict(data, is_training=False)
     return self._outputs.run(fetches, feed_dict=feed_dict)
+
+  def evaluate_model(self, data, **kwargs):
+    # Sanity check
+    self._sanity_check_before_use(data)
+
+    # Check metric
+    if self.metric is None:
+      raise AssertionError('!! Failed to evaluate due to missing metric')
+
+    # Show status
+    console.show_status('Evaluating {}'.format(data.name))
+    # Get result
+    feed_dict = self._get_default_feed_dict(data, False)
+    result = self.metric.fetch(feed_dict)
+    console.supplement('{} = {:.3f}'.format(self.metric.symbol, result))
 
   # endregion : Public Methods
 
