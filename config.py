@@ -220,6 +220,9 @@ class Config(object):
   output_gate = Flag.boolean(True, 'Whether to use output gate in LSTM',
                              is_key=None)
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
+  with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
+                                is_key=None)
+  neurons_per_unit = Flag.integer(3, '...', is_key=None)
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '

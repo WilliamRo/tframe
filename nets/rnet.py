@@ -23,6 +23,8 @@ class RNet(Net):
     self._init_state = None
     self._kernel = None
     self._bias = None
+    self._weight_initializer = None
+    self._bias_initializer = None
 
   # region : Properties
 
@@ -124,13 +126,19 @@ class RNet(Net):
              else self._get_zero_state(batch_size))
     return {self.init_state: state}
 
-  def _check_state(self, state, size=1):
-    assert size > 0
-    if size == 1: state = (state,)
-    assert len(state) == size
-    for s in state:
-      assert isinstance(s, tf.Tensor)
-      assert s.shape.as_list()[1] == self._state_size
+  def _check_state(self, state, num_or_sizes=1):
+    # Check num_or_sizes
+    if isinstance(num_or_sizes, int):
+      assert num_or_sizes > 0 and self._state_size is not None
+      num_or_sizes = (self._state_size,) * num_or_sizes
+    else: assert isinstance(num_or_sizes, tuple)
+    # Check state
+    if not isinstance(state, tuple): state = (state,)
+    # Check state
+    assert len(state) == len(num_or_sizes)
+    for s, n in zip(state, num_or_sizes):
+      assert isinstance(s, tf.Tensor) and isinstance(n, int)
+      assert s.shape.as_list()[1] == n
 
   @staticmethod
   def _get_external_shape(input_):
@@ -138,6 +146,20 @@ class RNet(Net):
     input_shape = input_.shape.as_list()
     assert len(input_shape) == 2
     return input_shape[1]
+
+  @staticmethod
+  def _get_placeholder(name, size):
+    return tf.placeholder(dtype=hub.dtype, shape=(None, size), name=name)
+
+  def _get_variable(self, name, shape):
+    assert self._weight_initializer is not None
+    return tf.get_variable(
+      name, shape, dtype=hub.dtype, initializer=self._weight_initializer)
+
+  def _get_bias(self, name, dim):
+    assert self._bias_initializer is not None
+    return tf.get_variable(
+      name, shape=[dim], dtype=hub.dtype, initializer=self._bias_initializer)
 
   # endregion : Private Methods
 
