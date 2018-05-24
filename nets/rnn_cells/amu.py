@@ -10,6 +10,7 @@ from tframe import activations
 from tframe import initializers
 
 from tframe.nets.rnet import RNet
+from tframe.nets.rnn_cells.basic_cell import BasicRNNCell
 
 
 class AMU(RNet):
@@ -95,3 +96,65 @@ class AMU(RNet):
 
   # endregion : Private Methods
 
+
+class PAMU(BasicRNNCell):
+  """Practical AMU"""
+  net_name = 'pamu'
+
+  # region : Properties
+
+  @property
+  def init_state(self):
+    if self._init_state is not None: return self._init_state
+    assert self._state_size is not None
+    get_placeholder = lambda name: self._get_placeholder(name, self._state_size)
+    self._init_state = (get_placeholder('h'), get_placeholder('c'))
+    return self._init_state
+
+  # endregion : Properties
+
+  # region : Private Methods
+
+  def _link(self, pre_states, x, **kwargs):
+    """pre_state = (h, c)"""
+    self._check_state(pre_states, 2)
+    h, c  = pre_states
+    x_size = self._get_external_shape(x)
+
+    # :: Update memory
+    fi_inputs = tf.concat([h, x, c], axis=1)
+    fio_weight_shape = [x_size + self._state_size * 2, self._state_size]
+    # - Calculate output
+    W, b = self._get_weight_and_bias(
+      [x_size + self._state_size, self._state_size], self._use_bias)
+    output = self._activation(self._net(tf.concat([x, c], axis=1), W, b))
+    # - Calculate candidates to write
+    Wc, bc = self._get_weight_and_bias(
+      [x_size + self._state_size, self._state_size], self._use_bias, 'c')
+    candidates = self._activation(self._net(tf.concat([h, x], axis=1), Wc, bc))
+    # - Forget
+    with tf.name_scope('forget'):
+      Wf, bf = self._get_weight_and_bias(fio_weight_shape, self._use_bias, 'f')
+      f = self._gate(fi_inputs, Wf, bf)
+      c = tf.multiply(f, c)
+    # - Write
+    with tf.name_scope('write'):
+      Wi, bi = self._get_weight_and_bias(fio_weight_shape, self._use_bias, 'i')
+      i = self._gate(fi_inputs, Wi, bi)
+      new_c = tf.add(c, tf.multiply(candidates, i))
+    # :: Read
+    with tf.name_scope('read'):
+      Wo, bo = self._get_weight_and_bias(fio_weight_shape, self._use_bias, 'o')
+      o = self._gate(tf.concat([h, x, new_c], axis=1), Wo, bo)
+      new_h = tf.multiply(new_c, o)
+
+    self._kernel, self._bias = (W, Wc, Wi, Wf, Wo), (b, bc, bi, bf, bo)
+    # Return output, state
+    return output, (new_h, new_c)
+
+  def _get_zero_state(self, batch_size):
+    assert not self.is_root
+    return (np.zeros(shape=(batch_size, self._state_size)),
+            np.zeros(shape=(batch_size, self._state_size)))
+
+  # endregion : Private Methods

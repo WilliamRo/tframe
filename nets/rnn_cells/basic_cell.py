@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from tframe import activations
 from tframe import initializers
-from tframe import hub
+from tframe import checker
 
 from tframe.nets import RNet
 
@@ -38,7 +38,7 @@ class BasicRNNCell(RNet):
     # Attributes
     self._state_size = state_size
     self._activation = activations.get(activation, **kwargs)
-    self._use_bias = use_bias
+    self._use_bias = checker.check_type(use_bias, bool)
     self._weight_initializer = initializers.get(weight_initializer)
     self._bias_initializer = initializers.get(bias_initializer)
     self._output_scale = state_size

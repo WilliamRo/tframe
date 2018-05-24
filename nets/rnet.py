@@ -161,5 +161,18 @@ class RNet(Net):
     return tf.get_variable(
       name, shape=[dim], dtype=hub.dtype, initializer=self._bias_initializer)
 
+  def _get_weight_and_bias(self, weight_shape, use_bias, symbol=''):
+    assert isinstance(weight_shape, (list, tuple)) and len(weight_shape) == 2
+    W_name, b_name = 'W{}'.format(symbol), 'b{}'.format(symbol)
+    W = self._get_variable(W_name, weight_shape)
+    b = self._get_bias(b_name, weight_shape[1]) if use_bias else None
+    return W, b
+
+  def _net(self, x, W, b):
+    return tf.nn.bias_add(tf.matmul(x, W), b)
+
+  def _gate(self, x, W, b):
+    return tf.sigmoid(self._net(x, W, b))
+
   # endregion : Private Methods
 
