@@ -161,8 +161,10 @@ class Agent(object):
   def write_summary(self, summary, step=None):
     if not hub.summary: return
     if step is None:
-      assert tfr.trainer is not None
-      step = int(tfr.trainer.total_rounds * 1000)
+      if hub.epoch_as_step:
+        assert tfr.trainer is not None
+        step = int(tfr.trainer.total_rounds * 1000)
+      else: step = self._model.counter
     self._summary_writer.add_summary(summary, step)
 
   def take_notes(self, content, date_time=True, prompt=None):

@@ -196,16 +196,17 @@ class Trainer(object):
     rnd = 0
     for _ in range(hub.total_outer_loops):
       rnd += 1
-      console.section('{} {}'.format(hub.round_name, rnd))
+      if hub.progress_bar: console.section('{} {}'.format(hub.round_name, rnd))
       hub.tic()
-      # Begin round
+      # Begin round (RNN states will be reset here)
       self.model.begin_round(th=self.th)
       # Do inner loop
       self._inner_loop(rnd)
       # End of round
-      if hub.progress_bar: console.clear_line()
-      console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
-        hub.round_name, hub.toc()))
+      if hub.progress_bar:
+        console.clear_line()
+        console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
+          hub.round_name, hub.toc()))
       # Maybe give a report on metric
       if hub.validation_on:
         self.model.end_round(rnd)

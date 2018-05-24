@@ -174,6 +174,7 @@ class Config(object):
   overwrite = Flag.boolean(False, 'Whether to overwrite records')
   export_note = Flag.boolean(False, 'Whether to take notes')
   summary = Flag.boolean(True, 'Whether to write summary')
+  epoch_as_step = Flag.boolean(True, '...')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
   job_dir = Flag.string(
     './', 'The root directory where the records should be put',

@@ -15,10 +15,12 @@ from tframe.models.sl.predictor import Predictor
 from tframe.utils import console
 from tframe.utils.tfdata import TFData
 
+from tframe.models.feedforward import Feedforward
+
 
 class Classifier(Predictor):
-  def __init__(self, mark=None):
-    Predictor.__init__(self, mark)
+  def __init__(self, mark=None, net_type=Feedforward):
+    Predictor.__init__(self, mark, net_type)
     # Private attributes
     self._probabilities = TensorSlot(self, 'Probability')
     self._evaluation_group = Group(self, self._metric, self._probabilities,
