@@ -28,7 +28,7 @@ class TFRData(object):
 
 
 class DataAgent(object):
-  """"""
+  """A abstract class defines basic APIs for an data agent"""
   DATA_NAME = None
   DATA_URL = None
   TFD_FILE_NAME = None
@@ -66,37 +66,43 @@ class DataAgent(object):
   # region : Private Methods
 
   @classmethod
-  def _check_raw_data(cls, data_dir):
+  def _check_raw_data(cls, data_dir, file_name=None, url=None):
     # Get file path
     data_dir = cls._check_path(data_dir, create_path=True)
-    file_name = cls.default_file_name()
+    file_name = cls.default_file_name() if file_name is None else file_name
     file_path = os.path.join(data_dir, file_name)
     # If data does not exist, download from web
-    if not os.path.exists(file_path): cls._download(file_path)
+    if not os.path.exists(file_path): cls._download(file_path, url)
     # Return file path
     return file_path
 
   @classmethod
-  def _download(cls, file_path):
+  def _download(cls, file_path, url=None):
     import time
     from six.moves import urllib
     # Show status
-    console.show_status('Downloading {} ...'.format(cls.DATA_NAME))
+    file_name = cls._split_path(file_path)[-1]
+    console.show_status('Downloading {} ...'.format(file_name))
     start_time = time.time()
     def _progress(count, block_size, total_size):
       console.clear_line()
       console.print_progress(count * block_size, total_size, start_time)
-    file_path, _ = urllib.request.urlretrieve(
-      cls.DATA_URL, file_path, _progress)
+    url = cls.DATA_URL if url is None else url
+    file_path, _ = urllib.request.urlretrieve(url, file_path, _progress)
     stat_info = os.stat(file_path)
+    console.clear_line()
     console.show_status('Successfully downloaded {} ({} bytes).'.format(
-      cls.default_file_name(), stat_info.st_size))
+      file_name, stat_info.st_size))
+
+  @staticmethod
+  def _split_path(path):
+    return re.split(r'/|\\', path)
 
   @staticmethod
   def _check_path(*paths, create_path=True):
     assert len(paths) > 0
     if len(paths) == 1:
-      paths = re.split(r'/|\\', paths[0])
+      paths = DataAgent._split_path(paths[0])
       if paths[0] in ['.', '']: paths.pop(0)
       if paths[-1] == '': paths.pop(-1)
     path = ""
@@ -124,7 +130,7 @@ class DataAgent(object):
 
 
 class ImageDataAgent(DataAgent):
-  """"""
+  """This class defines some common methods for image data agents"""
   @classmethod
   def load(cls, data_dir, train_size, validate_size, test_size,
            flatten=False, one_hot=True):
@@ -133,7 +139,7 @@ class ImageDataAgent(DataAgent):
       data_set.features = data_set.features.reshape(data_set.size, -1)
     if one_hot:
       data_set.targets = misc.convert_to_one_hot(
-        data_set.targets, len(data_set['classes']))
+        data_set.targets, data_set[pedia.num_classes])
     # Split data set
     data_sets = data_set.split(
       train_size, validate_size, test_size,
@@ -141,5 +147,22 @@ class ImageDataAgent(DataAgent):
     # Show data info
     cls._show_data_sets_info(data_sets)
     return data_sets
+
+  @classmethod
+  def load_as_tframe_data(cls, data_dir):
+    from .dataset import DataSet
+    file_path = os.path.join(data_dir, cls.TFD_FILE_NAME)
+    if os.path.exists(file_path): return DataSet.load(file_path)
+    # If .tfd file does not exist, try to convert from raw data
+    console.show_status('Trying to convert raw data to tframe DataSet ...')
+    images, labels = cls.load_as_numpy_arrays(data_dir)
+    data_set = DataSet(images, labels, name=cls.DATA_NAME, **cls.PROPERTIES)
+    console.show_status('Successfully converted {} samples'.format(
+      data_set.size))
+    # Save DataSet
+    console.show_status('Saving data set ...')
+    data_set.save(file_path)
+    console.show_status('Data set saved to {}'.format(file_path))
+    return data_set
 
 

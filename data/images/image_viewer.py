@@ -181,6 +181,8 @@ class ImageViewer(object):
       for k, v in data.items():
         if not hasattr(v, 'shape'): continue
         console.supplement('{}: {}'.format(k, v.shape))
+      for k, v in self.data_set.properties.items():
+        console.supplement('{}: {}'.format(k, v))
     elif event.keysym == 'space':
       self._resize()
     else:

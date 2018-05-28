@@ -8,10 +8,7 @@ import tarfile
 import platform
 import pickle
 
-import tframe.utils.misc as misc
-
-from tframe import console
-from tframe.data.dataset import DataSet
+from tframe import pedia
 from tframe.data.base_classes import ImageDataAgent
 
 
@@ -22,8 +19,9 @@ class CIFAR10(ImageDataAgent):
   TFD_FILE_NAME = 'cifar-10.tfd'
 
   PROPERTIES = {
-    'classes': ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog',
-                'horse', 'ship', 'truck']
+    pedia.classes: ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog',
+                  'frog', 'horse', 'ship', 'truck'],
+    pedia.num_classes: 10
   }
 
   @classmethod
@@ -33,21 +31,9 @@ class CIFAR10(ImageDataAgent):
       data_dir, train_size, validate_size, test_size, flatten, one_hot)
 
   @classmethod
-  def load_as_tframe_data(cls, data_dir):
-    file_path = os.path.join(data_dir, cls.TFD_FILE_NAME)
-    if os.path.exists(file_path): return DataSet.load(file_path)
-    # If .tfd file does not exist, try to convert from raw data
-    console.show_status('Trying to convert raw data to tfr DataSet ...')
-    features, targets = cls.load_as_numpy_arrays(data_dir)
-    data_set = DataSet(features, targets, name=cls.DATA_NAME, **cls.PROPERTIES)
-    console.show_status('Successfully converted {} samples'.format(
-      data_set.size))
-    # Save DataSet
-    data_set.save(file_path)
-    return data_set
-
-  @classmethod
   def load_as_numpy_arrays(cls, data_dir):
+    """Load 60000 samples of shape [32, 32, 3] with dense labels
+       containing training set and test set"""
     # Make sure tar.gz file is ready
     file_path = cls._check_raw_data(data_dir)
     # Extract file
@@ -99,5 +85,3 @@ if __name__ == '__main__':
   data_set = CIFAR10.load_as_tframe_data(data_dir)
   viewer = ImageViewer(data_set)
   viewer.show()
-
-

@@ -3,6 +3,7 @@ activation_sum = 'activation_sum'
 
 cascade = 'cascade'
 cross_entropy = 'cross_entropy'
+classes = 'classes'
 
 default = 'default'
 default_feed_dict = 'default_feed_dict '
@@ -50,6 +51,10 @@ with_logits = 'with_logits'
 memo = {}
 
 memo[activation_sum] = []
+
+num_classes = 'num_classes'
+
+
 
 # Keys for tensorflow
 class tfkey:

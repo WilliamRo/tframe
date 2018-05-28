@@ -9,30 +9,34 @@ def main(_):
 
   # Configurations
   th = core.th
-  th.model = models.example_model
-  # ...
+  th.model = models.mlp
+  th.num_blocks = 2
+  th.hidden_dim = 100
+  th.actype1 = 'relu'
 
-  th.epoch = 10
+  th.epoch = 50
   th.learning_rate = 1e-4
   th.batch_size = 64
-  th.validation_per_round = 10
-  th.print_cycle = 100
+  th.validation_per_round = 2
+  th.print_cycle = 20
+  th.shuffle = True
 
   # th.train = False
-  # th.smart_train = True
+  th.smart_train = True
   th.max_bad_apples = 4
   th.lr_decay = 0.6
 
-  th.save_model = False
+  th.save_model = True
   th.overwrite = True
   th.export_note = True
-  th.summary = False
+  th.summary = True
   th.monitor = False
 
-  description = '0'
-  th.mark = 'example_model_{}'.format(description)
+  description = ''
+  th.mark = 'mlp_{}x{}{}'.format(th.hidden_dim, th.num_blocks, description)
 
-  core.activate()
+  export_false = True
+  core.activate(export_false=export_false)
 
 
 if __name__ == '__main__':
