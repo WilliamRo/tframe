@@ -9,8 +9,7 @@ import six
 import numpy as np
 
 from tframe import console
-from tframe import TFData
-from tframe import pedia
+# from tframe import TFData
 
 try:
   import tkinter as tk
@@ -298,8 +297,6 @@ class ImageViewer(object):
 
 
 if __name__ == '__main__':
-  from tframe.utils.tfdata import load_cifar10
-
   # cifar10 = load_cifar10(
   #   r'..\..\data\CIFAR-10', one_hot=True, validation_size=200)
   # dataset = r'C:\Users\HPEC\Documents\mnist_val_5000.tfd'
@@ -307,5 +304,5 @@ if __name__ == '__main__':
   # dataset = None
   # dataset = cifar10[pedia.validation]
   # dataset = './fp.tfd'
-  viewer = ImageViewer(dataset)
-  viewer.show()
+  # viewer = ImageViewer(dataset)
+  # viewer.show()

@@ -10,10 +10,10 @@ from tframe.nets.net import Net
 from tframe.layers import Input
 
 from tframe.utils import imtool
-from tframe.utils import TFData
 
 from tframe import pedia
 from tframe import hub
+from tframe import DataSet
 from tframe.core import with_graph
 
 
@@ -145,7 +145,7 @@ class VAE(Model):
                         else kwargs.get('sample_num', 9))
 
   def update_model(self, data_batch, **kwargs):
-    assert isinstance(data_batch, TFData)
+    assert isinstance(data_batch, DataSet)
     features = data_batch[pedia.features]
 
     assert isinstance(self._session, tf.Session)

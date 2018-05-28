@@ -224,6 +224,10 @@ class Config(object):
   with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
                                 is_key=None)
   neurons_per_unit = Flag.integer(3, '...', is_key=None)
+  hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
+  num_blocks = Flag.integer(-1, 'Block number in model', is_key=None)
+  input_shape = Flag.list([], 'Input shape')
+  num_classes = Flag.integer(-1, 'Class number')
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '

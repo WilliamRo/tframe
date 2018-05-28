@@ -42,21 +42,26 @@ def get_name_by_levels(name, levels):
   return '/'.join(scopes)
 
 
-def convert_to_one_hot(labels, classes):
+def convert_to_one_hot(labels, num_classes):
   labels = np.array(labels)
   if len(labels.shape) < 2:
     sample_num = labels.shape[0]
-    onehot = np.zeros(shape=[sample_num, classes])
-    onehot[range(sample_num), labels] = 1
+    one_hot = np.zeros(shape=[sample_num, num_classes])
+    one_hot[range(sample_num), labels] = 1
   else:
-    onehot = labels
+    one_hot = labels
 
-  if len(onehot.shape) != 2:
+  if len(one_hot.shape) != 2:
     raise ValueError('!! Input labels has an illegal dimension {}'.format(
       len(labels.shape)))
 
-  return onehot
+  return one_hot
 
 
+def convert_to_dense_labels(one_hot):
+  assert isinstance(one_hot, np.ndarray)
+  if len(one_hot.shape) == 1: return one_hot
+  assert len(one_hot.shape) == 2
+  return np.argmax(one_hot, axis=1).squeeze()
 
 

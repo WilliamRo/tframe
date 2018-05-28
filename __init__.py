@@ -9,8 +9,7 @@ hub = Config()
 from .utils import checker
 from .utils import console
 from .utils import local
-from .utils.tfdata import TFData
-from .utils.tfinter import ImageViewer
+from tframe.data.dataset import DataSet
 
 from .import models
 

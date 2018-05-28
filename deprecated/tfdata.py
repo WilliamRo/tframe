@@ -11,10 +11,13 @@ from six.moves import urllib
 import time
 import tarfile
 
-from . import console
-from .. import pedia
+from tframe.utils import console
+from tframe import pedia
 
 
+# =============================================================================
+# Deprecated
+# =============================================================================
 class TFData(object):
   """
   Only valid data container for tframe

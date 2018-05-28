@@ -13,7 +13,9 @@ from tframe.core import TensorSlot, Group
 from tframe.layers import Activation
 from tframe.models.sl.predictor import Predictor
 from tframe.utils import console
-from tframe.utils.tfdata import TFData
+# from tframe.utils.tfdata import TFData
+from tframe import DataSet
+import tframe.utils.misc as misc
 
 from tframe.models.feedforward import Feedforward
 
@@ -62,14 +64,14 @@ class Classifier(Predictor):
       symbol='[Evaluation]')
 
     if export_false:
-      assert isinstance(data, TFData)
-      predictions = np.argmax(probabilities, axis=1).squeeze()
-      data.update(predictions=predictions)
-      labels = data.scalar_labels
-      false_indices = [i for i in range(data.sample_num)
+      assert isinstance(data, DataSet) and data.targets is not None
+      predictions = misc.convert_to_dense_labels(probabilities)
+      data.data_dict[pedia.predictions] = predictions
+      labels = misc.convert_to_dense_labels(data.targets)
+      false_indices = [i for i in range(data.size)
                       if predictions[i] != labels[i]]
 
-      from tframe import ImageViewer
+      from tframe.data.images.image_viewer import ImageViewer
       vr = ImageViewer(data[false_indices])
       vr.show()
 
@@ -78,10 +80,10 @@ class Classifier(Predictor):
     # Sanity check
     self._sanity_check_before_use(data)
 
-    feed_dict = self._get_default_feed_dict(data, False)
+    feed_dict = self._get_default_feed_dict(data, is_training=False)
     probabilities = self._probabilities.run(feed_dict=feed_dict)
 
-    return np.argmax(probabilities, axis=1).squeeze()
+    return misc.convert_to_dense_labels(probabilities)
 
 
 

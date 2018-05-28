@@ -9,7 +9,7 @@ import tensorflow as tf
 import tframe as tfr
 
 from tframe import console
-from tframe import TFData
+from tframe import DataSet
 from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
 from tframe.config import Config, Flag
@@ -64,13 +64,13 @@ class Trainer(object):
   @property
   def training_set(self):
     if self._training_set is not None:
-      assert isinstance(self._training_set, TFData)
+      assert isinstance(self._training_set, DataSet)
     return self._training_set
 
   @property
   def validation_set(self):
     if self._validation_set is not None:
-      assert isinstance(self._validation_set, TFData)
+      assert isinstance(self._validation_set, DataSet)
     return self._validation_set
 
   @property
@@ -94,7 +94,7 @@ class Trainer(object):
   @property
   def total_rounds(self):
     # TODO: Batch size must be kept the same among different trials
-    return self.counter / self.training_set.batches_per_epoch
+    return self.counter / self.th.round_length
 
   @property
   def graph(self):
@@ -163,9 +163,16 @@ class Trainer(object):
       num_steps = None
       if self.model.input_type is InputTypes.RNN_BATCH:
         num_steps = self.th.num_steps
-      self.training_set.set_batch_size(self.th.batch_size, num_steps)
-      round_len = self.training_set.batches_per_epoch
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      # self.training_set.set_batch_size(self.th.batch_size, num_steps)
+      # round_len = self.training_set.batches_per_epoch
+      # self.th.validate_cycle = round_len // self.th.validation_per_round
+      # ---------------------------------------------------------------------
+      round_len = self.training_set.get_round_length(
+        self.th.batch_size, num_steps)
       self.th.validate_cycle = round_len // self.th.validation_per_round
+      self.th.round_length = round_len
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -226,8 +233,10 @@ class Trainer(object):
   def _inner_loop(self, rnd):
     self._record_count = 0
     # Begin iteration
+    self.th.cursor = 0
     for batch in self._gen_batches():
       # Increase iteration counter
+      self.th.cursor += 1
       self.counter += 1
       # Update model
       loss_dict = self.model.update_model(data_batch=batch)
@@ -284,8 +293,8 @@ class Trainer(object):
       data_set = self._training_set
       name = 'training set'
     if data_set is None: raise ValueError('!! {} not found'.format(name))
-    if not isinstance(data_set, TFData):
-      raise TypeError('!! {} must be an instance of TFData'.format(name))
+    if not isinstance(data_set, DataSet):
+      raise TypeError('!! {} must be an instance of DataSet'.format(name))
 
   @staticmethod
   def _check_callable(f, name):
@@ -298,8 +307,9 @@ class Trainer(object):
       batches = self.training_set.gen_batches(
         self.th.batch_size, self.th.shuffle)
     elif self.model.input_type is InputTypes.RNN_BATCH:
+      if self.th.num_steps is None: self.th.num_steps = -1
       batches = self.training_set.gen_rnn_batches(
-        self.th.batch_size, self.th.num_steps)
+        self.th.batch_size, self.th.num_steps, shuffle=self.th.shuffle)
     else:
       raise TypeError('!! Unknown input type {}'.format(self.model.input_type))
     return batches
@@ -315,9 +325,10 @@ class Trainer(object):
     console.show_status(content, symbol=prompt)
     # Print progress bar
     if self.th.progress_bar:
-      assert isinstance(self._training_set, TFData)
-      console.print_progress(progress=self._training_set.progress,
-                             start_time=start_time)
+      assert isinstance(self._training_set, DataSet)
+      progress = self.th.round_progress
+      assert progress is not None
+      console.print_progress(progress=progress, start_time=start_time)
 
   @staticmethod
   def _dict_to_string(dict_):
@@ -398,8 +409,8 @@ class TrainerHub(Config):
 
   epoch = Flag.integer(1, 'Epoch number to train', is_key=None)
   batch_size = Flag.integer(1, 'Batch size', is_key=None)
-  num_steps = Flag.integer(1, 'Number of time steps', is_key=None)
-  shuffle = Flag.boolean(True, 'Whether to shuffle', is_key=None)
+  num_steps = Flag.integer(None, 'Number of time steps', is_key=None)
+  shuffle = Flag.boolean(False, 'Whether to shuffle', is_key=None)
 
   print_cycle = Flag.integer(0, 'Print cycle')
   validate_cycle = Flag.integer(0, 'Validate cycle', is_key=None)
@@ -437,6 +448,9 @@ class TrainerHub(Config):
     self._start_time = None
     self._stop = False
 
+    self.round_length = None
+    self.cursor = None
+
   # region : Properties
 
   @property
@@ -466,6 +480,11 @@ class TrainerHub(Config):
     value = self._stop and self.early_stop
     self._stop = False
     return value
+
+  @property
+  def round_progress(self):
+    if self.round_length is None or self.cursor is None: return None
+    return 1.0 * self.cursor / self.round_length
 
   # endregion : Properties
 

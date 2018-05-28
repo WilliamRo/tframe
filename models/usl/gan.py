@@ -11,13 +11,13 @@ from tframe.nets.net import Net
 from tframe.layers import Input
 from tframe.utils import imtool
 from tframe.utils import misc
-from tframe.utils import TFData
 from tframe.utils.maths import interpolations
 
 from tframe.layers import merge
 
 from tframe import pedia
 from tframe import hub
+from tframe import DataSet
 from tframe.core import with_graph
 
 
@@ -246,7 +246,7 @@ class GAN(Model):
       raise ValueError('Targets should be formatted as one-hot')
 
   def update_model(self, data_batch, **kwargs):
-    assert isinstance(data_batch, TFData)
+    assert isinstance(data_batch, DataSet)
     # TODO: design some mechanisms to handle these
     G_iterations = kwargs.get('G_iterations', 1)
     D_iterations = kwargs.get('D_iterations', 1)

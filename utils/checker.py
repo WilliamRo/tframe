@@ -30,3 +30,8 @@ def check_type(inputs, type_tuples):
   if len(inputs) == 1: return inputs[0]
   else: return inputs
 
+
+def check_positive_integer(x, name='value'):
+  if not isinstance(x, int) or x <= 0:
+    raise ValueError('!! {} must be a positive integer'.format(name))
+

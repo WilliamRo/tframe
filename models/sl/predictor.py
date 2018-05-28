@@ -11,7 +11,7 @@ from tframe import console
 from tframe import losses
 from tframe import pedia
 from tframe import metrics
-from tframe import TFData
+from tframe import DataSet
 
 from tframe import hub
 from tframe import InputTypes
@@ -162,7 +162,7 @@ class Predictor(Feedforward, Recurrent):
     return feed_dict
 
   def _sanity_check_before_use(self, data):
-    if not isinstance(data, TFData):
+    if not isinstance(data, DataSet):
       raise TypeError('!! Input data must be an instance of TFData')
     if not self.built: raise ValueError('!! Model not built yet')
     if not self.launched: self.launch_model(overwrite=False)

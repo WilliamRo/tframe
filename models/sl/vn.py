@@ -14,7 +14,7 @@ from tframe import console
 from tframe import pedia
 from tframe import losses
 from tframe import metrics
-from tframe import TFData
+from tframe import DataSet
 from tframe.core import with_graph
 
 from tframe.layers.layer import Layer
@@ -212,7 +212,7 @@ class VolterraNet(Model):
   # TODO: Exactly the same as predict method in predictor.py
   def predict(self, data):
     # Sanity check
-    if not isinstance(data, TFData):
+    if not isinstance(data, DataSet):
       raise TypeError('!! Input data must be an instance of TFData')
     if not self.built: raise ValueError('!! Model not built yet')
     if self._session is None:

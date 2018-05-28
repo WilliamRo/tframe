@@ -6,6 +6,8 @@
 *pycache*
 
 # Ignore data / checkpoint / log files
+examples/*/data
+records
 #*[Dd]ata*/
 *checkpoint*/
 *[Ll]og*/

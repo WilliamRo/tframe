@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 
 import tframe as tfr
-from tframe import TFData
+from tframe import DataSet
 from tframe import hub
 from tframe import console
 from tframe import pedia
@@ -133,11 +133,11 @@ class Model(object):
   # region : Building
 
   @with_graph
-  def build(self, *args, **kwargs):
+  def build(self, optimizer=None, **kwargs):
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
     #
-    self._build(*args, **kwargs)
+    self._build(optimizer=optimizer, **kwargs)
     # Initialize monitor
     self._init_monitor()
     # Set built flag
@@ -156,7 +156,7 @@ class Model(object):
     for line in description:
       self.agent.take_notes(line, date_time=False)
 
-  def _build(self, *args, **kwargs):
+  def _build(self, optimizer=None, **kwargs):
     """Abstract method, must be implemented in different models"""
     raise  NotImplementedError('!! build method not implemented')
 
@@ -212,7 +212,7 @@ class Model(object):
     return self._update_group.run(feed_dict)
 
   def validate_model(self, validation_set, **kwargs):
-    assert isinstance(validation_set, TFData)
+    assert isinstance(validation_set, DataSet)
     feed_dict = self._get_default_feed_dict(validation_set, is_training=False)
     return self._validate_group.run(feed_dict)
 
