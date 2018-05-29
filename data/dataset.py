@@ -134,10 +134,7 @@ class DataSet(TFRData):
         Data batches will be extracted along its first dimension in order or
         randomly
     (2) When data is list of sequences:
-        Data will be extracted sequence by sequence in order or randomly
-        i.e. batch_size must be set to 1
-        If data sequences are regular, they can be stacked into a regular
-        numpy array and produce data batches of size larger than 1
+        Data will be stacked first and extracted as it does in (1)
 
     :param batch_size: Batch size
     :param shuffle: Whether to shuffle

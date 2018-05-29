@@ -12,7 +12,8 @@ from tframe.data.base_classes import ImageDataAgent
 
 
 class MNIST(ImageDataAgent):
-  """"""
+  """THE MNIST DATABASE of handwritten digits"""
+
   DATA_NAME = 'MNIST'
   DATA_URL = 'http://yann.lecun.com/exdb/mnist/'
   TFD_FILE_NAME = 'mnist.tfd'
@@ -27,7 +28,7 @@ class MNIST(ImageDataAgent):
 
   @classmethod
   def load_as_numpy_arrays(cls, data_dir):
-    """Return 70000 samples (60000 training samples and 10000 test samples)
+    """Load 70000 samples (60000 training samples and 10000 test samples)
        of shape [28, 28, 1] with dense labels"""
     # gz file names
     TRAIN_IMAGES = 'train-images-idx3-ubyte.gz'

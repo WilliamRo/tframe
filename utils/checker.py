@@ -12,6 +12,7 @@ def check_type(inputs, type_tuples):
   :return: a tuple of inputs
   """
   if isinstance(inputs, list): inputs = tuple(inputs)
+  if not isinstance(type_tuples, (tuple, list)): type_tuples = (type_tuples,)
   if not isinstance(inputs, tuple):
     inputs = (inputs,)
     type_tuples = (type_tuples,)

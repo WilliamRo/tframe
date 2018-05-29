@@ -13,7 +13,10 @@ from tframe.data.base_classes import ImageDataAgent
 
 
 class CIFAR10(ImageDataAgent):
-  """"""
+  """The CIFAR-10 data set (Canadian Institute For Advanced Research) is a
+     collection of images that are commonly used to train machine learning
+     and computer vision algorithms. """
+
   DATA_NAME = 'CIFAR-10'
   DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
   TFD_FILE_NAME = 'cifar-10.tfd'

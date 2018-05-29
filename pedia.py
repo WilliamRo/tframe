@@ -34,10 +34,14 @@ post_activation = 'post_activation'
 
 is_training = 'is_training'
 
+sampling_frequency = 'sampling_frequency'
 spherical = 'spherical'
+signals = 'signals'
 status_tensors = 'status_tensors'
 sum = 'sum'
 summaries = 'summaries'
+
+responses = 'responses'
 
 targets = 'targets'
 test = 'test'

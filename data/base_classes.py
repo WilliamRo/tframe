@@ -20,10 +20,10 @@ class TFRData(object):
   def get_round_length(self, batch_size, num_steps=None):
     raise NotImplementedError
 
-  def get_batches(self, batch_size, shuffle=False):
+  def gen_batches(self, batch_size, shuffle=False):
     raise NotImplementedError
 
-  def get_rnn_batches(self, batch_size=1, num_steps=None, shuffle=False):
+  def gen_rnn_batches(self, batch_size=1, num_steps=None, shuffle=False):
     raise NotImplementedError
 
 
