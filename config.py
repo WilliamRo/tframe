@@ -226,8 +226,9 @@ class Config(object):
   neurons_per_unit = Flag.integer(3, '...', is_key=None)
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   num_blocks = Flag.integer(-1, 'Block number in model', is_key=None)
-  input_shape = Flag.list([], 'Input shape')
-  num_classes = Flag.integer(-1, 'Class number')
+  input_shape = Flag.list([], 'Input shape of samples')
+  num_classes = Flag.integer(-1, 'Class number for classification tasks')
+  memory_depth = Flag.integer(1, 'Memory depth for system identification')
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '

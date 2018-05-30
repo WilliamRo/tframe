@@ -67,12 +67,12 @@ class DataSet(TFRData):
     if self._stacked_data is not None: return self._stacked_data
     # Stack data
     try:
-      x = np.stack(self.features, axis=0)
-      y = None if self.targets is None else np.stack(self.targets, axis=0)
+      x = np.concatenate(self.features, axis=0)
+      y = None if self.targets is None else np.concatenate(self.targets, axis=0)
       self._stacked_data = DataSet(x, y, name='{}(stacked)'.format(self.name))
       self._stacked_data.data_dict = self.data_dict
       self._stacked_data.properties = self.properties
-      return self._stacked_data
+      return self._finalize(self._stacked_data)
     except:
       print('!! failed to stack data')
       raise
@@ -100,7 +100,8 @@ class DataSet(TFRData):
       # other data array in self.data_dict will be abandoned
       if len(val) == self.size: data_dict[key] = val[item]
     # Return
-    return DataSet(features, targets, data_dict, self.name, **self.properties)
+    return self._finalize(DataSet(
+      features, targets, data_dict, self.name, **self.properties))
 
   # endregion : Overriden Methods
 
@@ -200,11 +201,11 @@ class DataSet(TFRData):
           continue
         else: raise ValueError(
           '!! only one split size can be calculated automatically')
-      if not isinstance(size, int) and size > 0:
-        raise ValueError('!! size must be a positive integer')
+      if not isinstance(size, int) and size < 0:
+        raise ValueError('!! size must be a non-negative integer')
       total_size += size
     # Calculate size automatically if necessary
-    if auto_index > 0:
+    if auto_index >= 0:
       sizes[auto_index] = self.size - total_size
       if sizes[auto_index] <= 0: raise ValueError(
         '!! negative value appears when calculating size automatically')
@@ -213,6 +214,7 @@ class DataSet(TFRData):
     # Split data set
     data_sets, cursor = (), 0
     for i, size in enumerate(sizes):
+      if size == 0: continue
       indices = slice(cursor, cursor + size)
       data_set = self[indices]
       if names is not None: data_set.name = names[i]
@@ -224,6 +226,11 @@ class DataSet(TFRData):
   # endregion : Public Methods
 
   # region : Private Methods
+
+  def _finalize(self, data_set):
+    assert isinstance(data_set, DataSet)
+    data_set.__class__ = self.__class__
+    return data_set
 
   def _check_data(self):
     """Features and data_dict should not be empty at the same time.
@@ -239,8 +246,9 @@ class DataSet(TFRData):
     if self.features is not None:
       data_dict[pedia.features] = self.features
       if self.targets is not None:
-        if type(self.features) != type(self.targets):
-          raise TypeError('!! features and targets must be of the same type')
+        # TODO
+        # if type(self.features) != type(self.targets):
+        #   raise TypeError('!! features and targets must be of the same type')
         data_dict[pedia.targets] = self.targets
 
     # Make sure at least one data array is provided
@@ -331,8 +339,4 @@ class DataSet(TFRData):
 
 if __name__ == '__main__':
   features = np.arange(12)
-  targets = np.argmax(12) + 100
-  data_dict = {'data1':np.arange(12) + 200}
-  dataset = DataSet(features, data_dict=data_dict, fs=1000)
-  a, b, c = dataset.split((2, -1, 3), names=('a', 'b', 'c'))
-  d = 1
+  data_set = DataSet(features)

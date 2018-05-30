@@ -80,8 +80,8 @@ class Predictor(Feedforward, Recurrent):
       self.loss.plug(loss_tensor)
 
     # Define metric
-    metric_function = metrics.get(metric)
-    if metric_function is not None:
+    if metric is not None:
+      metric_function = metrics.get(metric)
       with tf.name_scope('Metric'):
         metric_tensor = metric_function(
           self._targets.tensor, self._outputs.tensor)

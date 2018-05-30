@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
+
 from tframe import checker
 from tframe import pedia
 from tframe.data.dataset import DataSet
@@ -28,7 +30,6 @@ class SignalSet(DataSet):
   @property
   def signals(self):
     signals = self.data_dict[pedia.signals]
-    assert isinstance(signals, list)
     checker.check_type(signals, Signal)
     return signals
 
@@ -36,7 +37,6 @@ class SignalSet(DataSet):
   def responses(self):
     responses = self.data_dict.get(pedia.responses, None)
     if responses is not None:
-      assert isinstance(responses, list)
       assert len(responses) == len(self.signals)
       checker.check_type(responses, Signal)
     return responses
@@ -73,6 +73,8 @@ class SignalSet(DataSet):
 
   def init_features_and_targets(self, targets_key=None, memory_depth=1,
                                 skip_head=True):
+    """Initialize features and targets using data in data_dict.
+        After initialization, data_dict will be cleared"""
     # Check target key
     if targets_key is None: targets_key = pedia.responses
     targets_candidates = self.data_dict.get(targets_key, None)
@@ -88,20 +90,29 @@ class SignalSet(DataSet):
       # Append target
       if targets_candidates is not None:
         target = targets_candidates[i]
-        if targets_key == pedia.responses: target = target[start_at:]
+        # For response target
+        if targets_key == pedia.responses:
+          assert isinstance(target, Signal)
+          target = target.causal_matrix(memory_depth=1)
+        target = target[start_at:]
+        # Append target to targets list
         targets.append(target)
     # Set features and targets
     self.features = features
     self.targets = None if targets_candidates is None else targets
+    # Abandon data_dict
+    self.data_dict = {}
     # Check data
     self._check_data()
 
   def plot(self, index=0, db=True):
     from tframe.data.sequences.signals.figure import Figure, Subplot
+    if isinstance(self.signals, Signal): index = range(len(self.signals))
     x = self.signals[index]
     y = None if self.responses is None else self.responses[index]
     fig = Figure('{} Input & Output'.format(self.name))
-    fig.add(Subplot.AmplitudeSpectrum(x, prefix='Input Signal', db=db))
+    fig.add(Subplot.AmplitudeSpectrum(
+      x, prefix='{} - Input Signal'.format(self.name), db=db))
     if y is not None:
       fig.add(Subplot.AmplitudeSpectrum(y, prefix='Output Signal', db=db))
     fig.plot()

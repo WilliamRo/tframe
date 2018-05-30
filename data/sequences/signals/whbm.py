@@ -23,10 +23,19 @@ class WHBM(DataAgent):
   PROPERTIES = {pedia.sampling_frequency: 0}
 
   @classmethod
-  def load(cls, data_dir, train_size=-1, validate_size=5000, test_size=88000):
+  def load(cls, data_dir, train_size=-1, validate_size=5000, test_size=88000,
+           memory_depth=1, skip_head=True):
     data_set = cls.load_as_tframe_data(data_dir)
-
-    data_sets = (None, None)
+    assert isinstance(data_set, SignalSet)
+    # Initialize data before splitting
+    data_set.init_features_and_targets(
+      targets_key=pedia.responses, memory_depth=memory_depth,
+      skip_head=skip_head)
+    # Split data set
+    data_sets = data_set[0].split(
+      train_size, validate_size, test_size,
+      names=('training set', 'validation set', 'test set'))
+    # Show data info
     cls._show_data_sets_info(data_sets)
     return data_sets
 
@@ -70,5 +79,8 @@ class WHBM(DataAgent):
 
 if __name__ == '__main__':
   data_dir = '../../../examples/whbm/data'
-  data_set = WHBM.load_as_tframe_data(data_dir)
-  data_set.plot()
+  train_set, test_set = WHBM.load(data_dir, validate_size=0)
+  assert isinstance(train_set, SignalSet)
+  assert isinstance(test_set, SignalSet)
+  train_set.plot()
+  test_set.plot()

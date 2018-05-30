@@ -57,9 +57,15 @@ class DataAgent(object):
     raise NotImplementedError
 
   @classmethod
-  def load(cls, *args, **kwargs):
+  def load(cls, data_dir, train_size, validate_size, test_size, **kwargs):
     """Load data"""
-    raise NotImplementedError
+    data_set = cls.load_as_tframe_data(data_dir)
+    data_sets = data_set.split(
+      train_size, validate_size, test_size,
+      names=('training set', 'validation set', 'test set'))
+    # Show data info
+    cls._show_data_sets_info(data_sets)
+    return data_sets
 
   # endregion : Public Methods
 

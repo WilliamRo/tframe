@@ -9,35 +9,33 @@ for _ in range(DIR_DEPTH + 1):
 from tframe import console, SaveMode
 from tframe.trainers import SmartTrainerHub
 from data_utils import load_data
-from tframe import Classifier
+from tframe import Predictor
 
 
 from_root = lambda path: os.path.join(ROOT, path)
 
 th = SmartTrainerHub(as_global=True)
-th.data_dir = from_root('tframe/examples/mnist/data/')
-th.job_dir = from_root('tframe/examples/mnist')
-th.input_shape = [28, 28, 1]
-th.num_classes = 10
+th.data_dir = from_root('tframe/examples/whbm/data/')
+th.job_dir = from_root('tframe/examples/whbm')
 
 th.allow_growth = False
 th.gpu_memory_fraction = 0.4
 
 th.save_mode = SaveMode.ON_RECORD
 th.warm_up_thres = 1
-th.at_most_save_once_per_round = False
+th.at_most_save_once_per_round = True
 
 th.early_stop = True
 th.idle_tol = 10
 
 
-def activate(export_false=False):
+def activate():
   assert callable(th.model)
   model = th.model(th)
-  assert isinstance(model, Classifier)
+  assert isinstance(model, Predictor)
 
   # Load data
-  train_set, val_set, test_set = load_data(th.data_dir)
+  train_set, val_set, test_set = load_data(th.data_dir, th.memory_depth)
 
   # Train or evaluate
   if th.train:
@@ -45,7 +43,7 @@ def activate(export_false=False):
   else:
     model.evaluate_model(train_set)
     model.evaluate_model(val_set)
-    model.evaluate_model(test_set, export_false=export_false)
+    model.evaluate_model(test_set)
 
   # End
   console.end()
