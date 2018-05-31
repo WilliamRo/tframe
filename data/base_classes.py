@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import re
+import numpy as np
 
 from tframe import console
 from tframe import pedia
@@ -60,9 +61,15 @@ class DataAgent(object):
   def load(cls, data_dir, train_size, validate_size, test_size, **kwargs):
     """Load data"""
     data_set = cls.load_as_tframe_data(data_dir)
+    return cls._split_and_return(data_set, train_size, validate_size, test_size)
+
+  @classmethod
+  def _split_and_return(cls, data_set, train_size, validate_size, test_size):
+    from tframe.data.dataset import DataSet
+    assert isinstance(data_set, DataSet)
     data_sets = data_set.split(
       train_size, validate_size, test_size,
-      names=('training set', 'validation set', 'test set'))
+      names=('Train set', 'Validation set', 'Test set'))
     # Show data info
     cls._show_data_sets_info(data_sets)
     return data_sets
@@ -123,14 +130,18 @@ class DataAgent(object):
   def _show_data_sets_info(data_sets):
     from tframe.data.dataset import DataSet
     console.show_status('Data loaded')
+
+    def get_data_info(data, name):
+      sample = data if isinstance(data, np.ndarray) else data[0]
+      assert isinstance(sample, np.ndarray)
+      return 'shape of {}: {}'.format(name, sample.shape[1:])
+
     for data_set in data_sets:
       assert isinstance(data_set, DataSet)
-      console.supplement('{}:'.format(data_set.name))
-      console.supplement(
-        'features shape: {}'.format(data_set.features.shape), level=2)
+      console.supplement('{} (size={}):'.format(data_set.name, data_set.size))
+      console.supplement(get_data_info(data_set.features, 'features'), level=2)
       if data_set.targets is not None:
-        console.supplement(
-          'targets shape:  {}'.format(data_set.targets.shape), level=2)
+        console.supplement(get_data_info(data_set.targets, 'targets'), level=2)
 
   # endregion : Private Methods
 
@@ -146,13 +157,8 @@ class ImageDataAgent(DataAgent):
     if one_hot:
       data_set.targets = misc.convert_to_one_hot(
         data_set.targets, data_set[pedia.num_classes])
-    # Split data set
-    data_sets = data_set.split(
-      train_size, validate_size, test_size,
-      names=('training set', 'validation set', 'test set'))
-    # Show data info
-    cls._show_data_sets_info(data_sets)
-    return data_sets
+
+    return cls._split_and_return(data_set, train_size, validate_size, test_size)
 
   @classmethod
   def load_as_tframe_data(cls, data_dir):

@@ -80,8 +80,8 @@ class DataSet(TFRData):
 
   @property
   def as_rnn_data(self):
-    if self._rnn_data is not None: return self._rnn_data
     assert self.is_regular_array
+    if self._rnn_data is not None: return self._rnn_data
     x, y = np.reshape(self.features, [1] + list(self.features.shape)), None
     if self.targets is not None:
       y = np.reshape(self.targets, [1] + list(self.targets.shape))

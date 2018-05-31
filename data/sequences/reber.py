@@ -2,11 +2,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from enum import Enum, unique
+import os
 import numpy as np
 import random
+from enum import Enum, unique
 
+from tframe import checker
 from tframe import console
+from tframe.data.dataset import DataSet
+from tframe.data.base_classes import DataAgent
 
 
 @unique
@@ -122,6 +126,52 @@ class ReberGrammar(object):
     return random.choice(cls.TRANSFER[stat])
 
   # endregion : Private Methods
+
+
+class ERG(DataAgent):
+  """Embedded Reber Grammar"""
+  DATA_NAME = 'EmbeddedReberGrammar'
+
+  @classmethod
+  def load(cls, data_dir, train_size=256, validate_size=0, test_size=256,
+           file_name=None, **kwargs):
+    # Load .tfd data
+    num = train_size + validate_size + test_size
+    data_set = cls.load_as_tframe_data(
+      data_dir, file_name=file_name, size=num, unique_=True)
+
+    return cls._split_and_return(data_set, train_size, validate_size, test_size)
+
+
+  @classmethod
+  def load_as_tframe_data(cls, data_dir, file_name=None, size=512,
+                          unique_=True):
+    # Check file_name
+    if file_name is None: file_name = cls._get_file_name(size, unique_)
+    data_path = os.path.join(data_dir, file_name)
+    if os.path.exists(data_path): return DataSet.load(data_path)
+    # If data does not exist, create a new one
+    console.show_status('Making data ...')
+    erg_list = ReberGrammar.make_strings(
+      size, unique_, embedded=True, verbose=True)
+
+    # Wrap erg into a DataSet
+    features = [erg.one_hot for erg in erg_list]
+    targets = [erg.transfer_prob for erg in erg_list]
+    data_set = DataSet(features, targets, {'erg_list': erg_list},
+                       name='Embedded Reber Grammar')
+    console.show_status('Saving data set ...')
+    data_set.save(data_path)
+    console.show_status('Data set saved to {}'.format(data_path))
+    return  data_set
+
+  @classmethod
+  def _get_file_name(cls, num, unique_):
+    checker.check_positive_integer(num)
+    checker.check_type(unique_, bool)
+    file_name = '{}_{}_{}.tfd'.format(
+      cls.DATA_NAME, num, 'U' if unique_ else 'NU')
+    return file_name
 
 
 if __name__ == '__main__':

@@ -163,11 +163,6 @@ class Trainer(object):
       num_steps = None
       if self.model.input_type is InputTypes.RNN_BATCH:
         num_steps = self.th.num_steps
-      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-      # self.training_set.set_batch_size(self.th.batch_size, num_steps)
-      # round_len = self.training_set.batches_per_epoch
-      # self.th.validate_cycle = round_len // self.th.validation_per_round
-      # ---------------------------------------------------------------------
       round_len = self.training_set.get_round_length(
         self.th.batch_size, num_steps)
       self.th.validate_cycle = round_len // self.th.validation_per_round

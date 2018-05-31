@@ -227,6 +227,7 @@ class Config(object):
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   num_blocks = Flag.integer(-1, 'Block number in model', is_key=None)
   input_shape = Flag.list([], 'Input shape of samples')
+  output_dim = Flag.integer(0, 'Output dimension of a model')
   num_classes = Flag.integer(-1, 'Class number for classification tasks')
   memory_depth = Flag.integer(1, 'Memory depth for system identification')
 

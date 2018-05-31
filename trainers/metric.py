@@ -125,7 +125,7 @@ class Metric(TensorSlot):
 
   # endregion : Public Methods
 
-  # region : Methods Overrode
+  # region : Methods Overrides
 
   def plug(self, op, as_loss=True, symbol='metric'):
     self._as_loss = as_loss
@@ -134,7 +134,7 @@ class Metric(TensorSlot):
     super().plug(op)
     self._init_tensors()
 
-  # endregion : Methods Overrode
+  # endregion : Methods Overrides
 
   # region : Private Methods
 
