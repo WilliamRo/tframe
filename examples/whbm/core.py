@@ -8,7 +8,7 @@ for _ in range(DIR_DEPTH + 1):
   sys.path.insert(0, ROOT)
 from tframe import console, SaveMode
 from tframe.trainers import SmartTrainerHub
-from data_utils import load_data
+from data_utils import load_data, evaluate
 from tframe import Predictor
 
 
@@ -41,9 +41,10 @@ def activate():
   if th.train:
     model.train(train_set, validation_set=val_set, trainer_hub=th)
   else:
-    model.evaluate_model(train_set)
-    model.evaluate_model(val_set)
-    model.evaluate_model(test_set)
+    model.launch_model(overwrite=False)
+    evaluate(model, train_set)
+    evaluate(model, val_set)
+    evaluate(model, test_set, plot=True)
 
   # End
   console.end()

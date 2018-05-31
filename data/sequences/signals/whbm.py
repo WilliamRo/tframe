@@ -76,6 +76,53 @@ class WHBM(DataAgent):
     # Return u, y, fs
     return signal, response
 
+  @staticmethod
+  def evaluate(f, data_set, plot=False):
+    if not callable(f): raise AssertionError('!! Input f must be callable')
+    checker.check_type(data_set, SignalSet)
+    assert isinstance(data_set, SignalSet)
+    if data_set.targets is None:
+      raise ValueError('!! Responses not found in SignalSet')
+    u, y = data_set.features, np.ravel(data_set.targets)
+    assert isinstance(y, Signal)
+    # Show status
+    console.show_status('Evaluating {} ...'.format(data_set.name))
+    # In evaluation, the sum of each metric is started at t = 1000 instead of
+    #  t = 0 to eliminate the influence of transient errors at the beginning of
+    #  the simulation
+    start_at = 1000
+    model_output = Signal(f(u), fs=y.fs)
+    delta = y - model_output
+    err = delta[start_at:]
+    assert isinstance(err, Signal)
+    ratio = lambda val: 100.0 * val / y.rms
+
+    # The mean value of the simulation error in time domain
+    val = err.average
+    console.supplement('E[err] = {:.4f}mV ({:.3f}%)'.format(
+      val * 1000, ratio(val)))
+    # The standard deviation of the error in time domain
+    val = float(np.std(err))
+    console.supplement('STD[err] = {:.4f}mV ({:.3f}%)'.format(
+      val * 1000, ratio(val)))
+    # The root mean square value of the error in time domain
+    val = err.rms
+    console.supplement('RMS[err] = {:.4f}mV ({:.3f}%)'.format(
+      val * 1000, ratio(val)))
+
+    # Plot
+    if not plot: return
+    from tframe.data.sequences.signals.figure import Figure, Subplot
+    fig = Figure('Simulation Error')
+    # Add ground truth
+    prefix = 'System Output, $||y|| = {:.4f}$'.format(y.norm)
+    fig.add(Subplot.PowerSpectrum(y, prefix=prefix))
+    # Add model output
+    prefix = 'Model Output, RMS($\Delta$) = ${:.4f}mV$'.format(1000 * err.rms)
+    fig.add(Subplot.PowerSpectrum(model_output, prefix=prefix, Error=delta))
+    # Plot
+    fig.plot()
+
 
 if __name__ == '__main__':
   data_dir = '../../../examples/whbm/data'

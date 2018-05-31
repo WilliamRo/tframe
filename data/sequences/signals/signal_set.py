@@ -101,7 +101,7 @@ class SignalSet(DataSet):
     self.features = features
     self.targets = None if targets_candidates is None else targets
     # Abandon data_dict
-    self.data_dict = {}
+    if memory_depth > 1: self.data_dict = {}
     # Check data
     self._check_data()
 

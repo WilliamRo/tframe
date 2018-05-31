@@ -55,7 +55,20 @@ class Predictor(Feedforward, Recurrent):
   # region : Build
 
   @with_graph
-  def _build(self, loss='cross_entropy', optimizer=None,
+  def build_as_regressor(
+      self, optimizer=None, loss='euclid',
+      metric='rms_ratio', metric_is_like_loss=True, metric_name='Err %'):
+    super().build(optimizer, loss=loss, metric=metric, metric_name=metric_name,
+                  metric_is_like_loss=metric_is_like_loss)
+
+  @with_graph
+  def build(self, optimizer=None, loss='euclid',
+             metric=None, metric_is_like_loss=True, metric_name='Metric'):
+    super().build(optimizer, loss=loss, metric=metric, metric_name=metric_name,
+                  metric_is_like_loss=metric_is_like_loss)
+
+  @with_graph
+  def _build(self, loss='euclid', optimizer=None,
              metric=None, metric_is_like_loss=True, metric_name='Metric'):
     # Call parent's build method
     # Usually output tensor has been plugged into Model._outputs slot

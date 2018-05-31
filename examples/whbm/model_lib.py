@@ -21,7 +21,8 @@ def mlp(th):
 
   # Build model
   optimizer=tf.train.AdamOptimizer(learning_rate=th.learning_rate)
-  model.build(optimizer=optimizer, loss='euclid')
+  model.build_as_regressor(optimizer)
+
 
   return model
 
