@@ -48,7 +48,7 @@ class Classifier(Predictor):
 
   def evaluate_model(self, data, export_false=False):
     # Sanity check
-    self._sanity_check_before_use(data)
+    data = self._sanity_check_before_use(data)
 
     if not self.metric.symbol == pedia.Accuracy:
       raise ValueError('!! metric must be accuracy')
@@ -78,7 +78,7 @@ class Classifier(Predictor):
 
   def classify(self, data):
     # Sanity check
-    self._sanity_check_before_use(data)
+    data = self._sanity_check_before_use(data)
 
     feed_dict = self._get_default_feed_dict(data, is_training=False)
     probabilities = self._probabilities.run(feed_dict=feed_dict)

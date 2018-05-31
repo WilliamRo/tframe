@@ -140,7 +140,8 @@ class Predictor(Feedforward, Recurrent):
 
   def predict(self, data, additional_fetches=None, **kwargs):
     # Sanity check
-    self._sanity_check_before_use(data)
+    data = self._sanity_check_before_use(data)
+    assert isinstance(data, DataSet)
 
     fetches = [self._outputs]
     if additional_fetches is not None:
@@ -150,7 +151,7 @@ class Predictor(Feedforward, Recurrent):
 
   def evaluate_model(self, data, **kwargs):
     # Sanity check
-    self._sanity_check_before_use(data)
+    data = self._sanity_check_before_use(data)
 
     # Check metric
     if self.metric is None:
@@ -179,6 +180,8 @@ class Predictor(Feedforward, Recurrent):
       raise TypeError('!! Input data must be an instance of TFData')
     if not self.built: raise ValueError('!! Model not built yet')
     if not self.launched: self.launch_model(overwrite=False)
+    if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_data
+    return data
 
   # endregion : Private Methods
 

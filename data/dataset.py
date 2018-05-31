@@ -41,6 +41,7 @@ class DataSet(TFRData):
     self.name = name
 
     self._stacked_data = None
+    self._rnn_data = None
 
     # Sanity checks
     self._check_data()
@@ -76,6 +77,16 @@ class DataSet(TFRData):
     except:
       print('!! failed to stack data')
       raise
+
+  @property
+  def as_rnn_data(self):
+    if self._rnn_data is not None: return self._rnn_data
+    assert self.is_regular_array
+    x, y = np.reshape(self.features, [1] + list(self.features.shape)), None
+    if self.targets is not None:
+      y = np.reshape(self.targets, [1] + list(self.targets.shape))
+    self._rnn_data = DataSet(features=x, targets=y)
+    return self._rnn_data
 
   # endregion : Properties
 

@@ -5,7 +5,7 @@ import model_lib as models
 
 
 def main(_):
-  console.start('Example task')
+  console.start('MLP task')
 
   # Configurations
   th = core.th

@@ -27,3 +27,5 @@ if __name__ == '__main__':
   assert isinstance(train_set, SignalSet)
   assert isinstance(test_set, SignalSet)
   train_set.plot(train_set)
+  test_set.plot(train_set)
+
