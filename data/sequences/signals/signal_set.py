@@ -9,6 +9,8 @@ from tframe import pedia
 from tframe.data.dataset import DataSet
 from tframe.data.sequences.signals.signal import Signal
 
+import tframe.utils.misc as misc
+
 
 class SignalSet(DataSet):
   """Container for signals. Signal data should only be stored in
@@ -94,6 +96,8 @@ class SignalSet(DataSet):
         if targets_key == pedia.responses:
           assert isinstance(target, Signal)
           target = target.causal_matrix(memory_depth=1)
+        elif targets_key == pedia.labels:
+          assert isinstance(target, np.ndarray)
         target = target[start_at:]
         # Append target to targets list
         targets.append(target)

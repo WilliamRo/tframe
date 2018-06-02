@@ -51,6 +51,7 @@ class DataSet(TFRData):
   @property
   def size(self):
     if self.features is None:
+      assert len(self.data_dict) > 0
       data_array = list(self.data_dict.values())[0]
       return len(data_array)
     else: return len(self.features)
@@ -104,6 +105,7 @@ class DataSet(TFRData):
       else: raise KeyError('!! Can not resolve "{}"'.format(item))
     # If item is index array
     features, targets, data_dict = None, None, {}
+    item = np.mod(item, self.size)
     if self.features is not None: features = self.features[item]
     if self.targets is not None: targets = self.targets[item]
     for key, val in self.data_dict.items():
@@ -131,14 +133,15 @@ class DataSet(TFRData):
     checker.check_positive_integer(batch_size, 'batch_size')
     if num_steps is None:
       # :: For feed-forward models
-      return self.stack.size // batch_size
+      return np.ceil(self.stack.size / batch_size)
     else:
       # :: For recurrent models
       checker.check_type(num_steps, int)
       arrays = [self.features] if self.is_regular_array else self.features
       if num_steps < 0: return len(arrays)
       else:
-        return sum([len(array) // batch_size // num_steps for array in arrays])
+        return sum([np.ceil(len(array) // batch_size / num_steps)
+                    for array in arrays])
 
   def gen_batches(self, batch_size, shuffle=False):
     """ Generate batches of data
@@ -156,9 +159,9 @@ class DataSet(TFRData):
     for i in range(round_len):
       yield self.stack[
         np.random.randint(self.size, size=(batch_size,)) if shuffle
-        else range(i * batch_size, (i + 1) * batch_size)]
+        else range(i * batch_size, min((i + 1) * batch_size), self.size)]
 
-  def gen_rnn_batches(self, batch_size=1, num_steps=None, shuffle=False):
+  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     """ Generate data batches with steps
     (1) When data is a regular numpy array:
         The whole data will be regarded as a single sequence and will be
@@ -166,6 +169,8 @@ class DataSet(TFRData):
         with the specified size
     (2) When data is a list of sequences:
         rnn batches will be generated sequence by sequence
+
+    The default parameters are for batch validation
 
     :param batch_size: Batch size
     :param num_steps: Step number
@@ -306,11 +311,12 @@ class DataSet(TFRData):
       assert L == Ly
     # Chop data further
     if num_steps < 0: num_steps = L
-    round_len = L // num_steps
+    round_len = np.ceil(L / num_steps)
     for i in range(round_len):
-      batch_x = data_x[:, i * num_steps:(i + 1) * num_steps]
+      batch_x = data_x[:, i * num_steps:min((i + 1) * num_steps, L)]
       batch_y = None
-      if y is not None: batch_y = data_y[:, i * num_steps:(i + 1) * num_steps]
+      if y is not None:
+        batch_y = data_y[:, i * num_steps:min((i + 1) * num_steps, L)]
       yield DataSet(batch_x, batch_y)
 
   def _get_batch_partition(self, array, batch_size):

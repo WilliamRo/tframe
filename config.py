@@ -221,6 +221,7 @@ class Config(object):
   output_gate = Flag.boolean(True, 'Whether to use output gate in LSTM',
                              is_key=None)
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
+  val_batch_size = Flag.integer(None, 'Batch size in batch validation')
   with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
                                 is_key=None)
   neurons_per_unit = Flag.integer(3, '...', is_key=None)
@@ -230,6 +231,7 @@ class Config(object):
   output_dim = Flag.integer(0, 'Output dimension of a model')
   num_classes = Flag.integer(-1, 'Class number for classification tasks')
   memory_depth = Flag.integer(1, 'Memory depth for system identification')
+  loss_function = Flag.whatever('cross_entropy', 'Loss function')
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '

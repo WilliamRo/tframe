@@ -5,7 +5,7 @@ import model_lib as models
 
 
 def main(_):
-  console.start('MLP task')
+  console.start('MNIST Classification task (MLP)')
 
   # Configurations
   th = core.th
@@ -27,7 +27,7 @@ def main(_):
   th.lr_decay = 0.6
 
   th.save_model = True
-  th.overwrite = True
+  th.overwrite = False
   th.export_note = True
   th.summary = True
   th.monitor = False

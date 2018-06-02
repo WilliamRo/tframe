@@ -44,11 +44,13 @@ class Recurrent(Model, RNet):
     # Make sure input has been defined
     if self.input_ is None: raise ValueError('!! input not found')
     assert isinstance(self.input_, Input)
+    # Input placeholder has a shape of [batch_size, num_steps, *sample_shape]
     self.input_.set_group_shape((None, None))
     # Transpose input so as to fit the input of tf.scan
     input_placeholder = self.input_()
     assert isinstance(input_placeholder, tf.Tensor)
     perm = list(range(len(input_placeholder.shape.as_list())))
+    # elems.shape = [num_steps, batch_size, *sample_shape]
     elems = tf.transpose(input_placeholder, [1, 0] + perm[2:])
     # Call scan to produce a dynamic op
     scan_outputs, state_sequences = tf.scan(
@@ -60,6 +62,7 @@ class Recurrent(Model, RNet):
     # Transpose scan outputs to get final outputs
     assert isinstance(scan_outputs, tf.Tensor)
     perm = list(range(len(scan_outputs.shape.as_list())))
+    #  Output has a shape of [batch_size, num_steps, *output_shape]
     self.outputs.plug(tf.transpose(scan_outputs, [1, 0] + perm[2:]))
 
   @staticmethod

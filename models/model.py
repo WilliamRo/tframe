@@ -8,6 +8,7 @@ import numpy as np
 import tframe as tfr
 from tframe import DataSet
 from tframe import hub
+from tframe import checker
 from tframe import console
 from tframe import pedia
 
@@ -15,13 +16,16 @@ from tframe.enums import InputTypes
 from tframe.core import with_graph
 from tframe.core import Agent
 from tframe.core import TensorSlot, NestedTensorSlot
-from tframe.core import SummarySlot, OperationSlot
+from tframe.core import SummarySlot, OperationSlot, IndependentSummarySlot
 from tframe.core import Group
 
 from tframe.trainers.metric import Metric
 from tframe.trainers.scheme import TrainScheme
 from tframe.trainers.trainer import Trainer, TrainerHub
 from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
+
+from tframe.data.base_classes import TFRData
+from tframe.data.bigdata import BigData
 
 
 class Model(object):
@@ -43,6 +47,7 @@ class Model(object):
 
     self._metric = Metric(self, 'metric')
     self._validation_summary = SummarySlot(self)
+    self._batch_val_summ = IndependentSummarySlot(self, 'batch_metric_summ')
     self._validate_group = Group(
       self, self._metric, self._validation_summary, name='Validate-group')
 
@@ -211,10 +216,55 @@ class Model(object):
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
     return self._update_group.run(feed_dict)
 
-  def validate_model(self, validation_set, **kwargs):
-    assert isinstance(validation_set, DataSet)
-    feed_dict = self._get_default_feed_dict(validation_set, is_training=False)
-    return self._validate_group.run(feed_dict)
+  def get_data_batches(self, data_set, batch_size, num_steps=None,
+                       shuffle=False):
+    """ Get batch generator.
+    :param data_set: an instance of DataSet or BigData from which data batches
+                      will be extracted
+    :param batch_size: if is None, default value will be assigned according to
+                        the input type of this model
+    :param num_steps: step number for RNN data batches
+    :param shuffle: whether to shuffle
+    :return: a generator or a list
+    """
+    # Data set must be an instance of DataSet or BigData
+    assert isinstance(data_set, (DataSet, BigData))
+    if self.input_type is InputTypes.BATCH:
+      # If model's input type is normal batch, num_steps will be ignored
+      # If batch size is not specified and data is a DataSet, feed it all at
+      #  once into model
+      if batch_size is None and isinstance(data_set, DataSet):
+        return [data_set.stack]
+      checker.check_positive_integer(batch_size)
+      data_batches = data_set.gen_batches(batch_size, shuffle=shuffle)
+    elif self.input_type is InputTypes.RNN_BATCH:
+      if batch_size is None: batch_size = 1
+      if num_steps is None: num_steps = -1
+      checker.check_positive_integer(batch_size)
+      checker.check_type(num_steps, int)
+      data_batches = data_set.gen_rnn_batches(batch_size, num_steps, shuffle)
+    else: raise ValueError('!! Can not resolve input type of this model')
+    return data_batches
+
+  def validate_model(self, data, batch_size=None, allow_sum=False):
+    """Validate model. If data provided is not regular, batch validation will
+       be used. For RNN model, batch validation requires batch size to be 1."""
+    assert isinstance(data, TFRData)
+    if not data.is_regular_array and batch_size is None: batch_size = 1
+    # Normal validation
+    if batch_size is None:
+      data = self._sanity_check_before_use(data)
+      feed_dict = self._get_default_feed_dict(data, is_training=False)
+      return self._validate_group.run(feed_dict, allow_sum=allow_sum)
+    # Batch validation: Calculate metric one by one
+    metric_list = []
+    for batch in self.get_data_batches(data, batch_size, -1, False):
+      feed_dict = self._get_default_feed_dict(batch, is_training=False)
+      metric_list.append(self._metric.run(feed_dict))
+    # Return metric mean
+    metric_mean = np.mean(metric_list)
+    if allow_sum: self._batch_val_summ.write(metric_mean)
+    return {self._metric: metric_mean}
 
   def take_down_metric(self):
     if not self.metric.activated: return
@@ -291,6 +341,14 @@ class Model(object):
     feed_dict.update(self.agent.get_status_feed_dict(is_training))
 
     return feed_dict
+
+  def _sanity_check_before_use(self, data):
+    if not isinstance(data, DataSet):
+      raise TypeError('!! Input data must be an instance of TFData')
+    if not self.built: raise ValueError('!! Model not built yet')
+    if not self.launched: self.launch_model(overwrite=False)
+    if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_data
+    return data
 
   # endregion : Private Methods
 

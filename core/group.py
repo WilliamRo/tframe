@@ -28,12 +28,12 @@ class Group(object):
 
   # region : Public Methods
 
-  def run(self, feed_dict=None):
+  def run(self, feed_dict=None, allow_sum=True):
     """Run group in session. Slots except SummarySlot should be activated"""
     fetches = []
     for slot in self._slots:
       if isinstance(slot, SummarySlot) and (
-          not slot.activated or not hub.summary): continue
+          not slot.activated or not hub.summary or not allow_sum): continue
       # if not slot.activated:
       #   raise AssertionError('!! {} must be activated'.format(slot.name))
       if slot.activated and not slot.sleep: fetches.append(slot)

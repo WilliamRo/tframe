@@ -18,13 +18,17 @@ class TFRData(object):
   def size(self):
     raise NotImplementedError
 
+  @property
+  def is_regular_array(self):
+    raise NotImplementedError
+
   def get_round_length(self, batch_size, num_steps=None):
     raise NotImplementedError
 
   def gen_batches(self, batch_size, shuffle=False):
     raise NotImplementedError
 
-  def gen_rnn_batches(self, batch_size=1, num_steps=None, shuffle=False):
+  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     raise NotImplementedError
 
 

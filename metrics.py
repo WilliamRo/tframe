@@ -27,6 +27,27 @@ def accuracy(labels, outputs):
   return tf.reduce_mean(tf.cast(correct_prediction, tf.float32),
                          name='accuracy')
 
+
+def generalized_accuracy(truth, output):
+  """This metric is first designed for ERG data set, for whom models are
+     built always have outputs with shape [1, string_len, symbol_number]"""
+  # Sanity check
+  assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  truth_shape = truth.shape.as_list()
+  output_shape = output.shape.as_list()
+  # Assert batch size is 1
+  assert truth_shape[0] == output_shape[0] == 1
+  assert len(truth_shape) == len(output_shape) == 3
+  truth = tf.reshape(truth, truth_shape[1:])
+  output = tf.reshape(output, output_shape[1:])
+  # Compare distribution
+  tf_sort = lambda val: tf.contrib.framework.sort(
+    val, axis=1, direction='DESCENDING')
+  alpha = tf.reduce_sum(tf.multiply(truth, output), axis=1)
+  beta = tf.reduce_sum(tf.multiply(tf_sort(truth), tf_sort(output)), axis=1)
+  return tf.equal(alpha, beta)
+
+
 def delta(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
   if tfr.hub.val_preheat > 0:

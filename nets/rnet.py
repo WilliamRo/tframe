@@ -76,7 +76,9 @@ class RNet(Net):
       # The assertion below is not held by rnn_cells
       assert isinstance(pre_states, (tuple, list))
       assert len(pre_states) == self.rnn_cell_num
-    else: pre_states = None
+    else:
+      pre_states = None
+      raise ValueError('!! pre_outputs can not be None')  # TODO
     assert isinstance(input_, tf.Tensor)
 
     # Link

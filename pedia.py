@@ -20,6 +20,7 @@ Generator = 'Generator'
 
 keep_prob = 'keep_prob'
 
+labels = 'labels'
 linear = 'linear'
 
 train_step_summaries = 'train_step_summaries '
@@ -32,6 +33,7 @@ prod = 'prod'
 pre_activation = 'pre_activation'
 post_activation = 'post_activation'
 
+invisible = 'do_not_show'
 is_training = 'is_training'
 
 sampling_frequency = 'sampling_frequency'

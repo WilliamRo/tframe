@@ -2,8 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
+from tframe.models.model import Model
 from tframe.models.feedforward import Feedforward
 from tframe.models.recurrent import Recurrent
 
@@ -19,6 +21,7 @@ from tframe.core import with_graph
 from tframe.core import TensorSlot
 
 from tframe.trainers import TrainerHub
+from tframe.data.base_classes import TFRData
 
 
 class Predictor(Feedforward, Recurrent):
@@ -58,18 +61,20 @@ class Predictor(Feedforward, Recurrent):
   def build_as_regressor(
       self, optimizer=None, loss='euclid',
       metric='rms_ratio', metric_is_like_loss=True, metric_name='Err %'):
-    super().build(optimizer, loss=loss, metric=metric, metric_name=metric_name,
-                  metric_is_like_loss=metric_is_like_loss)
+    self.build(
+      optimizer=optimizer, loss=loss, metric=metric, metric_name=metric_name,
+      metric_is_like_loss=metric_is_like_loss)
 
   @with_graph
-  def build(self, optimizer=None, loss='euclid',
-             metric=None, metric_is_like_loss=True, metric_name='Metric'):
-    super().build(optimizer, loss=loss, metric=metric, metric_name=metric_name,
-                  metric_is_like_loss=metric_is_like_loss)
+  def build(self, optimizer=None, loss='euclid', metric=None,
+            metric_is_like_loss=True, metric_name='Metric', **kwargs):
+    Model.build(
+      self, optimizer=optimizer, loss=loss, metric=metric,
+      metric_name=metric_name, metric_is_like_loss=metric_is_like_loss)
 
-  @with_graph
-  def _build(self, loss='euclid', optimizer=None,
-             metric=None, metric_is_like_loss=True, metric_name='Metric'):
+  def _build(self, optimizer=None, loss='euclid',
+             metric=None, metric_is_like_loss=True, metric_name='Metric',
+             **kwargs):
     # Call parent's build method
     # Usually output tensor has been plugged into Model._outputs slot
     self.master._build(self)
@@ -138,30 +143,21 @@ class Predictor(Feedforward, Recurrent):
 
   # region : Public Methods
 
-  def predict(self, data, additional_fetches=None, **kwargs):
-    # Sanity check
-    data = self._sanity_check_before_use(data)
-    assert isinstance(data, DataSet)
+  def predict(self, data, batch_size=None, extractor=None, **kwargs):
+    outputs = []
+    for batch in self.get_data_batches(data, batch_size):
+      feed_dict = self._get_default_feed_dict(batch, is_training=False)
+      output = self._outputs.run(feed_dict)
+      if extractor is not None: output = extractor(output)
+      outputs.append(output)
+    return np.concatenate(outputs)
 
-    fetches = [self._outputs]
-    if additional_fetches is not None:
-      fetches += list(additional_fetches)
-    feed_dict = self._get_default_feed_dict(data, is_training=False)
-    return self._outputs.run(fetches, feed_dict=feed_dict)
-
-  def evaluate_model(self, data, **kwargs):
-    # Sanity check
-    data = self._sanity_check_before_use(data)
-
+  def evaluate_model(self, data, batch_size=None, **kwargs):
     # Check metric
-    if self.metric is None:
-      raise AssertionError('!! Failed to evaluate due to missing metric')
-
+    if not self.metric.activated: raise AssertionError('!! Metric not defined')
     # Show status
     console.show_status('Evaluating {}'.format(data.name))
-    # Get result
-    feed_dict = self._get_default_feed_dict(data, False)
-    result = self.metric.fetch(feed_dict)
+    result = self.validate_model(data, batch_size, allow_sum=False)[self.metric]
     console.supplement('{} = {:.3f}'.format(self.metric.symbol, result))
 
   # endregion : Public Methods
@@ -174,14 +170,6 @@ class Predictor(Feedforward, Recurrent):
       batch_size = None if is_training else 1
       feed_dict.update(self._get_state_dict(batch_size=batch_size))
     return feed_dict
-
-  def _sanity_check_before_use(self, data):
-    if not isinstance(data, DataSet):
-      raise TypeError('!! Input data must be an instance of TFData')
-    if not self.built: raise ValueError('!! Model not built yet')
-    if not self.launched: self.launch_model(overwrite=False)
-    if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_data
-    return data
 
   # endregion : Private Methods
 

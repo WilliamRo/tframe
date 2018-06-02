@@ -7,14 +7,15 @@ import tensorflow as tf
 
 from tframe import hub
 from tframe import pedia
+from tframe import InputTypes
 
 from tframe.core.decorators import with_graph
 from tframe.core import TensorSlot, Group
 from tframe.layers import Activation
 from tframe.models.sl.predictor import Predictor
 from tframe.utils import console
-# from tframe.utils.tfdata import TFData
 from tframe import DataSet
+from tframe.data.base_classes import TFRData
 import tframe.utils.misc as misc
 
 from tframe.models.feedforward import Feedforward
@@ -29,67 +30,74 @@ class Classifier(Predictor):
                                    name='evaluation group')
 
   @with_graph
-  def _build(self, loss='cross_entropy', optimizer=None, *args):
+  def build(self, optimizer=None, metric='accuracy', **kwargs):
+    Predictor.build(self, optimizer=optimizer, loss='cross_entropy',
+                    metric=metric, metric_is_like_loss=False,
+                    metric_name='Accuracy')
+
+
+  def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise
     hub.block_validation = True
+    # If last layer is not softmax layer, add it to model
+    if not (isinstance(self.last_function, Activation)
+            and self.last_function.abbreviation == 'softmax'):
+      self.add(Activation('softmax'))
     # Call parent's method to build using the default loss function
     #  -- cross entropy
-    Predictor._build(self, loss, optimizer, metric='accuracy',
-                     metric_name=pedia.Accuracy, metric_is_like_loss=False)
+    Predictor._build(self, optimize=optimizer, metric=metric, **kwargs)
     assert self.outputs.activated
-
     # Plug tensor into probabilities slot
-    output_tensor = self.outputs.tensor
-    if not (isinstance(self.last_function, Activation)
-        and self.last_function.abbreviation == 'softmax'):
-      output_tensor = tf.nn.softmax(output_tensor, name='probabilities')
-    self._probabilities.plug(output_tensor)
+    self._probabilities.plug(self.outputs.tensor)
 
 
-  def evaluate_model(self, data, export_false=False):
-    # Sanity check
-    data = self._sanity_check_before_use(data)
+  def evaluate_model(self, data, batch_size=None, extractor=None,
+                     export_false=False, **kwargs):
+    # Feed data set into model and get results
+    false_sample_list = []
+    false_label_list = []
+    true_label_list = []
+    num_samples = 0
+    for batch in self.get_data_batches(data, batch_size):
+      assert isinstance(batch, DataSet) and batch.targets is not None
+      num_samples += len(data.targets)
+      # Get predictions
+      preds = self._classify_batch(batch, extractor)
+      # Select false samples
+      true_labels = misc.convert_to_dense_labels(data.targets)
+      if len(true_labels) < len(preds):
+        true_labels = np.concatenate((true_labels,) * len(preds))
+      false_indices = np.argwhere(preds != true_labels).squeeze()
+      false_sample_list.append(batch.features[false_indices])
+      false_label_list.append(preds[false_indices])
+      true_label_list.append(true_labels[false_indices])
 
-    if not self.metric.symbol == pedia.Accuracy:
-      raise ValueError('!! metric must be accuracy')
+    # Show accuracy
+    accuracy = (num_samples - len(false_sample_list)) / num_samples * 100
+    console.supplement('Accuracy on {} is {:.2f}%'.format(data.name, accuracy))
 
-    # Run group
-    feed_dict = self._get_default_feed_dict(data, False)
-    result_dict = self._evaluation_group.run(feed_dict=feed_dict)
-    probabilities = result_dict[self._probabilities]
-    accuracy = result_dict[self._metric] * 100
-
-    console.show_status(
-      'Accuracy on {} is {:.2f}%'.format(data.name, accuracy),
-      symbol='[Evaluation]')
-
+    # Try to export false samples
     if export_false:
-      assert isinstance(data, DataSet) and data.targets is not None
-      predictions = misc.convert_to_dense_labels(probabilities)
-      data.data_dict[pedia.predictions] = predictions
-      labels = misc.convert_to_dense_labels(data.targets)
-      false_indices = [i for i in range(data.size)
-                      if predictions[i] != labels[i]]
-
+      false_set = DataSet(features=np.concatenate(false_sample_list),
+                          targets=np.concatenate(true_label_list))
+      false_set.data_dict[pedia.predictions] = np.concatenate(false_label_list)
       from tframe.data.images.image_viewer import ImageViewer
-      vr = ImageViewer(data[false_indices])
+      vr = ImageViewer(false_set)
       vr.show()
 
 
-  def classify(self, data):
-    # Sanity check
-    data = self._sanity_check_before_use(data)
-
-    feed_dict = self._get_default_feed_dict(data, is_training=False)
-    probabilities = self._probabilities.run(feed_dict=feed_dict)
-
-    return misc.convert_to_dense_labels(probabilities)
+  def classify(self, data, batch_size=None, extractor=None):
+    predictions = []
+    for batch in self.get_data_batches(data, batch_size):
+      preds = self._classify_batch(batch, extractor)
+      predictions.append(preds)
+    return np.concatenate(predictions)
 
 
-
-
-
-
-
-
-
+  def _classify_batch(self, batch, extractor):
+    assert isinstance(batch, DataSet) and batch.features is not None
+    feed_dict = self._get_default_feed_dict(batch, is_training=False)
+    probs = self._probabilities.run(feed_dict)
+    preds = misc.convert_to_dense_labels(probs)
+    if extractor is not None: preds = extractor(preds)
+    return preds

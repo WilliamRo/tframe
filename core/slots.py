@@ -49,7 +49,11 @@ class Slot(object):
       raise TypeError('!! op should be in {}'.format(self.op_classes))
     self._op = op
 
-  def run(self, fetches=None, feed_dict=None):
+  def run(self, feed_dict=None):
+    return self._model.session.run(self._op, feed_dict=feed_dict)
+
+  # TODO: when everything is settled, remove this method
+  def run_(self, fetches=None, feed_dict=None):
     if not self.activated:
       raise AssertionError('!! This slot is not activated')
 
@@ -141,6 +145,20 @@ class SummarySlot(Slot):
   @property
   def summary(self):
     return self._op
+
+
+class IndependentSummarySlot(SummarySlot):
+  def __init__(self, model, name='batch_summary'):
+    super().__init__(model, name)
+    # Attributes
+    self._mascot = tf.placeholder(dtype=tf.float32, shape=[1])
+    self._op = tf.summary.scalar(
+      self.name, self._mascot, collections=[tfr.pedia.invisible])
+
+  def write(self, val):
+    assert self.activated
+    summ = self._model.session.run(self.summary, feed_dict={self._mascot: val})
+    self._model.agent.write_summary(summ)
 
 
 class OperationSlot(Slot):

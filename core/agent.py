@@ -165,6 +165,7 @@ class Agent(object):
         assert tfr.trainer is not None
         step = int(tfr.trainer.total_rounds * 1000)
       else: step = self._model.counter
+    assert isinstance(self._summary_writer, tf.summary.FileWriter)
     self._summary_writer.add_summary(summary, step)
 
   def take_notes(self, content, date_time=True, prompt=None):

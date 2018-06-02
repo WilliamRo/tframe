@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import six
 import tensorflow as tf
 
 from tframe.core import Function
@@ -196,9 +195,12 @@ class Net(Function):
   # region : Public Methods
 
   def add_to_last_net(self, layer):
+    from tframe.nets.rnet import RNet
+
     if len(self.children) == 0:
       raise AssertionError('!! This net does not have children')
     last_net = self.children[-1]
+    if isinstance(last_net, RNet): last_net = self._add_new_subnet(layer)
     assert isinstance(last_net, Net)
     last_net.add(layer)
     return last_net
@@ -230,7 +232,8 @@ class Net(Function):
       return self._save_add(f)
     elif isinstance(f, Layer):
       # If layer is a nucleus or the 1st layer added into this Net
-      if f.is_nucleus or len(self.children) == 0: self._wrap_and_add(f)
+      if f.is_nucleus or len(self.children) == 0:
+        self._add_new_subnet(f)
       # Otherwise add this layer to last Net of self.children
       return self.add_to_last_net(f)
     else: raise ValueError(
@@ -253,15 +256,15 @@ class Net(Function):
     self.children.append(f)
     return net
 
-  def _wrap_and_add(self, layer):
+  def _add_new_subnet(self, layer):
     # Input f should be a layer
     assert isinstance(layer, Layer)
     # Specify the name of the Net
-    if not layer.is_nucleus: name = 'Preprocess'
+    if len(self.children) == 0: name = 'Preprocess'
     else: name = self._get_new_name(layer.abbreviation)
 
     # Wrap the layer into a new Net
-    self.add(Net(name, level=self._level + 1))
+    return self.add(Net(name, level=self._level + 1))
 
   def _get_new_name(self, entity):
     if isinstance(entity, Net): name = entity.group_name

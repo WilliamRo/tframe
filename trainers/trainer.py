@@ -94,6 +94,7 @@ class Trainer(object):
   @property
   def total_rounds(self):
     # TODO: Batch size must be kept the same among different trials
+    assert self.th.round_length is not None
     return self.counter / self.th.round_length
 
   @property
@@ -167,7 +168,6 @@ class Trainer(object):
         self.th.batch_size, num_steps)
       self.th.validate_cycle = round_len // self.th.validation_per_round
       self.th.round_length = round_len
-      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -298,16 +298,8 @@ class Trainer(object):
     return f
 
   def _gen_batches(self):
-    if self.model.input_type is InputTypes.BATCH:
-      batches = self.training_set.gen_batches(
-        self.th.batch_size, self.th.shuffle)
-    elif self.model.input_type is InputTypes.RNN_BATCH:
-      if self.th.num_steps is None: self.th.num_steps = -1
-      batches = self.training_set.gen_rnn_batches(
-        self.th.batch_size, self.th.num_steps, shuffle=self.th.shuffle)
-    else:
-      raise TypeError('!! Unknown input type {}'.format(self.model.input_type))
-    return batches
+    return self.model.get_data_batches(
+      self.training_set, self.th.batch_size, self.th.num_steps, self.th.shuffle)
 
   def _advanced_strategy(self, rnd):
     """Should be overridden"""
@@ -352,10 +344,8 @@ class Trainer(object):
     if np.mod(self.counter, self.th.validate_cycle) != 0: return False
 
     # Get metric
-    val_set = self.validation_set
-    if self.model.input_type is InputTypes.RNN_BATCH:
-      val_set = val_set.as_rnn_data
-    metric_dict = self.model.validate_model(val_set)
+    metric_dict = self.model.validate_model(
+      self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary)
     new_record = None
     content = ''
     attachments = []

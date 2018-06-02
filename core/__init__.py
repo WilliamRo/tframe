@@ -6,4 +6,5 @@ from .function import Function
 
 from .slots import Slot, TensorSlot, NestedTensorSlot
 from .slots import SummarySlot, OperationSlot, VariableSlot
+from .slots import IndependentSummarySlot
 from .group import Group

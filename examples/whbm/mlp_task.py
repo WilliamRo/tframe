@@ -29,7 +29,7 @@ def main(_):
   th.lr_decay = 0.5
 
   th.save_model = True
-  th.overwrite = True
+  th.overwrite = False
   th.export_note = True
   th.summary = True
   th.monitor = False
