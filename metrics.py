@@ -72,6 +72,12 @@ def rms_error_ratio(truth, output):
   return rms(truth - output) / rms(truth) * 100
 
 
+def rms_error_in_mv(truth, output):
+  assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  rms = lambda x: tf.sqrt(tf.reduce_mean(tf.square(x)))
+  return 1000 * rms(truth - output)
+
+
 def get(identifier):
   if callable(identifier):
     return identifier
@@ -85,6 +91,8 @@ def get(identifier):
       f = norm_error_ratio
     elif identifier in ['rms_ratio']:
       f = rms_error_ratio
+    elif identifier in ['rms_mv']:
+      f = rms_error_in_mv
     else:
       raise ValueError('Can not resolve "{}"'.format(identifier))
     return f

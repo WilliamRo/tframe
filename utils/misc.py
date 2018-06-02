@@ -62,6 +62,6 @@ def convert_to_dense_labels(one_hot):
   assert isinstance(one_hot, np.ndarray)
   if len(one_hot.shape) == 1: return one_hot
   assert len(one_hot.shape) == 2
-  return np.argmax(one_hot, axis=1).squeeze()
+  return np.argmax(one_hot, axis=1)
 
 

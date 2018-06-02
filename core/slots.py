@@ -187,4 +187,4 @@ class VariableSlot(TensorSlot):
     return self.fetch() == self._null_value
 
   def assign(self, value):
-    self.run(tf.assign(self._op, value))
+    self._model.session.run(tf.assign(self._op, value))

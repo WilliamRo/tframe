@@ -5,7 +5,7 @@ import model_lib as models
 
 
 def main(_):
-  console.start('MLP task')
+  console.start('WHBM task (MLP model)')
 
   # Configurations
   th = core.th
@@ -29,7 +29,7 @@ def main(_):
   th.lr_decay = 0.5
 
   th.save_model = True
-  th.overwrite = False
+  th.overwrite = True
   th.export_note = True
   th.summary = True
   th.monitor = False

@@ -17,7 +17,7 @@ def main(_):
   th.epoch = 50
   th.learning_rate = 1e-4
   th.batch_size = 64
-  th.validation_per_round = 2
+  th.validation_per_round = 5
   th.print_cycle = 20
   th.shuffle = True
 

@@ -14,7 +14,7 @@ from tframe.data.base_classes import TFRData
 class DataSet(TFRData):
   """"""
   def __init__(self, features=None, targets=None, data_dict=None,
-               name='dataset1', **kwargs):
+               name='dataset1', in_rnn_format=False, **kwargs):
     """
     A DataSet usually holds a regular numpy array or a list of irregular
     numpy arrays as features (or targets). Raw data or other adjoint data
@@ -38,6 +38,7 @@ class DataSet(TFRData):
     self.targets = targets
     self.data_dict = {} if data_dict is None else data_dict
     self.properties = kwargs
+    self.in_rnn_format = in_rnn_format
     self.name = name
 
     self._stacked_data = None
@@ -82,11 +83,12 @@ class DataSet(TFRData):
   @property
   def as_rnn_data(self):
     assert self.is_regular_array
+    if self.in_rnn_format: return self
     if self._rnn_data is not None: return self._rnn_data
     x, y = np.reshape(self.features, [1] + list(self.features.shape)), None
     if self.targets is not None:
       y = np.reshape(self.targets, [1] + list(self.targets.shape))
-    self._rnn_data = DataSet(features=x, targets=y)
+    self._rnn_data = DataSet(features=x, targets=y, in_rnn_format=True)
     return self._rnn_data
 
   # endregion : Properties
@@ -105,7 +107,7 @@ class DataSet(TFRData):
       else: raise KeyError('!! Can not resolve "{}"'.format(item))
     # If item is index array
     features, targets, data_dict = None, None, {}
-    item = np.mod(item, self.size)
+    # item = np.mod(item, self.size)
     if self.features is not None: features = self.features[item]
     if self.targets is not None: targets = self.targets[item]
     for key, val in self.data_dict.items():
@@ -133,15 +135,15 @@ class DataSet(TFRData):
     checker.check_positive_integer(batch_size, 'batch_size')
     if num_steps is None:
       # :: For feed-forward models
-      return np.ceil(self.stack.size / batch_size)
+      return int(np.ceil(self.stack.size / batch_size))
     else:
       # :: For recurrent models
       checker.check_type(num_steps, int)
       arrays = [self.features] if self.is_regular_array else self.features
       if num_steps < 0: return len(arrays)
       else:
-        return sum([np.ceil(len(array) // batch_size / num_steps)
-                    for array in arrays])
+        return int(sum([np.ceil(len(array) // batch_size / num_steps)
+                        for array in arrays]))
 
   def gen_batches(self, batch_size, shuffle=False):
     """ Generate batches of data
@@ -159,7 +161,7 @@ class DataSet(TFRData):
     for i in range(round_len):
       yield self.stack[
         np.random.randint(self.size, size=(batch_size,)) if shuffle
-        else range(i * batch_size, min((i + 1) * batch_size), self.size)]
+        else range(i * batch_size, min((i + 1) * batch_size, self.size))]
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     """ Generate data batches with steps
@@ -311,13 +313,13 @@ class DataSet(TFRData):
       assert L == Ly
     # Chop data further
     if num_steps < 0: num_steps = L
-    round_len = np.ceil(L / num_steps)
+    round_len = int(np.ceil(L / num_steps))
     for i in range(round_len):
       batch_x = data_x[:, i * num_steps:min((i + 1) * num_steps, L)]
       batch_y = None
       if y is not None:
         batch_y = data_y[:, i * num_steps:min((i + 1) * num_steps, L)]
-      yield DataSet(batch_x, batch_y)
+      yield DataSet(batch_x, batch_y, in_rnn_format=True)
 
   def _get_batch_partition(self, array, batch_size):
     assert isinstance(array, np.ndarray)

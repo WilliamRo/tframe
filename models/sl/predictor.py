@@ -146,6 +146,7 @@ class Predictor(Feedforward, Recurrent):
   def predict(self, data, batch_size=None, extractor=None, **kwargs):
     outputs = []
     for batch in self.get_data_batches(data, batch_size):
+      batch = self._sanity_check_before_use(batch)
       feed_dict = self._get_default_feed_dict(batch, is_training=False)
       output = self._outputs.run(feed_dict)
       if extractor is not None: output = extractor(output)
@@ -156,7 +157,7 @@ class Predictor(Feedforward, Recurrent):
     # Check metric
     if not self.metric.activated: raise AssertionError('!! Metric not defined')
     # Show status
-    console.show_status('Evaluating {}'.format(data.name))
+    console.show_status('Evaluating {} ...'.format(data.name))
     result = self.validate_model(data, batch_size, allow_sum=False)[self.metric]
     console.supplement('{} = {:.3f}'.format(self.metric.symbol, result))
 
@@ -167,7 +168,7 @@ class Predictor(Feedforward, Recurrent):
   def _get_default_feed_dict(self, batch, is_training):
     feed_dict = Feedforward._get_default_feed_dict(self, batch, is_training)
     if self.master is Recurrent:
-      batch_size = None if is_training else 1
+      batch_size = None if is_training else batch.size
       feed_dict.update(self._get_state_dict(batch_size=batch_size))
     return feed_dict
 

@@ -60,27 +60,35 @@ class Classifier(Predictor):
     num_samples = 0
     for batch in self.get_data_batches(data, batch_size):
       assert isinstance(batch, DataSet) and batch.targets is not None
-      num_samples += len(data.targets)
+      num_samples += len(batch.targets)
       # Get predictions
       preds = self._classify_batch(batch, extractor)
-      # Select false samples
-      true_labels = misc.convert_to_dense_labels(data.targets)
+      # Get true labels in dense format
+      true_labels = misc.convert_to_dense_labels(batch.targets)
       if len(true_labels) < len(preds):
+        assert len(true_labels) == 1
         true_labels = np.concatenate((true_labels,) * len(preds))
-      false_indices = np.argwhere(preds != true_labels).squeeze()
+      # Select false samples
+      false_indices = np.argwhere(preds != true_labels)
+      if false_indices.size == 0: continue
+      false_indices = np.reshape(false_indices, false_indices.size)
       false_sample_list.append(batch.features[false_indices])
       false_label_list.append(preds[false_indices])
       true_label_list.append(true_labels[false_indices])
+    # Concatenate
+    if len(false_sample_list) > 0:
+      false_sample_list = np.concatenate(false_sample_list)
+      false_label_list = np.concatenate(false_label_list)
+      true_label_list = np.concatenate(true_label_list)
 
     # Show accuracy
     accuracy = (num_samples - len(false_sample_list)) / num_samples * 100
     console.supplement('Accuracy on {} is {:.2f}%'.format(data.name, accuracy))
 
     # Try to export false samples
-    if export_false:
-      false_set = DataSet(features=np.concatenate(false_sample_list),
-                          targets=np.concatenate(true_label_list))
-      false_set.data_dict[pedia.predictions] = np.concatenate(false_label_list)
+    if export_false and accuracy < 100:
+      false_set = DataSet(features=false_sample_list, targets=true_label_list)
+      false_set.data_dict[pedia.predictions] = false_label_list
       from tframe.data.images.image_viewer import ImageViewer
       vr = ImageViewer(false_set)
       vr.show()
@@ -96,6 +104,7 @@ class Classifier(Predictor):
 
   def _classify_batch(self, batch, extractor):
     assert isinstance(batch, DataSet) and batch.features is not None
+    batch = self._sanity_check_before_use(batch)
     feed_dict = self._get_default_feed_dict(batch, is_training=False)
     probs = self._probabilities.run(feed_dict)
     preds = misc.convert_to_dense_labels(probs)

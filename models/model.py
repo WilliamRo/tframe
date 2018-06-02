@@ -259,6 +259,7 @@ class Model(object):
     # Batch validation: Calculate metric one by one
     metric_list = []
     for batch in self.get_data_batches(data, batch_size, -1, False):
+      batch = self._sanity_check_before_use(batch)
       feed_dict = self._get_default_feed_dict(batch, is_training=False)
       metric_list.append(self._metric.run(feed_dict))
     # Return metric mean
@@ -348,6 +349,7 @@ class Model(object):
     if not self.built: raise ValueError('!! Model not built yet')
     if not self.launched: self.launch_model(overwrite=False)
     if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_data
+    else: assert not data.in_rnn_format
     return data
 
   # endregion : Private Methods
