@@ -98,6 +98,7 @@ class Classifier(Predictor):
     predictions = []
     for batch in self.get_data_batches(data, batch_size):
       preds = self._classify_batch(batch, extractor)
+      if isinstance(preds, int): preds = [preds]
       predictions.append(preds)
     return np.concatenate(predictions)
 
