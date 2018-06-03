@@ -194,7 +194,7 @@ class DataSet(TFRData):
         yield batch
         round_len -= 1
         # TODO: Make sure progress bar works properly
-        if round_len == 0: return
+        # if round_len == 0: return
 
   # endregion : Basic APIs
 
@@ -308,9 +308,12 @@ class DataSet(TFRData):
     # Get batch partitions
     data_x, L = self._get_batch_partition(x, batch_size)
     if y is not None:
-      assert len(x) == len(y)
-      data_y, Ly = self._get_batch_partition(y, batch_size)
-      assert L == Ly
+      if len(x) == len(y):
+        data_y, Ly = self._get_batch_partition(y, batch_size)
+        assert L == Ly
+      else:
+        assert len(y) == 1
+        data_y = y
     # Chop data further
     if num_steps < 0: num_steps = L
     round_len = int(np.ceil(L / num_steps))
@@ -318,7 +321,9 @@ class DataSet(TFRData):
       batch_x = data_x[:, i * num_steps:min((i + 1) * num_steps, L)]
       batch_y = None
       if y is not None:
-        batch_y = data_y[:, i * num_steps:min((i + 1) * num_steps, L)]
+        if len(x) == len(y):
+          batch_y = data_y[:, i * num_steps:min((i + 1) * num_steps, L)]
+        else: batch_y = data_y
       yield DataSet(batch_x, batch_y, in_rnn_format=True)
 
   def _get_batch_partition(self, array, batch_size):

@@ -204,7 +204,6 @@ class Trainer(object):
       self._inner_loop(rnd)
       # End of round
       if hub.progress_bar:
-        console.clear_line()
         console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
           hub.round_name, hub.toc()))
       # Maybe give a report on metric
@@ -304,8 +303,6 @@ class Trainer(object):
     pass
 
   def _inter_cut(self, content, prompt='>>', start_time=None):
-    # Clear progress bar
-    if self.th.progress_bar: console.clear_line()
     # Show content
     console.show_status(content, symbol=prompt)
     # Print progress bar
