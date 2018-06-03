@@ -98,6 +98,7 @@ def print_progress(index=None, total=None, start_time=None, progress=None):
     if index is None or total is None:
       raise ValueError('index and total must be provided')
     progress = 1.0 * index / total
+  progress = min(progress, 1.0)
 
   if start_time is not None:
     duration = time.time() - start_time
