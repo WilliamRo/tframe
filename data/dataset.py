@@ -39,6 +39,7 @@ class DataSet(TFRData):
     self.data_dict = {} if data_dict is None else data_dict
     self.properties = kwargs
     self.in_rnn_format = in_rnn_format
+    self.should_reset_state = False
     self.name = name
 
     self._stacked_data = None
@@ -191,6 +192,7 @@ class DataSet(TFRData):
       index = np.random.randint(num_sequences) if shuffle else i
       x, y = features[index], targets[index]
       for batch in self._gen_rnn_batches(x, y, batch_size, num_steps):
+        assert isinstance(batch, DataSet)
         yield batch
         round_len -= 1
         # TODO: Make sure progress bar works properly
@@ -326,7 +328,10 @@ class DataSet(TFRData):
         else:
           assert isinstance(y, np.ndarray)
           batch_y = np.tile(y, [batch_x.shape[0], batch_x.shape[1], 1])
-      yield DataSet(batch_x, batch_y, in_rnn_format=True)
+      batch = DataSet(batch_x, batch_y, in_rnn_format=True)
+      # State should be reset at the beginning of a sequence
+      if i == 0: batch.should_reset_state = True
+      yield batch
 
   def _get_batch_partition(self, array, batch_size):
     assert isinstance(array, np.ndarray)

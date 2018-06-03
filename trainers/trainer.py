@@ -198,8 +198,10 @@ class Trainer(object):
       rnd += 1
       if hub.progress_bar: console.section('{} {}'.format(hub.round_name, rnd))
       hub.tic()
-      # Begin round (RNN states will be reset here)
-      self.model.begin_round(th=self.th)
+
+      # Begin round (RNN states will be reset here) # TODO
+      # self.model.begin_round(th=self.th)
+
       # Do inner loop
       self._inner_loop(rnd)
       # End of round

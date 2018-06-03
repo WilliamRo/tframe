@@ -124,11 +124,12 @@ class Predictor(Feedforward, Recurrent):
 
   # region : Train
 
-  def begin_round(self, **kwargs):
-    if self.master is Recurrent:
-      th = kwargs.get('th')
-      assert isinstance(th, TrainerHub)
-      self.reset_state(th.batch_size)
+  # TODO
+  # def begin_round(self, **kwargs):
+  #   if self.master is Recurrent:
+  #     th = kwargs.get('th')
+  #     assert isinstance(th, TrainerHub)
+  #     self.reset_state(th.batch_size)
 
   def update_model(self, data_batch, **kwargs):
     if self.master is Feedforward:
@@ -168,7 +169,13 @@ class Predictor(Feedforward, Recurrent):
   def _get_default_feed_dict(self, batch, is_training):
     feed_dict = Feedforward._get_default_feed_dict(self, batch, is_training)
     if self.master is Recurrent:
+      assert isinstance(batch, DataSet)
+      # If a new sequence begin while training, reset state
+      if is_training and batch.should_reset_state:
+        # console.show_status('State has been reset')
+        self.reset_state(batch.size)
       batch_size = None if is_training else batch.size
+      # If is not training, always set a zero state to model
       feed_dict.update(self._get_state_dict(batch_size=batch_size))
     return feed_dict
 

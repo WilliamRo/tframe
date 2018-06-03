@@ -273,8 +273,9 @@ class Model(object):
       self.metric.record, self.metric.mean_record)
     self.agent.take_notes(notes, date_time=False)
 
-  def begin_round(self, **kwargs):
-    pass
+  # TODO
+  # def begin_round(self, **kwargs):
+  #   pass
 
   def end_round(self, rnd):
     self.metric.end_round(rnd)
