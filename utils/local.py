@@ -21,8 +21,10 @@ def check_path(*paths, create_path=True):
   path = ""
   for p in paths:
     path = os.path.join(path, p)
-    if not os.path.exists(path) and hub.should_create_path and create_path:
-      os.mkdir(path)
+    if not os.path.exists(path):
+      if hub.should_create_path and create_path:
+        os.mkdir(path)
+      else: raise AssertionError('!! directory {} does not exist'.format(path))
 
   return path
 

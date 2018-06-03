@@ -21,7 +21,7 @@ class SignalSet(DataSet):
                name='signal_set1', **kwargs):
     # Check signals
     signal_dict, fs = self._check_signals(signals, responses)
-    data_dict = {} if data_dict is None else {}
+    data_dict = {} if data_dict is None else data_dict
     data_dict.update(signal_dict)
     kwargs.update({pedia.sampling_frequency: fs})
     # Call parent't constructor
