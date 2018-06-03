@@ -323,7 +323,9 @@ class DataSet(TFRData):
       if y is not None:
         if len(x) == len(y):
           batch_y = data_y[:, i * num_steps:min((i + 1) * num_steps, L)]
-        else: batch_y = data_y
+        else:
+          assert isinstance(y, np.ndarray)
+          batch_y = np.reshape(data_y, [1, 1, *y.shape[1:]])
       yield DataSet(batch_x, batch_y, in_rnn_format=True)
 
   def _get_batch_partition(self, array, batch_size):
