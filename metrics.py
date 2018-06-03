@@ -35,17 +35,20 @@ def generalized_accuracy(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
   truth_shape = truth.shape.as_list()
   output_shape = output.shape.as_list()
+
   # Assert batch size is 1
-  assert truth_shape[0] == output_shape[0] == 1
+  # assert truth_shape[0] == output_shape[0] == 1
   assert len(truth_shape) == len(output_shape) == 3
-  truth = tf.reshape(truth, truth_shape[1:])
-  output = tf.reshape(output, output_shape[1:])
+  # truth = tf.reshape(truth, truth_shape[1:])
+  # output = tf.reshape(output, output_shape[1:])
+
   # Compare distribution
+  # TODO: consider tf.nn.top_k or something
   tf_sort = lambda val: tf.contrib.framework.sort(
     val, axis=1, direction='DESCENDING')
-  alpha = tf.reduce_sum(tf.multiply(truth, output), axis=1)
-  beta = tf.reduce_sum(tf.multiply(tf_sort(truth), tf_sort(output)), axis=1)
-  return tf.equal(alpha, beta)
+  alpha = tf.reduce_sum(tf.multiply(truth, output), axis=2)
+  beta = tf.reduce_sum(tf.multiply(tf_sort(truth), tf_sort(output)), axis=2)
+  return tf.reduce_mean(tf.cast(tf.equal(alpha, beta), tf.float32))
 
 
 def delta(truth, output):

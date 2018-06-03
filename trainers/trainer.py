@@ -158,16 +158,16 @@ class Trainer(object):
       self.th = hub
       self.th.trainer = self
     else: self.th.set_up(**kwargs)
+
+    # Get round length
+    num_steps = (self.th.num_steps
+                 if self.model.input_type is InputTypes.RNN_BATCH else None)
+    self.th.round_length = self.training_set.get_round_length(
+      self.th.batch_size, num_steps)
     # Check validation cycle
     if self.th.validation_per_round > 0 and self.validation_set is not None:
-      # TODO
-      num_steps = None
-      if self.model.input_type is InputTypes.RNN_BATCH:
-        num_steps = self.th.num_steps
-      round_len = self.training_set.get_round_length(
-        self.th.batch_size, num_steps)
-      self.th.validate_cycle = round_len // self.th.validation_per_round
-      self.th.round_length = round_len
+      self.th.validate_cycle = (self.th.round_length //
+                                self.th.validation_per_round)
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -176,8 +176,6 @@ class Trainer(object):
   def _show_configurations(self):
     console.show_status('Configurations:')
     self.model.agent.take_notes('Configurations:', date_time=False)
-    console.supplement('Training set feature shape: {}'.format(
-      self._training_set.features.shape))
     for config in self.th.config_strings:
       console.supplement(config)
       self.model.agent.take_notes('.. {}'.format(config), date_time=False)

@@ -151,11 +151,15 @@ class IndependentSummarySlot(SummarySlot):
   def __init__(self, model, name='batch_summary'):
     super().__init__(model, name)
     # Attributes
-    self._mascot = tf.placeholder(dtype=tf.float32, shape=[1])
-    self._op = tf.summary.scalar(
-      self.name, self._mascot, collections=[tfr.pedia.invisible])
+    self._mascot = None
+    self._op = None
 
   def write(self, val):
+    # Check tensor
+    if self._mascot is None:
+      self._mascot = tf.placeholder(dtype=tf.float32)
+      self._op = tf.summary.scalar(
+        self.name, self._mascot, collections=[tfr.pedia.invisible])
     assert self.activated
     summ = self._model.session.run(self.summary, feed_dict={self._mascot: val})
     self._model.agent.write_summary(summ)
