@@ -96,9 +96,13 @@ class SignalSet(DataSet):
         if targets_key == pedia.responses:
           assert isinstance(target, Signal)
           target = target.causal_matrix(memory_depth=1)
+          target = target[start_at:]
         elif targets_key == pedia.labels:
           assert isinstance(target, np.ndarray)
-        target = target[start_at:]
+          label_len = len(target)
+          if label_len == len(signal):
+            target = target[start_at:]
+          else: assert label_len == 1
         # Append target to targets list
         targets.append(target)
     # Set features and targets
