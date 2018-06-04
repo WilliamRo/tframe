@@ -161,8 +161,7 @@ class Agent(object):
   def write_summary(self, summary, step=None):
     if not hub.summary: return
     if step is None:
-      if hub.epoch_as_step:
-        assert tfr.trainer is not None
+      if hub.epoch_as_step and tfr.trainer.total_rounds is not None:
         step = int(tfr.trainer.total_rounds * 1000)
       else: step = self._model.counter
     assert isinstance(self._summary_writer, tf.summary.FileWriter)

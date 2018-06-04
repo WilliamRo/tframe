@@ -25,6 +25,7 @@ class BigData(TFRData):
     """
     self.meta = {}
     self.data_dir = data_dir
+    self.init_method = None
     self._generate_meta(data_dir)
 
   # region : Properties
@@ -46,6 +47,7 @@ class BigData(TFRData):
   # region : Public Methods
 
   def get_round_length(self, batch_size, num_steps=None):
+    if self.init_method is not None: return None
     round_len = 0
     for len_list in self.structure:
       checker.check_type(len_list, int)
@@ -100,6 +102,9 @@ class BigData(TFRData):
   # region : Private Methods
 
   def _check_data_set(self, data_set):
+    if callable(self.init_method):
+      self.init_method(data_set)
+      return
     if isinstance(data_set, SignalSet) and data_set.features is None:
       data_set.init_features_and_targets()
 

@@ -94,7 +94,7 @@ class Trainer(object):
   @property
   def total_rounds(self):
     # TODO: Batch size must be kept the same among different trials
-    assert self.th.round_length is not None
+    if self.th.round_length is None: return None
     return self.counter / self.th.round_length
 
   @property
@@ -166,8 +166,8 @@ class Trainer(object):
       self.th.batch_size, num_steps)
     # Check validation cycle
     if self.th.validation_per_round > 0 and self.validation_set is not None:
-      self.th.validate_cycle = (self.th.round_length //
-                                self.th.validation_per_round)
+      if self.th.round_length is not None: self.th.validate_cycle = (
+          self.th.round_length // self.th.validation_per_round)
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -260,9 +260,10 @@ class Trainer(object):
     if self.th.summary or self.th.hp_tuning:
       self.model.agent.summary_writer.flush()
     # Take notes
+    total_round = '' if self.total_rounds is None else ' ({:.1f} total)'.format(
+      self.total_rounds)
     self.model.agent.take_notes(
-      'End training after {} rounds ({:.1f} total)'.format(
-        rounds, self.total_rounds))
+      'End training after {} rounds{}'.format(rounds, total_round))
     # Add metric info into notes
     if self.th.validation_on: self.model.take_down_metric()
 
@@ -308,7 +309,7 @@ class Trainer(object):
     # Show content
     console.show_status(content, symbol=prompt)
     # Print progress bar
-    if self.th.progress_bar:
+    if self.th.progress_bar and self.th.round_length is not None:
       assert isinstance(self._training_set, DataSet)
       progress = self.th.round_progress
       assert progress is not None
@@ -325,8 +326,10 @@ class Trainer(object):
     if np.mod(self.counter - 1, self.th.print_cycle) != 0: return
 
     loss_string = self._dict_to_string(loss_dict)
-    content = '{} {} ({:.1f} Total) {}'.format(
-      self.th.round_name, rnd, self.total_rounds, loss_string)
+    total_rounds = ('' if self.total_rounds is None else
+                    ' ({:.1f} Total) '.format(self.total_rounds))
+    content = '{} {}{}{}'.format(
+      self.th.round_name, rnd, total_rounds, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
   def _run_probe(self):
@@ -370,8 +373,8 @@ class Trainer(object):
     if np.mod(self.counter - 1, self.th.snapshot_cycle) != 0: return
 
     fig = self._snapshot_function(self.model)
-    unit = 'epcs' if self.th.round_name == 'Epoch' else 'rnds'
-    filename = 'train_{:.2f}_{}.png'.format(self.total_rounds, unit)
+    step = self.counter if self.total_rounds is None else self.total_rounds
+    filename = 'train_{:.2f}.png'.format(step)
     self.model.agent.save_plot(fig, filename)
     self._inter_cut("Images saved to '{}'".format(filename), '[Snapshot]')
 
