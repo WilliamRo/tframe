@@ -88,9 +88,14 @@ class SignalSet(DataSet):
                                 skip_head=True):
     """Initialize features and targets using data in data_dict.
         After initialization, data_dict will be cleared"""
-    # Check target key
-    if targets_key is None: targets_key = pedia.responses
-    targets_candidates = self.data_dict.get(targets_key, None)
+    # If target key is not provided, try to find one in data_dict
+    if targets_key is None:
+      targets_candidates = None
+      for key, val in self.data_dict.items():
+        if key != pedia.signals:
+          targets_candidates = val
+          break
+    else: targets_candidates = self.data_dict.get(targets_key)
     # Initialize features and targets one by one
     features = []
     targets = []

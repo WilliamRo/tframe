@@ -344,6 +344,7 @@ class DataSet(TFRData):
       batch = DataSet(batch_x, batch_y, in_rnn_format=True)
       # State should be reset at the beginning of a sequence
       if i == 0: batch.should_reset_state = True
+      batch.name = self.name + '_{}'.format(i + 1)
       yield batch
 
   def _get_batch_partition(self, array, batch_size):
