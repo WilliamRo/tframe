@@ -219,8 +219,8 @@ class Agent(object):
     tfr.current_graph = self._graph
 
   def _check_bash(self):
-    file_path = check_path(hub.job_dir, hub.record_dir,
-                           'win_launch_tensorboard.bat', create_path=False)
+    file_path = check_path(hub.job_dir, hub.record_dir, create_path=True)
+    file_path = os.path.join(file_path, 'win_launch_tensorboard.bat')
     if not os.path.exists(file_path):
       f = open(file_path, 'w')
       f.write('tensorboard --logdir=./logs/')

@@ -16,6 +16,7 @@ class SignalSet(DataSet):
   """Container for signals. Signal data should only be stored in
      signals and responses. Otherwise errors may occur while loading
      from local"""
+  EXTENSION = 'tfds'
 
   def __init__(self, signals, responses=None, data_dict=None,
                name='signal_set1', **kwargs):
@@ -28,6 +29,16 @@ class SignalSet(DataSet):
     DataSet.__init__(self, data_dict=data_dict, name=name, **kwargs)
 
   # region : Properties
+
+  @property
+  def structure(self):
+    if self.features is not None: return super().structure
+    assert isinstance(self.signals, list)
+    result = []
+    for s in self.signals:
+      assert isinstance(s, Signal)
+      result.append(len(s))
+    return result
 
   @property
   def signals(self):
@@ -53,9 +64,9 @@ class SignalSet(DataSet):
 
   # region : Override
 
-  @staticmethod
-  def load(filename):
-    data_set = DataSet.load(filename)
+  @classmethod
+  def load(cls, filename):
+    data_set = super().load(filename)
     if not isinstance(data_set, SignalSet):
       raise TypeError('!! Can not resolve data set of type {}'.format(
         type(data_set)))

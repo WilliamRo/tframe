@@ -13,6 +13,8 @@ from tframe.data.base_classes import TFRData
 
 class DataSet(TFRData):
   """"""
+  EXTENSION = 'tfd'
+
   def __init__(self, features=None, targets=None, data_dict=None,
                name='dataset1', in_rnn_format=False, **kwargs):
     """
@@ -51,9 +53,20 @@ class DataSet(TFRData):
   # region : Properties
 
   @property
+  def structure(self):
+    assert self.features is not None
+    if isinstance(self.features, np.ndarray): features = [self.features]
+    else: features = self.features
+    result = []
+    for x in features:
+      assert isinstance(x, np.ndarray)
+      result.append(len(x))
+    return result
+
+  @property
   def size(self):
     if self.features is None:
-      assert len(self.data_dict) > 0
+      assert len(self.data_dict) > 0 and not isinstance(self, DataSet)
       data_array = list(self.data_dict.values())[0]
       return len(data_array)
     else: return len(self.features)
@@ -345,27 +358,6 @@ class DataSet(TFRData):
     return data, L
 
   # endregion : Private Methods
-
-  # region : Load and Save
-
-  def save(self, filename):
-    with open(filename, 'wb') as output:
-      pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-
-  @staticmethod
-  def load(filename):
-    # If file is on the cloud, download to local first
-    if filename.startswith('gs://'):
-      import subprocess
-      tmp_path = './data/tmp.tfd'
-      subprocess.check_call(
-        ['gsutil', '-m', '-q', 'cp', '-r', filename, tmp_path])
-      filename = tmp_path
-
-    with open(filename, 'rb') as input_:
-      return pickle.load(input_)
-
-  # endregion : Load and Save
 
 
 if __name__ == '__main__':

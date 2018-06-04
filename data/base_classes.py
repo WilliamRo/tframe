@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import re
 import numpy as np
+import pickle
 
 from tframe import console
 from tframe import pedia
@@ -13,7 +14,12 @@ import tframe.utils.misc as misc
 
 class TFRData(object):
   """Abstract class defining apis for data set classes used in tframe"""
-  
+  EXTENSION = 'nonsense'
+
+  @property
+  def structure(self):
+    raise NotImplementedError
+
   @property
   def size(self):
     raise NotImplementedError
@@ -31,6 +37,33 @@ class TFRData(object):
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     raise NotImplementedError
 
+  # region : Load and Save
+
+  def save(self, filename):
+    if filename.split('.')[-1] != self.EXTENSION:
+      filename += '.{}'.format(self.EXTENSION)
+    with open(filename, 'wb') as output:
+      pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+  @classmethod
+  def load(cls, filename):
+    assert isinstance(filename, str)
+    # If file is on the cloud, download to local first
+    if filename.startswith('gs://'):
+      import subprocess
+      tmp_path = './data/tmp.tfd'
+      subprocess.check_call(
+        ['gsutil', '-m', '-q', 'cp', '-r', filename, tmp_path])
+      filename = tmp_path
+
+    extension = filename.split('.')[-1]
+    if extension != cls.EXTENSION:
+      raise TypeError('!! {} can not load .{} file'.format(
+        cls.__name__, extension))
+    with open(filename, 'rb') as input_:
+      return pickle.load(input_)
+
+  # endregion : Load and Save
 
 class DataAgent(object):
   """A abstract class defines basic APIs for an data agent"""
