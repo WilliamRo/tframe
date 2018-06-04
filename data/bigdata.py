@@ -15,6 +15,7 @@ from tframe.data.sequences.signals.signal_set import SignalSet
 
 class BigData(TFRData):
   """BigData manages .tfd files in a specific folder."""
+
   FILE_NAME = 'bigdata.meta'
   EXTENSION = 'meta'
 
@@ -70,6 +71,7 @@ class BigData(TFRData):
       self._check_data_set(data_set)
       for batch in data_set.gen_batches(batch_size, shuffle):
         yield batch
+      del data_set
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     for f in self.meta.keys():
@@ -78,6 +80,7 @@ class BigData(TFRData):
       self._check_data_set(data_set)
       for batch in data_set.gen_rnn_batches(batch_size, num_steps, shuffle):
         yield batch
+      del data_set
 
   @classmethod
   def load(cls, data_dir):

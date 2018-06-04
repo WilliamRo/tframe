@@ -175,7 +175,7 @@ class DataSet(TFRData):
     for i in range(round_len):
       yield self.stack[
         np.random.randint(self.size, size=(batch_size,)) if shuffle
-        else range(i * batch_size, min((i + 1) * batch_size, self.size))]
+        else range(i * batch_size, min((i + 1) * batch_size, self.stack.size))]
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     """ Generate data batches with steps
