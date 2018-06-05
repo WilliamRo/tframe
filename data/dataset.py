@@ -66,7 +66,7 @@ class DataSet(TFRData):
   @property
   def size(self):
     if self.features is None:
-      assert len(self.data_dict) > 0 and not isinstance(self, DataSet)
+      assert len(self.data_dict) > 0
       data_array = list(self.data_dict.values())[0]
       return len(data_array)
     else: return len(self.features)

@@ -108,6 +108,6 @@ class Classifier(Predictor):
     batch = self._sanity_check_before_use(batch)
     feed_dict = self._get_default_feed_dict(batch, is_training=False)
     probs = self._probabilities.run(feed_dict)
-    preds = misc.convert_to_dense_labels(probs)
-    if extractor is not None: preds = extractor(preds)
+    if extractor is None: preds = misc.convert_to_dense_labels(probs)
+    else: preds = extractor(probs)
     return preds

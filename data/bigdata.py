@@ -89,6 +89,10 @@ class BigData(TFRData):
         yield batch
       del data_set
 
+  def load_data_set(self, index=0):
+    file_name = list(self.files.keys())[index]
+    return self._load_data_set(os.path.join(self.data_dir, file_name))
+
   def save(self):
     bd_path = os.path.join(self.data_dir, self.FILE_NAME)
     super().save(bd_path)
