@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import numpy as np
+import collections
 
 from tframe import console
 from tframe import checker
@@ -19,25 +20,31 @@ class BigData(TFRData):
   FILE_NAME = 'bigdata.meta'
   EXTENSION = 'meta'
 
-  def __init__(self, data_dir):
-    """self.meta = {filename1: data_size_1,
-                    filename2: data_size_2
-                    ... ...}
+  def __init__(self, data_dir, **kwargs):
+    """self.files = {filename1: data_size_1,
+                     filename2: data_size_2
+                     ... ...}
     """
-    self.meta = {}
+    self.files = collections.OrderedDict()
+    self.properties = collections.OrderedDict()
     self.data_dir = data_dir
+    self.name = os.path.basename(data_dir)
     self.init_method = None
+
+    # Generate data info
     self._generate_meta(data_dir)
+
+    if kwargs.get('save', True): self.save()
 
   # region : Properties
 
   @property
   def structure(self):
-    return list(self.meta.values())
+    return list(self.files.values())
 
   @property
   def size(self):
-    return len(self.meta)
+    return len(self.files)
 
   @property
   def is_regular_array(self):
@@ -65,7 +72,7 @@ class BigData(TFRData):
     return round_len
 
   def gen_batches(self, batch_size, shuffle=False):
-    for f in self.meta.keys():
+    for f in self.files.keys():
       file_path = os.path.join(self.data_dir, f)
       data_set = self._load_data_set(file_path)
       self._check_data_set(data_set)
@@ -74,13 +81,18 @@ class BigData(TFRData):
       del data_set
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
-    for f in self.meta.keys():
+    for f in self.files.keys():
       file_path = os.path.join(self.data_dir, f)
       data_set = self._load_data_set(file_path)
       self._check_data_set(data_set)
       for batch in data_set.gen_rnn_batches(batch_size, num_steps, shuffle):
         yield batch
       del data_set
+
+  def save(self):
+    bd_path = os.path.join(self.data_dir, self.FILE_NAME)
+    super().save(bd_path)
+    console.show_status('Metadata saved to {}'.format(bd_path))
 
   @classmethod
   def load(cls, data_dir):
@@ -90,14 +102,14 @@ class BigData(TFRData):
     bd_path = os.path.join(data_dir, cls.FILE_NAME)
     if os.path.exists(bd_path):
       bd = super().load(bd_path)
+      bd.data_dir = data_dir
       assert isinstance(bd, BigData)
       bd._check_data_files(data_dir)
     else:
       console.show_status('Metadata not found.')
       bd = BigData(data_dir)
     # Return bigdata
-    console.show_status('{} files loaded'.format(len(bd.meta)))
-    bd.data_dir = data_dir
+    console.show_status('{} files loaded from {}'.format(bd.size, data_dir))
     return bd
 
   # endregion : Public Methods
@@ -137,13 +149,13 @@ class BigData(TFRData):
     file_list = self._get_tfd_list(data_dir)
     console.show_status('Integrity checking ...')
     for i, f in enumerate(file_list):
-      if os.path.basename(f) not in self.meta.keys():
+      if os.path.basename(f) not in self.files.keys():
         raise AssertionError('!! Can not find {} in metadata'.format(f))
       console.print_progress(i, len(file_list))
-    if len(self.meta) != len(file_list):
+    if len(self.files) != len(file_list):
       raise AssertionError(
         '!! {} files are expected but only {} are found'.format(
-          len(self.meta), len(file_list)))
+          len(self.files), len(file_list)))
 
   def _generate_meta(self, data_dir):
     console.show_status('Scanning data directory ...')
@@ -153,14 +165,9 @@ class BigData(TFRData):
     num_files = len(file_list)
     for i, file_name in enumerate(file_list):
       data_set = self._load_data_set(file_name)
-      self.meta[os.path.basename(file_name)] = data_set.structure
+      self.files[os.path.basename(file_name)] = data_set.structure
       console.print_progress(i + 1, num_files)
       del data_set
-
-    # Save metadata
-    bd_path = os.path.join(data_dir, self.FILE_NAME)
-    self.save(bd_path)
-    console.show_status('Metadata saved to {}'.format(bd_path))
 
   # endregion : Private Methods
 

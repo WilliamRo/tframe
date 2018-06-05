@@ -80,7 +80,7 @@ class ImageViewer(object):
     if self.filename is None:
       return os.getcwd()
     else:
-      paths = re.split(r'/|\\]', self.filename)
+      paths = re.split(r'/|\\', self.filename)
       return '/'.join(paths[:-1])
 
   @property

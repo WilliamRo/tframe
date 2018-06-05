@@ -20,7 +20,7 @@ def check_path(*paths, create_path=True):
       paths.pop(-1)
   path = ""
   for p in paths:
-    path = os.path.join(path, p)
+    path += ('/' if len(path) > 0 else '') + p
     if not os.path.exists(path):
       if hub.should_create_path and create_path:
         os.mkdir(path)

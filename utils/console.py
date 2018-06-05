@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import pprint
+import pprint as _pprint
 import time
 import os
 
@@ -19,7 +19,7 @@ _config = {
 _config['bar_width'] = _config['default_line_width'] - _config['tail_width'] - 2
 
 _cache = {'last_called': None}
-_pp = pprint.PrettyPrinter()
+_pp = _pprint.PrettyPrinter()
 
 
 def auto_clear(meth):
