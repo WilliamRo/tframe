@@ -99,7 +99,7 @@ class BigData(TFRData):
     console.show_status('Metadata saved to {}'.format(bd_path))
 
   @classmethod
-  def load(cls, data_dir):
+  def load(cls, data_dir, **kwargs):
     # Check data_dir
     check_path(data_dir, create_path=False)
     # Load or create
@@ -111,7 +111,7 @@ class BigData(TFRData):
       bd._check_data_files(data_dir)
     else:
       console.show_status('Metadata not found.')
-      bd = BigData(data_dir)
+      bd = cls(data_dir, **kwargs)
     # Return bigdata
     console.show_status('{} files loaded from {}'.format(bd.size, data_dir))
     return bd

@@ -9,7 +9,7 @@ import tensorflow as tf
 import tframe as tfr
 
 from tframe import console
-from tframe import DataSet
+from tframe.data.base_classes import TFRData
 from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
 from tframe.config import Config, Flag
@@ -64,13 +64,13 @@ class Trainer(object):
   @property
   def training_set(self):
     if self._training_set is not None:
-      assert isinstance(self._training_set, DataSet)
+      assert isinstance(self._training_set, TFRData)
     return self._training_set
 
   @property
   def validation_set(self):
     if self._validation_set is not None:
-      assert isinstance(self._validation_set, DataSet)
+      assert isinstance(self._validation_set, TFRData)
     return self._validation_set
 
   @property
@@ -288,8 +288,8 @@ class Trainer(object):
       data_set = self._training_set
       name = 'training set'
     if data_set is None: raise ValueError('!! {} not found'.format(name))
-    if not isinstance(data_set, DataSet):
-      raise TypeError('!! {} must be an instance of DataSet'.format(name))
+    if not isinstance(data_set, TFRData):
+      raise TypeError('!! {} must be an instance of TFRData'.format(name))
 
   @staticmethod
   def _check_callable(f, name):
@@ -310,7 +310,7 @@ class Trainer(object):
     console.show_status(content, symbol=prompt)
     # Print progress bar
     if self.th.progress_bar and self.th.round_length is not None:
-      assert isinstance(self._training_set, DataSet)
+      assert isinstance(self._training_set, TFRData)
       progress = self.th.round_progress
       assert progress is not None
       console.print_progress(progress=progress, start_time=start_time)
@@ -326,7 +326,7 @@ class Trainer(object):
     if np.mod(self.counter - 1, self.th.print_cycle) != 0: return
 
     loss_string = self._dict_to_string(loss_dict)
-    total_rounds = ('' if self.total_rounds is None else
+    total_rounds = (' ' if self.total_rounds is None else
                     ' ({:.1f} Total) '.format(self.total_rounds))
     content = '{} {}{}{}'.format(
       self.th.round_name, rnd, total_rounds, loss_string)
