@@ -258,12 +258,20 @@ class Model(object):
       return self._validate_group.run(feed_dict, allow_sum=allow_sum)
     # Batch validation: Calculate metric one by one
     metric_list = []
+    total = 0
     for batch in self.get_data_batches(data, batch_size, -1, False):
+      # Calculate weight
+      weight = batch.targets.shape[0]
+      if self.input_type is InputTypes.RNN_BATCH:
+        weight *= batch.targets.shape[1]
+      assert weight > 0
+      total += weight
+      # Validate batch
       batch = self._sanity_check_before_use(batch)
       feed_dict = self._get_default_feed_dict(batch, is_training=False)
-      metric_list.append(self._metric.run(feed_dict))
+      metric_list.append(self._metric.run(feed_dict) * weight)
     # Return metric mean
-    metric_mean = np.mean(metric_list)
+    metric_mean = np.sum(metric_list) / total
     if allow_sum: self._batch_val_summ.write(metric_mean)
     return {self._metric: metric_mean}
 
