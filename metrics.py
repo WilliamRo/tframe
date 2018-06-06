@@ -16,16 +16,24 @@ def _truncate(truth, output):
 
 
 def accuracy(labels, outputs):
+  # Make sure labels and outputs are tensorflow tensors
   assert isinstance(labels, tf.Tensor) and isinstance(outputs, tf.Tensor)
-  label_shape = labels.get_shape().as_list()
-  if len(label_shape) > 1 or label_shape[1] > 1:
-    labels = tf.argmax(labels, 1, name='labels')
-    outputs = tf.argmax(outputs, 1, name='prediction')
+  # Convert labels and outputs to 2-D dense tensors
+  tensors = [labels, outputs]
+  for i, tensor in enumerate(tensors):
+    shape = tensor.shape.as_list()
+    # Handle potential RNN batches
+    if len(shape) == 3: tensor = tf.reshape(tensor, (-1, shape[-1]))
+    else: assert len(shape) == 2
+    # Convert one-hot to dense if necessary
+    if shape[-1] > 1:
+      tensor = tf.argmax(tensor, 1, name='labels' if i == 0 else 'predictions')
+    # Put tensor back to list
+    tensors[i] = tensor
 
-  correct_prediction = tf.equal(labels, outputs, 'correct_prediction')
-
+  correct_prediction = tf.equal(tensors[0], tensors[1], 'correct_prediction')
   return tf.reduce_mean(tf.cast(correct_prediction, tf.float32),
-                         name='accuracy')
+                        name='accuracy')
 
 
 def generalized_accuracy(truth, output):

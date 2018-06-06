@@ -58,21 +58,28 @@ class Classifier(Predictor):
     false_label_list = []
     true_label_list = []
     num_samples = 0
+    console.show_status('Evaluating classifier ...')
     for batch in self.get_data_batches(data, batch_size):
       assert isinstance(batch, DataSet) and batch.targets is not None
-      num_samples += len(batch.targets)
       # Get predictions
       preds = self._classify_batch(batch, extractor)
       # Get true labels in dense format
-      true_labels = misc.convert_to_dense_labels(batch.targets)
+      if batch.targets.shape[-1] > 1:
+        targets = batch.targets.reshape(-1, batch.targets.shape[-1])
+      else: targets = batch.targets
+      num_samples += len(targets)
+      true_labels = misc.convert_to_dense_labels(targets)
       if len(true_labels) < len(preds):
         assert len(true_labels) == 1
         true_labels = np.concatenate((true_labels,) * len(preds))
       # Select false samples
       false_indices = np.argwhere(preds != true_labels)
       if false_indices.size == 0: continue
+      features = batch.features
+      if self.input_type is InputTypes.RNN_BATCH:
+        features = np.reshape(features, [-1, *features.shape[2:]])
       false_indices = np.reshape(false_indices, false_indices.size)
-      false_sample_list.append(batch.features[false_indices])
+      false_sample_list.append(features[false_indices])
       false_label_list.append(preds[false_indices])
       true_label_list.append(true_labels[false_indices])
     # Concatenate
@@ -100,6 +107,10 @@ class Classifier(Predictor):
       preds = self._classify_batch(batch, extractor)
       if isinstance(preds, int): preds = [preds]
       predictions.append(preds)
+      if batch.targets is not None:
+        # truth = misc.convert_to_dense_labels(np.reshape(
+        #   batch.targets, (-1, batch.targets.shape[2])))
+        whatever = 1
     return np.concatenate(predictions)
 
 
@@ -108,6 +119,9 @@ class Classifier(Predictor):
     batch = self._sanity_check_before_use(batch)
     feed_dict = self._get_default_feed_dict(batch, is_training=False)
     probs = self._probabilities.run(feed_dict)
+    if self.input_type is InputTypes.RNN_BATCH:
+      assert len(probs.shape) == 3
+      probs = np.reshape(probs, (-1, probs.shape[2]))
     if extractor is None: preds = misc.convert_to_dense_labels(probs)
     else: preds = extractor(probs)
     return preds

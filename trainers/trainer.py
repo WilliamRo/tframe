@@ -326,7 +326,7 @@ class Trainer(object):
     if np.mod(self.counter - 1, self.th.print_cycle) != 0: return
 
     loss_string = self._dict_to_string(loss_dict)
-    total_rounds = (' ' if self.total_rounds is None else
+    total_rounds = (' - ' if self.total_rounds is None else
                     ' ({:.1f} Total) '.format(self.total_rounds))
     content = '{} {}{}{}'.format(
       self.th.round_name, rnd, total_rounds, loss_string)

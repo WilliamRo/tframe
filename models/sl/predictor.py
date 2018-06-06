@@ -173,6 +173,7 @@ class Predictor(Feedforward, Recurrent):
       # If a new sequence begin while training, reset state
       if is_training and batch.should_reset_state:
         # console.show_status('State has been reset')
+        if hub.notify_when_reset: console.write_line('- ' * 40)
         self.reset_state(batch.size)
       batch_size = None if is_training else batch.size
       # If is not training, always set a zero state to model

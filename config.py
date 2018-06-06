@@ -233,6 +233,7 @@ class Config(object):
   num_classes = Flag.integer(-1, 'Class number for classification tasks')
   memory_depth = Flag.integer(1, 'Memory depth for system identification')
   loss_function = Flag.whatever('cross_entropy', 'Loss function')
+  notify_when_reset = Flag.whatever(False, '...')
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '

@@ -25,11 +25,12 @@ class BigData(TFRData):
                      filename2: data_size_2
                      ... ...}
     """
-    self.files = collections.OrderedDict()
+    self.files = {}
     self.properties = collections.OrderedDict()
     self.data_dir = data_dir
     self.name = os.path.basename(data_dir)
-    self.init_method = None
+    self.init_f = None
+    self.round_len_f = None
 
     # Generate data info
     self._generate_meta(data_dir)
@@ -55,7 +56,10 @@ class BigData(TFRData):
   # region : Public Methods
 
   def get_round_length(self, batch_size, num_steps=None):
-    if self.init_method is not None: return None
+    if self.init_f is not None:
+      if callable(self.round_len_f):
+        return self.round_len_f(self, batch_size, num_steps)
+      else: return None
     round_len = 0
     for len_list in self.structure:
       checker.check_type(len_list, int)
@@ -102,16 +106,19 @@ class BigData(TFRData):
   def load(cls, data_dir, **kwargs):
     # Check data_dir
     check_path(data_dir, create_path=False)
+
     # Load or create
     bd_path = os.path.join(data_dir, cls.FILE_NAME)
-    if os.path.exists(bd_path):
+    try:
+      assert os.path.exists(bd_path)
       bd = super().load(bd_path)
       bd.data_dir = data_dir
       assert isinstance(bd, BigData)
       bd._check_data_files(data_dir)
-    else:
+    except:
       console.show_status('Metadata not found.')
       bd = cls(data_dir, **kwargs)
+
     # Return bigdata
     console.show_status('{} files loaded from {}'.format(bd.size, data_dir))
     return bd
@@ -121,8 +128,8 @@ class BigData(TFRData):
   # region : Private Methods
 
   def _check_data_set(self, data_set):
-    if callable(self.init_method):
-      self.init_method(data_set)
+    if callable(self.init_f):
+      self.init_f(data_set)
       return
     if isinstance(data_set, SignalSet) and data_set.features is None:
       data_set.init_features_and_targets()
