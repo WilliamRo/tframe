@@ -34,6 +34,15 @@ def shape_string(input_):
   return result
 
 
+def mark_str(value):
+  if not isinstance(value, (tuple, list)): return ''
+  result = ''
+  for i, val in enumerate(value):
+    if i > 0: result += '-'
+    result += '{}'.format(val)
+  return result
+
+
 def get_name_by_levels(name, levels):
   assert isinstance(name, str)
   assert isinstance(levels, (list, tuple))

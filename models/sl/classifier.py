@@ -107,10 +107,6 @@ class Classifier(Predictor):
       preds = self._classify_batch(batch, extractor)
       if isinstance(preds, int): preds = [preds]
       predictions.append(preds)
-      if batch.targets is not None:
-        # truth = misc.convert_to_dense_labels(np.reshape(
-        #   batch.targets, (-1, batch.targets.shape[2])))
-        whatever = 1
     return np.concatenate(predictions)
 
 

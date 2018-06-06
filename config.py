@@ -227,6 +227,7 @@ class Config(object):
   neurons_per_unit = Flag.integer(3, '...', is_key=None)
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   fc_dims = Flag.whatever(None, '...')
+  rc_dims = Flag.whatever(None, '...')
   num_blocks = Flag.integer(-1, 'Block number in model', is_key=None)
   input_shape = Flag.list([], 'Input shape of samples')
   output_dim = Flag.integer(0, 'Output dimension of a model')
