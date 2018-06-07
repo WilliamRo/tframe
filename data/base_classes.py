@@ -16,6 +16,7 @@ class TFRData(object):
   """Abstract class defining apis for data set classes used in tframe"""
   EXTENSION = 'nonsense'
   name = None
+  properties = None
 
   @property
   def structure(self):

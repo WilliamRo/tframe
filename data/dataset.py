@@ -40,12 +40,14 @@ class DataSet(TFRData):
     self.targets = targets
     self.data_dict = {} if data_dict is None else data_dict
     self.properties = kwargs
-    self.in_rnn_format = in_rnn_format
-    self.should_reset_state = False
     self.name = name
 
     self._stacked_data = None
     self._rnn_data = None
+
+    self.in_rnn_format = in_rnn_format
+    self.should_reset_state = False
+    self.reset_batch_indices = None
 
     # Sanity checks
     self._check_data()

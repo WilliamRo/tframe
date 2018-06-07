@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from tframe import hub
+from tframe import checker
 from tframe.nets.net import Net
 
 
@@ -76,9 +77,7 @@ class RNet(Net):
       # The assertion below is not held by rnn_cells
       assert isinstance(pre_states, (tuple, list))
       assert len(pre_states) == self.rnn_cell_num
-    else:
-      pre_states = None
-      raise ValueError('!! pre_outputs can not be None')  # TODO
+    else: raise ValueError('!! pre_outputs can not be None')  # TODO
     assert isinstance(input_, tf.Tensor)
 
     # Link
@@ -107,6 +106,24 @@ class RNet(Net):
     assert self.is_root
     self._state_array = self._get_zero_state(batch_size)
 
+  def reset_part_state(self, batch_indices):
+    assert isinstance(batch_indices, (list, tuple))
+    checker.check_type(batch_indices, int)
+    if self.is_root:
+      for rnn_cell in self.rnn_cells:
+        rnn_cell.reset_part_state(batch_indices)
+    else:
+      # If state is not a numpy array or a tuple/list of numpy arrays,
+      #   this methods must abe overridden
+      if isinstance(self._state_array, np.ndarray):
+        states = (self._state_array,)
+      elif isinstance(self._state_array, (tuple, list)):
+        states = self._state_array
+        checker.check_type(states, np.ndarray)
+      else: raise TypeError('!! Unknown format of states')
+
+      for state in states: state[np.array(batch_indices), :] = 0
+
   # endregion : Public Methods
 
   # region : Private Methods
@@ -132,15 +149,17 @@ class RNet(Net):
     # Check num_or_sizes
     if isinstance(num_or_sizes, int):
       assert num_or_sizes > 0 and self._state_size is not None
-      num_or_sizes = (self._state_size,) * num_or_sizes
-    else: assert isinstance(num_or_sizes, tuple)
+      sizes = (self._state_size,) * num_or_sizes
+    else:
+      assert isinstance(num_or_sizes, tuple)
+      sizes = num_or_sizes
     # Check state
     if not isinstance(state, tuple): state = (state,)
     # Check state
-    assert len(state) == len(num_or_sizes)
-    for s, n in zip(state, num_or_sizes):
-      assert isinstance(s, tf.Tensor) and isinstance(n, int)
-      assert s.shape.as_list()[1] == n
+    assert len(state) == len(sizes)
+    for s, size in zip(state, sizes):
+      assert isinstance(s, tf.Tensor) and isinstance(size, int)
+      assert s.shape.as_list()[1] == size
 
   @staticmethod
   def _get_external_shape(input_):

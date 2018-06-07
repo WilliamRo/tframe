@@ -13,7 +13,7 @@ class GRU(BasicRNNCell):
   net_name = 'gru'
 
   def _link(self, s, x, **kwargs):
-    """pre_states = (h_{t-1}, c_{t-1})"""
+    """s(pre_states) is state_array of size 'state_size'"""
     self._check_state(s)
     input_size = self._get_external_shape(x)
     Wrz, Ws, brz, bs = (None,) * 4
