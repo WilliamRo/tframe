@@ -15,8 +15,28 @@ import tframe.utils.misc as misc
 class TFRData(object):
   """Abstract class defining apis for data set classes used in tframe"""
   EXTENSION = 'nonsense'
+  PARALLEL_ON = 'parallel_on'
+  INIT_F = 'init_f'
+
   name = None
   properties = None
+
+  @property
+  def parallel_on(self):
+    assert isinstance(self.properties, dict)
+    return self.properties.get(self.PARALLEL_ON, False)
+
+  @property
+  def init_f(self):
+    assert isinstance(self.properties, dict)
+    f = self.properties.get(self.INIT_F, None)
+    if f is not None: assert callable(f)
+    return f
+
+  @init_f.setter
+  def init_f(self, val):
+    assert callable(val)
+    self.properties[self.INIT_F] = val
 
   @property
   def structure(self):
@@ -38,6 +58,10 @@ class TFRData(object):
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     raise NotImplementedError
+
+  def turn_parallel_on(self, **kwargs):
+    assert isinstance(self.properties, dict)
+    self.properties[self.PARALLEL_ON] = True
 
   # region : Load and Save
 

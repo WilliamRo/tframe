@@ -211,7 +211,7 @@ class Trainer(object):
       # Maybe give a report on metric
       if hub.validation_on:
         self.model.end_round(rnd)
-        if self.metric.get_idle_rounds(rnd) > self.th.idle_tol:
+        if self.metric.get_idle_rounds(rnd) > self.th.patience:
           self.th.raise_stop_flag()
       # Advanced strategy
       self._advanced_strategy(rnd)
@@ -407,7 +407,7 @@ class TrainerHub(Config):
 
   early_stop = Flag.boolean(True, 'Early stop option', is_key=None)
   record_gap = Flag.float(0.001, 'Minimum improvement')
-  idle_tol = Flag.integer(20, 'Tolerance of idle rounds when early stop is on',
+  patience = Flag.integer(20, 'Tolerance of idle rounds when early stop is on',
                           is_key=None)
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']", is_key=None)

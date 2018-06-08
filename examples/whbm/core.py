@@ -26,7 +26,7 @@ th.warm_up_thres = 1
 th.at_most_save_once_per_round = True
 
 th.early_stop = True
-th.idle_tol = 10
+th.patience = 10
 
 
 def activate():

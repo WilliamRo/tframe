@@ -24,7 +24,7 @@ class Feedforward(Model, Net):
     self._default_net = self
 
   @with_graph
-  def _build(self):
+  def _build(self, **kwargs):
     # Feed forward to get outputs
     output = self()
     if not self._inter_type == pedia.fork:

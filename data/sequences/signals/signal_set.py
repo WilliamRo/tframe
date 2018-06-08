@@ -84,7 +84,7 @@ class SignalSet(DataSet):
 
   # region : Public Methods
 
-  def init_features_and_targets(self, targets_key=None, memory_depth=1,
+  def init_features_and_targets(self, targets_key=None, memory_depth=None,
                                 skip_head=True):
     """Initialize features and targets using data in data_dict.
         After initialization, data_dict will be cleared"""
@@ -96,7 +96,13 @@ class SignalSet(DataSet):
           targets_candidates = val
           break
     else: targets_candidates = self.data_dict.get(targets_key)
-    # Initialize features and targets one by one
+    # If memory depth is None, init features as signals
+    if memory_depth is None:
+      self.features = self.signals
+      self.targets = targets_candidates
+      self._check_data()
+      return
+    # Initialize features (as causal matrix) and targets one by one
     features = []
     targets = []
     checker.check_positive_integer(memory_depth)

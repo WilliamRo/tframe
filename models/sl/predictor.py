@@ -86,7 +86,11 @@ class Predictor(Feedforward, Recurrent):
     # Define loss
     loss_function = losses.get(loss)
     with tf.name_scope('Loss'):
-      loss_tensor = loss_function(self._targets.tensor, self.outputs.tensor)
+      if loss == 'cross_entropy':
+        output_tensor = self.logits_tensor
+        assert output_tensor is not None
+      else: output_tensor = self.outputs.tensor
+      loss_tensor = loss_function(self._targets.tensor, output_tensor)
       # TODO: with or without regularization loss?
       if hub.summary:
         tf.add_to_collection(pedia.train_step_summaries,

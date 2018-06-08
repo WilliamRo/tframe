@@ -155,11 +155,13 @@ class DataSet(TFRData):
     else:
       # :: For recurrent models
       checker.check_type(num_steps, int)
-      arrays = [self.features] if self.is_regular_array else self.features
+      if self.is_regular_array: arrays = [self.features]
+      elif self.parallel_on: return None
+      else: arrays = self.features
+
       if num_steps < 0: return len(arrays)
-      else:
-        return int(sum([np.ceil(len(array) // batch_size / num_steps)
-                        for array in arrays]))
+      else: return int(sum([np.ceil(len(array) // batch_size / num_steps)
+                            for array in arrays]))
 
   def gen_batches(self, batch_size, shuffle=False):
     """ Generate batches of data
@@ -198,7 +200,11 @@ class DataSet(TFRData):
     # Sanity check using get_round_length method
     round_len = self.get_round_length(batch_size, num_steps)
     # Put features and targets into lists
-    features = [self.features] if self.is_regular_array else self.features
+    if self.is_regular_array: features = [self.features]
+    elif self.parallel_on:
+      return self._gen_parallel_batches(batch_size, num_steps, shuffle)
+    else: features = self.features
+
     targets = (None,) * self.size if self.targets is None else (
       [self.targets] if self.is_regular_array else self.targets)
     num_sequences = len(features)
@@ -359,6 +365,31 @@ class DataSet(TFRData):
       data[i] = array[i * L:(i + 1) * L, :]
     # Return result
     return data, L
+
+  def _gen_parallel_batches(self, batch_size, num_steps, shuffle):
+    """A beta method used only for RNN training"""
+    # Sanity check
+    features, targets = self.features, self.targets
+    assert isinstance(features, (tuple, list))
+    assert isinstance(targets, (tuple, list))
+    assert len(features) == len(targets)
+    checker.check_positive_integer(batch_size)
+    assert isinstance(num_steps, int)
+    assert isinstance(shuffle, bool)
+
+    # Initialize generator list of length 'batch_size'
+    generators = []
+    for _ in range(batch_size):
+      generators.append(None)
+
+    # Start loop
+    while True:
+      break
+
+
+
+    if self.init_f is not None: pass # use it after signal is load
+    return None
 
   # endregion : Private Methods
 

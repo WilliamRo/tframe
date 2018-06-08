@@ -33,7 +33,7 @@ class Recurrent(Model, RNet):
   # region : Build
 
   @with_graph
-  def _build(self):
+  def _build(self, **kwargs):
     # self.init_state should be called for the first time inside this method
     #  so that it can be initialized within the appropriate graph
 
