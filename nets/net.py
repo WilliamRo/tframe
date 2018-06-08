@@ -194,6 +194,24 @@ class Net(Function):
 
   # region : Public Methods
 
+  def pop_last_softmax(self):
+    """For RNN classifiers, softmax layer should be applied outside
+       while-loop"""
+    assert self.is_root
+    if not (isinstance(self.last_function, Activation)
+            and self.last_function.abbreviation == 'softmax'):
+      return None
+
+    last_net = self.children[-1]
+    assert isinstance(last_net, Net) and len(last_net.children) > 0
+    last_layer = last_net.children[-1]
+    assert (isinstance(last_layer, Activation)
+            and last_layer.abbreviation == 'softmax')
+    layer = last_net.children.pop(-1)
+
+    if len(last_net.children) == 0: self.children.pop(-1)
+    return layer
+
   def add_to_last_net(self, layer):
     from tframe.nets.rnet import RNet
 

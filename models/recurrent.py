@@ -52,6 +52,9 @@ class Recurrent(Model, RNet):
     perm = list(range(len(input_placeholder.shape.as_list())))
     # elems.shape = [num_steps, batch_size, *sample_shape]
     elems = tf.transpose(input_placeholder, [1, 0] + perm[2:])
+
+    # Pop last softmax if necessary
+    last_softmax = self.pop_last_softmax()
     # Call scan to produce a dynamic op
     scan_outputs, state_sequences = tf.scan(
       self, elems, initializer=(self._mascot, self.init_state), name='Scan')
@@ -62,8 +65,15 @@ class Recurrent(Model, RNet):
     # Transpose scan outputs to get final outputs
     assert isinstance(scan_outputs, tf.Tensor)
     perm = list(range(len(scan_outputs.shape.as_list())))
+    outputs = tf.transpose(scan_outputs, [1, 0] + perm[2:])
+
+    # Apply last softmax if necessary
+    if last_softmax is not None:
+      self._logits_tensor = outputs
+      outputs = last_softmax(outputs)
+
     #  Output has a shape of [batch_size, num_steps, *output_shape]
-    self.outputs.plug(tf.transpose(scan_outputs, [1, 0] + perm[2:]))
+    self.outputs.plug(outputs)
 
   @staticmethod
   def _get_last_state(states):
