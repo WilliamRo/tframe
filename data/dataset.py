@@ -7,8 +7,10 @@ import pickle
 
 from tframe import checker
 from tframe import pedia
+from tframe import hub
 
 from tframe.data.base_classes import TFRData
+from tframe.data.paral_engine import ParallelEngine
 
 
 class DataSet(TFRData):
@@ -48,11 +50,16 @@ class DataSet(TFRData):
     self.in_rnn_format = in_rnn_format
     self.should_reset_state = False
     self.reset_batch_indices = None
+    self.reset_values = None
 
     # Sanity checks
     self._check_data()
 
   # region : Properties
+
+  @property
+  def should_partially_reset_state(self):
+    return self.reset_batch_indices is not None
 
   @property
   def structure(self):
@@ -156,11 +163,13 @@ class DataSet(TFRData):
       # :: For recurrent models
       checker.check_type(num_steps, int)
       if self.is_regular_array: arrays = [self.features]
-      elif self.parallel_on: return None
+      elif self.parallel_on:
+        return self._get_pe_round_length(batch_size, num_steps)
       else: arrays = self.features
 
+      len_f = lambda x: x if self.len_f is None else self.len_f
       if num_steps < 0: return len(arrays)
-      else: return int(sum([np.ceil(len(array) // batch_size / num_steps)
+      else: return int(sum([np.ceil(len_f(len(array)) // batch_size / num_steps)
                             for array in arrays]))
 
   def gen_batches(self, batch_size, shuffle=False):
@@ -178,7 +187,7 @@ class DataSet(TFRData):
     round_len = self.get_round_length(batch_size)
     for i in range(round_len):
       yield self.stack[
-        np.random.randint(self.size, size=(batch_size,)) if shuffle
+        self._rand_indices(batch_size) if shuffle
         else range(i * batch_size, min((i + 1) * batch_size, self.stack.size))]
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
@@ -202,7 +211,10 @@ class DataSet(TFRData):
     # Put features and targets into lists
     if self.is_regular_array: features = [self.features]
     elif self.parallel_on:
-      return self._gen_parallel_batches(batch_size, num_steps, shuffle)
+      for batch in self._gen_parallel_batches(batch_size, num_steps, shuffle):
+        assert isinstance(batch, DataSet)
+        yield batch
+      return
     else: features = self.features
 
     targets = (None,) * self.size if self.targets is None else (
@@ -210,8 +222,10 @@ class DataSet(TFRData):
     num_sequences = len(features)
     # Generate data sequence by sequence
     for i in range(num_sequences):
-      index = np.random.randint(num_sequences) if shuffle else i
+      index = self._rand_indices(num_sequences) if shuffle else i
       x, y = features[index], targets[index]
+      if self.init_f is not None: x, y = self.init_f(x, y)
+
       for batch in self._gen_rnn_batches(x, y, batch_size, num_steps):
         assert isinstance(batch, DataSet)
         yield batch
@@ -377,19 +391,74 @@ class DataSet(TFRData):
     assert isinstance(num_steps, int)
     assert isinstance(shuffle, bool)
 
-    # Initialize generator list of length 'batch_size'
-    generators = []
-    for _ in range(batch_size):
-      generators.append(None)
+    # Initialize parallel engine
+    pe = ParallelEngine(batch_size)
+    cursor, num_sequences = 0, len(self.features)
+    counter, round_len = 0, self._get_pe_round_length(batch_size, num_steps)
 
     # Start loop
+    global_reset = True
     while True:
-      break
+      reset_indices = pe.inactive_indices
+      reset_values = []
 
+      # Load new sequence to engine if necessary
+      while not pe.is_ready:
+        if cursor < num_sequences:
+          index = self._rand_indices() if shuffle else cursor
+          x, y = self.features[index], self.targets[index]
+          if self.init_f is not None: x, y = self.init_f(x, y)
+          cursor += 1
+          reset_values.append(0)
+        else:
+          x, y = None, None
+          reset_values.append(None)
+        pe.set_sequence(x, y)
 
+      if pe.flameout: break
 
-    if self.init_f is not None: pass # use it after signal is load
-    return None
+      # Get features and targets and wrap them into a DataSet
+      x, y = pe.emit(num_steps)
+      data_batch = DataSet(x, y)
+      if len(reset_indices) > 0:
+        if global_reset:
+          data_batch.should_reset_state = True
+          global_reset = False
+        assert len(reset_indices) == len(reset_values)
+        data_batch.reset_batch_indices = reset_indices
+        data_batch.reset_values = (
+          reset_values if len([val for val in reset_values if val is None]) > 0
+          else None)
+
+      # Yield batch
+      yield  data_batch
+
+      counter += 1
+      if counter >= round_len: break
+
+    # Check round length
+    if not shuffle: assert counter == round_len
+
+  def _get_pe_round_length(self, batch_size, num_steps):
+    if self.init_f is not None and self.len_f is None: return None
+    if self.init_f is None: assert self.len_f is None
+    return ParallelEngine.get_round_length(
+      batch_size, num_steps, self.structure, len_f=self.len_f)
+
+  def _rand_indices(self, upper_bound=None, size=1):
+    if upper_bound is None: upper_bound = self.size
+    assert self.features is not None
+    if not hub.rand_over_classes:
+      indices = np.random.randint(upper_bound, size=size)
+    else:
+      classes = np.random.randint(self.num_classes, size=size)
+      indices = []
+      for cls in classes:
+        group_index = np.random.randint(len(self.groups[cls]))
+        indices.append(self.groups[cls][group_index])
+
+    if len(indices) == 1: return indices[0]
+    else: return indices
 
   # endregion : Private Methods
 

@@ -35,6 +35,13 @@ def shape_string(input_):
 
 
 def mark_str(value):
+  if isinstance(value, dict):
+    result = ''
+    for k, v in value.items():
+      if result != '': result += '_'
+      result += '{}{}'.format(k, v)
+    return result
+
   if not isinstance(value, (tuple, list)): return ''
   result = ''
   for i, val in enumerate(value):

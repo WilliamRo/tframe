@@ -174,16 +174,25 @@ class Predictor(Feedforward, Recurrent):
     feed_dict = Feedforward._get_default_feed_dict(self, batch, is_training)
     if self.master is Recurrent:
       assert isinstance(batch, DataSet)
+
       # If a new sequence begin while training, reset state
-      if is_training and batch.should_reset_state:
-        if batch.reset_batch_indices is None:
+      if is_training:
+        if batch.should_reset_state:
           if hub.notify_when_reset: console.write_line('- ' * 40)
           self.reset_state(batch.size)
-        else:
-          self.reset_part_state(batch.reset_batch_indices)
+        if batch.should_partially_reset_state:
+          if hub.notify_when_reset:
+            if batch.reset_values is not None:
+              info = [(i, v) for i, v in zip(
+                batch.reset_batch_indices, batch.reset_values)]
+            else: info = batch.reset_batch_indices
+            console.write_line('{}'.format(info))
+          self.reset_part_state(batch.reset_batch_indices, batch.reset_values)
+
       batch_size = None if is_training else batch.size
       # If is not training, always set a zero state to model
       feed_dict.update(self._get_state_dict(batch_size=batch_size))
+
     return feed_dict
 
   # endregion : Private Methods

@@ -35,4 +35,5 @@ def check_type(inputs, type_tuples):
 def check_positive_integer(x, name='value'):
   if not isinstance(x, int) or x <= 0:
     raise ValueError('!! {} must be a positive integer'.format(name))
+  return x
 

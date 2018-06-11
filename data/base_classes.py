@@ -15,11 +15,20 @@ import tframe.utils.misc as misc
 class TFRData(object):
   """Abstract class defining apis for data set classes used in tframe"""
   EXTENSION = 'nonsense'
+
+  GROUPS = 'groups'
+  NUM_CLASSES = 'num_classes'
+
   PARALLEL_ON = 'parallel_on'
   INIT_F = 'init_f'
+  LEN_F = 'len_f'
 
   name = None
   properties = None
+
+  # region : Properties
+
+  # region : Parallel engine
 
   @property
   def parallel_on(self):
@@ -28,6 +37,7 @@ class TFRData(object):
 
   @property
   def init_f(self):
+    """x, y = init_f(x, y) where x, y is numpy arrays"""
     assert isinstance(self.properties, dict)
     f = self.properties.get(self.INIT_F, None)
     if f is not None: assert callable(f)
@@ -37,6 +47,32 @@ class TFRData(object):
   def init_f(self, val):
     assert callable(val)
     self.properties[self.INIT_F] = val
+
+  @property
+  def len_f(self):
+    """l = len_f(l) where l is an positive integer"""
+    assert isinstance(self.properties, dict)
+    f = self.properties.get(self.LEN_F, None)
+    if f is not None: assert callable(f)
+    return f
+
+  @len_f.setter
+  def len_f(self, val):
+    assert callable(val)
+    self.properties[self.LEN_F] = val
+
+  # endregion : Parallel engine
+
+  @property
+  def groups(self):
+    val = self.properties[self.GROUPS]
+    assert isinstance(val, list) and len(val) == self.num_classes
+    return val
+
+  @property
+  def num_classes(self):
+    assert isinstance(self.properties, dict)
+    return self.properties.get(self.NUM_CLASSES)
 
   @property
   def structure(self):
@@ -49,6 +85,8 @@ class TFRData(object):
   @property
   def is_regular_array(self):
     raise NotImplementedError
+
+  # endregion : Properties
 
   def get_round_length(self, batch_size, num_steps=None):
     raise NotImplementedError

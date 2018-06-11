@@ -179,3 +179,35 @@ class SignalSet(DataSet):
 
   # endregion : Private Methods
 
+  # region : Public Static Methods
+
+  @staticmethod
+  def chop_with_stride(x, y, size, stride):
+    assert isinstance(x, np.ndarray) and isinstance(y, np.ndarray)
+    checker.check_type([size, stride], int)
+
+    out_len = SignalSet.chop_with_stride_len_f(len(x), size, stride)
+    x_out = np.zeros(shape=(out_len, size))
+    y_out = np.zeros(shape=(out_len, *y.shape[1:]))
+
+    for i in range(out_len):
+      # Fill in x
+      x_out[i] = x[stride * i:stride * i + size]
+      # Fill in y if necessary
+      if len(x) == len(y):
+        y_out[i] = y[stride * i:stride * i + size]
+
+    if len(x) != len(y):
+      assert len(y) == 1
+      y = np.tile(y, (out_len, 1))
+
+    return x_out, y
+
+  @staticmethod
+  def chop_with_stride_len_f(length, size, stride):
+    checker.check_type([length, size, stride], int)
+    assert size >= stride
+    return (length - size) // stride + 1
+
+  # endregion : Public Static Methods
+

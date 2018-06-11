@@ -106,23 +106,32 @@ class RNet(Net):
     assert self.is_root
     self._state_array = self._get_zero_state(batch_size)
 
-  def reset_part_state(self, batch_indices):
-    assert isinstance(batch_indices, (list, tuple))
-    checker.check_type(batch_indices, int)
-    if self.is_root:
-      for rnn_cell in self.rnn_cells:
-        rnn_cell.reset_part_state(batch_indices)
-    else:
-      # If state is not a numpy array or a tuple/list of numpy arrays,
-      #   this methods must abe overridden
-      if isinstance(self._state_array, np.ndarray):
-        states = (self._state_array,)
-      elif isinstance(self._state_array, (tuple, list)):
-        states = self._state_array
-        checker.check_type(states, np.ndarray)
-      else: raise TypeError('!! Unknown format of states')
+  def reset_part_state(self, indices, values=None):
+    """This method is first designed for parallel training of RNN model with
+        irregular sequence input"""
+    assert isinstance(indices, (list, tuple))
+    assert self.is_root
 
-      for state in states: state[np.array(batch_indices), :] = 0
+    # Separate indices
+    if values is None: values = [0] * len(indices)
+    zero_indices = [i for i, v in zip(indices, values) if v is not None]
+    none_indices = [i for i in indices if i not in zero_indices]
+    assert len(zero_indices) + len(none_indices) == len(indices)
+
+    def _reset(state):
+      if isinstance(state, np.ndarray):
+        if len(zero_indices) > 0: state[np.array(zero_indices), :] = 0
+        if len(none_indices) > 0: state = np.delete(state, none_indices, axis=0)
+        return state
+      elif isinstance(state, (list, tuple)):
+        # tf.scan returns a list of states
+        state = list(state)
+        for i, s in enumerate(state): state[i] = _reset(s)
+        return tuple(state)
+      else:
+        raise TypeError('!! Unknown type of states: {}'.format(type(state)))
+
+    self._state_array = _reset(self._state_array)
 
   # endregion : Public Methods
 
@@ -137,12 +146,21 @@ class RNet(Net):
     else:
       # If state is a tuple, this method must be overriden
       assert self._state_size is not None
-      return np.zeros(shape=(batch_size, self._state_size))
+      state = np.zeros(shape=(batch_size, self._state_size))
+      return state
 
   def _get_state_dict(self, batch_size=None):
     assert self.is_root
-    state = (self._state_array if batch_size is None
-             else self._get_zero_state(batch_size))
+
+    if batch_size is None:
+      # During training
+      state = self._state_array
+      assert state is not None
+    else:
+      # While is_training == False
+      checker.check_positive_integer(batch_size)
+      state = self._get_zero_state(batch_size)
+
     return {self.init_state: state}
 
   def _check_state(self, state, num_or_sizes=1):
