@@ -10,6 +10,7 @@ import pickle
 
 from tframe import pedia
 from tframe.data.base_classes import ImageDataAgent
+from tframe.data.dataset import DataSet
 
 
 class CIFAR10(ImageDataAgent):
@@ -24,7 +25,7 @@ class CIFAR10(ImageDataAgent):
   PROPERTIES = {
     pedia.classes: ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog',
                   'frog', 'horse', 'ship', 'truck'],
-    pedia.num_classes: 10
+    DataSet.NUM_CLASSES: 10
   }
 
   @classmethod

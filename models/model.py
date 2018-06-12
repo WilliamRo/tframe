@@ -347,6 +347,10 @@ class Model(object):
       elif 'target' in tensor.name:
         # TODO: when predict without outputing loss ...
         if batch.targets is not None: feed_dict[tensor] = batch.targets
+      else:
+        name = tensor.name.split('/')[-1].split(':')[0]
+        val = batch.data_dict.get(name, None)
+        if val is not None: feed_dict[tensor] = val
 
     feed_dict.update(self.agent.get_status_feed_dict(is_training))
 

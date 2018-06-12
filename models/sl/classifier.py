@@ -58,6 +58,7 @@ class Classifier(Predictor):
     false_label_list = []
     true_label_list = []
     num_samples = 0
+
     console.show_status('Evaluating classifier ...')
     for batch in self.get_data_batches(data, batch_size):
       assert isinstance(batch, DataSet) and batch.targets is not None
@@ -82,6 +83,7 @@ class Classifier(Predictor):
       false_sample_list.append(features[false_indices])
       false_label_list.append(preds[false_indices])
       true_label_list.append(true_labels[false_indices])
+
     # Concatenate
     if len(false_sample_list) > 0:
       false_sample_list = np.concatenate(false_sample_list)
@@ -95,6 +97,7 @@ class Classifier(Predictor):
     # Try to export false samples
     if export_false and accuracy < 100:
       false_set = DataSet(features=false_sample_list, targets=true_label_list)
+      if hasattr(data, 'properties'): false_set.properties = data.properties
       false_set.data_dict[pedia.predictions] = false_label_list
       from tframe.data.images.image_viewer import ImageViewer
       vr = ImageViewer(false_set)

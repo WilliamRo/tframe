@@ -6,13 +6,14 @@ import model_lib as models
 
 
 def main(_):
-  console.start('MLP task')
+  console.start('Multinput task')
 
   # Configurations
   th = core.th
-  th.model = models.mlp
-  th.fc_dims = [800, 500]
+  th.model = models.multinput
+  th.fc_dims = [[1000, 800], [800]]
   th.actype1 = 'relu'
+  core.use_bn = True
 
   th.epoch = 50
   th.learning_rate = 1e-5
@@ -33,7 +34,8 @@ def main(_):
   th.monitor = False
 
   description = ''
-  th.mark = 'mlp_{}{}'.format(ms(th.fc_dims), description)
+  th.mark = 'mlp_{}{}'.format(
+    '+'.join([ms(dims) for dims in th.fc_dims]), description)
 
   export_false = True
   core.activate(export_false=export_false)

@@ -187,7 +187,7 @@ class DataSet(TFRData):
     round_len = self.get_round_length(batch_size)
     for i in range(round_len):
       yield self.stack[
-        self._rand_indices(batch_size) if shuffle
+        self._rand_indices(size=batch_size) if shuffle
         else range(i * batch_size, min((i + 1) * batch_size, self.stack.size))]
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
@@ -394,17 +394,18 @@ class DataSet(TFRData):
     # Initialize parallel engine
     pe = ParallelEngine(batch_size)
     cursor, num_sequences = 0, len(self.features)
-    counter, round_len = 0, self._get_pe_round_length(batch_size, num_steps)
+    round_len = self._get_pe_round_length(batch_size, num_steps)
 
     # Start loop
     global_reset = True
+    counter = 0
     while True:
       reset_indices = pe.inactive_indices
       reset_values = []
 
       # Load new sequence to engine if necessary
       while not pe.is_ready:
-        if cursor < num_sequences:
+        if shuffle or cursor < num_sequences:
           index = self._rand_indices() if shuffle else cursor
           x, y = self.features[index], self.targets[index]
           if self.init_f is not None: x, y = self.init_f(x, y)
@@ -437,7 +438,7 @@ class DataSet(TFRData):
       if counter >= round_len: break
 
     # Check round length
-    if not shuffle: assert counter == round_len
+    assert counter == round_len
 
   def _get_pe_round_length(self, batch_size, num_steps):
     if self.init_f is not None and self.len_f is None: return None

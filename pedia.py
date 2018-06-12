@@ -2,8 +2,9 @@ Accuracy = 'Accuracy'
 activation_sum = 'activation_sum'
 
 cascade = 'cascade'
+classes = 'CLASSES'
+concat = 'concat'
 cross_entropy = 'cross_entropy'
-classes = 'classes'
 
 default = 'default'
 default_feed_dict = 'default_feed_dict '
@@ -58,7 +59,7 @@ memo = {}
 
 memo[activation_sum] = []
 
-num_classes = 'num_classes'
+num_classes = 'NUM_CLASSES'
 
 
 

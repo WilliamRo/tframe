@@ -16,11 +16,18 @@ from tframe import pedia
 class Net(Function):
   """Function which can packet sub-functions automatically when calling add
      method"""
+
+  CASCADE = pedia.cascade
+  PROD = pedia.prod
+  SUM = pedia.sum
+  FORK = pedia.fork
+  CONCAT = pedia.concat
+
   def __init__(self, name, level=0, inter_type=pedia.cascade,
                is_branch=False, **kwargs):
     """Instantiate Net, a name must be given
        :param level: level 0 indicates the trunk
-       :param inter_type: \in {cascade, fork, sum, prod}
+       :param inter_type: \in {cascade, fork, sum, prod, concat}
     """
     self._name = name
     self._level = level
@@ -100,7 +107,7 @@ class Net(Function):
     # Check interconnection type
     next_net, next_layer = ' => ', ' -> '
     if self._inter_type != pedia.cascade or self.is_branch:
-      if self._inter_type in [pedia.sum, pedia.prod]:
+      if self._inter_type in [pedia.sum, pedia.prod, pedia.concat]:
         result += self._inter_type
       if self.is_branch: result += 'branch'
       else: next_layer, next_net = ', ', ', '
@@ -145,13 +152,15 @@ class Net(Function):
   # TODO: modify with_logits mechanism
   def _link(self, *inputs, **kwargs):
     # region : Check inputs
-    if len(inputs) == 0:
-      if self.input_ is None: raise ValueError('!! Input not defined')
-      input_ = self.input_()
+
+    if len(inputs) == 0 or inputs[0] is None:
+      input_ = self.input_() if self.input_ is not None else None
     elif len(inputs) == 1: input_ = inputs[0]
     else: raise SyntaxError('!! Too much inputs')
-    if not isinstance(input_, tf.Tensor):
+
+    if input_ is not None and not isinstance(input_, tf.Tensor):
       raise TypeError('!! input should be a Tensor')
+
     # endregion : Check inputs
 
     # Check children
@@ -178,13 +187,18 @@ class Net(Function):
       else: output_list.append(output)
 
     # Calculate output
-    if self._inter_type == pedia.fork:
+    if self._inter_type == self.FORK:
       output = output_list
       self.branch_outputs = output
-    elif self._inter_type == pedia.sum: output = tf.add_n(output_list)
-    elif self._inter_type == pedia.prod:
+    elif self._inter_type == self.SUM:
+      output = tf.add_n(output_list)
+    elif self._inter_type == self.PROD:
       output = output_list.pop()
       for tensor in output_list: output *= tensor
+    elif self._inter_type == self.CONCAT:
+      output = tf.concat(output_list, axis=-1)
+    elif self._inter_type != self.CASCADE:
+      raise TypeError('!! Unknown net inter type {}'.format(self._inter_type))
 
     # Return
     return output
@@ -212,13 +226,16 @@ class Net(Function):
     if len(last_net.children) == 0: self.children.pop(-1)
     return layer
 
-  def add_to_last_net(self, layer):
+  def add_to_last_net(self, layer, only_cascade=False):
     from tframe.nets.rnet import RNet
 
     if len(self.children) == 0:
       raise AssertionError('!! This net does not have children')
     last_net = self.children[-1]
-    if isinstance(last_net, RNet): last_net = self._add_new_subnet(layer)
+    if isinstance(last_net, RNet):
+      last_net = self._add_new_subnet(layer)
+    if only_cascade and last_net._inter_type != self.CASCADE:
+      last_net = self._add_new_subnet(layer)
     assert isinstance(last_net, Net)
     last_net.add(layer)
     return last_net
@@ -253,7 +270,7 @@ class Net(Function):
       if f.is_nucleus or len(self.children) == 0:
         self._add_new_subnet(f)
       # Otherwise add this layer to last Net of self.children
-      return self.add_to_last_net(f)
+      return self.add_to_last_net(f, only_cascade=True)
     else: raise ValueError(
       'Object added to a Net must be a Layer or a Net')
 

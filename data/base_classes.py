@@ -16,12 +16,12 @@ class TFRData(object):
   """Abstract class defining apis for data set classes used in tframe"""
   EXTENSION = 'nonsense'
 
-  GROUPS = 'groups'
-  NUM_CLASSES = 'num_classes'
+  GROUPS = 'GROUPS'
+  NUM_CLASSES = 'NUM_CLASSES'
 
-  PARALLEL_ON = 'parallel_on'
-  INIT_F = 'init_f'
-  LEN_F = 'len_f'
+  PARALLEL_ON = 'PARALLEL_ON'
+  INIT_F = 'INIT_F'
+  LEN_F = 'LEN_F'
 
   name = None
   properties = None
@@ -72,7 +72,7 @@ class TFRData(object):
   @property
   def num_classes(self):
     assert isinstance(self.properties, dict)
-    return self.properties.get(self.NUM_CLASSES)
+    return self.properties.get(self.NUM_CLASSES, None)
 
   @property
   def structure(self):
@@ -257,7 +257,7 @@ class ImageDataAgent(DataAgent):
       data_set.features = data_set.features.reshape(data_set.size, -1)
     if one_hot:
       data_set.targets = misc.convert_to_one_hot(
-        data_set.targets, data_set[pedia.num_classes])
+        data_set.targets, data_set[data_set.NUM_CLASSES])
 
     return cls._split_and_return(data_set, train_size, validate_size, test_size)
 
@@ -266,10 +266,23 @@ class ImageDataAgent(DataAgent):
     from .dataset import DataSet
     file_path = os.path.join(data_dir, cls.TFD_FILE_NAME)
     if os.path.exists(file_path): return DataSet.load(file_path)
+
     # If .tfd file does not exist, try to convert from raw data
     console.show_status('Trying to convert raw data to tframe DataSet ...')
     images, labels = cls.load_as_numpy_arrays(data_dir)
     data_set = DataSet(images, labels, name=cls.DATA_NAME, **cls.PROPERTIES)
+
+    # Generate groups if necessary
+    if data_set.num_classes is not None:
+      groups = []
+      dense_labels = misc.convert_to_dense_labels(labels)
+      for i in range(data_set.num_classes):
+        # Find samples of class i and append to groups
+        samples = list(np.argwhere([j == i for j in dense_labels]).ravel())
+        groups.append(samples)
+      data_set.properties[data_set.GROUPS] = groups
+
+    # Show status
     console.show_status('Successfully converted {} samples'.format(
       data_set.size))
     # Save DataSet

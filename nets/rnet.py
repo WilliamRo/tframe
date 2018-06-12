@@ -13,12 +13,14 @@ from tframe.nets.net import Net
 class RNet(Net):
   """Recurrent net which outputs states besides common result"""
   net_name = 'rnet'
+  RECURRENT = 'RECURRENT'
 
   def __init__(self, name):
     # Call parent's constructor
     Net.__init__(self, name)
 
     # Attributes
+    self._inter_type = self.RECURRENT
     self._state_array = None
     self._state_size = None
     self._init_state = None

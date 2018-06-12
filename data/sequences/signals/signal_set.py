@@ -182,7 +182,7 @@ class SignalSet(DataSet):
   # region : Public Static Methods
 
   @staticmethod
-  def chop_with_stride(x, y, size, stride):
+  def chop_with_stride(x, y, size, stride, rand_shift=True):
     assert isinstance(x, np.ndarray) and isinstance(y, np.ndarray)
     checker.check_type([size, stride], int)
 
@@ -190,12 +190,16 @@ class SignalSet(DataSet):
     x_out = np.zeros(shape=(out_len, size))
     y_out = np.zeros(shape=(out_len, *y.shape[1:]))
 
+    if rand_shift:
+      remain = len(x) - ((out_len - 1) * stride + size)
+      shift = np.random.randint(remain + 1)
+    else: shift = 0
     for i in range(out_len):
       # Fill in x
-      x_out[i] = x[stride * i:stride * i + size]
+      x_out[i] = x[shift + stride * i:shift + stride * i + size]
       # Fill in y if necessary
       if len(x) == len(y):
-        y_out[i] = y[stride * i:stride * i + size]
+        y_out[i] = y[shift + stride * i:shift + stride * i + size]
 
     if len(x) != len(y):
       assert len(y) == 1

@@ -47,7 +47,7 @@ def single_input(_link):
         raise ValueError('!! This layer only accept single input')
       input_ = input_[0]
 
-    if not isinstance(input_, tf.Tensor):
+    if input_ is not None and not isinstance(input_, tf.Tensor):
       raise TypeError('!! This layer only accept a Tensor as input')
 
     args = (args[0], input_) if isinstance(args[0], Layer) else (input_,)

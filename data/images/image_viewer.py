@@ -284,7 +284,7 @@ class ImageViewer(object):
       self.details.config(text='No details', fg='grey')
 
   def _get_class_string(self, label):
-    classes = self.data_set.properties.get('classes', None)
+    classes = self.data_set.properties.get('CLASSES', None)
     if classes is not None: label = classes[label]
     return '{}'.format(label)
 

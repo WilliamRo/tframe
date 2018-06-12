@@ -30,6 +30,8 @@ th.at_most_save_once_per_round = False
 th.early_stop = True
 th.patience = 10
 
+use_bn = False
+
 
 def activate(export_false=False):
   assert callable(th.model)
