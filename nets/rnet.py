@@ -13,7 +13,6 @@ from tframe.nets.net import Net
 class RNet(Net):
   """Recurrent net which outputs states besides common result"""
   net_name = 'rnet'
-  RECURRENT = 'RECURRENT'
 
   def __init__(self, name):
     # Call parent's constructor

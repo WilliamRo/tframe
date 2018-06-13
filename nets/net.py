@@ -22,6 +22,7 @@ class Net(Function):
   SUM = pedia.sum
   FORK = pedia.fork
   CONCAT = pedia.concat
+  RECURRENT = 'RECURRENT'
 
   def __init__(self, name, level=0, inter_type=pedia.cascade,
                is_branch=False, **kwargs):
@@ -213,7 +214,7 @@ class Net(Function):
        while-loop"""
     assert self.is_root
     if not (isinstance(self.last_function, Activation)
-            and self.last_function.abbreviation == 'softmax'):
+        and self.last_function.abbreviation == 'softmax'):
       return None
 
     last_net = self.children[-1]
@@ -232,10 +233,10 @@ class Net(Function):
     if len(self.children) == 0:
       raise AssertionError('!! This net does not have children')
     last_net = self.children[-1]
-    if isinstance(last_net, RNet):
+    if isinstance(last_net, RNet) or (only_cascade and
+                                      last_net._inter_type != self.CASCADE):
       last_net = self._add_new_subnet(layer)
-    if only_cascade and last_net._inter_type != self.CASCADE:
-      last_net = self._add_new_subnet(layer)
+
     assert isinstance(last_net, Net)
     last_net.add(layer)
     return last_net
@@ -261,7 +262,7 @@ class Net(Function):
       self.input_ = f
       return self
     elif (isinstance(f, Net) or not self.is_root or
-           self._inter_type != pedia.cascade):
+          self._inter_type not in (self.CASCADE, self.RECURRENT)):
       # Net should be added directly into self.children of any net
       # Layer should be added directly into self.children for non-cascade nets
       return self._save_add(f)
