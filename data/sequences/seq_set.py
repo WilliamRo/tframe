@@ -128,7 +128,8 @@ class SequenceSet(DataSet):
         if batch_size < 0: batch_size = self.size
 
         if batch_size == 1:
-          round_len = sum([np.ceil(l / num_steps) for l in self.structure])
+          round_len = sum([np.ceil(L / (num_steps if num_steps > 0 else L))
+                           for L in self.structure])
         else:
           assert num_steps < 0
           round_len = np.ceil(self.size / batch_size)
