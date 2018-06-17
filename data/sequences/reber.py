@@ -9,7 +9,7 @@ from enum import Enum, unique
 
 from tframe import checker
 from tframe import console
-from tframe.data.dataset import DataSet
+from tframe.data.sequences.seq_set import SequenceSet
 from tframe.data.base_classes import DataAgent
 
 
@@ -149,7 +149,7 @@ class ERG(DataAgent):
     # Check file_name
     if file_name is None: file_name = cls._get_file_name(size, unique_)
     data_path = os.path.join(data_dir, file_name)
-    if os.path.exists(data_path): return DataSet.load(data_path)
+    if os.path.exists(data_path): return SequenceSet.load(data_path)
     # If data does not exist, create a new one
     console.show_status('Making data ...')
     erg_list = ReberGrammar.make_strings(
@@ -158,18 +158,18 @@ class ERG(DataAgent):
     # Wrap erg into a DataSet
     features = [erg.one_hot for erg in erg_list]
     targets = [erg.transfer_prob for erg in erg_list]
-    data_set = DataSet(features, targets, {'erg_list': erg_list},
-                       name='Embedded Reber Grammar')
+    data_set = SequenceSet(features, targets, erg_list=tuple(erg_list),
+                           name='Embedded Reber Grammar')
     console.show_status('Saving data set ...')
     data_set.save(data_path)
     console.show_status('Data set saved to {}'.format(data_path))
-    return  data_set
+    return data_set
 
   @classmethod
   def _get_file_name(cls, num, unique_):
     checker.check_positive_integer(num)
     checker.check_type(unique_, bool)
-    file_name = '{}_{}_{}.tfd'.format(
+    file_name = '{}_{}_{}.tfds'.format(
       cls.DATA_NAME, num, 'U' if unique_ else 'NU')
     return file_name
 

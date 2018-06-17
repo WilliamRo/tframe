@@ -27,6 +27,7 @@ linear = 'linear'
 train_step_summaries = 'train_step_summaries '
 
 metric_name = 'metric_name'
+metric_foreach = 'metric_foreach'
 monitor = 'monitor'
 
 predictions = 'predictions'

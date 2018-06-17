@@ -13,55 +13,46 @@ import tframe.utils.misc as misc
 
 
 class TFRData(object):
-  """Abstract class defining apis for data set classes used in tframe"""
-  EXTENSION = 'nonsense'
+  """Abstract class defining APIs for data set classes used in tframe"""
+  EXTENSION = 'dummy'
 
-  GROUPS = 'GROUPS'
   NUM_CLASSES = 'NUM_CLASSES'
+  GROUPS = 'GROUPS'
 
-  PARALLEL_ON = 'PARALLEL_ON'
-  INIT_F = 'INIT_F'
-  LEN_F = 'LEN_F'
+  BATCH_PREPROCESSOR = 'BATCH_PREPROCESSOR'
+  LENGTH_CALCULATOR = 'LENGTH_CALCULATOR '
 
-  name = None
-  properties = None
+  def __init__(self, name):
+    self.name = name
+    self.properties = {}
 
   # region : Properties
 
-  # region : Parallel engine
-
   @property
-  def parallel_on(self):
+  def batch_preprocessor(self):
+    """A method taking DataSet as input and preprocess its features (and
+      targets if necessary) without changing its size. Typically used for
+      a regular data set"""
     assert isinstance(self.properties, dict)
-    return self.properties.get(self.PARALLEL_ON, False)
+    return self.properties.get(self.BATCH_PREPROCESSOR, None)
 
-  @property
-  def init_f(self):
-    """x, y = init_f(x, y) where x, y is numpy arrays"""
+  @batch_preprocessor.setter
+  def batch_preprocessor(self, val):
     assert isinstance(self.properties, dict)
-    f = self.properties.get(self.INIT_F, None)
-    if f is not None: assert callable(f)
-    return f
-
-  @init_f.setter
-  def init_f(self, val):
     assert callable(val)
-    self.properties[self.INIT_F] = val
+    self.properties[self.BATCH_PREPROCESSOR] = val
 
   @property
-  def len_f(self):
-    """l = len_f(l) where l is an positive integer"""
+  def length_calculator(self):
+    """Used in calculating round length while training RNN model"""
     assert isinstance(self.properties, dict)
-    f = self.properties.get(self.LEN_F, None)
-    if f is not None: assert callable(f)
-    return f
+    return self.properties.get(self.LENGTH_CALCULATOR, None)
 
-  @len_f.setter
-  def len_f(self, val):
+  @length_calculator.setter
+  def length_calculator(self, val):
+    assert isinstance(self.properties, dict)
     assert callable(val)
-    self.properties[self.LEN_F] = val
-
-  # endregion : Parallel engine
+    self.properties[self.LENGTH_CALCULATOR] = val
 
   @property
   def groups(self):
@@ -96,10 +87,6 @@ class TFRData(object):
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     raise NotImplementedError
-
-  def turn_parallel_on(self, **kwargs):
-    assert isinstance(self.properties, dict)
-    self.properties[self.PARALLEL_ON] = True
 
   # region : Load and Save
 

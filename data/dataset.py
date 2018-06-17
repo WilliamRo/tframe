@@ -3,51 +3,39 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import pickle
 
 from tframe import checker
 from tframe import pedia
 from tframe import hub
 
 from tframe.data.base_classes import TFRData
-from tframe.data.paral_engine import ParallelEngine
+# from tframe.data.sequences.paral_engine import ParallelEngine
 
 
 class DataSet(TFRData):
-  """"""
+
   EXTENSION = 'tfd'
 
-  def __init__(self, features=None, targets=None, data_dict=None,
-               name='dataset1', in_rnn_format=False, **kwargs):
-    """
-    A DataSet usually holds a regular numpy array or a list of irregular
-    numpy arrays as features (or targets). Raw data or other adjoint data
-    can be stored into data_dict for features and targets generation or
-    other further processing.
-     Properties of a DataSet will be maintained during list merging or data set
-     splitting.
+  FEATURES = pedia.features
+  TARGETS = pedia.targets
 
-    :param features: Features. Can be a regular numpy array or a list of
-                      numpy arrays. If not provided, data_dict must not be
-                      empty
-    :param targets: Targets. If provided, it must be of the same type and size
-                      with features.
-    :param data_dict: A dictionary which holds raw data or other adjoint data.
-                       If is empty, features must be provided
-    :param name: The name of this DataSet
-    :param kwargs: A dictionary which stores the properties of this DataSet
+  def __init__(self, features=None, targets=None, data_dict=None,
+               name='dataset', is_rnn_input=False, **kwargs):
     """
+    A DataSet is the only data structure which can be fed into tframe model
+    directly. Data stored in data_dict must be a regular numpy array with the
+    same length.
+    """
+    # Call parent's constructor
+    super().__init__(name)
+
     # Attributes
+    self.data_dict = {} if data_dict is None else data_dict
     self.features = features
     self.targets = targets
-    self.data_dict = {} if data_dict is None else data_dict
-    self.properties = kwargs
-    self.name = name
+    self.properties.update(kwargs)
 
-    self._stacked_data = None
-    self._rnn_data = None
-
-    self.in_rnn_format = in_rnn_format
+    self.is_rnn_input = is_rnn_input
     self.should_reset_state = False
     self.reset_batch_indices = None
     self.reset_values = None
@@ -55,183 +43,142 @@ class DataSet(TFRData):
     # Sanity checks
     self._check_data()
 
+
   # region : Properties
+  
+  @property
+  def features(self): return self.data_dict.get(self.FEATURES, None)
+
+  @features.setter
+  def features(self, val):
+    if val is not None:
+      if isinstance(val, np.ndarray): self.data_dict[self.FEATURES] = val
+      else: raise TypeError('!! Unsupported feature type {}'.format(type(val)))
+
+  @property
+  def targets(self): return self.data_dict.get(self.TARGETS, None)
+
+  @targets.setter
+  def targets(self, val):
+    if val is not None:
+      if isinstance(val, np.ndarray): self.data_dict[self.TARGETS] = val
+      else: raise TypeError('!! Unsupported target type {}'.format(type(val)))
+
+  @property
+  def representative(self):
+    array = list(self.data_dict.values())[0]
+    assert isinstance(array, np.ndarray)
+    assert len(array.shape) > 2 if self.is_rnn_input else 1
+    return array
 
   @property
   def should_partially_reset_state(self):
     return self.reset_batch_indices is not None
 
   @property
-  def structure(self):
-    assert self.features is not None
-    if isinstance(self.features, np.ndarray): features = [self.features]
-    else: features = self.features
-    result = []
-    for x in features:
-      assert isinstance(x, np.ndarray)
-      result.append(len(x))
-    return result
+  def structure(self): return [1]
 
   @property
-  def size(self):
-    if self.features is None:
-      assert len(self.data_dict) > 0
-      data_array = list(self.data_dict.values())[0]
-      return len(data_array)
-    else: return len(self.features)
+  def size(self): return len(self.representative)
 
   @property
-  def is_regular_array(self):
-    self._check_feature()
-    return isinstance(self.features, np.ndarray)
+  def total_steps(self):
+    assert self.is_rnn_input
+    return self.representative.shape[1]
 
   @property
-  def stack(self):
-    """Return a numpy array containing all data in this data set"""
-    self._check_feature()
-    if self.is_regular_array: return self
-    if self._stacked_data is not None: return self._stacked_data
-    # Stack data
-    try:
-      x = np.concatenate(self.features, axis=0)
-      y = None if self.targets is None else np.concatenate(self.targets, axis=0)
-      self._stacked_data = DataSet(x, y, name='{}(stacked)'.format(self.name))
-      self._stacked_data.data_dict = self.data_dict
-      self._stacked_data.properties = self.properties
-      return self._finalize(self._stacked_data)
-    except:
-      print('!! failed to stack data')
-      raise
+  def is_regular_array(self): return True
 
   @property
-  def as_rnn_data(self):
-    assert self.is_regular_array
-    if self.in_rnn_format: return self
-    if self._rnn_data is not None: return self._rnn_data
-    x, y = np.reshape(self.features, [1] + list(self.features.shape)), None
-    if self.targets is not None:
-      y = np.reshape(self.targets, [1] + list(self.targets.shape))
-    self._rnn_data = DataSet(features=x, targets=y, in_rnn_format=True)
-    return self._rnn_data
+  def stack(self): return self
+
+  @property
+  def as_rnn_batch(self):
+    """Convert a regular array to RNN batch format"""
+    if self.is_rnn_input: return self
+    return self._convert_to_rnn_input()
 
   # endregion : Properties
 
   # region : Overriden Methods
 
-  def __len__(self):
-    return self.size
+  def __len__(self): return self.size
 
   def __getitem__(self, item):
     if isinstance(item, str):
-      if item == pedia.features: return self.features
-      elif item == pedia.targets: return self.targets
-      elif item in self.data_dict.keys(): return self.data_dict[item]
+      if item in self.data_dict.keys(): return self.data_dict[item]
       elif item in self.properties.keys(): return self.properties[item]
       else: raise KeyError('!! Can not resolve "{}"'.format(item))
+
     # If item is index array
-    features, targets, data_dict = None, None, {}
-    # item = np.mod(item, self.size)
-    if self.features is not None: features = self.features[item]
-    if self.targets is not None: targets = self.targets[item]
-    for key, val in self.data_dict.items():
-      assert hasattr(val, '__len__')
-      # other data array in self.data_dict will be abandoned
-      if len(val) == self.size: data_dict[key] = val[item]
-    # Return
-    return self._finalize(DataSet(
-      features, targets, data_dict, self.name, **self.properties))
+    f = lambda x: x[item]
+    data_set = DataSet(data_dict=self._apply(f), name=self.name + '(slice)')
+    return self._finalize(data_set, item)
 
   # endregion : Overriden Methods
 
   # region : Basic APIs
 
   def get_round_length(self, batch_size, num_steps=None):
-    """Get round length for training
-    :param batch_size: Batch size. For irregular sequences, this value should
-                        be set to 1.
-    :param num_steps: Step number. If provided, round length will be calculated
-                       for RNN model
-    :return: Round length for training
-    """
-    # Make sure features exist
-    self._check_feature()
-    checker.check_positive_integer(batch_size, 'batch_size')
-    if num_steps is None:
-      # :: For feed-forward models
-      return int(np.ceil(self.stack.size / batch_size))
-    else:
-      # :: For recurrent models
-      checker.check_type(num_steps, int)
-      if self.is_regular_array: arrays = [self.features]
-      elif self.parallel_on:
-        return self._get_pe_round_length(batch_size, num_steps)
-      else: arrays = self.features
+    assert isinstance(batch_size, int)
+    if batch_size < 0: batch_size = self.size
 
-      len_f = lambda x: x if self.len_f is None else self.len_f
-      if num_steps < 0: return len(arrays)
-      else: return int(sum([np.ceil(len_f(len(array)) // batch_size / num_steps)
-                            for array in arrays]))
+    if num_steps is None: round_len = np.ceil(self.size / batch_size)
+    else:
+      if self.is_rnn_input:
+        if num_steps < 0: num_steps = self.total_steps
+        round_len = np.ceil(self.total_steps / num_steps)
+      else:
+        if num_steps < 0: round_len = 1
+        else: round_len = np.ceil(self.size // batch_size / num_steps)
+
+    return int(round_len)
 
   def gen_batches(self, batch_size, shuffle=False):
-    """ Generate batches of data
-    (1) When data is a regular numpy array:
-        Data batches will be extracted along its first dimension in order or
-        randomly
-    (2) When data is list of sequences:
-        Data will be stacked first and extracted as it does in (1)
-
-    :param batch_size: Batch size
-    :param shuffle: Whether to shuffle
-    :return: A generator producing batches of data
-    """
+    """Yield batches of data with the specific size"""
     round_len = self.get_round_length(batch_size)
+    if batch_size == -1: batch_size = self.size
+
+    # Generate batches
     for i in range(round_len):
-      yield self.stack[
-        self._rand_indices(size=batch_size) if shuffle
-        else range(i * batch_size, min((i + 1) * batch_size, self.stack.size))]
+      indices = self._select(i, batch_size, shuffle)
+      # Yield data batch
+      data_batch = self.stack[indices]
+      # batch_preprocessor should not change self.size
+      if self.batch_preprocessor is not None:
+        data_batch = self.batch_preprocessor(data_batch)
+      yield data_batch
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
-    """ Generate data batches with steps
-    (1) When data is a regular numpy array:
-        The whole data will be regarded as a single sequence and will be
-        chopped in order into batches and then chopped in order into step blocks
-        with the specified size
-    (2) When data is a list of sequences:
-        rnn batches will be generated sequence by sequence
+    """Each numpy array will be regarded as a single sequence and will be
+       partitioned into batches of sequences with corresponding steps.
 
-    The default parameters are for batch validation
+      :param batch_size: Batch size, positive integer
+      :param num_steps: steps of each RNN data batch
+      :param shuffle: Whether to shuffle the partitioned sequences
+     """
+    # Check batch_size and shuffle
+    checker.check_positive_integer(batch_size)
+    assert shuffle is False
+    # Generate partitioned data set
+    if self.is_rnn_input: rnn_data = self
+    else:
+      data_set = (self if self.batch_preprocessor is None
+                  else self.batch_preprocessor(self))
+      rnn_data = data_set._convert_to_rnn_input(batch_size)
 
-    :param batch_size: Batch size
-    :param num_steps: Step number
-    :param shuffle: Whether to shuffle
-    :return: A generator producing rnn batches of data
-    """
-    # Sanity check using get_round_length method
     round_len = self.get_round_length(batch_size, num_steps)
-    # Put features and targets into lists
-    if self.is_regular_array: features = [self.features]
-    elif self.parallel_on:
-      for batch in self._gen_parallel_batches(batch_size, num_steps, shuffle):
-        assert isinstance(batch, DataSet)
-        yield batch
-      return
-    else: features = self.features
+    if num_steps < 0: num_steps = rnn_data.total_steps
 
-    targets = (None,) * self.size if self.targets is None else (
-      [self.targets] if self.is_regular_array else self.targets)
-    num_sequences = len(features)
-    # Generate data sequence by sequence
-    for i in range(num_sequences):
-      index = self._rand_indices(num_sequences) if shuffle else i
-      x, y = features[index], targets[index]
-      if self.init_f is not None: x, y = self.init_f(x, y)
-
-      for batch in self._gen_rnn_batches(x, y, batch_size, num_steps):
-        assert isinstance(batch, DataSet)
-        yield batch
-        round_len -= 1
-        # TODO: Make sure progress bar works properly
-        # if round_len == 0: return
+    # Generate batches
+    for i in range(round_len):
+      f = lambda x: x[:, i*num_steps:(i + 1)*num_steps]
+      batch = DataSet(
+        data_dict=rnn_data._apply(f), is_rnn_input=True,
+        name=self.name + '_batch_{}_of_{}'.format(i + 1, round_len),
+        **self.properties)
+      if i == 0: batch.should_reset_state = True
+      yield batch
 
   # endregion : Basic APIs
 
@@ -282,169 +229,66 @@ class DataSet(TFRData):
 
   # region : Private Methods
 
-  def _finalize(self, data_set):
+  def _finalize(self, data_set, indices=None):
     assert isinstance(data_set, DataSet)
     data_set.__class__ = self.__class__
+    data_set.properties = self.properties
+    if indices is not None:
+      for k, v in self.properties.items():
+        if isinstance(v, tuple) and len(v) == self.size:
+          data_set.properties[k] = v[indices]
     return data_set
 
-  def _check_data(self):
-    """Features and data_dict should not be empty at the same time.
-       All data array or list provided must have the same length.
-       If features (or targets) are provided as a list (or a tuple),
-       its elements must be numpy arrays with exactly the same shape (except
-       for the first dimension)."""
-    # Make sure data_dict is a dictionary
-    if not isinstance(self.data_dict, dict):
-      raise TypeError('!! data_dict provided must be a dict')
-    # Put all data arrays to a single dict for later check
-    data_dict = self.data_dict.copy()
-    if self.features is not None:
-      data_dict[pedia.features] = self.features
-      if self.targets is not None:
-        # TODO
-        # if type(self.features) != type(self.targets):
-        #   raise TypeError('!! features and targets must be of the same type')
-        data_dict[pedia.targets] = self.targets
-
-    # Make sure at least one data array is provided
-    if len(data_dict) == 0:
-      raise AssertionError('!! data not found')
-    # Make sure all data array have the same size
-    size = -1
-    for key, val in data_dict.items():
-      # Make sure all data arrays are instances of list or ndarray or sth.
-      if not hasattr(val, '__len__'):
-        raise AttributeError(
-          '!! {} data must have __len__ attribute'.format(key))
-      if size == -1: size = len(val)
-      elif size != len(val):
-        raise ValueError('!! all data array must have the same size')
-
-      # Make sure features and targets are (lists of) numpy arrays
-      if key in (pedia.features, pedia.targets):
-        checker.check_type(val, np.ndarray)
-        # If features and targets are stored in a list (or a tuple), check
-        # .. the shape of each numpy array
-        if not isinstance(val, np.ndarray):
-          assert isinstance(val, (list, tuple))
-          shape = None
-          for array in val:
-            assert isinstance(array, np.ndarray)
-            if shape is None: shape = array.shape[1:]
-            elif shape != array.shape[1:]:
-              raise ValueError(
-                '!! samples in {} list should have the same shape'.format(key))
-
-  def _check_feature(self):
-    if self.features is None: raise AssertionError(
-      '!! no features found in {}'.format(self.name))
-
-  def _gen_rnn_batches(self, x, y, batch_size, num_steps):
-    checker.check_positive_integer(batch_size, 'batch size')
-    checker.check_type(num_steps, int)
-    # Get batch partitions
-    data_x, L = self._get_batch_partition(x, batch_size)
-    if y is not None:
-      if len(x) == len(y):
-        data_y, Ly = self._get_batch_partition(y, batch_size)
-        assert L == Ly
-      else:
-        assert len(y) == 1
-        data_y = y
-    # Chop data further
-    if num_steps < 0: num_steps = L
-    round_len = int(np.ceil(L / num_steps))
-    for i in range(round_len):
-      batch_x = data_x[:, i * num_steps:min((i + 1) * num_steps, L)]
-      batch_y = None
-      if y is not None:
-        if len(x) == len(y):
-          batch_y = data_y[:, i * num_steps:min((i + 1) * num_steps, L)]
-        else:
-          assert isinstance(y, np.ndarray)
-          batch_y = np.tile(y, [batch_x.shape[0], batch_x.shape[1], 1])
-      batch = DataSet(batch_x, batch_y, in_rnn_format=True)
-      # State should be reset at the beginning of a sequence
-      if i == 0: batch.should_reset_state = True
-      batch.name = self.name + '_{}'.format(i + 1)
-      yield batch
-
-  def _get_batch_partition(self, array, batch_size):
-    assert isinstance(array, np.ndarray)
-    sample_shape = array[0].shape
-    # Get batch partition length
-    L = len(array) // batch_size
-    data = np.zeros([batch_size, L, *sample_shape])
-    for i in range(batch_size):
-      data[i] = array[i * L:(i + 1) * L, :]
-    # Return result
-    return data, L
-
-  def _gen_parallel_batches(self, batch_size, num_steps, shuffle):
-    """A beta method used only for RNN training"""
-    # Sanity check
-    features, targets = self.features, self.targets
-    assert isinstance(features, (tuple, list))
-    assert isinstance(targets, (tuple, list))
-    assert len(features) == len(targets)
+  def _select(self, batch_index, batch_size, shuffle, upper_bound=None):
+    if upper_bound is None: upper_bound = self.size
+    assert isinstance(batch_index, int) and batch_index >= 0
     checker.check_positive_integer(batch_size)
-    assert isinstance(num_steps, int)
-    assert isinstance(shuffle, bool)
+    if shuffle:
+      indices = self._rand_indices(upper_bound=upper_bound, size=batch_size)
+    else:
+      from_index = batch_index * batch_size
+      to_index = min((batch_index + 1) * batch_size, upper_bound)
+      indices = list(range(from_index, to_index))
+    return indices
 
-    # Initialize parallel engine
-    pe = ParallelEngine(batch_size)
-    cursor, num_sequences = 0, len(self.features)
-    round_len = self._get_pe_round_length(batch_size, num_steps)
+  def _check_data(self):
+    """data_dict should be a non-empty dictionary containing regular numpy
+       arrays with the same length"""
+    # Make sure data_dict is a non-empty dictionary
+    if not isinstance(self.data_dict, dict) or len(self.data_dict) == 0:
+      raise TypeError('!! data_dict must be a non-empty dictionary')
 
-    # Start loop
-    global_reset = True
-    counter = 0
-    while True:
-      reset_indices = pe.inactive_indices
-      reset_values = []
+    data_length = len(list(self.data_dict.values())[0])
 
-      # Load new sequence to engine if necessary
-      while not pe.is_ready:
-        if shuffle or cursor < num_sequences:
-          index = self._rand_indices() if shuffle else cursor
-          x, y = self.features[index], self.targets[index]
-          if self.init_f is not None: x, y = self.init_f(x, y)
-          cursor += 1
-          reset_values.append(0)
-        else:
-          x, y = None, None
-          reset_values.append(None)
-        pe.set_sequence(x, y)
+    # Check each item in data_dict
+    for name, array in self.data_dict.items():
+      # Check type and length
+      if not isinstance(array, np.ndarray) or len(array) != data_length:
+        raise ValueError('!! {} should be a numpy array with length {}'.format(
+          name, data_length))
+      # Check sample shape
+      if len(array.shape) == 1:
+        self.data_dict[name] = np.reshape(array, (-1, 1))
 
-      if pe.flameout: break
+  def _apply(self, f, data_dict=None):
+    """Apply callable method f to all data in data_dict. If data_dict is not
+       provided, self.data_dict will be used as default"""
+    assert callable(f)
+    if data_dict is None: data_dict = self.data_dict
+    result_dict = {}
+    for k, v in data_dict.items(): result_dict[k] = f(v)
+    return result_dict
 
-      # Get features and targets and wrap them into a DataSet
-      x, y = pe.emit(num_steps)
-      data_batch = DataSet(x, y)
-      if len(reset_indices) > 0:
-        if global_reset:
-          data_batch.should_reset_state = True
-          global_reset = False
-        assert len(reset_indices) == len(reset_values)
-        data_batch.reset_batch_indices = reset_indices
-        data_batch.reset_values = (
-          reset_values if len([val for val in reset_values if val is None]) > 0
-          else None)
-
-      # Yield batch
-      yield  data_batch
-
-      counter += 1
-      if counter >= round_len: break
-
-    # Check round length
-    assert counter == round_len
-
-  def _get_pe_round_length(self, batch_size, num_steps):
-    if self.init_f is not None and self.len_f is None: return None
-    if self.init_f is None: assert self.len_f is None
-    return ParallelEngine.get_round_length(
-      batch_size, num_steps, self.structure, len_f=self.len_f)
+  def _convert_to_rnn_input(self, batch_size=1):
+    checker.check_positive_integer(batch_size)
+    def f(array):
+      assert isinstance(array, np.ndarray) and len(array.shape) > 1
+      L = len(array) // batch_size
+      data = np.zeros(shape=(batch_size, L, *array.shape[1:]))
+      for i in range(batch_size): data[i] = array[i * L:(i + 1) * L]
+      return data
+    return DataSet(data_dict=self._apply(f), is_rnn_input=True,
+                   name=self.name, **self.properties)
 
   def _rand_indices(self, upper_bound=None, size=1):
     if upper_bound is None: upper_bound = self.size
@@ -458,7 +302,7 @@ class DataSet(TFRData):
         group_index = np.random.randint(len(self.groups[cls]))
         indices.append(self.groups[cls][group_index])
 
-    if len(indices) == 1: return indices[0]
+    if len(indices) == 1: return int(indices[0])
     else: return indices
 
   # endregion : Private Methods
@@ -467,3 +311,5 @@ class DataSet(TFRData):
 if __name__ == '__main__':
   features = np.arange(12)
   data_set = DataSet(features)
+
+

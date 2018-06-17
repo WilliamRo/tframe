@@ -31,9 +31,9 @@ def accuracy(labels, outputs):
     # Put tensor back to list
     tensors[i] = tensor
 
-  correct_prediction = tf.equal(tensors[0], tensors[1], 'correct_prediction')
-  return tf.reduce_mean(tf.cast(correct_prediction, tf.float32),
-                        name='accuracy')
+  correct_prediction = tf.cast(tf.equal(tensors[0], tensors[1]), tf.float32)
+  tf.add_to_collection(tfr.pedia.metric_foreach, correct_prediction)
+  return tf.reduce_mean(correct_prediction, name='accuracy')
 
 
 def generalized_accuracy(truth, output):
@@ -56,7 +56,9 @@ def generalized_accuracy(truth, output):
     val, axis=1, direction='DESCENDING')
   alpha = tf.reduce_sum(tf.multiply(truth, output), axis=2)
   beta = tf.reduce_sum(tf.multiply(tf_sort(truth), tf_sort(output)), axis=2)
-  return tf.reduce_mean(tf.cast(tf.equal(alpha, beta), tf.float32))
+  metric_foreach = tf.cast(tf.equal(alpha, beta), tf.float32)
+  tf.add_to_collection(tfr.pedia.metric_foreach, metric_foreach)
+  return tf.reduce_mean(metric_foreach)
 
 
 def delta(truth, output):

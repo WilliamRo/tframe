@@ -237,13 +237,17 @@ class Model(object):
         return [data_set.stack]
       checker.check_positive_integer(batch_size)
       data_batches = data_set.gen_batches(batch_size, shuffle=shuffle)
+
     elif self.input_type is InputTypes.RNN_BATCH:
+      if batch_size == -1 and isinstance(data_set, DataSet):
+        return [data_set.padded_stack]
       if batch_size is None: batch_size = 1
       if num_steps is None: num_steps = -1
       checker.check_positive_integer(batch_size)
       checker.check_type(num_steps, int)
       data_batches = data_set.gen_rnn_batches(batch_size, num_steps, shuffle)
     else: raise ValueError('!! Can not resolve input type of this model')
+
     return data_batches
 
   def validate_model(self, data, batch_size=None, allow_sum=False):
@@ -256,20 +260,26 @@ class Model(object):
       data = self._sanity_check_before_use(data)
       feed_dict = self._get_default_feed_dict(data, is_training=False)
       return self._validate_group.run(feed_dict, allow_sum=allow_sum)
+
     # Batch validation: Calculate metric one by one
     metric_list = []
     total = 0
     for batch in self.get_data_batches(data, batch_size, -1, False):
+
+
       # Calculate weight
       weight = batch.targets.shape[0]
       if self.input_type is InputTypes.RNN_BATCH:
+        # shape of RNN batch targets is (batch_size, num_steps, *target_dim)
         weight *= batch.targets.shape[1]
       assert weight > 0
       total += weight
+
       # Validate batch
       batch = self._sanity_check_before_use(batch)
       feed_dict = self._get_default_feed_dict(batch, is_training=False)
       metric_list.append(self._metric.run(feed_dict) * weight)
+
     # Return metric mean
     metric_mean = np.sum(metric_list) / total
     if allow_sum: self._batch_val_summ.write(metric_mean)
@@ -361,8 +371,8 @@ class Model(object):
       raise TypeError('!! Input data must be an instance of TFData')
     if not self.built: raise ValueError('!! Model not built yet')
     if not self.launched: self.launch_model(overwrite=False)
-    if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_data
-    else: assert not data.in_rnn_format
+    if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_batch
+    else: assert not data.is_rnn_input
     return data
 
   # endregion : Private Methods

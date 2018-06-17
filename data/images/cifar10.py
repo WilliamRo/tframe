@@ -86,6 +86,8 @@ class CIFAR10(ImageDataAgent):
 if __name__ == '__main__':
   from tframe.data.images.image_viewer import ImageViewer
   data_dir = '../../examples/cifar-10/data'
+  print('>> Loading ...')
   data_set = CIFAR10.load_as_tframe_data(data_dir)
+  print('>> Data loaded')
   viewer = ImageViewer(data_set)
   viewer.show()

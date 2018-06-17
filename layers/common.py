@@ -192,6 +192,7 @@ class Reshape(Layer):
   def _link(self, input_, **kwargs):
     name = 'flatten' if self.output_shape is None else 'reshape'
     self.abbreviation = name
+    self.full_name = name
 
     input_shape = input_.get_shape().as_list()
     output_shape = ([-1, np.prod(input_shape[1:])]
