@@ -239,10 +239,11 @@ class Model(object):
       data_batches = data_set.gen_batches(batch_size, shuffle=shuffle)
 
     elif self.input_type is InputTypes.RNN_BATCH:
-      if batch_size == -1 and isinstance(data_set, DataSet):
-        return [data_set.padded_stack]
-      if batch_size is None: batch_size = 1
       if num_steps is None: num_steps = -1
+      if batch_size < 0: batch_size = data_set.size
+      if batch_size is None: batch_size = 1
+      if batch_size > 1: assert num_steps < 0
+
       checker.check_positive_integer(batch_size)
       checker.check_type(num_steps, int)
       data_batches = data_set.gen_rnn_batches(batch_size, num_steps, shuffle)
@@ -253,19 +254,29 @@ class Model(object):
   def validate_model(self, data, batch_size=None, allow_sum=False):
     """Validate model. If data provided is not regular, batch validation will
        be used. For RNN model, batch validation requires batch size to be 1."""
+    # If data items are not regular arrays, it will be forced to carry out
+    # .. batch validation
     assert isinstance(data, TFRData)
     if not data.is_regular_array and batch_size is None: batch_size = 1
+
     # Normal validation
     if batch_size is None:
       data = self._sanity_check_before_use(data)
       feed_dict = self._get_default_feed_dict(data, is_training=False)
       return self._validate_group.run(feed_dict, allow_sum=allow_sum)
 
-    # Batch validation: Calculate metric one by one
+    # Batch validation: Calculate metric batch by batch
     metric_list = []
     total = 0
     for batch in self.get_data_batches(data, batch_size, -1, False):
-
+      # Batch validation on irregular data
+      if batch.active_length is not None:
+        results = self._get_metric_foreach(batch)
+        for result in results:
+          assert isinstance(result, np.ndarray) and len(result.shape) == 1
+          metric_list.append(sum(result))
+          total += len(result)
+        continue
 
       # Calculate weight
       weight = batch.targets.shape[0]
@@ -348,6 +359,24 @@ class Model(object):
 
   # region : Private Methods
 
+  def _get_metric_foreach(self, batch):
+    assert isinstance(batch, DataSet) and isinstance(batch.active_length, list)
+    assert len(batch.active_length) == batch.size
+
+    metrics = tf.get_collection(pedia.metric_foreach)
+    assert len(metrics) == 1
+    metric_foreach = metrics[0]
+
+    feed_dict = self._get_default_feed_dict(batch, is_training=False)
+    results = self.session.run(metric_foreach, feed_dict)
+    assert isinstance(results, np.ndarray) and len(results.shape)
+
+    metric_list = []
+    for result, active_len in zip(results, batch.active_length):
+      metric_list.append(result[:active_len])
+
+    return metric_list
+
   @with_graph
   def _get_default_feed_dict(self, batch, is_training):
     feed_dict = {}
@@ -368,7 +397,7 @@ class Model(object):
 
   def _sanity_check_before_use(self, data):
     if not isinstance(data, DataSet):
-      raise TypeError('!! Input data must be an instance of TFData')
+      raise TypeError('!! Input data must be an instance of DataSet')
     if not self.built: raise ValueError('!! Model not built yet')
     if not self.launched: self.launch_model(overwrite=False)
     if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_batch

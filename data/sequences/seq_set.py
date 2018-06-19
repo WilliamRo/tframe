@@ -108,7 +108,12 @@ class SequenceSet(DataSet):
       else: raise KeyError('!! Can not resolve "{}"'.format(item))
 
     # If item is index array
-    f = lambda x: [x[item]] if isinstance(item, int) else x[item]
+    def f(x):
+      assert isinstance(x, list)
+      if np.isscalar(item): return [x[item]]
+      elif isinstance(item, (tuple, list)): return [x[i] for i in item]
+      else: return x[item]
+
     data_set = SequenceSet(
       data_dict=self._apply(f), summ_dict=self._apply(f, self.summ_dict),
       name=self.name + '(slice)')
@@ -158,11 +163,17 @@ class SequenceSet(DataSet):
     for i in range(L):
       indices = self._select(i, batch_size, shuffle)
       seq_batch = self[indices]
+      active_length = None
       if self.batch_preprocessor is not None:
         seq_batch = self.batch_preprocessor(seq_batch)
 
-      if isinstance(seq_batch, SequenceSet): seq_batch = seq_batch.padded_stack
+      if isinstance(seq_batch, SequenceSet):
+        if seq_batch.size > 1:
+          active_length = seq_batch.structure
+          assert num_steps < 0
+        seq_batch = seq_batch.padded_stack
       for batch in seq_batch.gen_rnn_batches(1, num_steps):
+        batch.active_length = active_length
         yield batch
         counter += 1
 

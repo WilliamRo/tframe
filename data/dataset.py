@@ -36,6 +36,7 @@ class DataSet(TFRData):
     self.properties.update(kwargs)
 
     self.is_rnn_input = is_rnn_input
+    self.active_length = None
     self.should_reset_state = False
     self.reset_batch_indices = None
     self.reset_values = None
@@ -111,7 +112,13 @@ class DataSet(TFRData):
       else: raise KeyError('!! Can not resolve "{}"'.format(item))
 
     # If item is index array
-    f = lambda x: x[item]
+    def f(x):
+      assert isinstance(x, np.ndarray)
+      if np.isscalar(item):
+        y = x[item]
+        return np.reshape(y, (1, *y.shape))
+      else: return x[item]
+
     data_set = DataSet(data_dict=self._apply(f), name=self.name + '(slice)')
     return self._finalize(data_set, item)
 
@@ -249,6 +256,7 @@ class DataSet(TFRData):
       from_index = batch_index * batch_size
       to_index = min((batch_index + 1) * batch_size, upper_bound)
       indices = list(range(from_index, to_index))
+
     return indices
 
   def _check_data(self):
