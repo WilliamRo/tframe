@@ -119,6 +119,12 @@ class Model(object):
     return [var for var in vars
             if var not in tf.get_collection(pedia.do_not_save)]
 
+  @property
+  def metric_foreach(self):
+    metrics = tf.get_collection(pedia.metric_foreach)
+    assert len(metrics) == 1
+    return metrics[0]
+
   # endregion : Accessor
 
   # region : Properties to be overrode
@@ -240,8 +246,8 @@ class Model(object):
 
     elif self.input_type is InputTypes.RNN_BATCH:
       if num_steps is None: num_steps = -1
-      if batch_size < 0: batch_size = data_set.size
       if batch_size is None: batch_size = 1
+      if batch_size < 0: batch_size = data_set.size
       if batch_size > 1: assert num_steps < 0
 
       checker.check_positive_integer(batch_size)
@@ -271,7 +277,7 @@ class Model(object):
     for batch in self.get_data_batches(data, batch_size, -1, False):
       # Batch validation on irregular data
       if batch.active_length is not None:
-        results = self._get_metric_foreach(batch)
+        results = self._get_active_tensor(batch, self.metric_foreach)
         for result in results:
           assert isinstance(result, np.ndarray) and len(result.shape) == 1
           metric_list.append(sum(result))
@@ -359,23 +365,42 @@ class Model(object):
 
   # region : Private Methods
 
-  def _get_metric_foreach(self, batch):
-    assert isinstance(batch, DataSet) and isinstance(batch.active_length, list)
-    assert len(batch.active_length) == batch.size
+  def _batch_evaluation(self, tensor, data_set, batch_size, extractor):
+    # Sanity check
+    assert isinstance(tensor, tf.Tensor) and isinstance(data_set, TFRData)
 
-    metrics = tf.get_collection(pedia.metric_foreach)
-    assert len(metrics) == 1
-    metric_foreach = metrics[0]
+    outputs = []
+    for data_batch in self.get_data_batches(data_set, batch_size):
+      # Calculate output
+      data_batch = self._sanity_check_before_use(data_batch)
+      output = self._get_active_tensor(data_batch, tensor)
+      # Extract if possible
+      if extractor is not None:
+        assert callable(extractor)
+        output = extractor(output)
+      # Add output to outputs accordingly
+      if self.input_type is InputTypes.RNN_BATCH: outputs += output
+      else: outputs.append(output)
+
+    # Concatenate if possible
+    if self.input_type is InputTypes.BATCH: outputs = np.concatenate(outputs)
+    return outputs
+
+  def _get_active_tensor(self, batch, tensor):
+    assert isinstance(batch, DataSet) and isinstance(tensor, tf.Tensor)
 
     feed_dict = self._get_default_feed_dict(batch, is_training=False)
-    results = self.session.run(metric_foreach, feed_dict)
-    assert isinstance(results, np.ndarray) and len(results.shape)
+    output = self.session.run(tensor, feed_dict)
+    assert isinstance(output, np.ndarray)
 
-    metric_list = []
-    for result, active_len in zip(results, batch.active_length):
-      metric_list.append(result[:active_len])
+    if self.input_type is InputTypes.RNN_BATCH:
+      al = batch.active_length
+      if al is not None:
+        assert isinstance(al, list) and len(al) == batch.size
+        output = [y[:l] for y, l in zip(output, al)]
+      else: output = [output]
 
-    return metric_list
+    return output
 
   @with_graph
   def _get_default_feed_dict(self, batch, is_training):

@@ -112,12 +112,7 @@ class DataSet(TFRData):
       else: raise KeyError('!! Can not resolve "{}"'.format(item))
 
     # If item is index array
-    def f(x):
-      assert isinstance(x, np.ndarray)
-      if np.isscalar(item):
-        y = x[item]
-        return np.reshape(y, (1, *y.shape))
-      else: return x[item]
+    f = lambda x: self._get_subset(x, item)
 
     data_set = DataSet(data_dict=self._apply(f), name=self.name + '(slice)')
     return self._finalize(data_set, item)
@@ -239,11 +234,11 @@ class DataSet(TFRData):
   def _finalize(self, data_set, indices=None):
     assert isinstance(data_set, DataSet)
     data_set.__class__ = self.__class__
-    data_set.properties = self.properties
+    data_set.properties = self.properties.copy()
     if indices is not None:
       for k, v in self.properties.items():
         if isinstance(v, tuple) and len(v) == self.size:
-          data_set.properties[k] = v[indices]
+          data_set.properties[k] = self._get_subset(v, indices)
     return data_set
 
   def _select(self, batch_index, batch_size, shuffle, upper_bound=None):
@@ -297,6 +292,21 @@ class DataSet(TFRData):
       return data
     return DataSet(data_dict=self._apply(f), is_rnn_input=True,
                    name=self.name, **self.properties)
+
+  @staticmethod
+  def _get_subset(data, indices):
+    if np.isscalar(indices):
+      if isinstance(data, (list, tuple)): return [data[indices]]
+      elif isinstance(data, np.ndarray):
+        subset = data[indices]
+        return np.reshape(subset, (1, *subset.shape))
+    elif isinstance(indices, (list, tuple, np.ndarray)):
+      if isinstance(data, (list, tuple)): return [data[i] for i in indices]
+      elif isinstance(data, np.ndarray): return data[np.array(indices)]
+    elif isinstance(indices, slice): return data[indices]
+    else: raise TypeError('Unknown indices format: {}'.format(type(indices)))
+
+    raise TypeError('Unknown data format: {}'.format(type(data)))
 
   def _rand_indices(self, upper_bound=None, size=1):
     if upper_bound is None: upper_bound = self.size

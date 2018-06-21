@@ -192,6 +192,7 @@ class Config(object):
     False, 'Whether this is a hyper-parameter tuning task',
     name='hpt')
   rand_over_classes = Flag.boolean(False, '...', is_key=None)
+  keep_trainer_log = Flag.boolean(False, 'Whether to keep trainer logs.')
 
   # Monitor options
   monitor = Flag.boolean(None, 'Whether to monitor or not (of highest '

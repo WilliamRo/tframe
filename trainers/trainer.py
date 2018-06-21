@@ -221,6 +221,7 @@ class Trainer(object):
       if self._save_model_at_round_end: self._save_model()
       # Early stop
       if hub.stop and self.model.bust(rnd): break
+      if hub.force_terminate: break
 
     return rnd
 
@@ -357,6 +358,7 @@ class Trainer(object):
       else:
         metric_slot.take_down(val, rnd, gap=self.th.record_gap)
         attachments.append('{:.3f}'.format(val))
+      if self.th.keep_trainer_log: self.th.logs[metric_slot.name] = val
 
     if len(attachments) > 0:
       content = '{} ({})'.format(content, ', '.join(attachments))
@@ -435,6 +437,9 @@ class TrainerHub(Config):
 
     self.round_length = None
     self.cursor = None
+
+    self.force_terminate = False
+    self.logs = {}
 
   # region : Properties
 

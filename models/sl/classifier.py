@@ -35,7 +35,6 @@ class Classifier(Predictor):
                     metric=metric, metric_is_like_loss=False,
                     metric_name='Accuracy')
 
-
   def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise
     hub.block_validation = True
@@ -50,77 +49,46 @@ class Classifier(Predictor):
     # Plug tensor into probabilities slot
     self._probabilities.plug(self.outputs.tensor)
 
-
+  @with_graph
   def evaluate_model(self, data, batch_size=None, extractor=None,
                      export_false=False, **kwargs):
-    # Feed data set into model and get results
-    false_sample_list = []
-    false_label_list = []
-    true_label_list = []
-    num_samples = 0
-
     console.show_status('Evaluating classifier ...')
-    for batch in self.get_data_batches(data, batch_size):
-      assert isinstance(batch, DataSet) and batch.targets is not None
-      # Get predictions
-      preds = self._classify_batch(batch, extractor)
-      # Get true labels in dense format
-      if batch.targets.shape[-1] > 1:
-        targets = batch.targets.reshape(-1, batch.targets.shape[-1])
-      else: targets = batch.targets
-      num_samples += len(targets)
-      true_labels = misc.convert_to_dense_labels(targets)
-      if len(true_labels) < len(preds):
-        assert len(true_labels) == 1
-        true_labels = np.concatenate((true_labels,) * len(preds))
-      # Select false samples
-      false_indices = np.argwhere(preds != true_labels)
-      if false_indices.size == 0: continue
-      features = batch.features
-      if self.input_type is InputTypes.RNN_BATCH:
-        features = np.reshape(features, [-1, *features.shape[2:]])
-      false_indices = np.reshape(false_indices, false_indices.size)
-      false_sample_list.append(features[false_indices])
-      false_label_list.append(preds[false_indices])
-      true_label_list.append(true_labels[false_indices])
-
-    # Concatenate
-    if len(false_sample_list) > 0:
-      false_sample_list = np.concatenate(false_sample_list)
-      false_label_list = np.concatenate(false_label_list)
-      true_label_list = np.concatenate(true_label_list)
+    results = self._batch_evaluation(
+      self.metric_foreach, data, batch_size, extractor)
+    if self.input_type is InputTypes.RNN_BATCH:
+      results = np.concatenate([y.flatten() for y in results])
+    accuracy = np.mean(results) * 100
 
     # Show accuracy
-    accuracy = (num_samples - len(false_sample_list)) / num_samples * 100
     console.supplement('Accuracy on {} is {:.2f}%'.format(data.name, accuracy))
 
-    # Try to export false samples
-    if export_false and accuracy < 100:
-      false_set = DataSet(features=false_sample_list, targets=true_label_list)
-      if hasattr(data, 'properties'): false_set.properties = data.properties
-      false_set.data_dict[pedia.predictions] = false_label_list
+    # export_false option is valid for images only
+    if export_false and accuracy < 100.0:
+      assert self.input_type is InputTypes.BATCH
+      assert isinstance(data, DataSet)
+      assert data.features is not None and data.targets is not None
+
+      preds = self.classify(data, batch_size, extractor)
+
+      false_indices = np.argwhere(results == 0).flatten()
+      false_features = data.features[false_indices]
+      false_targets = data.targets[false_indices]
+      false_preds = preds[false_indices]
+
+      false_set = DataSet(false_features, false_targets, **data.properties)
+      false_set.properties[pedia.predictions] = false_preds
+
       from tframe.data.images.image_viewer import ImageViewer
       vr = ImageViewer(false_set)
       vr.show()
 
-
+  @with_graph
   def classify(self, data, batch_size=None, extractor=None):
-    predictions = []
-    for batch in self.get_data_batches(data, batch_size):
-      preds = self._classify_batch(batch, extractor)
-      if isinstance(preds, int): preds = [preds]
-      predictions.append(preds)
-    return np.concatenate(predictions)
-
-
-  def _classify_batch(self, batch, extractor):
-    assert isinstance(batch, DataSet) and batch.features is not None
-    batch = self._sanity_check_before_use(batch)
-    feed_dict = self._get_default_feed_dict(batch, is_training=False)
-    probs = self._probabilities.run(feed_dict)
+    probs = self._batch_evaluation(
+      self._probabilities.tensor, data, batch_size, extractor)
     if self.input_type is InputTypes.RNN_BATCH:
-      assert len(probs.shape) == 3
-      probs = np.reshape(probs, (-1, probs.shape[2]))
-    if extractor is None: preds = misc.convert_to_dense_labels(probs)
-    else: preds = extractor(probs)
+      preds = [np.argmax(p, axis=-1) for p in probs]
+    else: preds = np.argmax(probs, axis=-1)
+
     return preds
+

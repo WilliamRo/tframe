@@ -117,6 +117,16 @@ class ReberGrammar(object):
     # Return a list of Reber string
     return reber_list
 
+  def check_grammar(self, predictions):
+    """Return lists of match situations for both RC and ERC criteria
+       ref: AMU, 2018"""
+    assert isinstance(predictions, np.ndarray)
+    assert len(predictions) == self.value.size - 1
+
+    ERC = [s in np.argwhere(prob > 0).flatten()
+           for s, prob in zip(predictions, self.transfer_prob)]
+    return ERC[:-2], ERC
+
   # endregion : Public Methods
 
   # region : Private Methods
@@ -172,6 +182,69 @@ class ERG(DataAgent):
     file_name = '{}_{}_{}.tfds'.format(
       cls.DATA_NAME, num, 'U' if unique_ else 'NU')
     return file_name
+
+  # region : Probe Methods
+
+  @staticmethod
+  def amu18(data, trainer):
+    """Probe method accepts trainer as the only parameter"""
+    # region : Whatever
+    acc_thres = 0.9
+    # Import
+    import os
+    from tframe.trainers.trainer import Trainer
+    from tframe.models.sl.classifier import Classifier
+    from tframe.data.sequences.seq_set import SequenceSet
+    # Sanity check
+    assert isinstance(trainer, Trainer)
+    # There is no need to check RC or ERC when validation accuracy is low
+    # .. otherwise a lot of time will be wasted
+    if len(trainer.th.logs) == 0 or trainer.th.logs['Accuracy'] < acc_thres:
+      return None
+    model = trainer.model
+    assert isinstance(model, Classifier)
+    assert isinstance(data, SequenceSet)
+    # Check state
+    TERMINATED = 'TERMINATED'
+    SATISFY_RC = 'SATISFY_RC'
+    ERG_LIST = 'erg_list'
+    if TERMINATED not in data.properties.keys():
+      data.properties[TERMINATED] = False
+    if data.properties[TERMINATED]: return None
+    # endregion : Whatever
+
+    preds = model.classify(data, batch_size=-1)
+    erg_list = data[ERG_LIST]
+    RCs, ERCs = [], []
+    for p, reber in zip(preds, erg_list):
+      assert isinstance(reber, ReberGrammar)
+      RC_detail, ERC_detail = reber.check_grammar(p)
+      RCs.append(np.mean(RC_detail) == 1.0)
+      ERCs.append(np.mean(ERC_detail) == 1.0)
+
+    RC = np.mean(RCs) == 1.0
+    ERC = np.mean(ERCs) == 1.0
+
+    counter = trainer.model.counter
+    note_path = os.path.join(model.agent.note_dir, 'amu_note.txt')
+    msg = None
+    if SATISFY_RC not in data.properties.keys():
+      data.properties[SATISFY_RC] = False
+    if not data.properties[SATISFY_RC]:
+      if RC:
+        msg = ('RC is satisfied after {} sequences, '
+               'test accuracy = {:.1f}%'.format(counter, 100 * np.mean(ERCs)))
+        with open(note_path, 'a') as f: f.writelines(msg + '\n')
+        data.properties[SATISFY_RC] = True
+
+    if ERC:
+      msg = 'ERC is satisfied after {} sequences'.format(counter)
+      with open(note_path, 'a') as f: f.writelines(msg + '\n')
+      trainer.th.force_terminate = True
+
+    return msg
+
+  # endregion : Probe Methods
 
 
 if __name__ == '__main__':

@@ -105,7 +105,8 @@ class ImageViewer(object):
       self.data_set = data_set
       self._set_cursor(0)
       if self.data_set.targets is not None:
-        self.labels = misc.convert_to_dense_labels(self.data_set.targets)
+        self.labels = misc.convert_to_dense_labels(
+          self.data_set.targets).flatten()
       console.show_status('Data set set to ImageViewer')
 
       # Refresh image viewer

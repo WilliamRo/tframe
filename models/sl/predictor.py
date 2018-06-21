@@ -128,13 +128,6 @@ class Predictor(Feedforward, Recurrent):
 
   # region : Train
 
-  # TODO
-  # def begin_round(self, **kwargs):
-  #   if self.master is Recurrent:
-  #     th = kwargs.get('th')
-  #     assert isinstance(th, TrainerHub)
-  #     self.reset_state(th.batch_size)
-
   def update_model(self, data_batch, **kwargs):
     if self.master is Feedforward:
       return Feedforward.update_model(self, data_batch, **kwargs)
@@ -148,16 +141,12 @@ class Predictor(Feedforward, Recurrent):
 
   # region : Public Methods
 
+  @with_graph
   def predict(self, data, batch_size=None, extractor=None, **kwargs):
-    outputs = []
-    for batch in self.get_data_batches(data, batch_size):
-      batch = self._sanity_check_before_use(batch)
-      feed_dict = self._get_default_feed_dict(batch, is_training=False)
-      output = self._outputs.run(feed_dict)
-      if extractor is not None: output = extractor(output)
-      outputs.append(output)
-    return np.concatenate(outputs)
+    return self._batch_evaluation(
+      self._outputs.tensor, data, batch_size, extractor)
 
+  @with_graph
   def evaluate_model(self, data, batch_size=None, **kwargs):
     # Check metric
     if not self.metric.activated: raise AssertionError('!! Metric not defined')
@@ -181,7 +170,7 @@ class Predictor(Feedforward, Recurrent):
           if hub.notify_when_reset: console.write_line('- ' * 40)
           self.reset_state(batch.size)
         if batch.should_partially_reset_state:
-          if hub.notify_when_reset:
+          if hub.notify_when_reset and False:
             if batch.reset_values is not None:
               info = [(i, v) for i, v in zip(
                 batch.reset_batch_indices, batch.reset_values)]

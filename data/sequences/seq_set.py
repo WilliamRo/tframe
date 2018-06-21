@@ -108,12 +108,7 @@ class SequenceSet(DataSet):
       else: raise KeyError('!! Can not resolve "{}"'.format(item))
 
     # If item is index array
-    def f(x):
-      assert isinstance(x, list)
-      if np.isscalar(item): return [x[item]]
-      elif isinstance(item, (tuple, list)): return [x[i] for i in item]
-      else: return x[item]
-
+    f = lambda x: self._get_subset(x, item)
     data_set = SequenceSet(
       data_dict=self._apply(f), summ_dict=self._apply(f, self.summ_dict),
       name=self.name + '(slice)')

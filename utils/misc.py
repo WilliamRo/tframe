@@ -60,10 +60,10 @@ def get_name_by_levels(name, levels):
 
 def convert_to_one_hot(labels, num_classes):
   labels = np.array(labels)
-  if len(labels.shape) < 2:
+  if len(labels.shape) < 2 or (len(labels.shape) == 2 and labels.shape[1] == 1):
     sample_num = labels.shape[0]
     one_hot = np.zeros(shape=[sample_num, num_classes])
-    one_hot[range(sample_num), labels] = 1
+    one_hot[range(sample_num), labels.flatten()] = 1
   else:
     one_hot = labels
 
@@ -76,8 +76,8 @@ def convert_to_one_hot(labels, num_classes):
 
 def convert_to_dense_labels(one_hot):
   assert isinstance(one_hot, np.ndarray)
-  if len(one_hot.shape) == 1: return one_hot
-  assert len(one_hot.shape) == 2
+  if len(one_hot.shape) == 1 or one_hot.shape[1] == 1: return one_hot
+  assert len(one_hot.shape) == 2 and one_hot.shape[1] > 1
   return np.argmax(one_hot, axis=1)
 
 
