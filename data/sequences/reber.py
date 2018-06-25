@@ -189,7 +189,7 @@ class ERG(DataAgent):
   def amu18(data, trainer):
     """Probe method accepts trainer as the only parameter"""
     # region : Whatever
-    acc_thres = 0.9
+    acc_thres = 0.80
     # Import
     import os
     from tframe.trainers.trainer import Trainer
@@ -222,26 +222,26 @@ class ERG(DataAgent):
       RCs.append(np.mean(RC_detail) == 1.0)
       ERCs.append(np.mean(ERC_detail) == 1.0)
 
-    RC = np.mean(RCs) == 1.0
-    ERC = np.mean(ERCs) == 1.0
+    RC_acc, ERC_acc = np.mean(RCs), np.mean(ERCs)
+    RC, ERC = RC_acc == 1, ERC_acc == 1
 
     counter = trainer.model.counter
-    note_path = os.path.join(model.agent.note_dir, 'amu_note.txt')
-    msg = None
     if SATISFY_RC not in data.properties.keys():
       data.properties[SATISFY_RC] = False
     if not data.properties[SATISFY_RC]:
       if RC:
         msg = ('RC is satisfied after {} sequences, '
-               'test accuracy = {:.1f}%'.format(counter, 100 * np.mean(ERCs)))
-        with open(note_path, 'a') as f: f.writelines(msg + '\n')
+               'test accuracy = {:.1f}%'.format(counter, 100 * ERC_acc))
+        trainer.model.agent.take_notes(msg)
         data.properties[SATISFY_RC] = True
 
     if ERC:
       msg = 'ERC is satisfied after {} sequences'.format(counter)
-      with open(note_path, 'a') as f: f.writelines(msg + '\n')
+      trainer.model.agent.take_notes(msg)
+      data.properties[TERMINATED] = True
       trainer.th.force_terminate = True
 
+    msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg
 
   # endregion : Probe Methods

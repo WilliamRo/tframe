@@ -393,12 +393,13 @@ class Model(object):
     output = self.session.run(tensor, feed_dict)
     assert isinstance(output, np.ndarray)
 
+    al = batch.active_length
     if self.input_type is InputTypes.RNN_BATCH:
-      al = batch.active_length
       if al is not None:
         assert isinstance(al, list) and len(al) == batch.size
         output = [y[:l] for y, l in zip(output, al)]
       else: output = [output]
+
 
     return output
 

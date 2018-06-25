@@ -169,6 +169,7 @@ class Config(object):
 
   # Migrated from tframe\__init__.py
   train = Flag.boolean(True, 'Whether this is a training task')
+  parallel_on = Flag.boolean(False, 'Whether to turn on parallel option')
   smart_train = Flag.boolean(False, 'Whether to use smart trainer', is_key=None)
   save_model = Flag.boolean(True, 'Whether to save model during training')
   overwrite = Flag.boolean(False, 'Whether to overwrite records')
@@ -222,6 +223,7 @@ class Config(object):
                              is_key=None)
   output_gate = Flag.boolean(True, 'Whether to use output gate in LSTM',
                              is_key=None)
+  use_bias = Flag.boolean(True, 'Whether to use bias', is_key=None)
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
   val_batch_size = Flag.integer(None, 'Batch size in batch validation')
   with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
@@ -237,6 +239,7 @@ class Config(object):
   memory_depth = Flag.integer(1, 'Memory depth for system identification')
   loss_function = Flag.whatever('cross_entropy', 'Loss function')
   notify_when_reset = Flag.whatever(False, '...')
+  optimizer = Flag.whatever(None, 'optimizer')
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '

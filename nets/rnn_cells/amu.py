@@ -68,17 +68,26 @@ class AMU(RNet):
     """pre_states = (h, s) in which
           len(h) = output_dim * neuron_per_amu
           len(s) = output_dim
+
+       Assume we have 2 AMUs of size 3 in some layer, for each sequence,
+       h = [amu1_h1, amu2_h1, amu1_h2, amu2_h2, amu1_h3, amu2_h3]
+       s = [s_1, s_2]
+       Let H = tf.reshape(h, (3, 2)), then H[i] contains the non-memory neurons
+       of AMU[i] (AMU = [amu1, amu2])
     """
     self._check_state(pre_states, (self.num_neurons, self._output_dim))
     h, s = pre_states
     input_size = self._get_external_shape(x)
 
-    W = self._get_variable(
-      'W', [self.num_neurons + input_size + self._output_dim, self.num_neurons])
+    Wxh = self._get_variable(
+      'Wxh', [self.num_neurons + input_size, self.num_neurons])
+    Ws = self._get_variable('Ws', [1, self.num_neurons])
+    s_ = tf.concat([s] * self._neurons_per_amu, axis=1)
     bias = None
     if self._use_bias: bias = self._get_bias('b', self.num_neurons)
-    new_h = self._activation(tf.nn.bias_add(tf.matmul(
-      tf.concat([h, x, s], axis=1), W), bias))
+    net = tf.nn.bias_add(tf.matmul(tf.concat([x, h], axis=1), Wxh) +
+                         Ws * s_, bias)
+    new_h = self._activation(net)
 
     # Form AMUs
     r = tf.reshape(new_h, [-1, self._neurons_per_amu, self._output_dim], 'amus')
@@ -86,7 +95,7 @@ class AMU(RNet):
     with tf.name_scope('write'): new_s = tf.add(s, tf.reduce_prod(r, axis=1))
 
     # return outputs, states
-    self._kernel, self._bias = W, bias
+    self._kernel, self._bias = (Wxh, Ws), bias
     return r[:, 0, :], (new_h, new_s)
 
   def _get_zero_state(self, batch_size):

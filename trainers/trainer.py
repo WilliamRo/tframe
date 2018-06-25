@@ -10,6 +10,7 @@ import tframe as tfr
 
 from tframe import console
 from tframe.data.base_classes import TFRData
+from tframe.data.sequences.seq_set import SequenceSet
 from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
 from tframe.config import Config, Flag
@@ -199,9 +200,6 @@ class Trainer(object):
       if hub.progress_bar: console.section('{} {}'.format(hub.round_name, rnd))
       hub.tic()
 
-      # Begin round (RNN states will be reset here) # TODO
-      # self.model.begin_round(th=self.th)
-
       # Do inner loop
       self._inner_loop(rnd)
       # End of round
@@ -299,6 +297,10 @@ class Trainer(object):
     return f
 
   def _gen_batches(self):
+    """This method will be called only in the inner loop of train process."""
+    if isinstance(self.training_set, SequenceSet):
+      if self.th.batch_size > 1 and not self.training_set.parallel_on:
+        raise AssertionError('!! parallel engine is not activated')
     return self.model.get_data_batches(
       self.training_set, self.th.batch_size, self.th.num_steps, self.th.shuffle)
 

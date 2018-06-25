@@ -77,20 +77,25 @@ class ParallelEngine(object):
     template = self._data_sets[0]
     assert isinstance(template, DataSet)
     data_dict = template.data_dict.copy()
+    cursors = None
     for key, data in data_dict.items():
       assert isinstance(data, np.ndarray)
       sample_shape = data.shape[1:]
       data_dict[key] = np.zeros(shape=(self.size, steps, *sample_shape))
 
+      cursors = self._cursors.copy()
       for i in range(self.size):
         array = self._data_sets[i][key]
         assert isinstance(array, np.ndarray)
-        c = self._cursors[i]
+        c = cursors[i]
         data_dict[key][i] = array[c:c + steps]
         # Move cursor
         assert 0 < c + steps <= len(array)
-        self._cursors[i] += steps
+        cursors[i] += steps
 
+    # Update cursors
+    assert cursors is not None
+    self._cursors = cursors
     # Wrap data into a DataSet and return
     return DataSet(data_dict=data_dict, is_rnn_input=True)
 

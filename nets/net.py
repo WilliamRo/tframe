@@ -107,7 +107,8 @@ class Net(Function):
 
     # Check interconnection type
     next_net, next_layer = ' => ', ' -> '
-    if self._inter_type != pedia.cascade or self.is_branch:
+    if self._inter_type not in (pedia.cascade,
+                                self.RECURRENT) or self.is_branch:
       if self._inter_type in [pedia.sum, pedia.prod, pedia.concat]:
         result += self._inter_type
       if self.is_branch: result += 'branch'
@@ -129,7 +130,8 @@ class Net(Function):
       result += ' -> output'
 
     # Check interconnection type
-    if self._inter_type != pedia.cascade or self.is_branch: result += ')'
+    if self._inter_type not in (pedia.cascade,
+                                self.RECURRENT) or self.is_branch: result += ')'
 
     # Add output scale
     if self.is_root and not self._inter_type == pedia.fork:
@@ -272,8 +274,7 @@ class Net(Function):
         self._add_new_subnet(f)
       # Otherwise add this layer to last Net of self.children
       return self.add_to_last_net(f, only_cascade=True)
-    else: raise ValueError(
-      'Object added to a Net must be a Layer or a Net')
+    else: raise ValueError('!! Object added to a Net must be a Layer or a Net')
 
   # endregion : Public Methods
 

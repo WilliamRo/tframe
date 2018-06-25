@@ -120,7 +120,7 @@ class SequenceSet(DataSet):
 
   def get_round_length(self, batch_size, num_steps=None):
     if num_steps is None: return self.stack.get_round_length(batch_size)
-    else:
+    else:  # else generate RNN batches
       if self.parallel_on:
         return self._get_pe_round_length(batch_size, num_steps)
       else:
@@ -146,7 +146,7 @@ class SequenceSet(DataSet):
     :param num_steps:  a non-negative integer.
     :param shuffle:    Whether to shuffle
     """
-    # BETA
+    # BETA, only available for model training
     if self.parallel_on:
       yield from self._gen_parallel_batches(batch_size, num_steps, shuffle)
       return
@@ -175,7 +175,7 @@ class SequenceSet(DataSet):
         if counter == round_len: break
       if counter == round_len: break
 
-    assert counter == round_len
+    if not shuffle: assert counter == round_len
 
   # endregion : Basic APIs
 
@@ -276,6 +276,8 @@ class SequenceSet(DataSet):
     """A beta method used only for RNN training. Both features and targets
        are required"""
     # Sanity check
+    if not self.parallel_on: raise ValueError(
+      '!! parallel engine is not activated')
     assert isinstance(batch_size, int) and isinstance(num_steps, int)
     assert isinstance(shuffle, bool)
     if batch_size < 0: batch_size = self.size
