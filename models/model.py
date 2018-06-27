@@ -38,6 +38,7 @@ class Model(object):
     # Model mark usually helps to decide the folder name
     self.mark = hub.mark or mark
     assert mark is not None
+    if hub.suffix is not None: self.mark += hub.suffix
 
     # Each model has an agent to deal with some tensorflow stuff
     self.agent = Agent(self)

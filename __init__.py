@@ -1,3 +1,4 @@
+import os
 from . import pedia
 from .enums import *
 
@@ -5,6 +6,8 @@ from .config import Config
 # Register
 Config.register()
 hub = Config()
+if hub.visible_gpu_id is not None:
+  os.environ['CUDA_VISIBLE_DEVICES'] = hub.visible_gpu_id
 
 from .utils import checker
 from .utils import console

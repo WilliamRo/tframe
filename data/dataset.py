@@ -144,11 +144,14 @@ class DataSet(TFRData):
     # Generate batches
     for i in range(round_len):
       indices = self._select(i, batch_size, shuffle)
-      # Yield data batch
-      data_batch = self.stack[indices]
-      # batch_preprocessor should not change self.size
+      # Get subset
+      data_batch = self[indices]
+      # Preprocess if necessary
       if self.batch_preprocessor is not None:
         data_batch = self.batch_preprocessor(data_batch)
+      # Make sure data_batch is a regular array
+      if not data_batch.is_regular_array: data_batch = data_batch.stack
+      # Yield data batch
       yield data_batch
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):

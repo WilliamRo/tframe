@@ -67,20 +67,25 @@ class Agent(object):
   # region : Paths
 
   @property
+  def root_path(self):
+    if hub.job_dir == './': return hub.record_dir
+    else: return hub.job_dir
+
+  @property
   def note_dir(self):
-    return check_path(hub.job_dir, hub.record_dir, hub.note_folder_name,
+    return check_path(self.root_path, hub.note_folder_name,
                       self._model.mark, create_path=hub.export_note)
   @property
   def log_dir(self):
-    return check_path(hub.job_dir, hub.record_dir, hub.log_folder_name,
+    return check_path(self.root_path, hub.log_folder_name,
                       self._model.mark, create_path=hub.summary)
   @property
   def ckpt_dir(self):
-    return check_path(hub.job_dir, hub.record_dir, hub.ckpt_folder_name,
+    return check_path(self.root_path, hub.ckpt_folder_name,
                       self._model.mark, create_path=hub.save_model)
   @property
   def snapshot_dir(self):
-    return check_path(hub.job_dir, hub.record_dir, hub.snapshot_folder_name,
+    return check_path(self.root_path, hub.snapshot_folder_name,
                       self._model.mark, create_path=hub.snapshot)
   @property
   def model_path(self):
@@ -218,11 +223,14 @@ class Agent(object):
     tfr.current_graph = self._graph
 
   def _check_bash(self):
-    file_path = check_path(hub.job_dir, hub.record_dir, create_path=True)
-    file_path = os.path.join(file_path, 'win_launch_tensorboard.bat')
-    if not os.path.exists(file_path):
-      f = open(file_path, 'w')
-      f.write('tensorboard --logdir=./logs/')
-      f.close()
+    command = 'tensorboard --logdir=./logs/ --port={}'.format(hub.tb_port)
+    file_path = check_path(self.root_path, create_path=True)
+    file_names = ['win_launch_tensorboard.bat', 'unix_launch_tensorboard.sh']
+    for file_name in file_names:
+      path = os.path.join(file_path, file_name)
+      if not os.path.exists(path):
+        f = open(path, 'w')
+        f.write(command)
+        f.close()
 
   # endregion : Private Methods

@@ -163,9 +163,13 @@ class Config(object):
   log_folder_name = Flag.string('logs', '...')
   ckpt_folder_name = Flag.string('checkpoints', '...')
   snapshot_folder_name = Flag.string('snapshots', '...')
+  tb_port = Flag.integer(6006, 'Tensorboard port number')
 
   block_validation = Flag.whatever(False, '???')
   dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=True)
+
+  visible_gpu_id = Flag.string(
+    None, 'CUDA_VISIBLE_DEVICES option', name='gpu_id')
 
   # Migrated from tframe\__init__.py
   train = Flag.boolean(True, 'Whether this is a training task')
@@ -210,6 +214,7 @@ class Config(object):
 
   # Configs usually provided during method calling
   mark = Flag.string(None, 'Model identifier')
+  suffix = Flag.string(None, 'Suffix to mark')
   model = Flag.whatever(None, 'A function which returns a built model')
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
@@ -290,6 +295,11 @@ class Config(object):
       return
 
     # Now attr is definitely a Flag
+    if name == 'visible_gpu_id':
+      import os
+      assert isinstance(value, str)
+      os.environ['CUDA_VISIBLE_DEVICES'] = value
+
     if attr.frozen and value != attr._value:
       raise AssertionError(
         '!! config {} has been frozen to {}'.format(name, attr._value))
