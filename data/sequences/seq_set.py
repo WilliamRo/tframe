@@ -60,7 +60,7 @@ class SequenceSet(DataSet):
   @property
   def merged_data_dict(self):
     merged_dict = self.data_dict.copy()
-    for name, summ_list in self.summ_dict:
+    for name, summ_list in self.summ_dict.items():
       full_data = []
       for summ, seq_len in zip(summ_list, self.structure):
         assert isinstance(summ, np.ndarray) and summ.shape[0] == 1
