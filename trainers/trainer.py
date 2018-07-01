@@ -299,7 +299,8 @@ class Trainer(object):
   def _gen_batches(self):
     """This method will be called only in the inner loop of train process."""
     if isinstance(self.training_set, SequenceSet):
-      if self.th.batch_size > 1 and not self.training_set.parallel_on:
+      if (self.th.batch_size > 1 and not self.training_set.parallel_on and
+          self.training_set.batch_preprocessor is None):
         raise AssertionError('!! parallel engine is not activated')
     return self.model.get_data_batches(
       self.training_set, self.th.batch_size, self.th.num_steps, self.th.shuffle)
