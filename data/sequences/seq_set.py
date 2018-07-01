@@ -119,7 +119,12 @@ class SequenceSet(DataSet):
   # region : Basic APIs
 
   def get_round_length(self, batch_size, num_steps=None):
-    if num_steps is None: return self.stack.get_round_length(batch_size)
+    if num_steps is None:
+      if self.batch_preprocessor is None:
+        return self.stack.get_round_length(batch_size)
+      else:
+        if self.length_calculator is None: return None
+        else: return sum([self.length_calculator(l) for l in self.structure])
     else:  # else generate RNN batches
       if self.parallel_on:
         return self._get_pe_round_length(batch_size, num_steps)
