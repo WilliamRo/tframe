@@ -124,7 +124,9 @@ class SequenceSet(DataSet):
         return self.stack.get_round_length(batch_size)
       else:
         if self.length_calculator is None: return None
-        else: return sum([self.length_calculator(l) for l in self.structure])
+        else:
+          L = sum([self.length_calculator(l) for l in self.structure])
+          round_len = np.ceil(L / batch_size)
     else:  # else generate RNN batches
       if self.parallel_on:
         return self._get_pe_round_length(batch_size, num_steps)
