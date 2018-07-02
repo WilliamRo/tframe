@@ -295,10 +295,10 @@ class Config(object):
       return
 
     # Now attr is definitely a Flag
-    if name == 'visible_gpu_id':
-      import os
-      assert isinstance(value, str)
-      os.environ['CUDA_VISIBLE_DEVICES'] = value
+    # if name == 'visible_gpu_id':
+    #   import os
+    #   assert isinstance(value, str)
+    #   os.environ['CUDA_VISIBLE_DEVICES'] = value
 
     if attr.frozen and value != attr._value:
       raise AssertionError(

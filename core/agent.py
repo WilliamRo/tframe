@@ -129,6 +129,8 @@ class Agent(object):
     # Launch session on self.graph
     console.show_status('Launching session ...')
     config = tf.ConfigProto()
+    if hub.visible_gpu_id is not None:
+      os.environ['CUDA_VISIBLE_DEVICES'] = hub.visible_gpu_id
     if not hub.allow_growth:
       value = hub.gpu_memory_fraction
       config.gpu_options.per_process_gpu_memory_fraction = value
