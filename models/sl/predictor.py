@@ -41,6 +41,7 @@ class Predictor(Feedforward, Recurrent):
     net_type.__init__(self, mark)
     # Attributes
     self._targets = TensorSlot(self, 'targets')
+    self._val_targets = TensorSlot(self, 'val_targets')
 
   # region : Properties
 
@@ -70,7 +71,8 @@ class Predictor(Feedforward, Recurrent):
             metric_is_like_loss=True, metric_name='Metric', **kwargs):
     Model.build(
       self, optimizer=optimizer, loss=loss, metric=metric,
-      metric_name=metric_name, metric_is_like_loss=metric_is_like_loss)
+      metric_name=metric_name, metric_is_like_loss=metric_is_like_loss,
+      **kwargs)
 
   def _build(self, optimizer=None, loss='euclid',
              metric=None, metric_is_like_loss=True, metric_name='Metric',
@@ -103,10 +105,13 @@ class Predictor(Feedforward, Recurrent):
 
     # Define metric
     if metric is not None:
+      # Create placeholder for val_targets if necessary
+      self._plug_val_target_in(kwargs.get('val_targets', None))
+
       metric_function = metrics.get(metric)
       with tf.name_scope('Metric'):
         metric_tensor = metric_function(
-          self._targets.tensor, self._outputs.tensor)
+          self._val_targets.tensor, self._outputs.tensor)
         self._metric.plug(metric_tensor, as_loss=metric_is_like_loss,
                           symbol=metric_name)
         if hub.summary:
@@ -123,6 +128,16 @@ class Predictor(Feedforward, Recurrent):
   def _plug_target_in(self, shape):
     target_tensor = tf.placeholder(hub.dtype, shape, name='targets')
     self._targets.plug(target_tensor, collection=pedia.default_feed_dict)
+
+  def _plug_val_target_in(self, val_targets):
+    if val_targets is None:
+      self._val_targets = self._targets
+    else:
+      assert isinstance(val_targets, str)
+      val_target_tensor = tf.placeholder(
+        hub.dtype, self.outputs.shape_list, name=val_targets)
+      self._val_targets.plug(
+        val_target_tensor, collection=pedia.default_feed_dict)
 
   # endregion : Build
 

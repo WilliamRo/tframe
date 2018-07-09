@@ -33,7 +33,7 @@ class Classifier(Predictor):
   def build(self, optimizer=None, metric='accuracy', **kwargs):
     Predictor.build(self, optimizer=optimizer, loss='cross_entropy',
                     metric=metric, metric_is_like_loss=False,
-                    metric_name='Accuracy')
+                    metric_name='Accuracy', **kwargs)
 
   def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise

@@ -130,7 +130,11 @@ class Agent(object):
     console.show_status('Launching session ...')
     config = tf.ConfigProto()
     if hub.visible_gpu_id is not None:
-      os.environ['CUDA_VISIBLE_DEVICES'] = hub.visible_gpu_id
+      gpu_id = hub.visible_gpu_id
+      if isinstance(gpu_id, int): gpu_id = '{}'.format(gpu_id)
+      elif not isinstance(gpu_id, str): raise TypeError(
+        '!! Visible GPU id provided must be an integer or a string')
+      os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
     if not hub.allow_growth:
       value = hub.gpu_memory_fraction
       config.gpu_options.per_process_gpu_memory_fraction = value
