@@ -123,14 +123,18 @@ class ReberGrammar(object):
     # Return a list of Reber string
     return reber_list
 
-  def check_grammar(self, predictions):
+  def check_grammar(self, probs):
     """Return lists of match situations for both RC and ERC criteria
        ref: AMU, 2018"""
-    assert isinstance(predictions, np.ndarray)
-    assert len(predictions) == self.value.size - 1
+    assert isinstance(probs, np.ndarray)
+    assert len(probs) == self.value.size - 1
 
-    ERC = [s in np.argwhere(prob > 0).flatten()
-           for s, prob in zip(predictions, self.transfer_prob)]
+    def _check_token(p, q):
+      assert isinstance(p, np.ndarray) and len(p.shape) == 1
+      assert isinstance(q, np.ndarray) and len(q.shape) == 1
+      return np.sum(p * q) == np.sum(np.sort(p) * np.sort(q))
+
+    ERC = [_check_token(p, q) for q, p in zip(probs, self.transfer_prob)]
     return ERC[:-2], ERC
 
   # endregion : Public Methods
@@ -183,6 +187,7 @@ class ERG(DataAgent):
     features = [erg.one_hot for erg in erg_list]
     targets = [erg.observed_prob for erg in erg_list]
     val_targets = [erg.transfer_prob for erg in erg_list]
+    # targets = [erg.transfer_prob for erg in erg_list]
     data_set = SequenceSet(
       features, targets, data_dict={'val_targets': val_targets},
       erg_list=tuple(erg_list), name='Embedded Reber Grammar')
@@ -231,10 +236,10 @@ class ERG(DataAgent):
     if data.properties[TERMINATED]: return None
     # endregion : Whatever
 
-    preds = model.classify(data, batch_size=-1)
+    probs = model.classify(data, batch_size=-1, return_probs=True)
     erg_list = data[ERG_LIST]
     RCs, ERCs = [], []
-    for p, reber in zip(preds, erg_list):
+    for p, reber in zip(probs, erg_list):
       assert isinstance(reber, ReberGrammar)
       RC_detail, ERC_detail = reber.check_grammar(p)
       RCs.append(np.mean(RC_detail) == 1.0)

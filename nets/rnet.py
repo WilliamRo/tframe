@@ -196,10 +196,11 @@ class RNet(Net):
     return tf.get_variable(
       name, shape, dtype=hub.dtype, initializer=self._weight_initializer)
 
-  def _get_bias(self, name, dim):
-    assert self._bias_initializer is not None
+  def _get_bias(self, name, dim, initializer=None):
+    if initializer is None: initializer = self._bias_initializer
+    assert initializer is not None
     return tf.get_variable(
-      name, shape=[dim], dtype=hub.dtype, initializer=self._bias_initializer)
+      name, shape=[dim], dtype=hub.dtype, initializer=initializer)
 
   def _get_weight_and_bias(self, weight_shape, use_bias, symbol=''):
     assert isinstance(weight_shape, (list, tuple)) and len(weight_shape) == 2

@@ -30,18 +30,21 @@ class Classifier(Predictor):
                                    name='evaluation group')
 
   @with_graph
-  def build(self, optimizer=None, metric='accuracy', **kwargs):
-    Predictor.build(self, optimizer=optimizer, loss='cross_entropy',
+  def build(
+      self, optimizer=None, metric='accuracy',  loss='cross_entropy', **kwargs):
+    Predictor.build(self, optimizer=optimizer, loss=loss,
                     metric=metric, metric_is_like_loss=False,
                     metric_name='Accuracy', **kwargs)
 
   def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise
     hub.block_validation = True
-    # If last layer is not softmax layer, add it to model
-    if not (isinstance(self.last_function, Activation)
-            and self.last_function.abbreviation == 'softmax'):
-      self.add(Activation('softmax'))
+
+    # If last layer is not softmax layer, add it to model TODO
+    # if not (isinstance(self.last_function, Activation)
+    #         and self.last_function.abbreviation == 'softmax'):
+    #   self.add(Activation('softmax'))
+
     # Call parent's method to build using the default loss function
     #  -- cross entropy
     Predictor._build(self, optimize=optimizer, metric=metric, **kwargs)
@@ -83,9 +86,11 @@ class Classifier(Predictor):
       vr.show()
 
   @with_graph
-  def classify(self, data, batch_size=None, extractor=None):
+  def classify(self, data, batch_size=None, extractor=None, return_probs=False):
     probs = self._batch_evaluation(
       self._probabilities.tensor, data, batch_size, extractor)
+    if return_probs: return probs
+
     if self.input_type is InputTypes.RNN_BATCH:
       preds = [np.argmax(p, axis=-1) for p in probs]
     else: preds = np.argmax(probs, axis=-1)

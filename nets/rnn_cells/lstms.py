@@ -28,6 +28,7 @@ class BasicLSTMCell(RNet):
       input_gate=True,
       output_gate=True,
       forget_gate=True,
+      output_gate_bias_initializer=None,
       with_peepholes=False,
       **kwargs):
     """
@@ -46,6 +47,8 @@ class BasicLSTMCell(RNet):
     self._use_bias = checker.check_type(use_bias, bool)
     self._weight_initializer = initializers.get(weight_initializer)
     self._bias_initializer = initializers.get(bias_initializer)
+    self._output_gate_bias_initializer = initializers.get(
+      output_gate_bias_initializer)
 
     self._input_gate = checker.check_type(input_gate, bool)
     self._output_gate = checker.check_type(output_gate, bool)
@@ -107,7 +110,14 @@ class BasicLSTMCell(RNet):
 
     # Initiate bias
     bias = None
-    if self._use_bias: bias = self._get_bias('b', dim)
+    if self._use_bias:
+      if self._output_gate_bias_initializer is None:
+        bias = self._get_bias('b', dim)
+      else:
+        gif_bias = self._get_bias('gif_bias', dim - self._state_size)
+        o_bias = self._get_bias(
+          'o_bias', self._state_size, self._output_gate_bias_initializer)
+        bias = tf.concat([gif_bias, o_bias], axis=0)
 
     W = self._get_variable('W', [self._state_size + input_size, dim])
     gate_inputs = tf.matmul(tf.concat([x, h], axis=1), W)
@@ -119,7 +129,7 @@ class BasicLSTMCell(RNet):
     # Note that using `add` and `multiply` instead of `+` and `*` gives a
     # performance improvement. So using those at the cost of readability.
     # - Calculate candidates to write
-    g = self._activation(splits.pop())
+    g = self._activation(splits.pop(0))
     if self._input_gate:
       with tf.name_scope('write_gate'):
         i = tf.sigmoid(splits.pop(0))
@@ -185,7 +195,3 @@ class BasicLSTMCell(RNet):
     return new_h, new_c
 
   # endregion : Link Cores
-
-
-
-
