@@ -90,6 +90,8 @@ class Predictor(Feedforward, Recurrent):
     with tf.name_scope('Loss'):
       if loss == 'cross_entropy':
         output_tensor = self.logits_tensor
+        # TODO: PTB assertion failure
+        # KEY: softmax activation should be added manually
         assert output_tensor is not None
       else: output_tensor = self.outputs.tensor
       loss_tensor = loss_function(self._targets.tensor, output_tensor)
