@@ -153,6 +153,7 @@ class RNet(Net):
   def _get_state_dict(self, batch_size=None):
     assert self.is_root
 
+    # During training, batch size is not None
     if batch_size is None:
       # During training
       state = self._state_array

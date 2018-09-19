@@ -186,6 +186,8 @@ class Config(object):
     name='job-dir')
   data_dir = Flag.string('', 'The data directory')
 
+  # logging will be suppressed if this flag is set to True when agent
+  #   is launching a model
   suppress_logging = Flag.boolean(
     True, 'Whether to set logging level down to get rid of the device '
           'information')

@@ -25,6 +25,7 @@ from tframe.trainers.trainer import Trainer, TrainerHub
 from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
 
 from tframe.data.base_classes import TFRData
+from tframe.data.sequences.seq_set import SequenceSet
 from tframe.data.bigdata import BigData
 
 
@@ -249,7 +250,11 @@ class Model(object):
       if num_steps is None: num_steps = -1
       if batch_size is None: batch_size = 1
       if batch_size < 0: batch_size = data_set.size
-      if batch_size > 1: assert num_steps < 0
+
+      # if batch_size > 1: assert num_steps < 0
+      # it's legal for common DataSet to have num_steps > 0 while batch_size > 1
+      if batch_size > 1 and isinstance(data_set, SequenceSet):
+        assert num_steps < 0
 
       checker.check_positive_integer(batch_size)
       checker.check_type(num_steps, int)
