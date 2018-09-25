@@ -92,6 +92,10 @@ class Agent(object):
     return os.path.join(
       self.ckpt_dir, '{}.model'.format(self._model.model_name))
 
+  @property
+  def gather_path(self):
+    return os.path.join(check_path(self.root_path), hub.gather_file_name)
+
   # endregion : Paths
 
   # endregion : Properties
@@ -199,10 +203,23 @@ class Agent(object):
     writer.write(self._note.content + '\n')
     writer.close()
     console.show_status('Notes exported to {}'.format(file_path))
+    # Gather
+    if hub.auto_gather:
+      self.gather(self._note.content, take_down_time=False)
+      self.gather('-' * 79, take_down_time=False)
 
   def show_notes(self):
     console.section('Notes')
     console.write_line(self._note.content)
+
+  def gather(self, line, take_down_time=True):
+    with open(self.gather_path, 'a') as f:
+      if take_down_time:
+        time_str = time.strftime('[{}-{}-%d %H:%M:%S]'.format(
+          time.strftime('%Y')[2:], time.strftime('%B')[:3]))
+        line = '[{}] {}'.format(time_str, line)
+      f.write(line + '\n')
+    # console.show_status('Gathered')
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))

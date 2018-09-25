@@ -163,10 +163,11 @@ class Config(object):
   log_folder_name = Flag.string('logs', '...')
   ckpt_folder_name = Flag.string('checkpoints', '...')
   snapshot_folder_name = Flag.string('snapshots', '...')
+  gather_file_name = Flag.string('gather.txt', '...')
   tb_port = Flag.integer(6006, 'Tensorboard port number')
 
   block_validation = Flag.whatever(False, '???')
-  dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=True)
+  dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=None)
 
   visible_gpu_id = Flag.string(
     None, 'CUDA_VISIBLE_DEVICES option', name='gpu_id')
@@ -200,6 +201,9 @@ class Config(object):
     name='hpt')
   rand_over_classes = Flag.boolean(False, '...', is_key=None)
   keep_trainer_log = Flag.boolean(False, 'Whether to keep trainer logs.')
+  auto_gather = Flag.boolean(
+    False, 'If set to True, agent will gather information in a default way'
+           ' when export_note flag is set to True')
 
   # Monitor options
   monitor = Flag.boolean(None, 'Whether to monitor or not (of highest '
@@ -215,7 +219,7 @@ class Config(object):
     0.4, 'config.gpu_options.per_process_gpu_memory_fraction')
 
   # Configs usually provided during method calling
-  mark = Flag.string(None, 'Model identifier')
+  mark = Flag.string(None, 'Model identifier', is_key=True)
   suffix = Flag.string(None, 'Suffix to mark')
   model = Flag.whatever(None, 'A function which returns a built model')
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
@@ -253,6 +257,8 @@ class Config(object):
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')
+  int_para_1 = Flag.integer(0, 'Used to pass an integer parameter using '
+                               ' command line')
 
   def __init__(self, as_global=False):
     if as_global:
