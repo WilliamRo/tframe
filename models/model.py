@@ -313,6 +313,10 @@ class Model(object):
     notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
       self.metric.record, self.metric.mean_record)
     self.agent.take_notes(notes, date_time=False)
+    # Add history into notes if necessary
+    if hub.show_record_history_in_note:
+      self.agent.take_notes(
+        self.metric.metric_mean_history_str, date_time=False)
 
   # TODO
   # def begin_round(self, **kwargs):

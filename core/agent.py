@@ -206,20 +206,25 @@ class Agent(object):
     # Gather
     if hub.auto_gather:
       self.gather(self._note.content, take_down_time=False)
-      self.gather('-' * 79, take_down_time=False)
 
   def show_notes(self):
     console.section('Notes')
     console.write_line(self._note.content)
 
   def gather(self, line, take_down_time=True):
-    with open(self.gather_path, 'a') as f:
+    # If gather file does not exist, create one
+    with open(self.gather_path, 'a'): pass
+    with open(self.gather_path, 'r+') as f:
+      content = f.readlines()
+      f.seek(0)
+      f.truncate()
       if take_down_time:
         time_str = time.strftime('[{}-{}-%d %H:%M:%S]'.format(
           time.strftime('%Y')[2:], time.strftime('%B')[:3]))
         line = '[{}] {}'.format(time_str, line)
       f.write(line + '\n')
-    # console.show_status('Gathered')
+      f.write('-' * 79 + '\n')
+      f.writelines(content)
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))

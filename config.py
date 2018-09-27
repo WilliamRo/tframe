@@ -254,6 +254,16 @@ class Config(object):
   notify_when_reset = Flag.whatever(False, '...')
   optimizer = Flag.whatever(None, 'optimizer')
 
+  # Advanced RNN option
+  truncate_grad = Flag.boolean(None, 'Whether to truncate gradient in RNN',
+                               is_key=None)
+  forward_gate = Flag.boolean(
+    None, 'Whether to calculate units using gate units from previous time '
+          'step', is_key=None)
+
+  # Other fancy stuff
+  show_record_history_in_note = Flag.boolean(False, '...')
+
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')

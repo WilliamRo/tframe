@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def check_type(inputs, type_tuples):
   """
   Check the types of inputs
@@ -37,3 +40,13 @@ def check_positive_integer(x, name='value'):
     raise ValueError('!! {} must be a positive integer'.format(name))
   return x
 
+
+def get_range(rng):
+  if not isinstance(rng, tuple) or len(rng) != 2:
+    raise TypeError('!! Range must be a tuple of length 2')
+  low, high = rng
+  if not np.isscalar(low) or not np.isscalar(high):
+    raise TypeError('!! Range should be a tuple consists of 2 scalars')
+  if low >= high:
+    raise AssertionError('!! Illegal range = ({}, {})'.format(low, high))
+  return low, high

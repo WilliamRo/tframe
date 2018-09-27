@@ -56,6 +56,14 @@ class Metric(TensorSlot):
     if self._as_loss: return all(np.array(self._trend) < 0)
     else: return all(np.array(self._trend) > 0)
 
+  @property
+  def metric_mean_history_str(self):
+    history = 'History of E(metric): '
+    logs = [l for l in self._metric_logs if np.isscalar(l)]
+    for i, l in enumerate(logs):
+      history += '[{}]{:.3f} -> '.format(i + 1, l)
+    return history
+
   # endregion : Properties
 
   # region : Public Methods

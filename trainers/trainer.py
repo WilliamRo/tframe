@@ -403,9 +403,9 @@ class TrainerHub(Config):
   shuffle = Flag.boolean(False, 'Whether to shuffle', is_key=None)
 
   print_cycle = Flag.integer(0, 'Print cycle')
-  validate_cycle = Flag.integer(0, 'Validate cycle', is_key=None)
+  validate_cycle = Flag.integer(0, 'Validate cycle')
   validation_per_round = Flag.integer(0, 'Validation per round',
-                                      name='val_per_rnd', is_key=None)
+                                      name='val_per_rnd')
   snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
   probe_cycle = Flag.integer(0, 'Probe cycle')
   match_cycle = Flag.integer(0, 'Match cycle for RL')

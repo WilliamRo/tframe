@@ -1,8 +1,14 @@
-from __future__ import  absolute_import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import six
+import numpy as np
 
+import tensorflow as tf
 from tensorflow.python.ops import init_ops
+
+from tframe.utils import checker
 
 
 def glorot_uniform():
@@ -13,13 +19,21 @@ def identity():
   return init_ops.identity_initializer()
 
 
-def get(identifier):
+def get(identifier, **kwargs):
   if identifier is None or isinstance(identifier, init_ops.Initializer):
     return identifier
   elif isinstance(identifier, six.string_types):
     # If identifier is a string
     identifier = identifier.lower()
-    if identifier in ['glorot_uniform', 'xavier_uniform']:
+    if identifier in ['random_uniform']:
+      rng = kwargs.get('range', None)
+      low, high = checker.get_range(rng)
+      return init_ops.RandomUniform(minval=low, maxval=high)
+    elif identifier in ['random_norm', 'random_normal']:
+      mean = kwargs.get('mean', 0.)
+      stddev = kwargs.get('stddev', 1.)
+      return init_ops.RandomNormal(mean=mean, stddev=stddev)
+    elif identifier in ['glorot_uniform', 'xavier_uniform']:
       return glorot_uniform()
     elif identifier in ['id', 'identity']:
       return identity()
@@ -33,6 +47,9 @@ def get(identifier):
         raise ValueError('Can not resolve "{}"'.format(identifier))
       # Return initializer with default parameters
       return initializer
+  elif np.isscalar(identifier):
+    # Note string is scalar
+    return init_ops.Constant(value=identifier)
   else:
     raise TypeError('identifier must be a Initializer or a string')
 
