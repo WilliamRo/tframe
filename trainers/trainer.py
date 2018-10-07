@@ -165,10 +165,17 @@ class Trainer(object):
                  if self.model.input_type is InputTypes.RNN_BATCH else None)
     self.th.round_length = self.training_set.get_round_length(
       self.th.batch_size, num_steps)
+
     # Check validation cycle
     if self.th.validation_per_round > 0 and self.validation_set is not None:
-      if self.th.round_length is not None: self.th.validate_cycle = (
+      if self.th.round_length is not None:
+        self.th.validate_cycle = (
           self.th.round_length // self.th.validation_per_round)
+
+    # Check probe cycle
+    if self.th.probe_per_round > 0 and self._probe is not None:
+      if self.th.round_length is not None:
+        self.th.probe_cycle = self.th.round_length // self.th.probe_per_round
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -408,6 +415,7 @@ class TrainerHub(Config):
                                       name='val_per_rnd')
   snapshot_cycle = Flag.integer(0, 'Snapshot cycle')
   probe_cycle = Flag.integer(0, 'Probe cycle')
+  probe_per_round = Flag.integer(0, 'Probe per round')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
   early_stop = Flag.boolean(True, 'Early stop option', is_key=None)

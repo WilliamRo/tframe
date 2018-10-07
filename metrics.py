@@ -18,6 +18,9 @@ def _truncate(truth, output):
 def accuracy(labels, outputs):
   # Make sure labels and outputs are tensorflow tensors
   assert isinstance(labels, tf.Tensor) and isinstance(outputs, tf.Tensor)
+  # Truncate data if necessary TODO: maybe its not save
+  if len(labels.shape.as_list()) > 2 and tfr.hub.val_preheat > 0:
+    labels, outputs = _truncate(labels, outputs)
   # Convert labels and outputs to 2-D dense tensors
   tensors = [labels, outputs]
   for i, tensor in enumerate(tensors):
