@@ -112,7 +112,9 @@ class LossFigure(Frame):
       # step \in {-1, 1}
       step, what = args
       step = int(step)
-      index = self._index + np.round(
+      if isinstance(what, str) and what == 'tiny':
+        index = self._index + step
+      else: index = self._index + np.round(
         step * self.PCT_PER_STEP * len(self._step))
       index = min(max(0, index), len(self._step) - 1)
       if index == self._index: return

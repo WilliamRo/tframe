@@ -129,6 +129,9 @@ class VariableViewer(Frame):
     self.combo_box.bind('<<ComboboxSelected>>', lambda _: self.refresh())
 
   def _heat_map(self, variable, **kwargs):
+    """
+    ref: https://matplotlib.org/gallery/images_contours_and_fields/image_annotated_heatmap.html#sphx-glr-gallery-images-contours-and-fields-image-annotated-heatmap-py
+    """
     kwargs['interpolation'] = 'none'
 
     # Plot the heat map

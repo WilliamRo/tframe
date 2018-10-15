@@ -19,6 +19,10 @@ def on_key_press(viewer, event):
     viewer.loss_figure.on_scroll('scroll', -1, None)
   elif key_symbol == 'l':
     viewer.loss_figure.on_scroll('scroll', 1, None)
+  elif key_symbol == 'n':
+    viewer.loss_figure.on_scroll('scroll', 1, 'tiny')
+  elif key_symbol == 'p':
+    viewer.loss_figure.on_scroll('scroll', -1, 'tiny')
   elif key_symbol == 'H':
     viewer.loss_figure.on_scroll('moveto', 0.0)
   elif key_symbol == 'L':
@@ -42,9 +46,11 @@ def load_note(viewer, _):
   assert isinstance(viewer, centre.NoteViewer)
   # Select file
   file_path = filedialog.askopenfilename(
-    title='Load note file', filetypes=(('TFrame note files', '*.note'),))
+    title='Load note file', filetypes=(('TFrame note files', '*.note'),),
+    initialdir=viewer.init_dir,
+  )
   if file_path == '': return
   # Set note file to viewer
-  viewer.context.set_note_by_path(file_path)
+  viewer.set_note_by_path(file_path)
 
 

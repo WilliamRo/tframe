@@ -21,9 +21,9 @@ except Exception as e:
 
 class NoteViewer(Frame):
   """Note Viewer for tframe NOTE"""
-  SIZE = 500
+  SIZE = 400
 
-  def __init__(self, master=None, note_path=None):
+  def __init__(self, master=None, note_path=None, init_dir=None):
     # If root is provided, load a default one
     if master is None:
       master = tk.Tk()
@@ -38,23 +38,40 @@ class NoteViewer(Frame):
     # Attributes
     self.form = master
     self.context = Context()
+    self.init_dir = init_dir
 
     # If note_path is provided, try to load it
     if note_path is not None and isinstance(note_path, str):
-      self._set_note_by_path(note_path)
+      self.set_note_by_path(note_path)
 
     # Initialize viewer
     self._init_viewer()
-
-  # region : Properties
-
-  # endregion : Properties
 
   # region : Public Methods
 
   def show(self):
     self.form.after(20, self._move_to_center)
     self.form.mainloop()
+
+  def set_note_by_path(self, note_path):
+    # Set context
+    self.context.set_note_by_path(note_path)
+    # Set loss and variables
+    assert isinstance(self.loss_figure, LossFigure)
+    self.loss_figure.set_step_and_loss(
+      self.context.note.step_array, self.context.note.loss_array)
+    # TODO: somehow necessary
+    self.loss_figure.refresh()
+
+    assert isinstance(self.variable_viewer, VariableViewer)
+    self.variable_viewer.set_variable_dict(self.context.note.variable_dict)
+
+    # Relate loss figure and variable viewer
+    self.loss_figure.related_variable_viewer = self.variable_viewer
+    self.variable_viewer.related_loss_figure = self.loss_figure
+
+    # Refresh title
+    self._refresh()
 
   # endregion : Public Methods
 
@@ -99,23 +116,6 @@ class NoteViewer(Frame):
       title += ' - {}'.format(self.context.note_file_name)
     self.form.title(title)
 
-  def _set_note_by_path(self, note_path):
-    # Set context
-    self.context.set_note_by_path(note_path)
-    # Set loss and variables
-    assert isinstance(self.loss_figure, LossFigure)
-    self.loss_figure.set_step_and_loss(
-      self.context.note.step_array, self.context.note.loss_array)
-    # TODO: somehow necessary
-    self.loss_figure.refresh()
-
-    assert isinstance(self.variable_viewer, VariableViewer)
-    self.variable_viewer.set_variable_dict(self.context.note.variable_dict)
-
-    # Relate loss figure and variable viewer
-    self.loss_figure.related_variable_viewer = self.variable_viewer
-    self.variable_viewer.related_loss_figure = self.loss_figure
-
   # endregion : Private Methods
 
 
@@ -123,9 +123,10 @@ if __name__ == '__main__':
   # Avoid the module name being '__main__' instead of main_frame.py
   from tframe.utils.note_viewer import main_frame
   # Default file_path
-  file_path = r'E:\rnn_club\98-TOY\records_ms_off\notes\d2_msu(off)3_bs5_lr0.01'
-  file_path += r'\d2_msu(off)3_bs5_lr0.01=1.000.note'
-  viewer = main_frame.NoteViewer(note_path=file_path)
+  file_path = None
+  init_dir = None
+  # viewer = main_frame.NoteViewer(note_path=file_path)
+  viewer = main_frame.NoteViewer(init_dir=init_dir)
   viewer.show()
 
 
