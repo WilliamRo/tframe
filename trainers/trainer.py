@@ -177,6 +177,11 @@ class Trainer(object):
       if self.th.round_length is not None:
         self.th.probe_cycle = self.th.round_length // self.th.probe_per_round
 
+    # Check note cycle
+    if self.th.note_per_round > 0:
+      if self.th.round_length is not None:
+        self.th.note_cycle = self.th.round_length // self.th.note_per_round
+
   def _sanity_check(self):
     """Should be overrode by subclasses"""
     pass
@@ -240,6 +245,8 @@ class Trainer(object):
       self.counter += 1
       # Update model
       loss_dict = self.model.update_model(data_batch=batch)
+      # Take notes
+      self._take_note_for_params(loss_dict)
       # Print progress
       self._print_progress(rnd, loss_dict)
       # Validation
@@ -342,6 +349,20 @@ class Trainer(object):
     content = '{} {}{}{}'.format(
       self.th.round_name, rnd, total_rounds, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
+
+  def _take_note_for_params(self, loss_dict):
+    if self.th.note_cycle == 0: return
+    if np.mod(self.counter - 1, self.th.note_cycle) != 0: return
+
+    # Take down parameters
+    loss_key = 'Loss'
+    # loss_dict is a dict with Slots as keys
+    loss_slots = [s for s in loss_dict.keys() if s.name == loss_key]
+    assert len(loss_slots) > 0
+    loss_value = loss_dict[loss_slots[0]]
+    scalars = {loss_key: loss_value}
+    self.model.agent.take_down_params(
+      scalars, params=self.model.parameters_dict)
 
   def _run_probe(self):
     if self._probe is None or self.th.probe_cycle == 0: return False

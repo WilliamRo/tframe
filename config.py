@@ -263,12 +263,17 @@ class Config(object):
 
   # Other fancy stuff
   show_record_history_in_note = Flag.boolean(False, '...')
+  # TODO: temporarily be put here cuz agent may access to them
+  note_cycle = Flag.integer(0, 'Note cycle')
+  note_per_round = Flag.integer(0, 'Note per round')
 
   # Shelter
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')
   int_para_1 = Flag.integer(0, 'Used to pass an integer parameter using '
                                ' command line')
+  bool_para_1 = Flag.boolean(False, 'Used to pass a boolean parameter using'
+                                    ' command line')
 
   def __init__(self, as_global=False):
     if as_global:
@@ -347,12 +352,15 @@ class Config(object):
     for name, flg in queue.items(): flg.register(name)
 
   def redirect(self, config):
+    """Redirect self to config"""
     assert isinstance(config, Config)
     flag_names = [name for name, value in self.__dict__.items()
                   if isinstance(value, Flag)]
     for name in flag_names:
       value = getattr(config, name)
+      # Set flag to self
       object.__setattr__(self, name, config.get_flag(name))
+      # Assign value to self.flag
       self.__setattr__(name, value)
 
   def smooth_out_conflicts(self):

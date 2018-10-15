@@ -195,6 +195,13 @@ class Agent(object):
 
     self._note.write_line(content)
 
+  def take_down_params(self, scalars, params):
+    assert isinstance(scalars, dict) and isinstance(params, dict)
+    if hub.epoch_as_step and tfr.trainer.total_rounds is not None:
+      step = int(tfr.trainer.total_rounds * 1000)
+    else: step = self._model.counter
+    self._note.take_down_params(step, scalars, params)
+
   def export_notes(self, filename='notes'):
     assert hub.export_note
     file_path = '{}/{}.txt'.format(self.note_dir, filename)
@@ -206,6 +213,11 @@ class Agent(object):
     # Gather
     if hub.auto_gather:
       self.gather(self._note.content, take_down_time=False)
+    # Export note class if necessary TODO: consecutive save not supported yet
+    # Currently, if note_cycle is positive, pickle down the note class
+    if hub.note_cycle > 0:
+      file_path = '{}/{}.note'.format(self.note_dir, filename)
+      self._note.save(file_path)
 
   def show_notes(self):
     console.section('Notes')
@@ -225,6 +237,7 @@ class Agent(object):
       f.write(line + '\n')
       f.write('-' * 79 + '\n')
       f.writelines(content)
+      # TODO: find a way to update immediately after training is over
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))

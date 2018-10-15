@@ -127,6 +127,17 @@ class Model(object):
     assert len(metrics) == 1
     return metrics[0]
 
+  @property
+  def parameters_dict(self):
+    # Fetch all trainable variables
+    trainable_variables = tf.trainable_variables()
+    values = self.session.run(trainable_variables)
+    # Wrap them into a dictionary and return
+    parameters = {}
+    for t, v, in zip(trainable_variables, values):
+      parameters[t.name] = v
+    return parameters
+
   # endregion : Accessor
 
   # region : Properties to be overrode
@@ -409,7 +420,6 @@ class Model(object):
         assert isinstance(al, list) and len(al) == batch.size
         output = [y[:l] for y, l in zip(output, al)]
       else: output = [output]
-
 
     return output
 
