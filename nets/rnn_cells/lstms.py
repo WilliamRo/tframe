@@ -245,6 +245,10 @@ class OriginalLSTMCell(RNet):
     self._use_out_bias = use_out_bias
     self._out_bias_initializer = initializers.get(out_bias_initializer)
 
+    if kwargs.get('rule97', False):
+      self._cell_bias_initializer = self._weight_initializer
+      self._in_bias_initializer = self._weight_initializer
+
     # Additional options
     self._truncate = truncate
     self._forward_gate = forward_gate

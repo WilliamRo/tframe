@@ -174,8 +174,10 @@ class Model(object):
     for line in description:
       assert isinstance(line, str)
       console.supplement(line)
-    # Get structure detail
-    detail, total_params = self.structure_detail
+    # Get structure detail TODO:
+    detail, total_params = '', 0
+    if hasattr(self, 'structure_detail'):
+      detail, total_params = self.structure_detail
     # Maybe take some notes
     self.agent.take_notes('Model built successfully')
     self.agent.take_notes('Structure:', date_time=False)
