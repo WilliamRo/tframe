@@ -12,6 +12,17 @@ def with_graph(meth):
   return wrapper
 
 
+def with_graph_if_has(meth):
+  def wrapper(*args, **kwargs):
+    obj = args[0]
+    if hasattr(obj, 'graph'):
+      with obj.graph.as_default():
+        return meth(*args, **kwargs)
+    else:
+      return meth(*args, **kwargs)
+  return wrapper
+
+
 def init_with_graph(init):
   def wrapper(*args, **kwargs):
     assert isinstance(tfr.current_graph, tf.Graph)

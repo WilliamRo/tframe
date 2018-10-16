@@ -71,6 +71,8 @@ class Recurrent(Model, RNet):
     if last_softmax is not None:
       self._logits_tensor = outputs
       outputs = last_softmax(outputs)
+      # Put last softmax back
+      self.add(last_softmax)
 
     #  Output has a shape of [batch_size, num_steps, *output_shape]
     self.outputs.plug(outputs)

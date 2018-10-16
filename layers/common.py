@@ -50,6 +50,7 @@ class Activation(Layer):
 class Dropout(Layer):
   """"""
   abbreviation = 'dropout'
+  full_name = abbreviation
 
   def __init__(self, train_keep_prob=0.5):
     # Initialize keep probability until while linking to put the

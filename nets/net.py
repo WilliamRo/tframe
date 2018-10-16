@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe.core import Function
@@ -9,8 +10,10 @@ from tframe.layers.layer import Layer
 from tframe.layers import Activation
 from tframe.layers import Input
 from tframe.utils import shape_string
+import tframe.utils.format_string as fs
 
 from tframe import pedia
+from tframe.core.decorators import with_graph_if_has
 
 
 class Net(Function):
@@ -49,12 +52,17 @@ class Net(Function):
 
   @property
   def var_list(self):
+    """Should be used in with graph context"""
     return [var for var in tf.trainable_variables()
             if '{}'.format(self._name) == var.name.split('/')[self._level]]
 
   @property
   def weight_list(self):
     return [var for var in self.var_list if 'weights' in var.name]
+
+  @property
+  def params_num(self):
+    return sum([np.prod(param.shape) for param in self.var_list])
 
   @property
   def group_name(self):
@@ -84,10 +92,71 @@ class Net(Function):
   @property
   def is_root(self):
     return self._level == 0
+  
+  @property
+  @with_graph_if_has
+  def structure_detail(self):
+    """A list of structure strings with format
+       Layer (type)           Output Shape           Params #
+    Currently only work for sequential model
+    """
+    from tframe.nets.rnet import RNet
+    widths = [50, 16]
+    indent = 3
 
-  def _get_layer_string(self, f, scale):
+    rows = []
+    total_params = 0
+    if self.is_root:
+      input_info = 'Input_{}'.format(shape_string(self.input_.sample_shape))
+      rows.append(fs.table_row([input_info, ''], widths))
+    for child in self.children:
+      if isinstance(child, Layer):
+        # Try to find variable in child
+        tensors = [v for v in self.var_list if child.group_name in v.name]
+        num = sum([np.prod(t.shape) for t in tensors])
+        num_str = '' if num == 0 else '{}'.format(num)
+        cols = [self._get_layer_string(child, True, True), num_str]
+
+        rows.append(fs.table_row(cols, widths))
+        total_params += num
+      elif isinstance(child, RNet):
+        num = child.params_num
+        cols = [child.structure_string(), '{}'.format(num)]
+
+        rows.append(fs.table_row(cols, widths))
+        total_params += num
+      elif isinstance(child, Net):
+        _rows, _total_params = child.structure_detail
+        rows += _rows
+        total_params += _total_params
+      else:
+        raise TypeError('!! unknown child type {}'.format(type(child)))
+
+    if self.is_root:
+      # Head
+      detail = ''
+      add_with_indent = lambda d, c: d + ' ' * indent + c + '\n'
+      width = sum(widths)
+      detail = add_with_indent(detail, '-' * width)
+      detail = add_with_indent(
+        detail, fs.table_row(['Layers', 'Params #'], widths))
+      detail = add_with_indent(detail, '=' * width)
+      # Content
+      for i, row in enumerate(rows):
+        if i > 0:
+          detail = add_with_indent(detail, '-' * width)
+        detail = add_with_indent(detail, row)
+      # Summary
+      detail = add_with_indent(detail, '=' * width)
+      detail = add_with_indent(
+        detail, 'Total params: {}'.format(total_params))
+      detail += ' ' * indent + '-' * width
+      return detail, total_params
+    else: return rows, total_params
+
+  def _get_layer_string(self, f, scale, full_name=False):
     assert isinstance(f, Layer)
-    result = f.abbreviation
+    result = f.abbreviation if not full_name else f.full_name
     if scale and f.neuron_scale is not None:
       self._output_scale = shape_string(
         f.neuron_scale if f.output_scale is None else f.output_scale)

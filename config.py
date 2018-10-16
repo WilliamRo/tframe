@@ -165,6 +165,7 @@ class Config(object):
   snapshot_folder_name = Flag.string('snapshots', '...')
   gather_file_name = Flag.string('gather.txt', '...')
   tb_port = Flag.integer(6006, 'Tensorboard port number')
+  show_structure_detail = Flag.boolean(False, '...')
 
   block_validation = Flag.whatever(False, '???')
   dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=None)

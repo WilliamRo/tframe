@@ -154,20 +154,22 @@ class ERG(DataAgent):
 
   @classmethod
   def load(cls, data_dir, train_size=256, validate_size=0, test_size=256,
-           file_name=None, amu18=True, **kwargs):
+           file_name=None, amu18=True, cheat=True, **kwargs):
     # Load .tfd data
     num = train_size + validate_size + test_size
     data_set = cls.load_as_tframe_data(
-      data_dir, file_name=file_name, size=num, unique_=True, amu18=True)
+      data_dir, file_name=file_name, size=num, unique_=True, amu18=True,
+      cheat=cheat)
 
     return cls._split_and_return(data_set, train_size, validate_size, test_size)
 
 
   @classmethod
   def load_as_tframe_data(cls, data_dir, file_name=None, size=512,
-                          unique_=True, amu18=False):
+                          unique_=True, amu18=False, cheat=True):
     # Check file_name
-    if file_name is None: file_name = cls._get_file_name(size, unique_, amu18)
+    if file_name is None:
+      file_name = cls._get_file_name(size, unique_, amu18, cheat)
     data_path = os.path.join(data_dir, file_name)
     if os.path.exists(data_path): return SequenceSet.load(data_path)
     # If data does not exist, create a new one
@@ -185,8 +187,9 @@ class ERG(DataAgent):
 
     # Wrap erg into a DataSet
     features = [erg.one_hot for erg in erg_list]
-    targets = [erg.observed_prob for erg in erg_list]
     val_targets = [erg.transfer_prob for erg in erg_list]
+    targets = ([erg.observed_prob for erg in erg_list]
+               if not cheat else val_targets)
     # targets = [erg.transfer_prob for erg in erg_list]
     data_set = SequenceSet(
       features, targets, data_dict={'val_targets': val_targets},
@@ -197,13 +200,14 @@ class ERG(DataAgent):
     return data_set
 
   @classmethod
-  def _get_file_name(cls, num, unique_, amu18):
+  def _get_file_name(cls, num, unique_, amu18, cheat):
     checker.check_positive_integer(num)
     checker.check_type(unique_, bool)
     if amu18: tail = 'AMU18'
     elif unique_: tail = 'U'
     else: tail = 'NU'
-    file_name = '{}_{}_{}.tfds'.format(cls.DATA_NAME, num, tail)
+    file_name = '{}_{}_{}_{}.tfds'.format(
+      cls.DATA_NAME, num, tail, 'C' if cheat else 'NC')
     return file_name
 
   # region : Probe Methods

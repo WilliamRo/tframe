@@ -149,7 +149,7 @@ class Model(object):
   @property
   def input_type(self):
     return InputTypes.BATCH
-
+  
   # endregion : Properties to be overrode
 
   # endregion : Properties
@@ -174,11 +174,16 @@ class Model(object):
     for line in description:
       assert isinstance(line, str)
       console.supplement(line)
+    # Get structure detail
+    detail, total_params = self.structure_detail
     # Maybe take some notes
     self.agent.take_notes('Model built successfully')
     self.agent.take_notes('Structure:', date_time=False)
+    self.agent.take_notes('Total params: {}'.format(total_params))
     for line in description:
       self.agent.take_notes(line, date_time=False)
+    if hub.show_structure_detail:
+      print('.. Structure detail:\n{}'.format(detail))
 
   def _build(self, optimizer=None, **kwargs):
     """Abstract method, must be implemented in different models"""

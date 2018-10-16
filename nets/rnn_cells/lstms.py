@@ -309,12 +309,14 @@ class OriginalLSTMCell(RNet):
       net_chunk, num_or_size_splits=self._num_splits, axis=1)
 
     # Calculate input and output gate
+    in_bias = None
     if self._use_in_bias:
       in_bias = self._get_bias(
         'in_bias', self._state_size, initializer=self._in_bias_initializer)
       net_in = tf.nn.bias_add(net_in, in_bias)
     y_in = self._gate_activation(net_in)
 
+    out_bias = None
     if self._use_out_bias:
       out_bias = self._get_bias(
         'out_bias', self._state_size, initializer=self._out_bias_initializer)
@@ -322,6 +324,7 @@ class OriginalLSTMCell(RNet):
     y_out = self._gate_activation(net_out)
 
     # Calculate new state
+    cell_bias = None
     if self._use_cell_bias:
       cell_bias = self._get_bias(
         'cell_bias', self._state_size, initializer=self._cell_bias_initializer)
@@ -331,6 +334,8 @@ class OriginalLSTMCell(RNet):
     # Calculate output
     y_c = tf.multiply(y_out, self._memory_activation(new_c))
 
+    self._kernel = W
+    self._bias = [b for b in (in_bias, out_bias, cell_bias) if b is not None]
     # Generate new_h and return
     new_h = (tf.concat([y_c, y_in, y_out], axis=1) if self._forward_gate
              else y_c)
