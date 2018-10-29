@@ -22,6 +22,8 @@ class Layer(Function):
   neuron_scale = None
   output_scale = None
 
+  output_tensor = None
+
   @property
   def group_name(self):
     """group name will be shown in tensorboard graphs view.

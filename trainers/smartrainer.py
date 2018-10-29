@@ -92,12 +92,12 @@ class SmartTrainerHub(TrainerHub):
   trainer_class = SmartTrainer
 
   def __init__(self, trainer=None, as_global=False):
+    # Append attributes
+    self.bad_apples = 0
     # Call parent's constructor
     TrainerHub.__init__(self, trainer, as_global=as_global)
     # Freeze options
     if self.smart_train: self._freeze_flags()
-    # Append attributes
-    self.bad_apples = 0
 
   # TODO
   def __setattr__(self, name, value):

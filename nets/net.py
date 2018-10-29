@@ -33,7 +33,7 @@ class Net(Function):
        :param level: level 0 indicates the trunk
        :param inter_type: \in {cascade, fork, sum, prod, concat}
     """
-    self._name = name
+    self.name = name
     self._level = level
     self._inter_type = inter_type
     self.is_branch = is_branch
@@ -47,6 +47,8 @@ class Net(Function):
 
     self._logits_tensor = None
 
+    self.linked = False
+
 
   # region : Properties
 
@@ -54,7 +56,7 @@ class Net(Function):
   def var_list(self):
     """Should be used in with graph context"""
     return [var for var in tf.trainable_variables()
-            if '{}'.format(self._name) == var.name.split('/')[self._level]]
+            if '{}'.format(self.name) == var.name.split('/')[self._level]]
 
   @property
   def weight_list(self):
@@ -66,7 +68,7 @@ class Net(Function):
 
   @property
   def group_name(self):
-    return self._name
+    return self.name
 
   @property
   def last_function(self):
@@ -212,7 +214,7 @@ class Net(Function):
   @property
   def regularization_loss(self):
     reg_losses = tf.get_collection(
-      pedia.tfkey.regularization_losses, self._name)
+      pedia.tfkey.regularization_losses, self.name)
     return (None if len(reg_losses) == 0
             else tf.add_n(reg_losses, name='reg_sum'))
 
@@ -273,6 +275,7 @@ class Net(Function):
       raise TypeError('!! Unknown net inter type {}'.format(self._inter_type))
 
     # Return
+    self.linked = True
     return output
 
   # endregion : Overrode Methods
@@ -357,7 +360,7 @@ class Net(Function):
     if isinstance(f, Layer): f.full_name = name
     elif isinstance(f, Net):
       f._level = self._level + 1
-      f._name = name
+      f.name = name
       net = f
     self.children.append(f)
     return net

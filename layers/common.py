@@ -150,6 +150,7 @@ class Linear(Layer):
     if hub.monitor_weight or hub.monitor_grad:
       tfr.monitor.add_weight(self.weights)
 
+    self.output_tensor = output
     return output
 
 

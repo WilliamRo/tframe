@@ -456,9 +456,6 @@ class TrainerHub(Config):
   trainer_class = Trainer
 
   def __init__(self, trainer=None, as_global=False):
-    # Call parent's constructor
-    Config.__init__(self, as_global)
-
     self.trainer = trainer
     self.record_rnd = 0
     # metric log is a list of list
@@ -472,6 +469,9 @@ class TrainerHub(Config):
 
     self.force_terminate = False
     self.logs = {}
+
+    # Call parent's constructor
+    Config.__init__(self, as_global)
 
   # region : Properties
 

@@ -97,6 +97,8 @@ class RNet(Net):
         output = net(output)
 
     assert len(states) == len(pre_states)
+
+    self.linked = True
     return output, tuple(states)
 
   # endregion : Overriden Methods

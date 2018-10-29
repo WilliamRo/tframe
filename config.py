@@ -276,6 +276,10 @@ class Config(object):
   bool_para_1 = Flag.boolean(False, 'Used to pass a boolean parameter using'
                                     ' command line')
 
+  # BETA:
+  use_rtrl = Flag.boolean(
+    False, 'Whether to use RTRL in training RNN', is_key=None)
+
   def __init__(self, as_global=False):
     if as_global:
       tfr.hub.redirect(self)
@@ -355,14 +359,21 @@ class Config(object):
   def redirect(self, config):
     """Redirect self to config"""
     assert isinstance(config, Config)
-    flag_names = [name for name, value in self.__dict__.items()
-                  if isinstance(value, Flag)]
+
+    # flag_names = [name for name, value in self.__dict__.items()
+    #               if isinstance(value, Flag)]
+
+    flag_names = [name for name in config.__dir__()
+                  if hasattr(config, name) and
+                  isinstance(object.__getattribute__(config, name), Flag)]
     for name in flag_names:
-      value = getattr(config, name)
+      # value = getattr(config, name)
       # Set flag to self
+
       object.__setattr__(self, name, config.get_flag(name))
+
       # Assign value to self.flag
-      self.__setattr__(name, value)
+      # self.__setattr__(name, value)
 
   def smooth_out_conflicts(self):
     """"""

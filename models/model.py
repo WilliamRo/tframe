@@ -188,7 +188,9 @@ class Model(object):
       print('.. Structure detail:\n{}'.format(detail))
 
   def _build(self, optimizer=None, **kwargs):
-    """Abstract method, must be implemented in different models"""
+    """Abstract method, must be implemented in different models
+       Usually touches tensorflow api directly and plug tf ops into tfr slots
+    """
     raise  NotImplementedError('!! build method not implemented')
 
   def _init_monitor(self):
@@ -196,10 +198,19 @@ class Model(object):
 
   @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):
+    """ TODO: should be modified for tframe.optimizer
+        self._train_step will be plugged only here
+    """
     if not self._loss.activated:
       raise AssertionError('!! loss has not been activated yet')
     with tf.name_scope('Optimizer'):
       if optimizer is None: optimizer = tf.train.AdamOptimizer(1e-4)
+
+      # TODO: BETA
+      if hub.use_rtrl:
+        from tframe.optimizers.rtrl_opt import RealTimeOptimizer
+        optimizer = RealTimeOptimizer(self, optimizer)
+
       self._optimizer = optimizer
       self._train_step.plug(
         optimizer.minimize(self._loss.op, var_list=var_list))
