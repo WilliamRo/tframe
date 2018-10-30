@@ -295,6 +295,7 @@ class OriginalLSTMCell(RNet):
     input_size = self._get_external_shape(x)
     self._check_state(pre_states, (self._h_size, self._state_size))
     h, c = pre_states
+    self.pre_dynamic_tensor = h
 
     # :: Calculate net_c, net_in, net_out using h = [y_c, y_in, y_out] when
     #    forward gate (otherwise h = y_c) and x
@@ -343,6 +344,8 @@ class OriginalLSTMCell(RNet):
     # Generate new_h and return
     new_h = (tf.concat([y_c, y_in, y_out], axis=1) if self._forward_gate
              else y_c)
+
+    self.post_dynamic_tensor = new_h
     return y_c, (new_h, new_c)
 
   # endregion : Private Methods

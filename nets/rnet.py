@@ -28,6 +28,9 @@ class RNet(Net):
     self._weight_initializer = None
     self._bias_initializer = None
 
+    self.pre_dynamic_tensor = None
+    self.post_dynamic_tensor = None
+
   # region : Properties
 
   @property
