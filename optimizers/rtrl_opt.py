@@ -6,11 +6,18 @@ import numpy as np
 import tensorflow as tf
 
 from tframe.models.recurrent import Recurrent
+from tframe import hub as th
+
+from .node_register import NodeRegister
 
 
 class RealTimeOptimizer(object):
-  """Real-time optimizer for Recurrent Neural Networks.
-     Here real-time means num_steps = 1
+  """Real-time optimizer for Recurrent Neural Networks
+     Here real-time means num_steps = 1 and batch_size = 1
+
+     If the RNet has more than one recurrent layers, say, the
+      corresponding hidden states are denoted [h_1, h_2, ...] in order
+     the gradient dh_p(t)/dh_q(t-1) is truncated to 0 for p > q
 
      TODO: This is a BETA version. Pls use under the guidance.
   """
@@ -19,6 +26,9 @@ class RealTimeOptimizer(object):
     :param rnn: an instance of tframe recurrent net
     :param tf_optimizer: an instance of tensorflow.train.Optimizer
     """
+    # Check th
+    # assert th.batch_size == 1 and th.num_steps == 1
+
     assert isinstance(rnn, Recurrent)
     self._rnn = rnn
     assert isinstance(tf_optimizer, tf.train.Optimizer)
@@ -26,18 +36,17 @@ class RealTimeOptimizer(object):
 
     # The buffer stores ...
     self._register = None
-    self._buffer = None
 
   # region : Public Methods
 
   def minimize(self, loss, var_list=None):
     # Sanity check: make sure self._rnn has already been built so the dynamic
     #  nodes and weights can be found
-    if not self._rnn.built:
-      raise AssertionError('!! The net `{}` should be built'.format(
-        self._rnn._name))
-
-    self._init_buffer()
+    if not self._rnn.linked:
+      raise AssertionError('!! The net `{}` should be linked'.format(
+        self._rnn.name))
+    # Initialize register
+    self._register = NodeRegister(self._rnn)
 
     # Step 1: compute gradients
     grads_and_vars = self._compute_gradients(loss, var_list=var_list)
@@ -63,19 +72,12 @@ class RealTimeOptimizer(object):
     #   together with the static units (weights)
 
     # ...
-    tf.gradients()
-
-
+    # tf.gradients()
 
     #
     grads_and_vars = self._tf_optimizer.compute_gradients(
       loss, var_list=var_list)
     return grads_and_vars
-
-  def _init_buffer(self):
-    """Initialize buffer
-    """
-    pass
 
   # endregion : Private Methods
 
