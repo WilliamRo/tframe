@@ -21,12 +21,12 @@ def main(_):
   th.print_cycle = 20
   th.shuffle = True
 
-  th.train = False
+  th.train = True
   th.smart_train = False
   th.max_bad_apples = 4
   th.lr_decay = 0.6
 
-  th.save_model = True
+  th.save_model = False
   th.overwrite = True
   th.export_note = True
   th.summary = True

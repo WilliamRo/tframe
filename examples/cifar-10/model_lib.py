@@ -25,6 +25,7 @@ def mlp(th):
 
   # Add output layer
   model.add(Linear(output_dim=th.num_classes))
+  model.add(Activation('softmax'))
 
   # Build model
   optimizer=tf.train.AdamOptimizer(learning_rate=th.learning_rate)

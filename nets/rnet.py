@@ -13,6 +13,10 @@ from tframe.nets.net import Net
 class RNet(Net):
   """Recurrent net which outputs states besides common result"""
   net_name = 'rnet'
+  # If not None, compute_gradients should be callable, it accepts a dL/dy
+  # .. tensor with shape (num_steps(=1), batch_size, *(y.shape))
+  # .. and returns (grads_and_vars, new_grad_buffer)
+  compute_gradients = None
 
   def __init__(self, name):
     # Call parent's constructor
@@ -28,8 +32,13 @@ class RNet(Net):
     self._weight_initializer = None
     self._bias_initializer = None
 
-    self.pre_dynamic_tensor = None
-    self.post_dynamic_tensor = None
+    # For real-time training TODO: BETA
+    self.repeater_tensors = None  # registered in sub-classes
+    self._grad_tensors = None
+
+    self._new_state_tensor = None  #
+    self._gradient_buffer_placeholder = None
+    self._gradient_buffer_array = None
 
   # region : Properties
 
@@ -52,7 +61,7 @@ class RNet(Net):
         for rnn_cell in self.rnn_cells:
           states.append(rnn_cell.init_state)
       assert len(states) == self.rnn_cell_num
-      return tuple(states)
+      self._init_state = tuple(states)
     else:
       # If initial state is a tuple, this property must be overriden
       assert self._state_size is not None
@@ -60,7 +69,35 @@ class RNet(Net):
       # .. decorator
       self._init_state = tf.placeholder(
         dtype=hub.dtype, shape=(None, self._state_size), name='init_state')
-      return self._init_state
+
+    return self._init_state
+
+  @property
+  def gradient_buffer_placeholder(self):
+    if self._gradient_buffer_placeholder is not None: return self._gradient_buffer_placeholder
+    # Initiate gradient buffer
+    if self.is_root:
+      buffer = []
+      with tf.name_scope('GradientBuffer'):
+        for rnn_cell in self.rnn_cells:
+          if rnn_cell.compute_gradients is not None:
+            buffer.append(rnn_cell.gradient_buffer_placeholder)
+      self._gradient_buffer_placeholder = tuple(buffer)
+    else:
+      raise NotImplementedError('!! Properties not implemented.')
+
+    return self._gradient_buffer_placeholder
+
+  @property
+  def repeater_containers(self):
+    """TODO: BETA"""
+    assert self.is_root
+    rcs = []
+    for child in self.children:
+      assert isinstance(child, Net)
+      if isinstance(child, RNet) and child.compute_gradients is not None:
+        rcs.append(child)
+    return tuple(rcs)
 
   # endregion : Properties
 
@@ -76,7 +113,11 @@ class RNet(Net):
     """
     # Check inputs
     if pre_outputs is not None:
-      assert isinstance(pre_outputs, tuple) and len(pre_outputs) == 2
+      assert isinstance(pre_outputs, tuple)
+      if hub.use_rtrl:
+        # TODO: BETA
+        assert len(pre_outputs) == 3
+      else: assert len(pre_outputs) == 2
       pre_states = pre_outputs[1]
       # The assertion below is not held by rnn_cells
       assert isinstance(pre_states, (tuple, list))
@@ -101,18 +142,27 @@ class RNet(Net):
 
     assert len(states) == len(pre_states)
 
-    self.linked = True
-    return output, tuple(states)
+    result_tuple = output, tuple(states)
+
+    # TODO: BETA
+    if hub.use_rtrl:
+      result_tuple += self._get_grad_tensor_tuple(output),
+
+    return result_tuple
 
   # endregion : Overriden Methods
 
   # region : Public Methods
 
-  def reset_state(self, batch_size):
+  def reset_buffers(self, batch_size):
     assert self.is_root
     self._state_array = self._get_zero_state(batch_size)
+    # TODO: BETA
+    if hub.use_rtrl:
+      self._gradient_buffer_array = self._get_zero_gradient_buffer(
+        batch_size)
 
-  def reset_part_state(self, indices, values=None):
+  def reset_part_buffer(self, indices, values=None):
     """This method is first designed for parallel training of RNN model with
         irregular sequence input"""
     assert isinstance(indices, (list, tuple))
@@ -138,10 +188,39 @@ class RNet(Net):
         raise TypeError('!! Unknown type of states: {}'.format(type(state)))
 
     self._state_array = _reset(self._state_array)
+    # TODO: BETA
+    if hub.use_rtrl:
+      self._gradient_buffer_array = _reset(self._gradient_buffer_array)
 
   # endregion : Public Methods
 
   # region : Private Methods
+
+  def _get_grad_tensor_tuple(self, y):
+    """TODO: BETA
+    :param y: output tensor (B, D)
+    :return: a tuple: (dy/dR1, ..., dy/dRn)
+    """
+    assert self.is_root
+    containers = self.repeater_containers
+    assert len(containers) > 0
+
+    mascot = tf.placeholder(dtype=tf.float32)
+
+    grad_tensors = []
+    y_size = y.get_shape().as_list()[1]
+    y_list = tf.split(y, num_or_size_splits=y.shape[1], axis=1)
+
+    for r in [c.repeater_tensors for c in containers]:
+      # r.shape is (B, D_r) while y.shape is (B, D_y)
+      assert isinstance(r, tf.Tensor)
+      dy_dr = []
+      for yi in y_list:
+        dyi_dr = tf.gradients(yi, r)[0]  # (B, R)
+        dy_dr.append(tf.expand_dims(dyi_dr, 1))  # (B, 1, R)
+      dy_dr = tf.concat(dy_dr, axis=1)  # (B, D, R)
+      grad_tensors.append(dy_dr)
+    return tuple(grad_tensors)
 
   def _get_zero_state(self, batch_size):
     if self.is_root:
@@ -150,25 +229,66 @@ class RNet(Net):
         state_array.append(rnn_cell._get_zero_state(batch_size))
       return tuple(state_array)
     else:
-      # If state is a tuple, this method must be overriden
-      assert self._state_size is not None
-      state = np.zeros(shape=(batch_size, self._state_size))
+      # Get zero state according to self.init_state
+      tf_states = self.init_state
+      if not isinstance(tf_states, tuple): tf_states = (tf_states,)
+      state = []
+      for tf_state in tf_states:
+        assert isinstance(tf_state, tf.Tensor)
+        shape_list = tf_state.shape.as_list()
+        shape_list[0] = batch_size
+        state.append(np.zeros(shape=shape_list))
+
+      state = tuple(state)
+      if len(state) == 1: state = state[0]
       return state
 
-  def _get_state_dict(self, batch_size=None):
+  def _get_zero_gradient_buffer(self, batch_size):
+    if self.is_root:
+      buffer = []
+      for rnn_cell in self.rnn_cells:
+        if rnn_cell.compute_gradients is not None:
+          buffer.append(rnn_cell._get_zero_gradient_buffer(batch_size))
+      return tuple(buffer)
+    else:
+      # Get zero gradient buffer according to self.gradient buffer
+      buffer = []
+      for dS_dWj in self.gradient_buffer_placeholder:
+        assert isinstance(dS_dWj, tf.Tensor)
+        shape_list = dS_dWj.shape.as_list()
+        shape_list[0] = batch_size
+        buffer.append(np.zeros(shape=shape_list))
+      # for dsk_dws in self.gradient_buffer_placeholder:
+      #   np_dws = []
+      #   for dw in dsk_dws:
+      #     assert isinstance(dw, tf.tensor)
+      #     shape_list = dw.shape.as_list()
+      #     shape_list[0] = batch_size
+      #     np_dws.append(np.zeros(shape=shape_list))
+      #   buffer.append(tuple(np_dws))
+      return tuple(buffer)
+
+  def _get_rnn_dict(self, batch_size=None):
+    """Get state dict together with gradient buffer if necessary
+    """
     assert self.is_root
 
+    rnn_dict = {}
     # During training, batch size is not None
     if batch_size is None:
       # During training
       state = self._state_array
       assert state is not None
+      # TODO: BETA
+      if hub.use_rtrl:
+        rnn_dict[self.gradient_buffer_placeholder] = self._gradient_buffer_array
     else:
       # While is_training == False
       checker.check_positive_integer(batch_size)
       state = self._get_zero_state(batch_size)
 
-    return {self.init_state: state}
+    rnn_dict[self.init_state] = state
+    return rnn_dict
 
   def _check_state(self, state, num_or_sizes=1):
     # Check num_or_sizes
@@ -220,6 +340,22 @@ class RNet(Net):
 
   def _gate(self, x, W, b):
     return tf.sigmoid(self._net(x, W, b))
+
+  def _distribute_last_tensors(self):
+    assert self.is_root
+    s_cursor, g_cursor = 0, 0
+    for child in self.children:
+      if isinstance(child, RNet):
+        child._new_state_tensor = self._new_state_tensor[s_cursor]
+        s_cursor += 1
+        # TODO: BETA
+        if hub.use_rtrl:
+          child._grad_tensors = self._grad_tensors[g_cursor]
+          g_cursor += 1
+    assert s_cursor == len(self._new_state_tensor)
+    # TODO: BETA
+    if hub.use_rtrl:
+      assert g_cursor == len(self._grad_tensors)
 
   # endregion : Private Methods
 

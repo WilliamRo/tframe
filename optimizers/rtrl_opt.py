@@ -58,7 +58,11 @@ class RealTimeOptimizer(object):
   # region : Private Methods
 
   def _compute_gradients(self, loss, var_list=None):
-    """Compute gradients using RTRL
+    """Compute gradients using RTRL. The default compute_gradients method of
+       the given optimizer will be called. Besides, a Block in the register
+       may add additional gradients to its corresponding weight gradients if
+       a `` method if provided.
+
     :param loss: the loss tensor
     :param var_list: variable list (may not be used for now)
     :return: A list of (gradient, variable) pairs as the compute_gradients
@@ -67,17 +71,17 @@ class RealTimeOptimizer(object):
     # Sanity check
     assert isinstance(loss, tf.Tensor)
 
-    # Organize the layers in order: L = [layer1, layer2, ..., layerN]
-    # The corresponding dynamic units (neurons) can be accessed via L
-    #   together with the static units (weights)
+    # Compute gradients using default method
+    assert isinstance(self._register, NodeRegister)
+    default_grads_and_vars = self._tf_optimizer.compute_gradients(
+      loss, var_list=self._register.default_var_list)
 
-    # ...
-    # tf.gradients()
+    # Compute gradients using customized method held
+    dL_dy = tf.gradients(loss, self._rnn.last_scan_output)[0]
+    c_g_n_v, new_buffer = self._register.compute_customized_gradient(dL_dy)
+    self._rnn.grad_buffer_slot.plug(new_buffer)
 
-    #
-    grads_and_vars = self._tf_optimizer.compute_gradients(
-      loss, var_list=var_list)
-    return grads_and_vars
+    return default_grads_and_vars + c_g_n_v
 
   # endregion : Private Methods
 

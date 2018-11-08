@@ -151,7 +151,10 @@ class Predictor(Feedforward, Recurrent):
     # Update recurrent model
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
     results = self._update_group.run(feed_dict)
-    self._state_array = results.pop(self._state)
+    self._state_array = results.pop(self._state_slot)
+    # TODO: BETA
+    if hub.use_rtrl:
+      self._gradient_buffer_array = results.pop(self._grad_buffer_slot)
     return results
 
   # endregion : Train
@@ -185,7 +188,7 @@ class Predictor(Feedforward, Recurrent):
       if is_training:
         if batch.should_reset_state:
           if hub.notify_when_reset: console.write_line('- ' * 40)
-          self.reset_state(batch.size)
+          self.reset_buffers(batch.size)
         if batch.should_partially_reset_state:
           if hub.notify_when_reset and False:
             if batch.reset_values is not None:
@@ -193,11 +196,12 @@ class Predictor(Feedforward, Recurrent):
                 batch.reset_batch_indices, batch.reset_values)]
             else: info = batch.reset_batch_indices
             console.write_line('{}'.format(info))
-          self.reset_part_state(batch.reset_batch_indices, batch.reset_values)
+          self.reset_part_buffer(batch.reset_batch_indices, batch.reset_values)
 
+      # batch_size == None means is_training == True (not elegant)
       batch_size = None if is_training else batch.size
       # If is not training, always set a zero state to model
-      feed_dict.update(self._get_state_dict(batch_size=batch_size))
+      feed_dict.update(self._get_rnn_dict(batch_size=batch_size))
 
     return feed_dict
 

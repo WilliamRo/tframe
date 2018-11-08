@@ -16,10 +16,44 @@ class NodeRegister(object):
     # Attributes
     assert isinstance(model, Net)
     self._model = model
-
     self.blocks = []
 
     self._census()
+
+  # region : Properties
+
+  @property
+  def default_var_list(self):
+    var_list = []
+    for block in self.blocks:
+      if not block.has_customized_gradient:
+        var_list += block.container.parameters
+    return var_list
+
+  # endregion : Properties
+
+  # region : Public Methods
+
+  def compute_customized_gradient(self, dL_dy):
+    """Compute customized gradient
+    :param dL_dy: dL/dy \in R^(num_steps(=1), batch_size, *(y.shape))
+    :return: (grads_and_vars, new_grad_buffer)
+    """
+    assert isinstance(dL_dy, tf.Tensor)
+
+    # Compute gradient one by one
+    grads_and_vars = []
+    new_grad_buffer = []
+    for block in [b for b in self.blocks if b.has_customized_gradient]:
+      compute_gradients = block.container.compute_gradients
+      assert callable(compute_gradients)
+      g_n_v, buffer = compute_gradients(dL_dy)
+      grads_and_vars += g_n_v
+      new_grad_buffer += buffer
+
+    return grads_and_vars, tuple(new_grad_buffer)
+
+  # endregion : Public Methods
 
   # region : Private Methods
 
@@ -49,37 +83,17 @@ class Block(object):
     self._init_nodes_n_variables()
 
   @property
-  def type(self):
-    return type(self.container)
+  def has_customized_gradient(self):
+    return (isinstance(self.container, RNet) and
+            self.container.compute_gradients is not None)
 
   @property
   def repeater_tensor(self):
-    if isinstance(self.container, Layer):
-      repeater = self.container.output_tensor
-    elif isinstance(self.container, RNet):
-      repeater = self.container.post_dynamic_tensor
-    else: raise TypeError(
-      '!! Unknown container type {}'.format(type(self.container)))
-    assert isinstance(repeater, tf.Tensor)
-    return repeater
-
-  @property
-  def scope(self):
-    # The parameters are in the same scope of the repeater
-    names = self.repeater_tensor.name.split('/')
-    # tensor name always begin with Scan/while/
-    return '/'.join(names[2:-1])
+    return None
 
   def _init_nodes_n_variables(self):
-    """Currently, repeater can not be a tuple or a list
-    """
-    # Separate all dynamic nodes
-    repeater = self.repeater_tensor
-    # self.dynamic_nodes = tf.split(
-    #   repeater, num_or_size_splits=repeater.shape[1], axis=1)
-
     # Get all variables
-    self.variables = tf.trainable_variables(self.scope)
+    self.variables = self.container.parameters
 
 
 

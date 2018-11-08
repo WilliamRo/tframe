@@ -25,10 +25,22 @@ class Recurrent(Model, RNet):
     self.superior = self
     self._default_net = self
     # Attributes
-    self._state = NestedTensorSlot(self, 'State')
+    self._state_slot = NestedTensorSlot(self, 'State')
+    self._grad_buffer_slot = NestedTensorSlot(self, 'GradBuffer')
     # mascot will be initiated as a placeholder with no shape specified
     # .. and will be put into initializer argument of tf.scan
     self._mascot = None
+
+    # TODO: BETA
+    self.last_scan_output = None
+
+  # region : Properties
+
+  @property
+  def grad_buffer_slot(self):
+    return self._grad_buffer_slot
+
+  # endregion : Properties
 
   # region : Build
 
@@ -56,12 +68,34 @@ class Recurrent(Model, RNet):
     # Pop last softmax if necessary
     last_softmax = self.pop_last_softmax()
     # Call scan to produce a dynamic op
-    scan_outputs, state_sequences = tf.scan(
-      self, elems, initializer=(self._mascot, self.init_state), name='Scan')
+    initializer = self._mascot, self.init_state
+    # TODO: BETA
+    if hub.use_rtrl:
+      initializer += ((self._mascot,) * len(self.repeater_containers),)
+      scan_outputs, state_sequences, grads = tf.scan(
+        self, elems, initializer=initializer, name='Scan')
+
+      self._grad_tensors = Recurrent._get_last_tensors(grads)
+      # dL/dLast_output = None
+      # self._last_scan_output = Recurrent._get_last_tensors(scan_outputs)
+      self.last_scan_output = scan_outputs
+    else:
+      scan_outputs, state_sequences = tf.scan(
+        self, elems, initializer=initializer, name='Scan')
     # Activate state slot
-    assert isinstance(self._state, NestedTensorSlot)
-    self._state.plug(Recurrent._get_last_state(state_sequences))
-    self._update_group.add(self._state)
+    assert isinstance(self._state_slot, NestedTensorSlot)
+
+    # Get last state and distribute to all recurrent-child
+    last_state = Recurrent._get_last_tensors(state_sequences)
+    self._new_state_tensor = last_state
+    self._distribute_last_tensors()
+
+    # Plug last state to corresponding slot
+    self._state_slot.plug(last_state)
+    self._update_group.add(self._state_slot)
+    # TODO: BETA
+    if hub.use_rtrl: self._update_group.add(self.grad_buffer_slot)
+
     # Transpose scan outputs to get final outputs
     assert isinstance(scan_outputs, tf.Tensor)
     perm = list(range(len(scan_outputs.shape.as_list())))
@@ -74,14 +108,15 @@ class Recurrent(Model, RNet):
       # Put last softmax back
       self.add(last_softmax)
 
-    #  Output has a shape of [batch_size, num_steps, *output_shape]
+    # Output has a shape of [batch_size, num_steps, *output_shape]
     self.outputs.plug(outputs)
 
   @staticmethod
-  def _get_last_state(states):
+  def _get_last_tensors(states):
+    """This method is used specifically for the tf.scan output"""
     if isinstance(states, (list, tuple)):
       last_state = []
-      for obj in states: last_state.append(Recurrent._get_last_state(obj))
+      for obj in states: last_state.append(Recurrent._get_last_tensors(obj))
       return last_state
     else:
       assert isinstance(states, tf.Tensor)

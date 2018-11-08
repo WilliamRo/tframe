@@ -47,9 +47,6 @@ class Net(Function):
 
     self._logits_tensor = None
 
-    self.linked = False
-
-
   # region : Properties
 
   @property
@@ -274,8 +271,6 @@ class Net(Function):
     elif self._inter_type != self.CASCADE:
       raise TypeError('!! Unknown net inter type {}'.format(self._inter_type))
 
-    # Return
-    self.linked = True
     return output
 
   # endregion : Overrode Methods

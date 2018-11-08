@@ -98,10 +98,10 @@ class AMU(RNet):
     self._kernel, self._bias = (Wxh, Ws), bias
     return r[:, 0, :], (new_h, new_s)
 
-  def _get_zero_state(self, batch_size):
-    assert not self.is_root
-    return (np.zeros(shape=(batch_size, self.num_neurons)),
-            np.zeros(shape=(batch_size, self._output_dim)))
+  # def _get_zero_state(self, batch_size):
+  #   assert not self.is_root
+  #   return (np.zeros(shape=(batch_size, self.num_neurons)),
+  #           np.zeros(shape=(batch_size, self._output_dim)))
 
   # endregion : Private Methods
 

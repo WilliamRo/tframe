@@ -16,7 +16,7 @@ from_root = lambda path: os.path.join(ROOT, path)
 
 th = SmartTrainerHub(as_global=True)
 th.data_dir = from_root('tframe/examples/cifar-10/data/')
-th.job_dir = from_root('tframe/examples/cifar-10')
+th.job_dir = from_root('tframe/examples/cifar-10/records')
 th.input_shape = [32, 32, 3]
 th.num_classes = 10
 
