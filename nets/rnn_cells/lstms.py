@@ -285,7 +285,7 @@ class OriginalLSTMCell(RNet):
     #   can be accessed
     assert self.linked
     buffer = []
-    for W in self.parameters:
+    for W in self.custom_var_list:
       shape = [None] + W.shape.as_list() + [self._state_size]
       buffer.append(tf.placeholder(dtype=hub.dtype, shape=shape))
 
@@ -296,13 +296,6 @@ class OriginalLSTMCell(RNet):
 
   # region : Private Methods
 
-  @staticmethod
-  @tf.custom_gradient
-  def _truncate_matmul(x, W):
-    def grad(dy):
-      return tf.zeros_like(x), tf.matmul(tf.transpose(x), dy)
-    return tf.matmul(x, W), grad
-
   def _link(self, pre_states, x, **kwargs):
     # Get input size and previous states
     input_size = self._get_external_shape(x)
@@ -312,33 +305,30 @@ class OriginalLSTMCell(RNet):
     # :: Calculate net_c, net_in, net_out using h = [y_c, y_in, y_out] when
     #    forward gate (otherwise h = y_c) and x
     # .. Calculate net chunk before adding bias
-    W = self._get_variable(
-      'W', [self._h_size + input_size, self._num_splits * self._state_size])
+    Wci = self._get_variable(
+      'Wci', [self._h_size + input_size,
+              (self._num_splits - 1) * self._state_size])
+    Wo = self._get_variable('Wo', [self._h_size + input_size, self._state_size])
     input_chunk = tf.concat([x, h], axis=1)
 
     if self._truncate:
-      net_chunk = self._truncate_matmul(input_chunk, W)
+      net_chunk_ci = self._truncate_matmul(input_chunk, Wci)
+      net_out = self._truncate_matmul(input_chunk, Wo)
     else:
-      net_chunk = tf.matmul(input_chunk, W)
+      net_chunk_ci = tf.matmul(input_chunk, Wci)
+      net_out = tf.matmul(input_chunk, Wo)
 
     # .. Unpack the chunk and add bias if necessary
-    net_c, net_in, net_out = tf.split(
-      net_chunk, num_or_size_splits=self._num_splits, axis=1)
+    net_c, net_in = tf.split(
+      net_chunk_ci, num_or_size_splits=self._num_splits - 1, axis=1)
 
-    # Calculate input and output gate
+    # Calculate input gate
     in_bias = None
     if self._use_in_bias:
       in_bias = self._get_bias(
         'in_bias', self._state_size, initializer=self._in_bias_initializer)
       net_in = tf.nn.bias_add(net_in, in_bias)
     y_in = self._gate_activation(net_in)
-
-    out_bias = None
-    if self._use_out_bias:
-      out_bias = self._get_bias(
-        'out_bias', self._state_size, initializer=self._out_bias_initializer)
-      net_out = tf.nn.bias_add(net_out, out_bias)
-    y_out = self._gate_activation(net_out)
 
     # Calculate new state
     cell_bias = None
@@ -348,10 +338,18 @@ class OriginalLSTMCell(RNet):
       net_c = tf.nn.bias_add(net_c, cell_bias)
     new_c = tf.add(c, tf.multiply(y_in, self._cell_activation(net_c)), name='c')
 
+    # Calculate output gate
+    out_bias = None
+    if self._use_out_bias:
+      out_bias = self._get_bias(
+        'out_bias', self._state_size, initializer=self._out_bias_initializer)
+      net_out = tf.nn.bias_add(net_out, out_bias)
+    y_out = self._gate_activation(net_out)
+
     # Calculate output
     y_c = tf.multiply(y_out, self._memory_activation(new_c))
 
-    self._kernel = W
+    self._kernel = [Wci, Wo]
     self._bias = [b for b in (in_bias, out_bias, cell_bias) if b is not None]
     # Generate new_h and return
     new_h = (tf.concat([y_c, y_in, y_out], axis=1) if self._forward_gate
@@ -359,6 +357,8 @@ class OriginalLSTMCell(RNet):
 
     # TODO: BETA
     self.repeater_tensors = new_c
+    self._custom_vars = [Wci] + [b for b in (in_bias, cell_bias)
+                                 if b is not None]
 
     return y_c, (new_h, new_c)
 
@@ -380,7 +380,7 @@ class OriginalLSTMCell(RNet):
     mascot = tf.placeholder(tf.float32)
     dS_dW = []
     for dS_dWj_tau, Wj in zip(self.gradient_buffer_placeholder,
-                              self.parameters):
+                              self.custom_var_list):
       dS_dWj = []
       split_dS_dWj_tau = tf.split(
         dS_dWj_tau, num_or_size_splits=state_size, axis=-1)
@@ -415,11 +415,11 @@ class OriginalLSTMCell(RNet):
         dL_dW.append(tf.reduce_sum(tf.multiply(dsdwj, dlds), axis=-1))
       return tuple(dL_dW)
     dL_dS_batch = tf.scan(calc_dL_dW, (dL_dy, dy_dS, dS_dW),
-                          initializer=(mascot,) * len(self.parameters))
+                          initializer=(mascot,) * len(self.custom_var_list))
     dL_dS = [tf.reduce_sum(t, axis=0) for t in dL_dS_batch]
 
     # Step 3: Return (((dW1, W1), ..., (dWn, Wn)), dS/dW)
-    grads_and_vars = [(g, v) for g, v in zip(dL_dS, self.parameters)]
+    grads_and_vars = [(g, v) for g, v in zip(dL_dS, self.custom_var_list)]
     return tuple(grads_and_vars), dS_dW
 
   # endregion : Public Methods

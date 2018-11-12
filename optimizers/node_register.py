@@ -23,12 +23,16 @@ class NodeRegister(object):
   # region : Properties
 
   @property
-  def default_var_list(self):
+  def custom_var_list(self):
     var_list = []
     for block in self.blocks:
-      if not block.has_customized_gradient:
-        var_list += block.container.parameters
+      if block.has_customized_gradient:
+        var_list += block.container.custom_var_list
     return var_list
+
+  @property
+  def default_var_list(self):
+    return list(set(self._model.parameters) - set(self.custom_var_list))
 
   # endregion : Properties
 

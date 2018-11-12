@@ -155,6 +155,9 @@ class Predictor(Feedforward, Recurrent):
     # TODO: BETA
     if hub.use_rtrl:
       self._gradient_buffer_array = results.pop(self._grad_buffer_slot)
+    if hub.test_grad:
+      delta = results.pop(self.grad_delta_slot)
+      _ = None
     return results
 
   # endregion : Train

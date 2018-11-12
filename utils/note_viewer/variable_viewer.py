@@ -43,6 +43,7 @@ class VariableViewer(Frame):
     # Options
     self.show_absolute_value = True
     self.show_value = False
+    self.use_clim = True
 
   @property
   def index(self):
@@ -88,6 +89,11 @@ class VariableViewer(Frame):
     # Show heat_map
     im = self._heat_map(image, cmap='YlGn')
     if self.show_value: self._annotate_heat_map(im, variable)
+    if self.use_clim:
+      # TODO
+      v = self._variable_dict[self.combo_box.get()]
+      if self.show_absolute_value: v = np.abs(v)
+      im.set_clim(np.min(v), np.max(v))
 
     title = '|W|' if self.show_absolute_value else 'W'
     title += '({}x{})'.format(variable.shape[0], variable.shape[1])

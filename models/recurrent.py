@@ -33,6 +33,7 @@ class Recurrent(Model, RNet):
 
     # TODO: BETA
     self.last_scan_output = None
+    self.grad_delta_slot = NestedTensorSlot(self, 'GradDelta')
 
   # region : Properties
 
@@ -95,6 +96,7 @@ class Recurrent(Model, RNet):
     self._update_group.add(self._state_slot)
     # TODO: BETA
     if hub.use_rtrl: self._update_group.add(self.grad_buffer_slot)
+    if hub.test_grad: self._update_group.add(self.grad_delta_slot)
 
     # Transpose scan outputs to get final outputs
     assert isinstance(scan_outputs, tf.Tensor)

@@ -40,7 +40,23 @@ class RNet(Net):
     self._gradient_buffer_placeholder = None
     self._gradient_buffer_array = None
 
+    self._custom_vars = None
+
   # region : Properties
+
+  @property
+  def custom_var_list(self):
+    assert self.linked
+    if self._custom_vars is not None:
+      assert isinstance(self._custom_vars, (set, list, tuple))
+      return list(self._custom_vars)
+    else:
+      return self.parameters
+
+  @property
+  def default_var_list(self):
+    assert self.linked
+    return list(set(self.parameters) - set(self.custom_var_list))
 
   @property
   def rnn_cells(self):
@@ -358,4 +374,38 @@ class RNet(Net):
       assert g_cursor == len(self._grad_tensors)
 
   # endregion : Private Methods
+
+  # region : Customized Ops
+
+  # TODO: can be merged into a single method
+
+  @staticmethod
+  @tf.custom_gradient
+  def _truncate_matmul(x, W):
+    assert len(x.shape) == len(W.shape) == 2
+    y = tf.matmul(x, W)
+    def grad(dy):
+      dx = tf.zeros_like(x)
+      # dW = tf.gradients(y, W, grad_ys=dy)[0]
+      dW = tf.matmul(tf.transpose(x), dy)
+      return dx, dW
+    return y, grad
+
+  @staticmethod
+  @tf.custom_gradient
+  def _truncate_multiply(x, W):
+    """x is usually larger than W"""
+    x_shape = x.shape.as_list()
+    W_shape = W.shape.as_list()
+    assert len(x_shape) == len(W_shape) == 2 and W_shape[0] == 1
+    y = tf.multiply(x, W)
+    def grad(dy):
+      dx = tf.zeros_like(x)
+      # dx = tf.multiply(dy, W)
+      # dW = tf.gradients(y, W, grad_ys=dy)[0]
+      dW = tf.reduce_sum(tf.multiply(dy, x), axis=0, keep_dims=True)
+      return dx, dW
+    return y, grad
+
+  # endregion : Customized Ops
 

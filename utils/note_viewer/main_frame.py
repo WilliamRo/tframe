@@ -125,9 +125,9 @@ if __name__ == '__main__':
   # Default file_path
   file_path = None
   init_dir = None
-  file_path = r'E:\rnn_club\98-TOY\records_ms_off\notes\d2_msu(off)3_bs5_lr0.01'
-  file_path += r'\d2_msu(off)3_bs5_lr0.01=1.000.note'
-  init_dir = r'E:/rnn_club/98-TOY/records_ms_off/notes'
+  # file_path = r'E:\rnn_club\98-TOY\records_ms_off\notes\d2_msu(off)3_bs5_lr0.01'
+  # file_path += r'\d2_msu(off)3_bs5_lr0.01=1.000.note'
+  # init_dir = r'E:/rnn_club/98-TOY/records_ms_off/notes'
   # viewer = main_frame.NoteViewer(note_path=file_path)
   viewer = main_frame.NoteViewer(init_dir=init_dir)
   viewer.show()

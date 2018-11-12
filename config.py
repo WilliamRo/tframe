@@ -279,6 +279,7 @@ class Config(object):
   # BETA:
   use_rtrl = Flag.boolean(
     False, 'Whether to use RTRL in training RNN', is_key=None)
+  test_grad = Flag.boolean(False, '...')
 
   def __init__(self, as_global=False):
     if as_global:

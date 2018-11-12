@@ -8,6 +8,7 @@ import numpy as np
 from tframe import checker
 from tframe import activations
 from tframe import initializers
+from tframe import hub
 
 from tframe.nets.rnet import RNet
 from tframe.nets.rnn_cells.basic_cell import BasicRNNCell
@@ -27,6 +28,7 @@ class AMU(RNet):
       use_bias=True,
       weight_initializer='xavier_uniform',
       bias_initializer='zeros',
+      truncate_grad=False,
       **kwargs):
     # Call parent's constructor
     RNet.__init__(self, AMU.net_name)
@@ -40,6 +42,7 @@ class AMU(RNet):
     self._bias_initializer = initializers.get(bias_initializer)
 
     self._output_scale = output_dim
+    self._truncate_grad = truncate_grad
 
   # region : Properties
 
@@ -76,7 +79,7 @@ class AMU(RNet):
        of AMU[i] (AMU = [amu1, amu2])
     """
     self._check_state(pre_states, (self.num_neurons, self._output_dim))
-    h, s = pre_states
+    h, s = pre_states  # h: (B, A * N); s: (B, A)
     input_size = self._get_external_shape(x)
 
     Wxh = self._get_variable(
@@ -85,25 +88,35 @@ class AMU(RNet):
     s_ = tf.concat([s] * self._neurons_per_amu, axis=1)
     bias = None
     if self._use_bias: bias = self._get_bias('b', self.num_neurons)
-    net = tf.nn.bias_add(tf.matmul(tf.concat([x, h], axis=1), Wxh) +
-                         Ws * s_, bias)
+    matmul, multiply = tf.matmul, tf.multiply
+    if self._truncate_grad:
+      matmul = self._truncate_matmul
+      # matmul, multiply = self._truncate_matmul, self._truncate_multiply
+
+    net = tf.nn.bias_add(
+      tf.add(matmul(tf.concat([x, h], axis=1), Wxh), multiply(s_, Ws)),
+      bias)
     new_h = self._activation(net)
 
-    # Form AMUs
+    # Form AMUs: units in the same amu are along the last dimension in r
+    # .. r.shape = (B, N, A)
     r = tf.reshape(new_h, [-1, self._neurons_per_amu, self._output_dim], 'amus')
     # - Write
-    with tf.name_scope('write'): new_s = tf.add(s, tf.reduce_prod(r, axis=1))
+    with tf.name_scope('write'):
+      new_s = tf.add(s, tf.reduce_prod(r, axis=1))
 
     # return outputs, states
     self._kernel, self._bias = (Wxh, Ws), bias
     return r[:, 0, :], (new_h, new_s)
 
-  # def _get_zero_state(self, batch_size):
-  #   assert not self.is_root
-  #   return (np.zeros(shape=(batch_size, self.num_neurons)),
-  #           np.zeros(shape=(batch_size, self._output_dim)))
-
   # endregion : Private Methods
+
+  # region : Compute Gradients
+
+  def truncate_grad(self, dL_dy):
+    pass
+
+  # endregion : Compute Gradients
 
 
 class PAMU(BasicRNNCell):

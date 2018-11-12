@@ -81,7 +81,24 @@ class RealTimeOptimizer(object):
     c_g_n_v, new_buffer = self._register.compute_customized_gradient(dL_dy)
     self._rnn.grad_buffer_slot.plug(new_buffer)
 
-    return default_grads_and_vars + c_g_n_v
+    grads_and_vars = default_grads_and_vars + c_g_n_v
+    if th.test_grad:
+      _grads_and_vars = self._tf_optimizer.compute_gradients(loss)
+      deltas_and_vars = []
+      deltas = []
+      for _g, _v in _grads_and_vars:
+        matches = [g for g, v in grads_and_vars if v is _v]
+        assert len(matches) == 1
+        g = matches[0]
+
+        delta_name = '_'.join(_v.name.split('/'))
+        delta = tf.subtract(g, _g, name='delta_{}'.format(delta_name[:-2]))
+        deltas_and_vars.append((delta, _v))
+        deltas.append(delta)
+
+      self._rnn.grad_delta_slot.plug(tuple(deltas))
+
+    return grads_and_vars
 
   # endregion : Private Methods
 
