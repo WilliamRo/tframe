@@ -184,7 +184,7 @@ class Config(object):
   epoch_as_step = Flag.boolean(True, '...')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
   job_dir = Flag.string(
-    './', 'The root directory where the records should be put',
+    './records', 'The root directory where the records should be put',
     name='job-dir')
   data_dir = Flag.string('', 'The data directory')
 

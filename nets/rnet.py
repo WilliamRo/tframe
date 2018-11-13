@@ -334,13 +334,16 @@ class RNet(Net):
     return tf.placeholder(dtype=hub.dtype, shape=(None, size), name=name)
 
   def _get_variable(self, name, shape):
-    assert self._weight_initializer is not None
+    initializer = self._weight_initializer
+    if initializer is None:
+      initializer = tf.glorot_normal_initializer()
     return tf.get_variable(
-      name, shape, dtype=hub.dtype, initializer=self._weight_initializer)
+      name, shape, dtype=hub.dtype, initializer=initializer)
 
   def _get_bias(self, name, dim, initializer=None):
     if initializer is None: initializer = self._bias_initializer
-    assert initializer is not None
+    if initializer is None:
+      initializer = tf.zeros_initializer()
     return tf.get_variable(
       name, shape=[dim], dtype=hub.dtype, initializer=initializer)
 
@@ -372,6 +375,17 @@ class RNet(Net):
     # TODO: BETA
     if hub.use_rtrl:
       assert g_cursor == len(self._grad_tensors)
+
+  def _easy_neurons(self, x, name, f, output_dim=None, use_bias=True):
+    assert name is not None and callable(f)
+    x_size = self._get_external_shape(x)
+    dim = self._state_size if output_dim is None else output_dim
+
+    with tf.variable_scope(name):
+      bias = self._get_bias('bias', dim) if use_bias else None
+      W = self._get_variable('W', shape=[x_size, dim])
+      net = tf.nn.bias_add(tf.matmul(x, W), bias)
+      return f(net)
 
   # endregion : Private Methods
 
