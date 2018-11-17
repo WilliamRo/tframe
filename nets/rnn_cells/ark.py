@@ -88,6 +88,9 @@ class Shem(RNet):
     # Key word arguments
     self._use_forget_gate = kwargs.get('forget_gate', False)
     self._use_input_gate = kwargs.get('input_gate', False)
+    self._use_output_gate = kwargs.get('output_gate', False)
+    self._fc_memory = kwargs.get('fc_mem', True)
+    self._activate_mem = kwargs.get('act_mem', True)
 
 
   def structure_string(self, detail=True, scale=True):
@@ -95,31 +98,106 @@ class Shem(RNet):
 
 
   def _link(self, s, x, **kwargs):
-    # Input for all units
-    xs = tf.concat([x, s], axis=1, name='xs')
 
-    # Calculate output
-    y = self._easy_neurons(xs, 'output', self._activation)
+    def fn(name, f, mem=s, fcm=self._fc_memory):
+      return self._neurons_forward_with_memory(x, mem, name, f, fcm)
+
+    def gate(name, tensor, mem=s):
+      g = fn(name, tf.sigmoid, mem=mem)
+      return tf.multiply(g, tensor)
 
     # Calculate memory
-    s_to_add = self._easy_neurons(xs, 's_add', self._activation)
-    if self._use_input_gate:
-      i = self._easy_neurons(xs, 'input_gate', tf.sigmoid)
-      s_to_add = tf.multiply(s_to_add, i)
-    if self._use_forget_gate:
-      f = self._easy_neurons(xs, 'forget_gate', tf.sigmoid)
-      s = tf.multiply(s, f)
-    new_s = tf.add(s, s_to_add)
+    s_bar = fn('s_bar', self._activation)
+    if self._use_input_gate: s_bar = gate('in_gate', s_bar)
+    s_prev = gate('forget_gate', s) if self._use_forget_gate else s
+    new_s = tf.add(s_prev, s_bar)
+
+    # Calculate output
+    s_out = self._activation(s) if self._activate_mem else s
+    if self._use_output_gate: s_out = gate('out_gate', s_out)
+    y = fn('output', self._activation, mem=s_out)
 
     return y, new_s
 
 
 class Ham(RNet):
+  """Based on Shem, Ham has multiple memory units."""
   net_name = 'Ham'
+
+  class MemoryUnit(object):
+    def __init__(self, size, in_gate, forget_gate, out_gate, act_mem, fc_mem):
+      self.size = size
+
+      self.use_input_gate = in_gate
+      self.use_forget_gate = forget_gate
+      self.use_output_gate = out_gate
+
+      self.fully_connect_memory = fc_mem
+      self.activate_memory = act_mem
+
+    @staticmethod
+    def parse_unit(config):
+      separator = '-'
+      assert isinstance(config, str)
+      cfgs = config.split(separator)
+      assert len(cfgs) >= 3
+      # 1
+      size = int(cfgs[0])
+      # 2
+      act_mem = False
+      if 'a' in cfgs: act_mem = True
+      else: assert 'na' in cfgs
+      # 3
+      fc_mem = False
+      if 'fc' in cfgs: fc_mem = True
+      else: assert 'nfc' in cfgs
+      # 4 - 6
+      in_gate = 'i' in cfgs
+      forget_gate = 'f' in cfgs
+      out_gate = 'o' in cfgs
+      # Wrap and return
+      return Ham.MemoryUnit(
+        size, in_gate, forget_gate, out_gate, act_mem, fc_mem)
+
+    @staticmethod
+    def parse_units(config):
+      separator = ';'
+      assert isinstance(config, str)
+      cfgs = config.split(separator)
+      assert len(cfgs) >= 1
+      units = []
+      for cfg in cfgs:
+        units.append(Ham.MemoryUnit.parse_unit(cfg))
+      return units
+
+
+  def __init__(self, mem_config, **kwargs):
+    # Call parent's constructor
+    RNet.__init__(self, self.net_name)
+
+    # Attributes
+    self.memory_units = self.MemoryUnit.parse_units(mem_config)
+    self._activation = activations.get('tanh', **kwargs)
+    self._kwargs = kwargs
 
 
   def structure_string(self, detail=True, scale=True):
-    return self.net_name + '({})'.format(self._state_size) if scale else ''
+    size_string = '+'.join([m.size for m in self.memory_units])
+    return self.net_name + '({})'.format(size_string) if scale else ''
+
+
+  def _link(self, pre_mem, x, **kwargs):
+
+
+    # Calculate memory
+    memory = None
+
+    # Calculate output
+    y = None
+
+    return y, memory
+
+
 
 class Japheth(RNet):
   net_name = 'Japheth'

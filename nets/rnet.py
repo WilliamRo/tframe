@@ -376,7 +376,7 @@ class RNet(Net):
     if hub.use_rtrl:
       assert g_cursor == len(self._grad_tensors)
 
-  def _easy_neurons(self, x, name, f, output_dim=None, use_bias=True):
+  def _neurons_forward(self, x, name, f, output_dim=None, use_bias=True):
     assert name is not None and callable(f)
     x_size = self._get_external_shape(x)
     dim = self._state_size if output_dim is None else output_dim
@@ -385,6 +385,24 @@ class RNet(Net):
       bias = self._get_bias('bias', dim) if use_bias else None
       W = self._get_variable('W', shape=[x_size, dim])
       net = tf.nn.bias_add(tf.matmul(x, W), bias)
+      return f(net)
+
+  def _neurons_forward_with_memory(
+      self, x, s, name, f, fc_mem, output_dim=None, use_bias=True):
+    # If fully connect memory
+    if fc_mem:
+      return self._neurons_forward(
+        tf.concat([x, s], axis=1), name, f, output_dim, use_bias)
+    # Otherwise
+    x_size = self._get_external_shape(x)
+    dim = self._state_size if output_dim is None else output_dim
+    with tf.variable_scope(name):
+      Wx = self._get_variable('Wx', shape=[x_size, dim])
+      net_x = tf.matmul(x, Wx)
+      Ws = self._get_variable('Ws', shape=[1, dim])
+      net_s = tf.multiply(s, Ws)
+      bias = self._get_bias('bias', dim) if use_bias else None
+      net = tf.nn.bias_add(tf.add(net_x, net_s), bias)
       return f(net)
 
   # endregion : Private Methods

@@ -238,6 +238,8 @@ class Config(object):
   output_gate = Flag.boolean(True, 'Whether to use output gate in LSTM',
                              is_key=None)
   use_bias = Flag.boolean(True, 'Whether to use bias', is_key=None)
+  fc_memory = Flag.boolean(True, 'Whether to fully connect memory', is_key=None)
+  act_memory = Flag.boolean(True, 'Whether to activate memory', is_key=None)
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
   val_batch_size = Flag.integer(None, 'Batch size in batch validation')
   with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
@@ -261,6 +263,7 @@ class Config(object):
   forward_gate = Flag.boolean(
     None, 'Whether to calculate units using gate units from previous time '
           'step', is_key=None)
+  mem_cfg = Flag.string('', 'e.g. `7-a-f;8-na-nf`', is_key=None)
 
   # Other fancy stuff
   show_record_history_in_note = Flag.boolean(False, '...')
