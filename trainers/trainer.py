@@ -231,6 +231,7 @@ class Trainer(object):
       if self._save_model_at_round_end: self._save_model()
       # Early stop
       if hub.stop and self.model.bust(rnd): break
+      # Force terminate
       if hub.force_terminate: break
 
     return rnd
@@ -254,8 +255,10 @@ class Trainer(object):
         self._save_model(inter_cut=True)
       # Probe
       self._run_probe()
-      # Take snapshot
+      # Take snapshot TODO: merge snapshot to probe
       self._snapshot()
+      # After probing, training process may be terminated
+      if self.th.force_terminate: break
     if self._warm_up and self._record_count < self.th.warm_up_thres:
       self._warm_up = False
 
@@ -279,6 +282,8 @@ class Trainer(object):
       'End training after {} rounds{}'.format(rounds, total_round))
     # Add metric info into notes
     if self.th.validation_on: self.model.take_down_metric()
+    # Put down key configurations to note if it needs to be added to summary
+    if self.th.export_note_to_summ: self.model.agent.put_down_configs(self.th)
 
   def _handle_notes(self):
     # Show notes

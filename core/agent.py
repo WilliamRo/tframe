@@ -11,6 +11,7 @@ import tframe as tfr
 from tframe import hub
 from tframe import console
 from tframe import pedia
+from tframe.config import Config
 
 from tframe.utils import imtool
 from tframe.utils import Note
@@ -95,6 +96,10 @@ class Agent(object):
   @property
   def gather_path(self):
     return os.path.join(check_path(self.root_path), hub.gather_file_name)
+
+  @property
+  def gather_summ_path(self):
+    return os.path.join(check_path(self.root_path), hub.gather_summ_name)
 
   # endregion : Paths
 
@@ -195,6 +200,13 @@ class Agent(object):
 
     self._note.write_line(content)
 
+  def put_down_configs(self, th):
+    assert isinstance(th, Config)
+    self._note._configs = th.key_options
+
+  def put_down_criterion(self, name, value):
+    self._note.put_down_criterion(name, value)
+
   def take_down_params(self, scalars, params):
     assert isinstance(scalars, dict) and isinstance(params, dict)
     if hub.epoch_as_step and tfr.trainer.total_rounds is not None:
@@ -209,15 +221,19 @@ class Agent(object):
     writer.write('=' * 79 + '\n')
     writer.write(self._note.content + '\n')
     writer.close()
-    console.show_status('Notes exported to {}'.format(file_path))
-    # Gather
+    console.show_status('Note exported to `{}`'.format(file_path))
+    # Gather this note to a file of path `self.gather_path`
     if hub.auto_gather:
       self.gather(self._note.content, take_down_time=False)
     # Export note class if necessary TODO: consecutive save not supported yet
     # Currently, if note_cycle is positive, pickle down the note class
+    # .note files are saved in order to see the changing of trainable variable
     if hub.note_cycle > 0:
       file_path = '{}/{}.note'.format(self.note_dir, filename)
       self._note.save(file_path)
+    # If necessary, export note to summary file under the same dir with gather
+    # .. file
+    if hub.export_note_to_summ: self.gather_to_summary()
 
   def show_notes(self):
     console.section('Notes')
@@ -238,6 +254,22 @@ class Agent(object):
       f.write('-' * 79 + '\n')
       f.writelines(content)
       # TODO: find a way to update immediately after training is over
+
+  def gather_to_summary(self):
+    import pickle
+    # Try to load note list into summaries
+    file_path = self.gather_summ_path
+    if os.path.exists(file_path):
+      with open(file_path, 'rb') as f: summary = pickle.load(f)
+      assert len(summary) > 0
+    else: summary = []
+    # Add note to list and save
+    summary.append(self._note)
+    with open(file_path, 'wb') as f:
+      pickle.dump(summary, f, pickle.HIGHEST_PROTOCOL)
+    # Show status
+    console.show_status('Note added to summaries ({} => {}) at `{}`'.format(
+      len(summary) - 1, len(summary), file_path))
 
   def save_plot(self, fig, filename):
     imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))

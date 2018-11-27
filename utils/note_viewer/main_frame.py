@@ -14,21 +14,23 @@ try:
   from tframe.utils.note_viewer.context import Context
   from tframe.utils.note_viewer.loss_figure import LossFigure
   from tframe.utils.note_viewer.variable_viewer import VariableViewer
+
+  from tframe.utils.viewer_base.main_frame import Viewer
 except Exception as e:
   print(' ! {}'.format(e))
   print(' ! NoteViewer is disabled, install pillow and tkinter to enable it')
 
 
-class NoteViewer(Frame):
+class NoteViewer(Viewer):
   """Note Viewer for tframe NOTE"""
   SIZE = 400
 
   def __init__(self, master=None, note_path=None, init_dir=None):
-    # If root is provided, load a default one
+    # If root is not provided, load a default one
     if master is None:
       master = tk.Tk()
     # Call parent's initializer
-    Frame.__init__(self, master)
+    Viewer.__init__(self, master)
 
     # Layout
     self.loss_figure = None
@@ -36,7 +38,6 @@ class NoteViewer(Frame):
     self._create_layout()
 
     # Attributes
-    self.form = master
     self.context = Context()
     self.init_dir = init_dir
 
@@ -48,10 +49,6 @@ class NoteViewer(Frame):
     self._init_viewer()
 
   # region : Public Methods
-
-  def show(self):
-    self.form.after(20, self._move_to_center)
-    self.form.mainloop()
 
   def set_note_by_path(self, note_path):
     # Set context
@@ -84,14 +81,6 @@ class NoteViewer(Frame):
 
     # Refresh
     self._refresh()
-
-  def _move_to_center(self):
-    width = self.master.winfo_width()
-    height = self.master.winfo_height()
-    width_inc = int((self.master.winfo_screenwidth() - width) / 2)
-    height_inc = int((self.master.winfo_screenheight() - height) / 2)
-    self.master.geometry(
-      '{}x{}+{}+{}'.format(width, height, width_inc, height_inc))
 
   def _create_layout(self):
     #

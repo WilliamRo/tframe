@@ -164,6 +164,7 @@ class Config(object):
   ckpt_folder_name = Flag.string('checkpoints', '...')
   snapshot_folder_name = Flag.string('snapshots', '...')
   gather_file_name = Flag.string('gather.txt', '...')
+  gather_summ_name = Flag.string('gather.sum', '...')
   tb_port = Flag.integer(6006, 'Tensorboard port number')
   show_structure_detail = Flag.boolean(False, '...')
 
@@ -205,6 +206,7 @@ class Config(object):
   auto_gather = Flag.boolean(
     False, 'If set to True, agent will gather information in a default way'
            ' when export_note flag is set to True')
+  export_note_to_summ = Flag.boolean(False, 'Whether to export note summary')
 
   # Monitor options
   monitor = Flag.boolean(None, 'Whether to monitor or not (of highest '
@@ -293,18 +295,32 @@ class Config(object):
   @property
   def should_create_path(self):
     return self.train and not self.on_cloud
-  
+
   @property
-  def config_strings(self):
-    css = []
+  def key_options(self):
+    ko = {}
     for name in self.__dir__():
-      if name == 'config_strings': continue
+      if name in ('key_options', 'config_strings'): continue
       attr = self.get_attr(name)
       if not isinstance(attr, Flag): continue
       if attr.is_key:
-        css.append('{}: {}'.format(name, attr.value))
+        ko[name] = attr.value
 
-    return css
+    return ko
+
+  @property
+  def config_strings(self):
+    return ['{}: {}'.format(k, v) for k, v in self.key_options.items()]
+
+    # css = []
+    # for name in self.__dir__():
+    #   if name == 'config_strings': continue
+    #   attr = self.get_attr(name)
+    #   if not isinstance(attr, Flag): continue
+    #   if attr.is_key:
+    #     css.append('{}: {}'.format(name, attr.value))
+    #
+    # return css
 
   # endregion : Properties
 

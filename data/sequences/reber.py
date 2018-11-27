@@ -269,12 +269,17 @@ class ERG(DataAgent):
                'test accuracy = {:.1f}%'.format(counter, 100 * ERC_acc))
         trainer.model.agent.take_notes(msg)
         data.properties[SATISFY_RC] = True
+        # Take it down
+        trainer.model.agent.put_down_criterion('RC', counter)
+        trainer.model.agent.put_down_criterion('RC-ERC', 100 * ERC_acc)
 
     if ERC:
       msg = 'ERC is satisfied after {} sequences'.format(counter)
       trainer.model.agent.take_notes(msg)
       data.properties[TERMINATED] = True
       trainer.th.force_terminate = True
+      # Take it down
+      trainer.model.agent.put_down_criterion('ERC', counter)
 
     msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg

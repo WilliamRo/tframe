@@ -12,10 +12,7 @@ def on_key_press(viewer, event):
   assert isinstance(viewer.variable_viewer, variable_viewer.VariableViewer)
 
   key_symbol = getattr(event, 'keysym')
-  if key_symbol == 'Escape':
-    print('|> Note viewer closed.')
-    viewer.form.quit()
-  elif key_symbol == 'h':
+  if key_symbol == 'h':
     viewer.loss_figure.on_scroll('scroll', -1, None)
   elif key_symbol == 'l':
     viewer.loss_figure.on_scroll('scroll', 1, None)

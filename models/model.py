@@ -346,6 +346,10 @@ class Model(object):
     if hub.show_record_history_in_note:
       self.agent.take_notes(
         self.metric.metric_mean_history_str, date_time=False)
+    # Add record and mean record to notes if necessary
+    if hub.export_note_to_summ:
+      self.agent.put_down_criterion('Record', self.metric.record)
+      self.agent.put_down_criterion('Mean Record', self.metric.mean_record)
 
   # TODO
   # def begin_round(self, **kwargs):

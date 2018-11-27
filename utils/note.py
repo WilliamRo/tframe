@@ -11,12 +11,25 @@ class Note(object):
   def __init__(self):
     self._lines = []
     # TODO: BETA
+    # Configurations and criteria
+    self._configs = {}
+    self._criteria = {}
     # All lists below (may be as values of some dict) must have the same length
     self._steps = []
     self._scalars = {}
     self._parameters = {}
 
   # region : Properties
+
+  @property
+  def configs(self):
+    assert isinstance(self._configs, dict)
+    return self._configs
+
+  @property
+  def criteria(self):
+    assert isinstance(self._criteria, dict)
+    return self._criteria
 
   @property
   def content(self):
@@ -52,6 +65,10 @@ class Note(object):
     self._append_to_dict(self._scalars, scalars)
     # Take down parameters
     self._append_to_dict(self._parameters, params)
+
+  def put_down_criterion(self, name, value):
+    assert isinstance(name, str) and np.isscalar(value)
+    self._criteria[name] = value
 
   def save(self, file_name):
     self._check_before_dump()
