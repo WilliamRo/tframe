@@ -15,6 +15,9 @@ DELAY_TO_SHOW_MS = 20
 class Viewer(ttk.Frame):
   """Base class for almost all Viewers in tframe"""
 
+  ROOT_HEIGHT = None
+  ROOT_WIDTH = None
+
   class WidgetNames(object):
     TLabel = 'TLabel'
     TFrame = 'TFrame'
@@ -58,6 +61,11 @@ class Viewer(ttk.Frame):
   def _move_to_center(self):
     width = self.master.winfo_width()
     height = self.master.winfo_height()
+    if self.ROOT_HEIGHT is not None:
+      height = self.ROOT_HEIGHT
+    if self.ROOT_WIDTH is not None:
+      width = self.ROOT_WIDTH
+
     width_inc = int((self.master.winfo_screenwidth() - width) / 2)
     height_inc = int((self.master.winfo_screenheight() - height) / 2)
     self.master.geometry(

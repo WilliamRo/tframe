@@ -10,11 +10,12 @@ from .base_control import BaseControl
 
 # region : Decorators
 
-def refresh_header_at_last(method):
+def refresh_friends_at_last(method):
   def wrapper(self, *args, **kwargs):
-    assert isinstance(self, ConfigControl)
+    assert isinstance(self, (ConfigControl, ConfigPanel))
     method(self, *args, **kwargs)
-    self._refresh_header()
+    self.header.refresh()
+    self.criteria_panel.refresh()
   return wrapper
 
 # endregion : Decorators
@@ -40,10 +41,12 @@ class ConfigControl(BaseControl):
     assert isinstance(is_active, bool)
     self._active = is_active
 
-    # Find ancestors
+    # Ancestors and friends
     self.config_panel = self.master.master
     assert isinstance(self.config_panel, ConfigPanel)
     self.main_frame = self.config_panel.main_frame
+    self.header = self.main_frame.header
+    self.criteria_panel = self.main_frame.criteria_panel
 
     # Layout
     self.switch_button = ttk.Button(self, cursor='hand2')
@@ -69,23 +72,27 @@ class ConfigControl(BaseControl):
 
   # region : Public Methods
 
-  def load_to_master(self, side=tk.TOP, fill=tk.BOTH, expand=True):
+  def load_to_master(self, side=tk.TOP, fill=tk.X, expand=False):
     self.pack(side=side, fill=fill, expand=expand)
 
   def refresh(self):
     pass
 
+  def set_value(self, val):
+    index = self.values.index(val)
+    assert index >= 0 and isinstance(self.values_control, ttk.Combobox)
+    self.values_control.current(index)
+
   # endregion : Public Methods
 
   # region : Events
 
-  @refresh_header_at_last
+  @refresh_friends_at_last
   def _on_combobox_selected(self, _):
+    # TODO:
     if not self._active: return
 
-    # Notify command centre TODO
-
-  @refresh_header_at_last
+  @refresh_friends_at_last
   def _on_button_click(self):
     # Hide this control
     self.pack_forget()
@@ -104,11 +111,9 @@ class ConfigControl(BaseControl):
     assert isinstance(op_control, ConfigControl)
     op_control.load_to_master()
 
-    # Modify sets in context
+    # Modify sets in context TODO: it seems modifying context is not necessary
     src_set.remove(self.name)
     tgt_set.add(self.name)
-
-    # Notify command centre TODO
 
   # endregion : Events
 
@@ -144,10 +149,6 @@ class ConfigControl(BaseControl):
         '<<ComboboxSelected>>', self._on_combobox_selected)
     self.values_control.pack(side=tk.RIGHT)
 
-
-  def _refresh_header(self):
-    self.main_frame.header.refresh()
-
   # endregion : Private Methods
 
 
@@ -166,10 +167,18 @@ class ConfigPanel(BaseControl):
     self.active_dict = {}
     self.inactive_dict = {}
 
-    # Ancestor
+    # Ancestor and friends
     self.main_frame = self.master.master
 
   # region : Properties
+
+  @property
+  def criteria_panel(self):
+    return self.main_frame.criteria_panel
+
+  @property
+  def header(self):
+    return self.main_frame.header
 
   @property
   def active_config_dict(self):
@@ -197,18 +206,24 @@ class ConfigPanel(BaseControl):
 
     return notes
 
+  @property
+  def minimum_height(self):
+    h_empty_panel = 21
+    h_each_control = 27
+    coef = 3 if len(self.active_dict) == 0 else 2
+    return 3 * h_empty_panel + (coef + len(self.active_dict)) * h_each_control
+
   # endregion : Properties
 
   # region : Public Methods
 
   def initialize_config_controls(self):
-    self.inactive_dict, self.active_dict = {}, {}
+    # self.inactive_dict, self.active_dict = {}, {}
     for k, v in self.context.flag_value_dict.items():
       # Create an active one
       master = self.hyper_parameters if len(v) > 1 else self.common_configs
       active_control = ConfigControl(master, k, v, True)
       self.active_dict[k] = active_control
-
       # Create an inactive one
       inactive_control = ConfigControl(self.inactive_configs, k, v, False)
       self.inactive_dict[k] = inactive_control
@@ -219,12 +234,11 @@ class ConfigPanel(BaseControl):
     # Pack config controls
     for k in self.context.active_flag_set:
       self.active_dict[k].load_to_master()
-
     for k in self.context.inactive_flag_set:
       self.inactive_dict[k].load_to_master()
 
 
-  def load_to_master(self, side=tk.LEFT, fill=tk.BOTH, expand=True):
+  def load_to_master(self, side=tk.LEFT, fill=tk.Y, expand=True):
     # Pack label-frames
     pack_params = {'fill': tk.BOTH, 'side': tk.TOP, 'expand': False}
     for label_frame in (
@@ -232,16 +246,31 @@ class ConfigPanel(BaseControl):
         self.common_configs,
         self.inactive_configs,
     ):
-      label_frame.configure(width=300, height=50)
+      label_frame.configure(width=400, height=48)
       label_frame.pack(**pack_params)
-    # self.inactive_configs.pack(expand=True)
+    self.inactive_configs.pack(expand=True)
+    self.inactive_configs.configure()
 
     # Pack self
+    self.configure(height=600)
     self.pack(fill=fill, side=side, expand=expand)
 
 
   def refresh(self):
     pass
+
+
+  @refresh_friends_at_last
+  def set_note(self, note):
+    # Get explicit config control
+    config_controls = [
+      control for control in self.active_dict.values()
+      if not control.is_common and control.name in self.context.active_flag_set]
+
+    # Set value for each combobox
+    for control in config_controls:
+      assert isinstance(control, ConfigControl)
+      control.set_value(note.configs[control.name])
 
   # endregion : Public Methods
 

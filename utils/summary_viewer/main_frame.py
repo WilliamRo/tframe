@@ -13,6 +13,7 @@ try:
   from tframe.utils.summary_viewer.context import Context
   from tframe.utils.summary_viewer.header_control import HeaderControl
   from tframe.utils.summary_viewer.config_control import ConfigPanel
+  from tframe.utils.summary_viewer.criterion_control import CriteriaPanel
 
 except Exception as e:
   print(' ! {}'.format(e))
@@ -21,12 +22,13 @@ except Exception as e:
 
 class SummaryViewer(Viewer):
   """Summary Viewer for tframe summary"""
-  SIZE = 400
+  ROOT_HEIGHT = 565
+  ROOT_WIDTH = 800
 
   def __init__(self, summary_path=None, **kwargs):
     # Call parent's constructor
     Viewer.__init__(self)
-    self.master.resizable(False, False)
+    # self.master.resizable(False, False)
 
     # Attributes
     self.context = Context(
@@ -37,7 +39,7 @@ class SummaryViewer(Viewer):
     self.header = HeaderControl(self)
     self.main_panel = ttk.Frame(self)
     self.config_panel = ConfigPanel(self.main_panel)
-    self.criteria_panel = None
+    self.criteria_panel = CriteriaPanel(self.main_panel)
 
     # Create layout and bind key events
     self._set_global_style()
@@ -50,6 +52,21 @@ class SummaryViewer(Viewer):
       self.set_notes_by_path(summary_path)
     else:
       self.global_refresh()
+
+    # Debug option
+    self.in_debug_mode = False
+
+  # region : Properties
+
+  @property
+  def proper_height(self):
+    padding = 5
+    # h_header = self.header.winfo_height()
+    h_header = 31
+    h_configs = self.config_panel.minimum_height
+    return padding * 2 + h_header + h_configs
+
+  # endregion : Properties
 
   # region : Public Methods
 
@@ -66,8 +83,9 @@ class SummaryViewer(Viewer):
       title += ' - {}'.format(self.context.summary_file_name)
     self.form.title(title)
 
-    # Initialize config controls
+    # Initialize main panel
     self.config_panel.initialize_config_controls()
+    self.criteria_panel.initialize_criteria_controls()
 
     # Refresh header
     self.header.refresh()
@@ -75,9 +93,14 @@ class SummaryViewer(Viewer):
     # Do local refresh
     self.local_refresh()
 
+    # Adjust size
+    self.ROOT_HEIGHT = self.proper_height
+    self._move_to_center()
+
   def local_refresh(self):
     # Refresh config panel
-    self.config_panel.refresh()
+    # self.config_panel.refresh()
+    self.criteria_panel.refresh()
 
   # endregion : Public Methods
 
@@ -93,40 +116,38 @@ class SummaryViewer(Viewer):
     self.set_style(self.WidgetNames.TLabelframe, 'Label', background='white',
                    reverse=False)
 
-    # ...
-    # self.set_style(self.WidgetNames.TCombobox, )
-
   def _bind_key_events(self):
     # Bind Key Events
     self.form.bind('<Key>', lambda e: key_events.on_key_press(self, e))
     self.form.bind('<Control-o>', lambda e: key_events.load_notes(self, e))
+    self.form.bind(
+      '<Control-d>', lambda e: key_events.toggle_debug_mode(self, e))
 
   def _create_layout(self):
     # Header
     self.header.configure(height=50, width=600, padding=5)
-    # HeaderControl.COLOR = 'green3'
-    self.header.load_to_master()
+    HeaderControl.COLOR = 'orange'
+    self.header.load_to_master(expand=False)
 
     # Main panel for config panel and criterion panel
-    self.main_panel.pack(fill=tk.BOTH)
+    self.main_panel.configure(height=600)
+    self.main_panel.pack(fill=tk.BOTH, expand=True)
 
     # Config panel
-    self.config_panel.configure(height=200, width=400, padding=5)
-    self.config_panel.load_to_master()
+    self.config_panel.configure(height=600, width=400, padding=5)
+    self.config_panel.load_to_master(expand=False)
 
-    # TODO:
-    frame_style = lambda n, bg: self.set_style(
-      self.WidgetNames.TFrame, n, background=bg)
+    # Criteria panel
+    self.criteria_panel.configure(padding=5)
+    self.criteria_panel.load_to_master(side=tk.LEFT, fill=tk.BOTH)
 
-    # Right
-    right = ttk.Frame(self.main_panel, style=frame_style('right', 'dark orange'))
-    right.configure(height=400, width=400)
-    right.pack(fill=tk.BOTH, expand=1, side=tk.RIGHT)
-
-    # Bottom
-    # bottom = ttk.Frame(self, style=frame_style('bottom', 'tomato'))
-    # bottom.configure(height=50, width=600)
-    # bottom.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+    # Something at the bottom
+    bottom = ttk.Frame(
+      self, style=self.set_style(
+        self.WidgetNames.TFrame, 'bottom', background='orange'))
+    bottom.configure(height=54)
+    bottom.pack(expand=True, fill=tk.BOTH)
+    self.bottom = bottom
 
     # Pack self
     self.pack(fill=tk.BOTH, expand=True)
@@ -139,7 +160,7 @@ if __name__ == '__main__':
 
   summ_path = r'E:\rnn_club\01-ERG\records_shem\gather.sum'
   summ_path = r'E:\rnn_club\01-ERG\records_shem\test.sum'
-  summ_path = None
+  # summ_path = None
   viewer = main_frame.SummaryViewer(
     summary_path=summ_path,
     default_inactive_flags=(
@@ -154,7 +175,7 @@ if __name__ == '__main__':
     ),
     default_inactive_criteria=(
       'Mean Record',
-      'Record',
+      # 'Record',
     )
   )
   viewer.show()
