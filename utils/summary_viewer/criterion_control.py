@@ -81,7 +81,13 @@ class CriterionControl(BaseControl):
       to_str = self.to_str
       min_v, max_v = min(values), max(values)
       p0, p1, p2 = to_str(np.mean(values)), to_str(min_v), to_str(max_v)
-    else: p0, p1, p2 = ('--',) * 3
+      btn_enabled = True
+    else:
+      p0, p1, p2 = ('--',) * 3
+      btn_enabled = False
+
+    for btn in (self.find_min_btn, self.find_max_btn, self.detail_button):
+      btn.configure(state=tk.NORMAL if btn_enabled else tk.DISABLED)
 
     self.statistic_label.config(text=fmt.format(p0, p1, p2))
 
