@@ -25,6 +25,9 @@ class HeaderControl(BaseControl):
     self._cursor = 0
     self._notes_buffer = []
 
+    # Package from friends
+    self.package = None
+
   # region : Properties
   
   @property
@@ -63,12 +66,20 @@ class HeaderControl(BaseControl):
 
     # Refresh final info label
     self._cursor = 0
-    self._notes_buffer = self.final_participants
+    self._set_note_buffer()
+    # self._notes_buffer = self.final_participants
     self._refresh_detail()
 
   # region : Public Methods
 
   # region : Private
+
+  def _set_note_buffer(self):
+    self._notes_buffer = self.final_participants
+    if self.package is None: return
+    key, reverse = self.package
+    self._notes_buffer.sort(key=lambda n: n.criteria[key], reverse=reverse)
+    self.package = None
 
   def _refresh_detail(self):
     if len(self._notes_buffer) == 0:

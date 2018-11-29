@@ -186,6 +186,9 @@ class CriterionControl(BaseControl):
     print(note.content)
     print(splitter)
 
+    # Set sort condition to header control
+    self.header.package = self.name, find_max
+
     # Set note to config_panel
     self.config_panel.set_note(note)
 
