@@ -101,7 +101,7 @@ class Context(object):
     intersection, union = self._get_intersection_and_union('criteria')
 
     # Remove default inactive flags from intersection
-    self.active_criteria_set = intersection - intersection.intersection(
+    self.active_criteria_set = union - union.intersection(
       set(self.default_inactive_criteria))
     self.inactive_criteria_set = union - self.active_criteria_set
 

@@ -12,7 +12,6 @@ class HeaderControl(BaseControl):
 
   COLOR = 'white'
   notes_info = '[Notes#] Total: {} | Candidates: {} | Selected: {}'
-  final_info = 'Final participants: {} '
 
   def __init__(self, master):
     # Call parent's constructor
@@ -20,8 +19,21 @@ class HeaderControl(BaseControl):
 
     # Widgets
     self.label_notes_info = ttk.Label(self)
-    self.label_final_info = ttk.Label(self)
+    self.label_note_detail = ttk.Label(self)
 
+    # Attributes
+    self._cursor = 0
+    self._notes_buffer = []
+
+  # region : Properties
+  
+  @property
+  def final_participants(self):
+    return self.master.criteria_panel.final_participants
+  
+  # endregion : Properties
+
+  # region : Public Methods
 
   def load_to_master(self, side=tk.TOP, fill=tk.BOTH, expand=True):
     # Set color
@@ -31,16 +43,15 @@ class HeaderControl(BaseControl):
       self.WidgetNames.TFrame, 'header', background=self.COLOR)
 
     self.label_notes_info.config(style=label_style)
-    self.label_final_info.config(style=label_style)
+    self.label_note_detail.config(style=label_style)
     self.config(style=frame_style)
 
     # Pack label
     self.label_notes_info.pack(side=tk.LEFT, fill=tk.Y)
-    self.label_final_info.pack(side=tk.RIGHT, fill=tk.Y)
+    self.label_note_detail.pack(side=tk.RIGHT, fill=tk.Y)
 
     # Pack self
     self.pack(fill=fill, side=side, expand=expand)
-
 
   def refresh(self):
     # Refresh basic info label
@@ -51,5 +62,41 @@ class HeaderControl(BaseControl):
       num_notes, num_qualified, num_selected))
 
     # Refresh final info label
-    num_participants = len(self.master.criteria_panel.final_participants)
-    self.label_final_info.config(text=self.final_info.format(num_participants))
+    self._cursor = 0
+    self._notes_buffer = self.final_participants
+    self._refresh_detail()
+
+  # region : Public Methods
+
+  # region : Private
+
+  def _refresh_detail(self):
+    if len(self._notes_buffer) == 0:
+      self.label_note_detail.configure(text='')
+      return
+
+    text = 'Note [{}/{}] '.format(self._cursor + 1, len(self._notes_buffer))
+    for i, key in enumerate(self.context.active_criteria_set):
+      if i > 0: text += ' | '
+      text += '{}: {}'.format(key, self.to_str(
+        self._notes_buffer[self._cursor].criteria[key]))
+    text += ' '
+    self.label_note_detail.configure(text=text)
+
+  # endregion : Private
+
+  # region : Events
+
+  def move_cursor(self, offset):
+    assert offset in (-1, 1)
+    total = len(self._notes_buffer)
+    if total == 0: return
+    cursor = self._cursor
+    cursor += offset
+    if cursor < 0: cursor += total
+    elif cursor >= total: cursor -= total
+    if cursor != self._cursor:
+      self._cursor = cursor
+      self._refresh_detail()
+
+  # endregion : Events

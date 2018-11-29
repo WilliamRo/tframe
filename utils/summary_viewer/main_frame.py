@@ -15,6 +15,8 @@ try:
   from tframe.utils.summary_viewer.config_control import ConfigPanel
   from tframe.utils.summary_viewer.criterion_control import CriteriaPanel
 
+  from tframe.utils.summary_viewer.wisdoms import rand_wisdom
+
 except Exception as e:
   print(' ! {}'.format(e))
   print(' ! Summary Viewer is disabled, install tkinter to enable it')
@@ -142,12 +144,20 @@ class SummaryViewer(Viewer):
     self.criteria_panel.load_to_master(side=tk.LEFT, fill=tk.BOTH)
 
     # Something at the bottom
+    bg_color = 'orange'
     bottom = ttk.Frame(
       self, style=self.set_style(
-        self.WidgetNames.TFrame, 'bottom', background='orange'))
+        self.WidgetNames.TFrame, 'bottom', background=bg_color))
     bottom.configure(height=54)
     bottom.pack(expand=True, fill=tk.BOTH)
     self.bottom = bottom
+
+    text = rand_wisdom()
+    bottom_label = ttk.Label(bottom, text=text, style=self.set_style(
+      self.WidgetNames.TLabel, 'bottom', background=bg_color,
+      foreground='orange red'), anchor=tk.CENTER)
+    bottom_label.pack(fill=tk.BOTH, expand=True)
+    self.bottom_label = bottom_label
 
     # Pack self
     self.pack(fill=tk.BOTH, expand=True)

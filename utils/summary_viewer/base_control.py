@@ -36,9 +36,14 @@ class BaseControl(ttk.Frame):
     raise NotImplementedError
 
 
-  def refresh(self):
+  def refresh(self, *args, **kwargs):
     raise NotImplementedError
 
 
   def set_style(self, *layers, reverse=True, **kwargs):
     return self._set_style(*layers, reverse=reverse, **kwargs)
+
+
+  @staticmethod
+  def to_str(v):
+    return str(v) if v == int(v) else '{:.2f}'.format(v)

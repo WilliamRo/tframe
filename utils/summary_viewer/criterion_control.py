@@ -29,8 +29,6 @@ class CriterionControl(BaseControl):
   WIDTH = 400
   HEIGHT = 100
 
-  to_str = lambda _, v: str(v) if v == int(v) else '{:.2f}'.format(v)
-
   def __init__(self, master, name, show):
     # Call parent's constructor
     BaseControl.__init__(self, master)
@@ -73,23 +71,24 @@ class CriterionControl(BaseControl):
     if not self._show: side = tk.LEFT
     self.pack(side=side, fill=fill, expand=expand)
 
-  def refresh(self):
+  def refresh(self, btn_enabled):
     values = self.value_list
     fmt = '  Avg: {},  Range: [{}, {}]'
-
     if len(values) > 0:
       to_str = self.to_str
       min_v, max_v = min(values), max(values)
       p0, p1, p2 = to_str(np.mean(values)), to_str(min_v), to_str(max_v)
-      btn_enabled = True
-    else:
-      p0, p1, p2 = ('--',) * 3
-      btn_enabled = False
-
-    for btn in (self.find_min_btn, self.find_max_btn, self.detail_button):
-      btn.configure(state=tk.NORMAL if btn_enabled else tk.DISABLED)
+    else: p0, p1, p2 = ('--',) * 3
 
     self.statistic_label.config(text=fmt.format(p0, p1, p2))
+
+    # Enable/Disable buttons
+    set_btn = lambda btn, enabled: btn.configure(
+      state=tk.NORMAL if enabled else tk.DISABLED)
+
+    set_btn(self.find_min_btn, btn_enabled)
+    set_btn(self.find_max_btn, btn_enabled)
+    set_btn(self.detail_button, len(values) > 0)
 
   # endregion : Public Methods
 
@@ -147,10 +146,18 @@ class CriterionControl(BaseControl):
     # Show the corresponding control
     if self._show:
       op_control = self.criteria_panel.hidden_dict[self.name]
+      src_set = self.context.active_criteria_set
+      tgt_set = self.context.inactive_criteria_set
     else:
       op_control = self.criteria_panel.explicit_dict[self.name]
+      src_set = self.context.inactive_criteria_set
+      tgt_set = self.context.active_criteria_set
     assert isinstance(op_control, CriterionControl)
     op_control.load_to_master()
+
+    # Modify sets in context
+    src_set.remove(self.name)
+    tgt_set.add(self.name)
 
   def _on_detail_btn_click(self):
     if len(self.value_list) == 0:
@@ -240,10 +247,11 @@ class CriteriaPanel(BaseControl):
       self.hidden_dict[k].load_to_master()
 
   def refresh(self):
+    btn_enabled = len(self.config_panel.qualified_notes) > 0
     # Refresh each explicit criteria control
     for e_c in self.explicit_dict.values():
       assert isinstance(e_c, CriterionControl)
-      e_c.refresh()
+      e_c.refresh(btn_enabled)
 
   # endregion : Public Methods
 

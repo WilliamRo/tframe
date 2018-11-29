@@ -111,7 +111,7 @@ class ConfigControl(BaseControl):
     assert isinstance(op_control, ConfigControl)
     op_control.load_to_master()
 
-    # Modify sets in context TODO: it seems modifying context is not necessary
+    # Modify sets in context
     src_set.remove(self.name)
     tgt_set.add(self.name)
 

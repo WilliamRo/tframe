@@ -12,10 +12,15 @@ def on_key_press(viewer, event):
   key_symbol = getattr(event, 'keysym')
   if viewer.in_debug_mode:
     on_key_press_debug(viewer, key_symbol)
-  elif key_symbol == 'quoteleft':
+
+  if key_symbol == 'quoteleft':
     console.show_status('Active flags:', symbol='::')
     for k, v in viewer.config_panel.active_config_dict.items():
       console.supplement('{}: {}'.format(k, v), level=2)
+  elif key_symbol == 'h':
+    viewer.header.move_cursor(-1)
+  elif key_symbol == 'l':
+    viewer.header.move_cursor(1)
 
 
 def load_notes(viewer, _):
@@ -34,11 +39,15 @@ def toggle_debug_mode(viewer, _):
   viewer.in_debug_mode = not viewer.in_debug_mode
   if viewer.in_debug_mode:
     bg = 'orange red'
-    print('>> Debugging mode has been turned on.')
+    fg = 'orange'
+    # print('>> Debugging mode has been turned on.')
   else:
     bg = 'orange'
-    print('>> Debugging mode has been turned off.')
+    fg = 'orange red'
+    # print('>> Debugging mode has been turned off.')
   viewer.set_style(viewer.WidgetNames.TFrame, 'bottom', background=bg)
+  viewer.set_style(viewer.WidgetNames.TLabel, 'bottom', background=bg,
+                   foreground=fg)
 
 
 def on_key_press_debug(viewer, key_symbol):
