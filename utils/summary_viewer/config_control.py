@@ -172,8 +172,9 @@ class ConfigControl(BaseControl):
         self, state='readonly', justify=tk.RIGHT)
       self.values_control.config(values=self.values)
       self.values_control.current(0)
-      self.values_control.bind(
-        '<<ComboboxSelected>>', self._on_combobox_selected)
+      if self._active:
+        self.values_control.bind(
+          '<<ComboboxSelected>>', self._on_combobox_selected)
     self.values_control.pack(side=tk.RIGHT)
 
   # endregion : Private Methods
@@ -296,6 +297,11 @@ class ConfigPanel(BaseControl):
     # Set value for each combobox
     for control in config_controls:
       assert isinstance(control, ConfigControl)
+      control.set_value(note.configs[control.name])
+
+    # Set value for each inactive combobox
+    for control in self.inactive_dict.values():
+      if control.is_common: continue
       control.set_value(note.configs[control.name])
 
   # endregion : Public Methods
