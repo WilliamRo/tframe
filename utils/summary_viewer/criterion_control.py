@@ -19,6 +19,7 @@ def refresh_friends_at_last(method):
     assert isinstance(self, CriterionControl)
     method(self, *args, **kwargs)
     self.header.refresh()
+    self.criteria_panel.refresh()
   return wrapper
 
 # endregion : Decorators
@@ -71,7 +72,7 @@ class CriterionControl(BaseControl):
     if not self._show: side = tk.LEFT
     self.pack(side=side, fill=fill, expand=expand)
 
-  def refresh(self, btn_enabled):
+  def refresh(self, min_max_btn_enabled):
     values = self.value_list
     fmt = '  Avg: {},  Range: [{}, {}]'
     if len(values) > 0:
@@ -86,8 +87,8 @@ class CriterionControl(BaseControl):
     set_btn = lambda btn, enabled: btn.configure(
       state=tk.NORMAL if enabled else tk.DISABLED)
 
-    set_btn(self.find_min_btn, btn_enabled)
-    set_btn(self.find_max_btn, btn_enabled)
+    set_btn(self.find_min_btn, min_max_btn_enabled)
+    set_btn(self.find_max_btn, min_max_btn_enabled)
     set_btn(self.detail_button, len(values) > 0)
 
   # endregion : Public Methods
@@ -248,11 +249,12 @@ class CriteriaPanel(BaseControl):
       self.hidden_dict[k].load_to_master()
 
   def refresh(self):
-    btn_enabled = len(self.config_panel.qualified_notes) > 0
+    min_max_btn_enabled = len(self.config_panel.notes_for_sorting) > 0
     # Refresh each explicit criteria control
-    for e_c in self.explicit_dict.values():
-      assert isinstance(e_c, CriterionControl)
-      e_c.refresh(btn_enabled)
+    for active_criterion in self.context.active_criteria_set:
+      criterion_control = self.explicit_dict[active_criterion]
+      assert isinstance(criterion_control, CriterionControl)
+      criterion_control.refresh(min_max_btn_enabled)
 
   # endregion : Public Methods
 
@@ -261,7 +263,7 @@ class CriteriaPanel(BaseControl):
   def _filter(self, note_set):
     return [
       note for note in note_set
-      if set(note.criteria.keys()).issuperset(set(self.explicit_dict.keys()))]
+      if set(note.criteria.keys()).issuperset(self.context.active_criteria_set)]
 
   # endregion : Private Methods
 

@@ -130,7 +130,7 @@ class ConfigControl(BaseControl):
     assert isinstance(self.values_control, ttk.Combobox)
     if self.fixed:
       self.fixed = False
-      self.values_control.configure(state=tk.NORMAL)
+      self.values_control.configure(state='readonly')
       self.label_name.configure(cursor='double_arrow')
     else:
       self.fixed = True

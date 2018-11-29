@@ -17,9 +17,9 @@ def on_key_press(viewer, event):
     console.show_status('Active flags:', symbol='::')
     for k, v in viewer.config_panel.active_config_dict.items():
       console.supplement('{}: {}'.format(k, v), level=2)
-  elif key_symbol == 'h':
+  elif key_symbol in ('h', 'k'):
     viewer.header.move_cursor(-1)
-  elif key_symbol == 'l':
+  elif key_symbol in ('l', 'j'):
     viewer.header.move_cursor(1)
 
 
