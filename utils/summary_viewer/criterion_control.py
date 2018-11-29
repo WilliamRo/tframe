@@ -166,7 +166,7 @@ class CriterionControl(BaseControl):
       return
     console.show_status('{}:'.format(self.name), '::')
     for v in np.sort(self.value_list):
-      console.supplement('{}'.format(v))
+      console.supplement('{}'.format(v), level=2)
 
   def _on_find_btn_click(self, find_max):
     # Find the corresponding note
@@ -180,7 +180,7 @@ class CriterionControl(BaseControl):
     console.show_status( 'Logs of note with {} `{}`({}):'.format(
       'max' if find_max else 'min', self.name, val_str), '::')
     splitter = '-' * 79
-    print(splitter)
+    print('- ' * 40)
     print(note.content)
     print(splitter)
 

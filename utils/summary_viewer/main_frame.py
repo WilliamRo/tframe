@@ -25,12 +25,12 @@ except Exception as e:
 class SummaryViewer(Viewer):
   """Summary Viewer for tframe summary"""
   ROOT_HEIGHT = 565
-  ROOT_WIDTH = 800
+  ROOT_WIDTH = 860
 
   def __init__(self, summary_path=None, **kwargs):
     # Call parent's constructor
     Viewer.__init__(self)
-    # self.master.resizable(False, False)
+    self.master.resizable(False, False)
 
     # Attributes
     self.context = Context(
@@ -154,9 +154,9 @@ class SummaryViewer(Viewer):
 
     text = rand_wisdom()
     bottom_label = ttk.Label(bottom, text=text, style=self.set_style(
-      self.WidgetNames.TLabel, 'bottom', background=bg_color,
+      self.WidgetNames.TLabel, 'bottom', background='orange',
       foreground='orange red'), anchor=tk.CENTER)
-    bottom_label.pack(fill=tk.BOTH, expand=True)
+    bottom_label.pack(fill=tk.X, expand=True)
     self.bottom_label = bottom_label
 
     # Pack self
@@ -168,9 +168,7 @@ class SummaryViewer(Viewer):
 if __name__ == '__main__':
   from tframe.utils.summary_viewer import main_frame
 
-  summ_path = r'E:\rnn_club\01-ERG\records_shem\gather.sum'
-  summ_path = r'E:\rnn_club\01-ERG\records_shem\test.sum'
-  # summ_path = None
+  summ_path = None
   viewer = main_frame.SummaryViewer(
     summary_path=summ_path,
     default_inactive_flags=(

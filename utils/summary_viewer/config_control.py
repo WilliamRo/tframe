@@ -115,6 +115,15 @@ class ConfigControl(BaseControl):
     src_set.remove(self.name)
     tgt_set.add(self.name)
 
+  @refresh_friends_at_last
+  def _move_combo_cursor(self, offset):
+    assert offset in (-1, 1) and isinstance(self.values_control, ttk.Combobox)
+    total = len(self.values)
+    index = self.values_control.current() + offset
+    if index < 0: index += total
+    elif index >= total: index -= total
+    self.values_control.current(index)
+
   # endregion : Events
 
   # region : Private Methods
@@ -136,6 +145,10 @@ class ConfigControl(BaseControl):
     # (2) Label
     self.label_name.configure(text=' {}:'.format(self.name))
     self.label_name.pack(side=tk.LEFT)
+    if self._active and not self.is_common:
+      self.label_name.config(cursor='double_arrow')
+      self.label_name.bind('<Button-1>', lambda _: self._move_combo_cursor(1))
+      self.label_name.bind('<Button-3>', lambda _: self._move_combo_cursor(-1))
 
     # (3) Value
     if self.is_common:
