@@ -170,7 +170,7 @@ class CriterionControl(BaseControl):
 
   def _on_find_btn_click(self, find_max):
     # Find the corresponding note
-    notes = self.criteria_panel._filter(self.config_panel.qualified_notes)
+    notes = self.criteria_panel._filter(self.config_panel.notes_for_sorting)
     assert isinstance(notes, list) and len(notes) > 0
     notes.sort(key=lambda n: n.criteria[self.name], reverse=find_max)
     note = notes[0]

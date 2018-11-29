@@ -40,6 +40,7 @@ class ConfigControl(BaseControl):
     self.values = flag_values
     assert isinstance(is_active, bool)
     self._active = is_active
+    self.fixed = False
 
     # Ancestors and friends
     self.config_panel = self.master.master
@@ -118,11 +119,23 @@ class ConfigControl(BaseControl):
   @refresh_friends_at_last
   def _move_combo_cursor(self, offset):
     assert offset in (-1, 1) and isinstance(self.values_control, ttk.Combobox)
+    if self.fixed: return
     total = len(self.values)
     index = self.values_control.current() + offset
     if index < 0: index += total
     elif index >= total: index -= total
     self.values_control.current(index)
+
+  def _lock_or_unlock(self):
+    assert isinstance(self.values_control, ttk.Combobox)
+    if self.fixed:
+      self.fixed = False
+      self.values_control.configure(state=tk.NORMAL)
+      self.label_name.configure(cursor='double_arrow')
+    else:
+      self.fixed = True
+      self.values_control.configure(state=tk.DISABLED)
+      self.label_name.configure(cursor='circle')
 
   # endregion : Events
 
@@ -148,6 +161,7 @@ class ConfigControl(BaseControl):
     if self._active and not self.is_common:
       self.label_name.config(cursor='double_arrow')
       self.label_name.bind('<Button-1>', lambda _: self._move_combo_cursor(1))
+      self.label_name.bind('<Button-2>', lambda _: self._lock_or_unlock())
       self.label_name.bind('<Button-3>', lambda _: self._move_combo_cursor(-1))
 
     # (3) Value
@@ -203,21 +217,20 @@ class ConfigPanel(BaseControl):
     flag_of_interest = set(self.active_config_dict.keys())
     return [note for note in self.context.notes
             if set(note.configs.keys()).issuperset(flag_of_interest)]
+  
+  @property
+  def notes_for_sorting(self):
+    return self._filter(self.qualified_notes, self.fixed_config_dict)
+
+  @property
+  def fixed_config_dict(self):
+    return {k: self.active_dict[k].current_value
+            for k in self.context.active_flag_set
+            if self.active_dict[k].fixed}
 
   @property
   def selected_notes(self):
-    notes = []
-    config_dict = self.active_config_dict
-
-    for note in self.qualified_notes:
-      select = True
-      for k, v in config_dict.items():
-        if note.configs[k] != v:
-          select = False
-          break
-      if select: notes.append(note)
-
-    return notes
+    return self._filter(self.qualified_notes, self.active_config_dict)
 
   @property
   def minimum_height(self):
@@ -289,7 +302,18 @@ class ConfigPanel(BaseControl):
 
   # region : Private Methods
 
-
+  @staticmethod
+  def _filter(notes, configs):
+    assert isinstance(configs, dict)
+    results = []
+    for note in notes:
+      select = True
+      for k, v in configs.items():
+        if note.configs[k] != v:
+          select = False
+          break
+      if select: results.append(note)
+    return results
 
   # endregion : Private Methods
 
