@@ -4,15 +4,16 @@ from __future__ import print_function
 
 import tkinter as tk
 import tkinter.ttk as ttk
-
-from .context import Context
+from tkinter import font as tkFont
 
 from tframe.utils.viewer_base.main_frame import Viewer
+from tframe.utils.summary_viewer.context import Context
 
 
 class BaseControl(ttk.Frame):
 
   WidgetNames = Viewer.WidgetNames
+  ruler = None
 
   def __init__(self, master):
 
@@ -47,3 +48,12 @@ class BaseControl(ttk.Frame):
   @staticmethod
   def to_str(v):
     return str(v) if v == int(v) else '{:.2f}'.format(v)
+
+
+  @staticmethod
+  def measure(txt):
+    a, b, s = 1.5, 1, 12
+    if BaseControl.ruler is None:
+      BaseControl.ruler = tkFont.Font(family='Helvetica', size=s)
+    x = BaseControl.ruler.measure(txt)
+    return int(1.0 * x / s * a + b)

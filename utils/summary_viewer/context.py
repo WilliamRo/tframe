@@ -10,6 +10,7 @@ from tframe.utils.note import Note
 class Context(object):
   """The context of a NoteViewer. Usually stores the note file info and
      the instance of a note"""
+  PRESET_INACTIVE_CRI = ('Total Rounds', 'Mean Record')
 
   def __init__(self, default_inactive_flags=(), default_inactive_criteria=()):
     self.summary_file_path = None
@@ -23,6 +24,7 @@ class Context(object):
     self.active_criteria_set = set()
     self.inactive_criteria_set = set()
     self.default_inactive_criteria = default_inactive_criteria
+    self.default_inactive_criteria += self.PRESET_INACTIVE_CRI
 
   # region : Properties
 

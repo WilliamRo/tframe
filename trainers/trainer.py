@@ -234,6 +234,9 @@ class Trainer(object):
       # Force terminate
       if hub.force_terminate: break
 
+    if hub.export_note_to_summ:
+      self.model.agent.put_down_criterion('Total Rounds', rnd)
+
     return rnd
 
   def _inner_loop(self, rnd):

@@ -101,9 +101,10 @@ class CriterionControl(BaseControl):
         self.WidgetNames.TButton, 'explicit', foreground='red', width=5)
       button_text = 'Hide'
     else:
-      button_text = 'Show `{}`'.format(self.name)
+      button_text = '{}'.format(self.name)
       style = self.set_style(
-        self.WidgetNames.TButton, 'hidden', foreground='green')
+        self.WidgetNames.TButton, 'hidden', self.name, foreground='green',
+        width=self.measure(button_text))
 
     self.switch_button.configure(
       text=button_text, command=self._on_button1_click, style=style)
