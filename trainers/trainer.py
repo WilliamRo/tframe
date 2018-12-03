@@ -111,6 +111,10 @@ class Trainer(object):
   def _save_model_at_round_end(self):
     return self.th.save_model and self.th.save_mode is SaveMode.NAIVE
 
+  @property
+  def _save_model_at_training_end(self):
+    return self.th.save_model and self.th.save_model_at_the_end
+
   # endregion : Properties
 
   # region : Public Methods
@@ -236,6 +240,7 @@ class Trainer(object):
 
     if hub.export_note_to_summ:
       self.model.agent.put_down_criterion('Total Rounds', rnd)
+    if self._save_model_at_training_end: self._save_model()
 
     return rnd
 

@@ -179,6 +179,7 @@ class Config(object):
   parallel_on = Flag.boolean(False, 'Whether to turn on parallel option')
   smart_train = Flag.boolean(False, 'Whether to use smart trainer', is_key=None)
   save_model = Flag.boolean(True, 'Whether to save model during training')
+  save_model_at_the_end = Flag.boolean(False, '...')
   overwrite = Flag.boolean(False, 'Whether to overwrite records')
   export_note = Flag.boolean(False, 'Whether to take notes')
   summary = Flag.boolean(True, 'Whether to write summary')

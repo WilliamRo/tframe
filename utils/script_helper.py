@@ -16,6 +16,11 @@ flag_names = [f._name for f in flags]
 
 def check_flag_name(method):
   def wrapper(obj, flag_name, *args, **kwargs):
+    assert isinstance(obj, Helper)
+    # Make sure flag_name is not in parameter list of obj
+    if flag_name in obj.param_keys:
+      raise ValueError('!! Key `{}` has already been set'.format(flag_name))
+    # Make sure flag_name is registered by tframe.Config
     if flag_name not in flag_names:
       print(
         ' ! `{}` may be an invalid flag, press [Enter] to continue ...'.format(
@@ -31,32 +36,47 @@ class Helper(object):
     self.module_name = module_name
     self._check_module()
 
-    self.public_args = ['python', module_name]
+    self.common_parameters = {}
     self.hyper_parameters = {}
+
+  # region : Properties
+
+  @property
+  def command_head(self):
+    return ['python', self.module_name] + [
+      self._get_config_string(k, v) for k, v in self.common_parameters.items()]
+
+  @property
+  def param_keys(self):
+    # Add keys from hyper-parameters
+    keys = list(self.hyper_parameters.keys())
+    # Add keys from common-parameters
+    keys += list(self.common_parameters.keys())
+    return keys
+
+  # endregion : Properties
 
   # region : Public Methods
 
   @check_flag_name
   def register(self, flag_name, val):
     if isinstance(val, (list, tuple)) and len(val) > 1:
-      self.register_hyper_parameters(flag_name, val)
+      self.hyper_parameters[flag_name] = val
     else:
       if isinstance(val, (list, tuple)): val = val[0]
-      self.register_public_flag(flag_name, val)
+      self.common_parameters[flag_name] = val
 
-  @check_flag_name
-  def register_public_flag(self, flag_name, val):
-    self.public_args.append(self._get_config_string(flag_name, val))
-
-  @check_flag_name
-  def register_hyper_parameters(self, flag_name, vals):
-    assert isinstance(vals, (list, tuple))
-    self.hyper_parameters[flag_name] = vals
-
-  def run(self, times=1):
+  def run(self, times=1, save=False, mark=''):
+    # Set the corresponding flags if save
+    if save:
+      self.common_parameters['save_model'] = True
+    # Begin iteration
+    counter = 0
     for _ in range(times):
+      counter += 1
+      if save: self.common_parameters['suffix'] = '_{}{}'.format(mark, counter)
       for hyper in self._hyper_parameter_lists():
-        call(self.public_args + hyper)
+        call(self.command_head + hyper)
         print()
 
   # endregion : Public Methods
@@ -73,6 +93,7 @@ class Helper(object):
         '!! module {} does not exist'.format(self.module_name))
 
   def _hyper_parameter_lists(self, keys=None):
+    """Provide a generator of hyper-parameters for running"""
     if keys is None: keys = list(self.hyper_parameters.keys())
     if len(keys) == 0: yield []
     else:
