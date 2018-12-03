@@ -265,7 +265,38 @@ class Config(object):
   forward_gate = Flag.boolean(
     None, 'Whether to calculate units using gate units from previous time '
           'step', is_key=None)
-  mem_cfg = Flag.string('', 'e.g. `7-a-f;8-na-nf`', is_key=None)
+  output_size = Flag.integer(0, 'Output dimension for a single layer',
+                             is_key=None)
+  mem_cfg = Flag.string('', 'e.g. `7-a-f;8-na-nf`')
+  short_mem_size = Flag.integer(0, 'Size of short-term memory units',
+                                is_key=None)
+  short_in_gate = Flag.boolean(
+    False, 'Whether to use input gate for short-term memory units',
+    is_key=None)
+  short_forget_gate = Flag.boolean(
+    False, 'Whether to use forget gate for short-term memory units',
+    is_key=None)
+  short_out_gate = Flag.boolean(
+    False, 'Whether to use output gate for short-term memory units',
+    is_key=None)
+  short_act_mem = Flag.boolean(
+    False, 'Whether to activate memory for short-term memory units',
+    is_key=None)
+  short_fc_mem = Flag.boolean(
+    False, 'Whether to fully connect memory for short-term memory units',
+    is_key=None)
+  long_mem_size = Flag.integer(0, 'Size of long-term memory units', is_key=None)
+  long_in_gate = Flag.boolean(
+    False, 'Whether to use input gate for long-term memory units', is_key=None)
+  long_forget_gate = Flag.boolean(
+    False, 'Whether to use forget gate for long-term memory units', is_key=None)
+  long_out_gate = Flag.boolean(
+    False, 'Whether to use output gate for long-term memory units', is_key=None)
+  long_act_mem = Flag.boolean(
+    False, 'Whether to activate memory for long-term memory units', is_key=None)
+  long_fc_mem = Flag.boolean(
+    False, 'Whether to fully connect memory for long-term memory units',
+    is_key=None)
 
   # Other fancy stuff
   show_record_history_in_note = Flag.boolean(False, '...')

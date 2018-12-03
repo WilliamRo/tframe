@@ -37,6 +37,14 @@ class Helper(object):
   # region : Public Methods
 
   @check_flag_name
+  def register(self, flag_name, val):
+    if isinstance(val, (list, tuple)) and len(val) > 1:
+      self.register_hyper_parameters(flag_name, val)
+    else:
+      if isinstance(val, (list, tuple)): val = val[0]
+      self.register_public_flag(flag_name, val)
+
+  @check_flag_name
   def register_public_flag(self, flag_name, val):
     self.public_args.append(self._get_config_string(flag_name, val))
 

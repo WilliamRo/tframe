@@ -16,7 +16,7 @@ def check_path(*paths, create_path=True):
     paths = re.split(r'/|\\', paths[0])
     if paths[0] in ['.', '']:
       paths.pop(0)
-    if paths[-1] == '':
+    if len(paths) > 0 and paths[-1] == '':
       paths.pop(-1)
   path = ""
   for p in paths:

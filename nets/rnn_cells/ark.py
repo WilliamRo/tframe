@@ -132,8 +132,26 @@ class Ham(RNet):
       self.use_forget_gate = forget_gate
       self.use_output_gate = out_gate
 
-      self.fully_connect_memory = fc_mem
       self.activate_memory = act_mem
+      self.fully_connect_memory = fc_mem
+
+    # region : Properties
+
+    @property
+    def detail_string(self):
+      ds = '[{}-'.format(self.size)
+      if self.use_input_gate: ds += 'i'
+      if self.use_forget_gate: ds += 'f'
+      if self.use_output_gate: ds += 'o'
+      if str.isalnum(ds[-1]): ds += '-'
+      if not self.activate_memory: ds += 'n'
+      ds += 'a-'
+      if not self.fully_connect_memory: ds += 'n'
+      return ds + 'fc]'
+
+    # endregion : Properties
+
+    # region : Static Methods
 
     @staticmethod
     def parse_unit(config):
@@ -141,17 +159,18 @@ class Ham(RNet):
       assert isinstance(config, str)
       cfgs = config.split(separator)
       assert len(cfgs) >= 3
-      # 1
+      # 1. Size
       size = int(cfgs[0])
-      # 2
+      if size == 0: return None
+      # 2. Activate memory before use
       act_mem = False
       if 'a' in cfgs: act_mem = True
       else: assert 'na' in cfgs
-      # 3
+      # 3. Fully connect memory
       fc_mem = False
       if 'fc' in cfgs: fc_mem = True
       else: assert 'nfc' in cfgs
-      # 4 - 6
+      # 4 - 6: input gate, forget gate, output gate
       in_gate = 'i' in cfgs
       forget_gate = 'f' in cfgs
       out_gate = 'o' in cfgs
@@ -167,36 +186,90 @@ class Ham(RNet):
       assert len(cfgs) >= 1
       units = []
       for cfg in cfgs:
-        units.append(Ham.MemoryUnit.parse_unit(cfg))
+        unit = Ham.MemoryUnit.parse_unit(cfg)
+        if unit is not None: units.append(unit)
       return units
 
+    # endregion : Static Methods
 
-  def __init__(self, mem_config, **kwargs):
+  def __init__(self, output_dim, memory_units=None, mem_config=None, **kwargs):
     # Call parent's constructor
     RNet.__init__(self, self.net_name)
 
     # Attributes
-    self.memory_units = self.MemoryUnit.parse_units(mem_config)
+    self.output_dim = output_dim
+    self.memory_units = (self.MemoryUnit.parse_units(mem_config) if
+                         memory_units is None else memory_units)
+    checker.check_type(self.memory_units, Ham.MemoryUnit)
+
+    self._state_size = sum([mu.size for mu in self.memory_units])
+
     self._activation = activations.get('tanh', **kwargs)
     self._kwargs = kwargs
 
+  @property
+  def detail_string(self):
+    return ''.join([m.detail_string for m in self.memory_units])
 
   def structure_string(self, detail=True, scale=True):
-    size_string = '+'.join([m.size for m in self.memory_units])
-    return self.net_name + '({})'.format(size_string) if scale else ''
+    if detail: scale_string = '_{}'.format(self.output_dim)
+    else: scale_string = '[{}]_{}'.format(
+      '+'.join([str(m.size) for m in self.memory_units]), self.output_dim)
+
+    if scale: return self.net_name + scale_string
+    else: return self.net_name
 
 
-  def _link(self, pre_mem, x, **kwargs):
+  def _link(self, pre_s_block, x, **kwargs):
+    def forward(name, memory, fc_mem, output_dim, activation=self._activation):
+      assert output_dim is not None
+      return self._neurons_forward_with_memory(
+        x, memory, name, activation, fc_mem, output_dim, use_bias=True)
 
+    def gate(name, tensor, memory, fc_mem):
+      g = forward(
+        name, memory, fc_mem, output_dim=self._get_external_shape(tensor),
+        activation=tf.sigmoid)
+      return tf.multiply(g, tensor)
 
-    # Calculate memory
-    memory = None
+    # Prepare splitted memory
+    pre_s_list = self._split_memory(pre_s_block)
+
+    # Calculate new_s and s_out
+    assert isinstance(self.memory_units, list)
+    new_s_list, s_out_list = [], []
+    for i, mu, s in zip(range(len(pre_s_list)), self.memory_units, pre_s_list):
+      fc_mem = mu.fully_connect_memory
+      # New memory
+      with tf.variable_scope('memory_unit_{}'.format(i + 1)):
+        s_bar = forward('s_bar', s, fc_mem, mu.size)
+        # Input gate
+        if mu.use_input_gate: s_bar = gate('in_gate', s_bar, s, fc_mem)
+        # Forget gate
+        prev_s = gate('forget_gate', s, s, fc_mem) if mu.use_forget_gate else s
+        # Add prev_s and s_bar
+        new_s = tf.add(prev_s, s_bar)
+      new_s_list.append(new_s)
+
+      # Memory for calculating output y
+      with tf.variable_scope('s_out_{}'.format(i + 1)):
+        s_out = self._activation(s) if mu.activate_memory else s
+        if mu.use_output_gate: s_out = gate('out_gate', s_out, s, fc_mem)
+      s_out_list.append(s_out)
+
+    new_s = tf.concat(new_s_list, axis=1, name='new_s')
+    s_out = tf.concat(s_out_list, axis=1, name='s_out')
 
     # Calculate output
-    y = None
+    y = forward('output', s_out, True, self.output_dim, self._activation)
 
-    return y, memory
+    return y, new_s
 
+
+  def _split_memory(self, s):
+    assert isinstance(s, tf.Tensor)
+    size_splits = [m.size for m in self.memory_units]
+    return tf.split(s, num_or_size_splits=size_splits, axis=1)
 
 
 class Japheth(RNet):
