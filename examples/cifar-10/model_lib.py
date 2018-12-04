@@ -3,7 +3,7 @@ import tensorflow as tf
 from tframe import Classifier
 from tframe.layers import Input, Linear, Activation, Flatten
 from tframe.layers.normalization import BatchNormalization
-from tframe.config import Config
+from tframe.configs.config_base import Config
 
 import core
 

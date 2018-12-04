@@ -13,7 +13,7 @@ from tframe.data.base_classes import TFRData
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
-from tframe.config import Config, Flag
+from tframe.configs.config_base import Config, Flag
 
 from tframe.trainers.metric import Metric
 

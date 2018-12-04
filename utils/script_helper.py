@@ -5,14 +5,14 @@ from __future__ import print_function
 import os
 from subprocess import call
 
-from tframe.config import Flag
+from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
 
 flags = [attr for attr in
          [getattr(SmartTrainerHub, key) for key in dir(SmartTrainerHub)]
          if isinstance(attr, Flag)]
-flag_names = [f._name for f in flags]
+flag_names = [f.name for f in flags]
 
 def check_flag_name(method):
   def wrapper(obj, flag_name, *args, **kwargs):

@@ -4,7 +4,7 @@ from tframe import Predictor
 from tframe.models.recurrent import Recurrent
 from tframe.nets.rnn_cells.lstms import BasicLSTMCell
 from tframe.layers import Input, Linear, Activation
-from tframe.config import Config
+from tframe.configs.config_base import Config
 
 
 def mlp(th):

@@ -1,0 +1,27 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from .flag import Flag
+
+
+class TrainerConfigs(object):
+
+  train = Flag.boolean(True, 'Whether this is a training task')
+  smart_train = Flag.boolean(False, 'Whether to use smart trainer', is_key=None)
+  save_model = Flag.boolean(True, 'Whether to save model during training')
+  save_model_at_the_end = Flag.boolean(False, '...')
+  overwrite = Flag.boolean(False, 'Whether to overwrite records')
+  export_note = Flag.boolean(False, 'Whether to take notes')
+  summary = Flag.boolean(True, 'Whether to write summary')
+  epoch_as_step = Flag.boolean(True, '...')
+  snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
+
+  val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
+  val_batch_size = Flag.integer(None, 'Batch size in batch validation')
+
+  block_validation = Flag.whatever(False, '???')
+  rand_over_classes = Flag.boolean(False, '...', is_key=None)
+
+  sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
+                               'tasks')

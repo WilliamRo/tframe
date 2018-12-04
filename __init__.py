@@ -1,8 +1,12 @@
-import os
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from . import pedia
 from .enums import *
 
-from .config import Config
+from tframe.configs.config_base import Config
+
 # Register
 Config.register()
 hub = Config()

@@ -11,7 +11,7 @@ import tframe as tfr
 from tframe import hub
 from tframe import console
 from tframe import pedia
-from tframe.config import Config
+from tframe.configs.config_base import Config
 
 from tframe.utils import imtool
 from tframe.utils import Note

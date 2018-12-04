@@ -5,7 +5,7 @@ from __future__ import print_function
 from tframe import console
 from tframe import SaveMode
 
-from tframe.config import Flag
+from tframe.configs.config_base import Flag
 from tframe.trainers.trainer import Trainer, TrainerHub
 
 
