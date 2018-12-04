@@ -9,6 +9,7 @@ import tframe as tfr
 from .flag import Flag
 from .model_configs import ModelConfigs
 from .trainer_configs import TrainerConfigs
+from .note_configs import NoteConfigs
 from .rnn_configs import RNNConfigs
 from .monitor_configs import MonitorConfigs
 from .cloud_configs import CloudConfigs
@@ -17,19 +18,16 @@ from .cloud_configs import CloudConfigs
 class Config(
   ModelConfigs,
   TrainerConfigs,
+  NoteConfigs,
   RNNConfigs,
   MonitorConfigs,
   CloudConfigs
 ):
 
   record_dir = Flag.string('records', 'Root path for records')
-  note_folder_name = Flag.string('notes', '...')
   log_folder_name = Flag.string('logs', '...')
   ckpt_folder_name = Flag.string('checkpoints', '...')
   snapshot_folder_name = Flag.string('snapshots', '...')
-
-  gather_file_name = Flag.string('gather.txt', '...')
-  gather_summ_name = Flag.string('gather.sum', '...')
 
   job_dir = Flag.string(
     './records', 'The root directory where the records should be put',
@@ -46,11 +44,9 @@ class Config(
     True, 'Whether to set logging level down to get rid of the device '
           'information')
   progress_bar = Flag.boolean(True, 'Whether to show progress bar')
+
+  # TODO: ???
   keep_trainer_log = Flag.boolean(False, 'Whether to keep trainer logs.')
-  auto_gather = Flag.boolean(
-    False, 'If set to True, agent will gather information in a default way'
-           ' when export_note flag is set to True')
-  export_note_to_summ = Flag.boolean(False, 'Whether to export note summary')
 
   # Device related config
   visible_gpu_id = Flag.string(
@@ -60,16 +56,10 @@ class Config(
     0.4, 'config.gpu_options.per_process_gpu_memory_fraction')
 
   # Other fancy stuff
-  show_record_history_in_note = Flag.boolean(False, '...')
-  # TODO: temporarily be put here cuz agent may access to them
-  note_cycle = Flag.integer(0, 'Note cycle')
-  note_per_round = Flag.integer(0, 'Note per round')
-
   int_para_1 = Flag.integer(0, 'Used to pass an integer parameter using '
                                ' command line')
   bool_para_1 = Flag.boolean(False, 'Used to pass a boolean parameter using'
                                     ' command line')
-
 
   def __init__(self, as_global=False):
     if as_global:
@@ -174,6 +164,7 @@ class Config(
   def smooth_out_conflicts(self):
     self.smooth_out_cloud_configs()
     self.smooth_out_monitor_configs()
+    self.smooth_out_note_configs()
 
   def get_attr(self, name):
     return object.__getattribute__(self, name)

@@ -238,7 +238,7 @@ class Trainer(object):
       # Force terminate
       if hub.force_terminate: break
 
-    if hub.export_note_to_summ:
+    if hub.gather_note:
       self.model.agent.put_down_criterion('Total Rounds', rnd)
     if self._save_model_at_training_end: self._save_model()
 
@@ -288,20 +288,24 @@ class Trainer(object):
       self.total_rounds)
     self.model.agent.take_notes(
       'End training after {} rounds{}'.format(rounds, total_round))
-    # Add metric info into notes
-    if self.th.validation_on: self.model.take_down_metric()
-    # Put down key configurations to note if it needs to be added to summary
-    if self.th.export_note_to_summ: self.model.agent.put_down_configs(self.th)
 
   def _handle_notes(self):
+    # Add metric info into notes
+    if self.th.validation_on: self.model.take_down_metric()
+    # Put down key configurations to note
+    self.model.agent.put_down_configs(self.th)
+
     # Show notes
     self.model.agent.show_notes()
-    # Export notes
+    # Export notes if necessary
     if self.th.export_note:
       filename = self.th.mark
       if self.th.validation_on and self.metric.activated:
         filename += '={:.3f}'.format(self.model.record)
       self.model.agent.export_notes(filename)
+    # Gather notes if necessary
+    if self.th.gather_note:
+      self.model.agent.gather_notes()
 
   # endregion : After training
 

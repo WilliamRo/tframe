@@ -245,34 +245,29 @@ class Agent(object):
 
     self._note.write_line(content)
 
+  def show_notes(self):
+    console.section('Notes')
+    console.write_line(self._note.content)
+
   def export_notes(self, filename='notes'):
     assert hub.export_note
+    # Export .txt file
     file_path = '{}/{}.txt'.format(self.note_dir, filename)
     writer = open(file_path, 'a')
     writer.write('=' * 79 + '\n')
     writer.write(self._note.content + '\n')
     writer.close()
     console.show_status('Note exported to `{}`'.format(file_path))
-    # Gather this note to a file of path `self.gather_path`
-    if hub.auto_gather:
-      self.gather(self._note.content, take_down_time=False)
-    # Export note class if necessary TODO: consecutive save not supported yet
-    # Currently, if note_cycle is positive, pickle down the note class
-    # .note files are saved in order to see the changing of trainable variable
-    if hub.note_cycle > 0:
-      file_path = '{}/{}.note'.format(self.note_dir, filename)
-      self._note.save(file_path)
-    # If necessary, export note to summary file under the same dir with gather
-    # .. file
-    if hub.export_note_to_summ: self.gather_to_summary()
+    # Export .note file
+    file_path = '{}/{}.note'.format(self.note_dir, filename)
+    self._note.save(file_path)
 
-  def show_notes(self):
-    console.section('Notes')
-    console.write_line(self._note.content)
-
-  def gather(self, line, take_down_time=True):
+  def gather_notes(self, take_down_time=False):
+    assert hub.gather_note
     # If gather file does not exist, create one
     with open(self.gather_path, 'a'): pass
+    # Gather notes to .txt file
+    line = self._note.content
     with open(self.gather_path, 'r+') as f:
       content = f.readlines()
       f.seek(0)
@@ -285,6 +280,8 @@ class Agent(object):
       f.write('-' * 79 + '\n')
       f.writelines(content)
       # TODO: find a way to update immediately after training is over
+    # Gather notes to .summ file
+    self.gather_to_summary()
 
   # endregion : Public Methods for Note
 
