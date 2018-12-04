@@ -255,7 +255,7 @@ class Trainer(object):
       # Update model
       loss_dict = self.model.update_model(data_batch=batch)
       # Take notes
-      self._take_note_for_params(loss_dict)
+      self._take_note_for_variables(loss_dict)
       # Print progress
       self._print_progress(rnd, loss_dict)
       # Validation
@@ -367,7 +367,7 @@ class Trainer(object):
       self.th.round_name, rnd, total_rounds, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
-  def _take_note_for_params(self, loss_dict):
+  def _take_note_for_variables(self, loss_dict):
     if self.th.note_cycle == 0: return
     if np.mod(self.counter - 1, self.th.note_cycle) != 0: return
 
