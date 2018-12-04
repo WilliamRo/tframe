@@ -374,8 +374,8 @@ class Trainer(object):
     assert len(loss_slots) > 0
     loss_value = loss_dict[loss_slots[0]]
     scalars = {loss_key: loss_value}
-    self.model.agent.take_down_params(
-      scalars, params=self.model.parameters_dict)
+    self.model.agent.take_down_scalars_and_tensors(
+      scalars, tensors=self.model.parameters_dict)
 
   def _run_probe(self):
     if self._probe is None or self.th.probe_cycle == 0: return False

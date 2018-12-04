@@ -187,6 +187,51 @@ class Agent(object):
     assert isinstance(self._summary_writer, tf.summary.FileWriter)
     self._summary_writer.add_summary(summary, step)
 
+  def save_plot(self, fig, filename):
+    imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))
+
+  # endregion : Public Methods
+
+  # region : Public Methods for Note
+
+  # region : For TensorViewer
+
+  def take_down_scalars_and_tensors(self, scalars, tensors):
+    assert isinstance(scalars, dict) and isinstance(tensors, dict)
+    if hub.epoch_as_step and tfr.trainer.total_rounds is not None:
+      step = int(tfr.trainer.total_rounds * 1000)
+    else: step = self._model.counter
+    self._note.take_down_scalars_and_tensors(step, scalars, tensors)
+
+  # endregion : For TensorViewer
+
+  # region : For SummaryViewer
+
+  def put_down_configs(self, th):
+    assert isinstance(th, Config)
+    self._note.put_down_configs(th.key_options)
+
+  def put_down_criterion(self, name, value):
+    self._note.put_down_criterion(name, value)
+
+  def gather_to_summary(self):
+    import pickle
+    # Try to load note list into summaries
+    file_path = self.gather_summ_path
+    if os.path.exists(file_path):
+      with open(file_path, 'rb') as f: summary = pickle.load(f)
+      assert len(summary) > 0
+    else: summary = []
+    # Add note to list and save
+    summary.append(self._note)
+    with open(file_path, 'wb') as f:
+      pickle.dump(summary, f, pickle.HIGHEST_PROTOCOL)
+    # Show status
+    console.show_status('Note added to summaries ({} => {}) at `{}`'.format(
+      len(summary) - 1, len(summary), file_path))
+
+  # endregion : For SummaryViewer
+
   def take_notes(self, content, date_time=True, prompt=None):
     if not isinstance(content, str):
       raise TypeError('!! content must be a string')
@@ -199,20 +244,6 @@ class Agent(object):
       content = '{} {}'.format(time_str, content)
 
     self._note.write_line(content)
-
-  def put_down_configs(self, th):
-    assert isinstance(th, Config)
-    self._note._configs = th.key_options
-
-  def put_down_criterion(self, name, value):
-    self._note.put_down_criterion(name, value)
-
-  def take_down_params(self, scalars, params):
-    assert isinstance(scalars, dict) and isinstance(params, dict)
-    if hub.epoch_as_step and tfr.trainer.total_rounds is not None:
-      step = int(tfr.trainer.total_rounds * 1000)
-    else: step = self._model.counter
-    self._note.take_down_params(step, scalars, params)
 
   def export_notes(self, filename='notes'):
     assert hub.export_note
@@ -255,26 +286,7 @@ class Agent(object):
       f.writelines(content)
       # TODO: find a way to update immediately after training is over
 
-  def gather_to_summary(self):
-    import pickle
-    # Try to load note list into summaries
-    file_path = self.gather_summ_path
-    if os.path.exists(file_path):
-      with open(file_path, 'rb') as f: summary = pickle.load(f)
-      assert len(summary) > 0
-    else: summary = []
-    # Add note to list and save
-    summary.append(self._note)
-    with open(file_path, 'wb') as f:
-      pickle.dump(summary, f, pickle.HIGHEST_PROTOCOL)
-    # Show status
-    console.show_status('Note added to summaries ({} => {}) at `{}`'.format(
-      len(summary) - 1, len(summary), file_path))
-
-  def save_plot(self, fig, filename):
-    imtool.save_plt(fig, '{}/{}'.format(self.snapshot_dir, filename))
-
-  # endregion : Public Methods
+  # endregion : Public Methods for Note
 
   # region : Private Methods
 

@@ -10,30 +10,19 @@ class Note(object):
   """A Note is held be an agent"""
   def __init__(self):
     self._lines = []
-    # TODO: BETA
-    # Configurations and criteria
-    self._configs = {}
-    self._criteria = {}
-    # All lists below (may be as values of some dict) must have the same length
+
+    # All lists below must have the same length, these are for TENSOR VIEWER
     self._steps = []
     self._scalars = {}
-    self._parameters = {}
+    self._tensors = {}
+
+    # Configurations and criteria for SUMMARY VIEWER
+    self._configs = {}
+    self._criteria = {}
 
   # region : Properties
 
-  @property
-  def configs(self):
-    assert isinstance(self._configs, dict)
-    return self._configs
-
-  @property
-  def criteria(self):
-    assert isinstance(self._criteria, dict)
-    return self._criteria
-
-  @property
-  def content(self):
-    return '\n'.join(self._lines)
+  # region : For TensorViewer
 
   @property
   def loss_array(self):
@@ -47,28 +36,60 @@ class Note(object):
 
   @property
   def variable_dict(self):
-    return {k: v for k, v in self._parameters.items() if len(v[0].shape) > 1}
+    return {k: v for k, v in self._tensors.items() if len(v[0].shape) > 1}
+
+  # endregion : For TensorViewer
+
+  # region : For SummaryViewer
+
+  @property
+  def configs(self):
+    assert isinstance(self._configs, dict)
+    return self._configs
+
+  @property
+  def criteria(self):
+    assert isinstance(self._criteria, dict)
+    return self._criteria
+
+  # endregion : For SummaryViewer
+
+  @property
+  def content(self):
+    return '\n'.join(self._lines)
 
   # endregion : Properties
 
   # region : Public Methods
 
-  def write_line(self, line):
-    assert isinstance(line, str)
-    self._lines.append(line)
+  # region : For TensorViewer
 
-  def take_down_params(self, step, scalars, params):
-    assert isinstance(scalars, dict) and isinstance(params, dict)
+  def take_down_scalars_and_tensors(self, step, scalars, tensors):
+    assert isinstance(scalars, dict) and isinstance(tensors, dict)
     # Take down step
     self._steps.append(step)
     # Take down scalars
     self._append_to_dict(self._scalars, scalars)
     # Take down parameters
-    self._append_to_dict(self._parameters, params)
+    self._append_to_dict(self._tensors, tensors)
+
+  # endregion : For TensorViewer
+
+  # region : For SummaryViewer
+
+  def put_down_configs(self, config_dict):
+    assert isinstance(config_dict, dict)
+    self._configs = config_dict
 
   def put_down_criterion(self, name, value):
     assert isinstance(name, str) and np.isscalar(value)
     self._criteria[name] = value
+
+  # endregion : For SummaryViewer
+
+  def write_line(self, line):
+    assert isinstance(line, str)
+    self._lines.append(line)
 
   def save(self, file_name):
     self._check_before_dump()
@@ -97,7 +118,7 @@ class Note(object):
 
   def _check_before_dump(self):
     l = len(self._steps)
-    for dict_ in [self._scalars, self._parameters]:
+    for dict_ in [self._scalars, self._tensors]:
       for lst in dict_.values():
         assert isinstance(lst, list) and len(lst) == l
 

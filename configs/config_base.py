@@ -27,6 +27,7 @@ class Config(
   log_folder_name = Flag.string('logs', '...')
   ckpt_folder_name = Flag.string('checkpoints', '...')
   snapshot_folder_name = Flag.string('snapshots', '...')
+
   gather_file_name = Flag.string('gather.txt', '...')
   gather_summ_name = Flag.string('gather.sum', '...')
 
