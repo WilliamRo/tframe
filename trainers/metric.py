@@ -79,8 +79,12 @@ class Metric(TensorSlot):
   def end_round(self, rnd):
     new_record = False
     assert isinstance(self._metric_logs[-1], list)
-    metric_mean = np.mean(self._metric_logs.pop())
+    if len(self._metric_logs[-1]) == 0: return new_record
+
+    current_metrics = self._metric_logs.pop()
+    metric_mean = np.mean(current_metrics)
     self._metric_logs.append(metric_mean)
+
     trend = []
     for i in range(min(self.memory, len(self._metric_logs) - 1)):
       hist_mean = self._metric_logs[-(i + 2)]

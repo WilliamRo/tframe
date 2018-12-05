@@ -19,12 +19,13 @@ fork = 'fork'
 
 Generator = 'Generator'
 
+invisible = 'do_not_show'
+is_training = 'is_training'
+
 keep_prob = 'keep_prob'
 
 labels = 'labels'
 linear = 'linear'
-
-train_step_summaries = 'train_step_summaries '
 
 metric_name = 'metric_name'
 metric_foreach = 'metric_foreach'
@@ -35,8 +36,7 @@ prod = 'prod'
 pre_activation = 'pre_activation'
 post_activation = 'post_activation'
 
-invisible = 'do_not_show'
-is_training = 'is_training'
+responses = 'responses'
 
 sampling_frequency = 'sampling_frequency'
 spherical = 'spherical'
@@ -45,16 +45,17 @@ status_tensors = 'status_tensors'
 sum = 'sum'
 summaries = 'summaries'
 
-responses = 'responses'
-
 targets = 'targets'
+tensors_to_export = 'tensors_to_export'
 test = 'test'
 training = 'training'
+train_step_summaries = 'train_step_summaries '
 
 validation = 'validation'
 validation_summaries = 'validation_summaries'
 
 with_logits = 'with_logits'
+while_loop_lounge = 'while_loop_lounge '
 
 memo = {}
 

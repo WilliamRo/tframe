@@ -20,6 +20,10 @@ class NoteConfigs(object):
   note_cycle = Flag.integer(0, 'Note cycle')
   note_per_round = Flag.integer(0, 'Note per round')
 
+  # TODO: ++export_tensor
+  export_tensors_to_note = Flag.boolean(
+    False, 'Whether to export tensors to note')
+
 
   def smooth_out_note_configs(self):
     pass
