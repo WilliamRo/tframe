@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+from collections import OrderedDict
 
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -25,30 +26,30 @@ class VariableViewer(Frame):
     # Call parent's constructor
     Frame.__init__(self, master)
 
+    # Attributes
+    self._variable_dict = None
+    self._variable_names = None
+    self.related_criteria_figure = None
+
     # Layout
     self.figure = None
     self.subplot = None
     self.figure_canvas = None
     self.tk_canvas = None
+
     self.combo_box = None
     self._create_layout()
     self._color_bar = None
 
-    # Attributes
-    self._variable_dict = None
-    self._variable_names = None
-
-    self.related_loss_figure = None
-
     # Options
-    self.show_absolute_value = True
-    self.show_value = False
-    self.use_clim = True
+    self.show_absolute_value = True  # key_symbol: a
+    self.show_value = False          # key_symbol: v
+    self.use_clim = True             # key_symbol: c
 
   @property
   def index(self):
-    return (0 if self.related_loss_figure is None else
-            self.related_loss_figure.index)
+    return (0 if self.related_criteria_figure is None else
+            self.related_criteria_figure.cursor)
 
   # region : Public Methods
 
@@ -67,7 +68,7 @@ class VariableViewer(Frame):
     :param v_dict: a dict whose values are lists of numpy arrays
     """
     # Sanity check
-    assert isinstance(v_dict, dict) and len(v_dict) > 0
+    assert isinstance(v_dict, OrderedDict) and len(v_dict) > 0
     # Set variable dict
     self._variable_dict = v_dict
     self._variable_names = tuple(v_dict.keys())
@@ -77,8 +78,8 @@ class VariableViewer(Frame):
     self.refresh()
 
   def refresh(self):
-    if self._variable_dict is None:
-      return
+    if self._variable_dict is None: return
+
     # Clear axes (important!! otherwise the memory will not be released)
     self.subplot.cla()
     plt.setp(self.subplot, xticks=[], yticks=[])

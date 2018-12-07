@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import pickle
 import numpy as np
+from collections import OrderedDict
 
 
 class Note(object):
@@ -13,30 +14,34 @@ class Note(object):
 
     # All lists below must have the same length, these are for TENSOR VIEWER
     self._steps = []
-    self._scalars = {}
-    self._tensors = {}
+    self._scalars = OrderedDict()
+    self._tensors = OrderedDict()
 
     # Configurations and criteria for SUMMARY VIEWER
-    self._configs = {}
-    self._criteria = {}
+    self._configs = OrderedDict()
+    self._criteria = OrderedDict()
 
   # region : Properties
 
   # region : For TensorViewer
 
   @property
-  def loss_array(self):
-    key = 'Loss'
-    assert key in self._scalars.keys()
-    return np.array(self._scalars[key])
-
-  @property
   def step_array(self):
     return np.array(self._steps) / 1000
 
   @property
-  def variable_dict(self):
-    return {k: v for k, v in self._tensors.items() if len(v[0].shape) > 1}
+  def scalar_dict(self):
+    sd = OrderedDict()
+    for k, v in self._scalars.items():
+      sd[k] = np.array(v)
+    return sd
+
+  @property
+  def tensor_dict(self):
+    td = OrderedDict()
+    for k, v in self._tensors.items():
+      td[k] = v
+    return td
 
   # endregion : For TensorViewer
 

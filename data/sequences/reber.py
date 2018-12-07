@@ -287,7 +287,7 @@ class ERG(DataAgent):
 
     # TODO: ++export_tensors
     if hub.export_tensors_to_note:
-      ERG.export_tensors(RC, ERC, model, data)
+      ERG.export_tensors(RC_acc, ERC_acc, model, data)
 
     msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg

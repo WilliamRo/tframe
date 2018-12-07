@@ -25,9 +25,9 @@ class TensorViewer(Viewer):
   """Note Viewer for tframe NOTE"""
   SIZE = 500
 
-  def __init__(self, master=None, note_path=None, init_dir=None):
+  def __init__(self, note=None, note_path=None, init_dir=None, **kwargs):
     # Call parent's initializer
-    Viewer.__init__(self, master)
+    Viewer.__init__(self)
     self.master.resizable(False, False)
     # Attributes
     self.context = Context()
@@ -40,34 +40,32 @@ class TensorViewer(Viewer):
     self._bind_key_events()
 
     # Define layout and refresh
-    self._define_layout()
+    self._define_layout(**kwargs)
     self._global_refresh()
 
-    # If note_path is provided, try to load it
-    if note_path is not None and isinstance(note_path, str):
-      self.set_note_by_path(note_path)
+    # If note or note_path is provided, try to load it
+    if note is not None or note_path is not None:
+      self.set_note(note, note_path)
 
   # region : Public Methods
 
-  def set_note_by_path(self, note_path):
+  def set_note(self, note=None, note_path=None):
     # Set context
-    self.context.set_note_by_path(note_path)
+    self.context.set_note(note, note_path)
+
     # Set loss and variables
     assert isinstance(self.criteria_figure, CriteriaFigure)
-    self.criteria_figure.set_step_and_loss(
-      self.context.note.step_array, self.context.note.loss_array)
-    # TODO: somehow necessary
-    self.criteria_figure.refresh()
+    self.criteria_figure.set_context(
+      self.context.note.step_array, self.context.note.scalar_dict)
 
     assert isinstance(self.variable_viewer, VariableViewer)
-    self.variable_viewer.set_variable_dict(self.context.note.variable_dict)
-
-    # Relate loss figure and variable viewer
-    self.criteria_figure.related_variable_viewer = self.variable_viewer
-    self.variable_viewer.related_loss_figure = self.criteria_figure
+    self.variable_viewer.set_variable_dict(self.context.note.tensor_dict)
 
     # Global refresh
     self._global_refresh()
+
+    # TODO: somehow necessary
+    # self.criteria_figure.refresh()
 
   # endregion : Public Methods
 
@@ -78,11 +76,11 @@ class TensorViewer(Viewer):
     self.form.bind('<Key>', lambda e: key_events.on_key_press(self, e))
     self.form.bind('<Control-o>', lambda e: key_events.load_note(self, e))
 
-  def _define_layout(self):
+  def _define_layout(self, **kwargs):
     #
     CriteriaFigure.WIDTH = self.SIZE
     CriteriaFigure.HEIGHT = self.SIZE
-    self.criteria_figure = CriteriaFigure(self)
+    self.criteria_figure = CriteriaFigure(self, **kwargs)
     self.criteria_figure.pack(fill=tk.BOTH, side=tk.LEFT)
 
     #
@@ -90,6 +88,10 @@ class TensorViewer(Viewer):
     VariableViewer.HEIGHT = self.SIZE
     self.variable_viewer = VariableViewer(self)
     self.variable_viewer.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
+
+    # Relate loss figure and variable viewer
+    self.criteria_figure.related_variable_viewer = self.variable_viewer
+    self.variable_viewer.related_criteria_figure = self.criteria_figure
 
     # Pack self
     self.pack(fill=tk.BOTH, expand=True)

@@ -52,6 +52,6 @@ def load_note(viewer, _):
   )
   if file_path == '': return
   # Set note file to viewer
-  viewer.set_note_by_path(file_path)
+  viewer.set_note(note_path=file_path)
 
 

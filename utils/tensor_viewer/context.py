@@ -35,5 +35,20 @@ class Context(object):
     print('>> Loaded note file: {}'.format(self.note_file_name))
 
 
+  def set_note(self, note=None, note_path=None):
+    if note is not None:
+      assert isinstance(note, Note)
+      self.note = note
+      self.note_file_path = None
+    else:
+      assert isinstance(note_path, str)
+      self.set_note_by_path(note_path)
+
+    # Show the content of the note
+    print('-' * 79)
+    print(self.note.content)
+    print('-' * 79)
+
+
 if __name__ == '__main__':
   pass
