@@ -81,3 +81,33 @@ def convert_to_dense_labels(one_hot):
   return np.argmax(one_hot, axis=1)
 
 
+def ravel_nested_stuff(nested_stuff, with_indices=False):
+  # Sanity check
+  assert isinstance(nested_stuff, (list, tuple))
+
+  def ravel(stuff, base_indices=None):
+    raveled_stuff = []
+    indices_lists = []
+    is_root = base_indices is None
+    if is_root: base_indices = []
+    for i, s in enumerate(stuff):
+      leaf_index = base_indices + [i]
+      if not isinstance(s, (tuple, list)):
+        raveled_stuff.append(s)
+        indices_lists.append(leaf_index)
+      else:
+        rs, il = ravel(s, leaf_index)
+        raveled_stuff += rs
+        indices_lists += il
+
+    return raveled_stuff, indices_lists
+
+  raveled_stuff, indices = ravel(nested_stuff)
+  if with_indices: return raveled_stuff, indices
+  else: return raveled_stuff
+
+
+def transpose_tensor(tensor, perm):
+  assert isinstance(tensor, tf.Tensor)
+  perm += list(range(len(tensor.shape.as_list())))[len(perm):]
+  return tf.transpose(tensor, perm)

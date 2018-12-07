@@ -5,7 +5,6 @@ from __future__ import print_function
 import collections
 
 import tframe as tfr
-from tframe import hub
 
 from tframe.core import Slot, TensorSlot, NestedTensorSlot
 from tframe.core import SummarySlot, OperationSlot
@@ -33,7 +32,8 @@ class Group(object):
     fetches = []
     for slot in self._slots:
       if isinstance(slot, SummarySlot) and (
-          not slot.activated or not hub.summary or not allow_sum): continue
+          not slot.activated or not tfr.context.hub.summary or not allow_sum):
+        continue
       # if not slot.activated:
       #   raise AssertionError('!! {} must be activated'.format(slot.name))
       if slot.activated and not slot.sleep: fetches.append(slot)

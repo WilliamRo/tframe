@@ -8,6 +8,7 @@ from .flag import Flag
 class ModelConfigs(object):
 
   mark = Flag.string(None, 'Model identifier', is_key=True)
+  prefix = Flag.string(None, 'Prefix to mark')
   suffix = Flag.string(None, 'Suffix to mark')
   model = Flag.whatever(None, 'A function which returns a built model')
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)

@@ -1,4 +1,3 @@
-from .agent import Agent
 from .decorators import with_graph
 from .decorators import single_input
 from .decorators import init_with_graph
@@ -8,3 +7,5 @@ from .slots import Slot, TensorSlot, NestedTensorSlot
 from .slots import SummarySlot, OperationSlot, VariableSlot
 from .slots import IndependentSummarySlot
 from .group import Group
+
+from . import context

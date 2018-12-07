@@ -10,43 +10,42 @@ try:
   from PIL import ImageTk
 
   from tframe.utils.note import Note
-  from tframe.utils.note_viewer import key_events
-  from tframe.utils.note_viewer.context import Context
-  from tframe.utils.note_viewer.loss_figure import LossFigure
-  from tframe.utils.note_viewer.variable_viewer import VariableViewer
+  from tframe.utils.tensor_viewer import key_events
+  from tframe.utils.tensor_viewer.context import Context
+  from tframe.utils.tensor_viewer.criteria_figure import CriteriaFigure
+  from tframe.utils.tensor_viewer.variable_viewer import VariableViewer
 
   from tframe.utils.viewer_base.main_frame import Viewer
 except Exception as e:
   print(' ! {}'.format(e))
-  print(' ! NoteViewer is disabled, install pillow and tkinter to enable it')
+  print(' ! TensorViewer is disabled, install pillow and tkinter to enable it')
 
 
-class NoteViewer(Viewer):
+class TensorViewer(Viewer):
   """Note Viewer for tframe NOTE"""
-  SIZE = 400
+  SIZE = 500
 
   def __init__(self, master=None, note_path=None, init_dir=None):
-    # If root is not provided, load a default one
-    if master is None:
-      master = tk.Tk()
     # Call parent's initializer
     Viewer.__init__(self, master)
-
-    # Layout
-    self.loss_figure = None
-    self.variable_viewer = None
-    self._create_layout()
-
+    self.master.resizable(False, False)
     # Attributes
     self.context = Context()
     self.init_dir = init_dir
 
+    # Define layout
+    self.criteria_figure = None
+    self.variable_viewer = None
+    # Bind keys
+    self._bind_key_events()
+
+    # Define layout and refresh
+    self._define_layout()
+    self._global_refresh()
+
     # If note_path is provided, try to load it
     if note_path is not None and isinstance(note_path, str):
       self.set_note_by_path(note_path)
-
-    # Initialize viewer
-    self._init_viewer()
 
   # region : Public Methods
 
@@ -54,40 +53,37 @@ class NoteViewer(Viewer):
     # Set context
     self.context.set_note_by_path(note_path)
     # Set loss and variables
-    assert isinstance(self.loss_figure, LossFigure)
-    self.loss_figure.set_step_and_loss(
+    assert isinstance(self.criteria_figure, CriteriaFigure)
+    self.criteria_figure.set_step_and_loss(
       self.context.note.step_array, self.context.note.loss_array)
     # TODO: somehow necessary
-    self.loss_figure.refresh()
+    self.criteria_figure.refresh()
 
     assert isinstance(self.variable_viewer, VariableViewer)
     self.variable_viewer.set_variable_dict(self.context.note.variable_dict)
 
     # Relate loss figure and variable viewer
-    self.loss_figure.related_variable_viewer = self.variable_viewer
-    self.variable_viewer.related_loss_figure = self.loss_figure
+    self.criteria_figure.related_variable_viewer = self.variable_viewer
+    self.variable_viewer.related_loss_figure = self.criteria_figure
 
-    # Refresh title
-    self._refresh()
+    # Global refresh
+    self._global_refresh()
 
   # endregion : Public Methods
 
   # region : Private Methods
 
-  def _init_viewer(self):
+  def _bind_key_events(self):
     # Bind Key Events
     self.form.bind('<Key>', lambda e: key_events.on_key_press(self, e))
     self.form.bind('<Control-o>', lambda e: key_events.load_note(self, e))
 
-    # Refresh
-    self._refresh()
-
-  def _create_layout(self):
+  def _define_layout(self):
     #
-    LossFigure.WIDTH = self.SIZE
-    LossFigure.HEIGHT = self.SIZE
-    self.loss_figure = LossFigure(self)
-    self.loss_figure.pack(fill=tk.BOTH, side=tk.LEFT)
+    CriteriaFigure.WIDTH = self.SIZE
+    CriteriaFigure.HEIGHT = self.SIZE
+    self.criteria_figure = CriteriaFigure(self)
+    self.criteria_figure.pack(fill=tk.BOTH, side=tk.LEFT)
 
     #
     VariableViewer.WIDTH = self.SIZE
@@ -98,7 +94,7 @@ class NoteViewer(Viewer):
     # Pack self
     self.pack(fill=tk.BOTH, expand=True)
 
-  def _refresh(self):
+  def _global_refresh(self):
     # Refresh title
     title = 'Note Viewer'
     if self.context.note_file_name is not None:
@@ -110,7 +106,7 @@ class NoteViewer(Viewer):
 
 if __name__ == '__main__':
   # Avoid the module name being '__main__' instead of main_frame.py
-  from tframe.utils.note_viewer import main_frame
+  from tframe.utils.tensor_viewer import main_frame
   # Default file_path
   file_path = None
   init_dir = None
@@ -118,7 +114,7 @@ if __name__ == '__main__':
   # file_path += r'\d2_msu(off)3_bs5_lr0.01=1.000.note'
   # init_dir = r'E:/rnn_club/98-TOY/records_ms_off/notes'
   # viewer = main_frame.NoteViewer(note_path=file_path)
-  viewer = main_frame.NoteViewer(init_dir=init_dir)
+  viewer = main_frame.TensorViewer(init_dir=init_dir)
   viewer.show()
 
 

@@ -14,10 +14,10 @@ from tframe import pedia
 
 from tframe.enums import InputTypes
 from tframe.core import with_graph
-from tframe.core import Agent
 from tframe.core import TensorSlot, NestedTensorSlot
 from tframe.core import SummarySlot, OperationSlot, IndependentSummarySlot
 from tframe.core import Group
+from tframe.core.agent import Agent
 
 from tframe.trainers.metric import Metric
 from tframe.trainers.scheme import TrainScheme
@@ -39,6 +39,7 @@ class Model(object):
     # Model mark usually helps to decide the folder name
     self.mark = hub.mark or mark
     assert mark is not None
+    if hub.prefix is not None: self.mark = hub.prefix + self.mark
     if hub.suffix is not None: self.mark += hub.suffix
 
     # Each model has an agent to deal with some tensorflow stuff
@@ -367,6 +368,10 @@ class Model(object):
 
   # region : Public Methods
 
+  def run_for_tensors(self, tensors, data_batch):
+    # Sanity check
+    checker.check_type(tensors, tf.Tensor) and isinstance(data_batch, TFRData)
+
   def tune_lr(self, new_lr=None, coef=1.0):
     #TODO
     if self._optimizer is None:
@@ -399,46 +404,65 @@ class Model(object):
   def launch_model(self, overwrite=False):
     return self.agent.launch_model(overwrite)
 
+  def batch_evaluation(
+      self, fetches, data_set, batch_size=None, extractor=None):
+    # Sanity check
+    checker.check_type(fetches, tf.Tensor)
+    assert isinstance(data_set, TFRData)
+    fetches_is_single = not isinstance(fetches, (tuple, list))
+    # Wrap fetches into a list if necessary
+    if fetches_is_single: fetches = [fetches]
+
+    # Define outputs as list of arrays/list of arrays
+    outputs = [[] for _ in fetches]
+    for data_batch in self.get_data_batches(data_set, batch_size):
+      # Calculate output
+      data_batch = self._sanity_check_before_use(data_batch)
+      batch_outputs = self._get_active_tensor(data_batch, fetches)
+      assert isinstance(batch_outputs, (tuple, list))
+      # Extract if possible
+      if extractor is not None:
+        assert callable(extractor)
+        batch_outputs = [extractor(bo) for bo in batch_outputs]
+      # Add output to outputs accordingly
+      for output, batch_output in zip(outputs, batch_outputs):
+        assert isinstance(output, list)
+        if self.input_type is InputTypes.RNN_BATCH: output += batch_output
+        else: output.append(batch_output)
+
+    # Concatenate if possible
+    if self.input_type is InputTypes.BATCH:
+      outputs = [np.concatenate(o) for o in outputs]
+    # Return
+    if fetches_is_single: outputs = outputs[0]
+    return outputs
+
   # endregion : Public Methods
 
   # region : Private Methods
 
-  def _batch_evaluation(self, tensor, data_set, batch_size, extractor):
-    # Sanity check
-    assert isinstance(tensor, tf.Tensor) and isinstance(data_set, TFRData)
-
-    outputs = []
-    for data_batch in self.get_data_batches(data_set, batch_size):
-      # Calculate output
-      data_batch = self._sanity_check_before_use(data_batch)
-      output = self._get_active_tensor(data_batch, tensor)
-      # Extract if possible
-      if extractor is not None:
-        assert callable(extractor)
-        output = extractor(output)
-      # Add output to outputs accordingly
-      if self.input_type is InputTypes.RNN_BATCH: outputs += output
-      else: outputs.append(output)
-
-    # Concatenate if possible
-    if self.input_type is InputTypes.BATCH: outputs = np.concatenate(outputs)
-    return outputs
-
-  def _get_active_tensor(self, batch, tensor):
-    assert isinstance(batch, DataSet) and isinstance(tensor, tf.Tensor)
+  def _get_active_tensor(self, batch, fetches):
+    checker.check_type(fetches, tf.Tensor)
+    assert isinstance(batch, DataSet)
+    fetches_is_single = not isinstance(fetches, (tuple, list))
 
     feed_dict = self._get_default_feed_dict(batch, is_training=False)
-    output = self.session.run(tensor, feed_dict)
-    assert isinstance(output, np.ndarray)
+    values = self.session.run(fetches, feed_dict)
+    checker.check_type(values, np.ndarray)
+
+    # If values is a single element, wrap it into a list for potential slicing
+    if fetches_is_single: values = [values]
 
     al = batch.active_length
     if self.input_type is InputTypes.RNN_BATCH:
       if al is not None:
         assert isinstance(al, list) and len(al) == batch.size
-        output = [y[:l] for y, l in zip(output, al)]
-      else: output = [output]
+        outputs = [[y[:l] for y, l in zip(value, al)] for value in values]
+      else: outputs = [[value] for value in values]
+    else: outputs = values
 
-    return output
+    if fetches_is_single: outputs = outputs[0]
+    return outputs
 
   @with_graph
   def _get_default_feed_dict(self, batch, is_training):

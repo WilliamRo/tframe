@@ -10,6 +10,7 @@ import tframe as tfr
 
 from tframe import hub
 from tframe import console
+from tframe import context
 from tframe import pedia
 from tframe.configs.config_base import Config
 
@@ -181,8 +182,9 @@ class Agent(object):
   def write_summary(self, summary, step=None):
     if not hub.summary: return
     if step is None:
-      if hub.epoch_as_step and tfr.trainer.total_rounds is not None:
-        step = int(tfr.trainer.total_rounds * 1000)
+      assert context.trainer is not None
+      if hub.epoch_as_step and context.trainer.total_rounds is not None:
+        step = int(context.trainer.total_rounds * 1000)
       else: step = self._model.counter
     assert isinstance(self._summary_writer, tf.summary.FileWriter)
     self._summary_writer.add_summary(summary, step)
@@ -198,8 +200,8 @@ class Agent(object):
 
   def take_down_scalars_and_tensors(self, scalars, tensors):
     assert isinstance(scalars, dict) and isinstance(tensors, dict)
-    if hub.epoch_as_step and tfr.trainer.total_rounds is not None:
-      step = int(tfr.trainer.total_rounds * 1000)
+    if hub.epoch_as_step and context.trainer.total_rounds is not None:
+      step = int(context.trainer.total_rounds * 1000)
     else: step = self._model.counter
     self._note.take_down_scalars_and_tensors(step, scalars, tensors)
 
@@ -302,7 +304,9 @@ class Agent(object):
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph
     # self._graph.is_training = self._is_training
-    tfr.current_graph = self._graph
+    # assert context.current_graph is not None
+    context.current_graph = self._graph
+    # tfr.current_graph = self._graph
 
   def _check_bash(self):
     command = 'tensorboard --logdir=./logs/ --port={}'.format(hub.tb_port)

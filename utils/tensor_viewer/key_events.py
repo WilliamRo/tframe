@@ -7,23 +7,23 @@ from . import variable_viewer
 
 def on_key_press(viewer, event):
   # Sanity check
-  assert isinstance(viewer, centre.NoteViewer)
+  assert isinstance(viewer, centre.TensorViewer)
   assert isinstance(event, tk.Event)
   assert isinstance(viewer.variable_viewer, variable_viewer.VariableViewer)
 
   key_symbol = getattr(event, 'keysym')
   if key_symbol == 'h':
-    viewer.loss_figure.on_scroll('scroll', -1, None)
+    viewer.criteria_figure.on_scroll('scroll', -1, None)
   elif key_symbol == 'l':
-    viewer.loss_figure.on_scroll('scroll', 1, None)
+    viewer.criteria_figure.on_scroll('scroll', 1, None)
   elif key_symbol == 'n':
-    viewer.loss_figure.on_scroll('scroll', 1, 'tiny')
+    viewer.criteria_figure.on_scroll('scroll', 1, 'tiny')
   elif key_symbol == 'p':
-    viewer.loss_figure.on_scroll('scroll', -1, 'tiny')
+    viewer.criteria_figure.on_scroll('scroll', -1, 'tiny')
   elif key_symbol == 'H':
-    viewer.loss_figure.on_scroll('moveto', 0.0)
+    viewer.criteria_figure.on_scroll('moveto', 0.0)
   elif key_symbol == 'L':
-    viewer.loss_figure.on_scroll('moveto', 1.0)
+    viewer.criteria_figure.on_scroll('moveto', 1.0)
   elif key_symbol == 'j':
     viewer.variable_viewer.next_or_previous(1)
   elif key_symbol == 'k':
@@ -44,7 +44,7 @@ def on_key_press(viewer, event):
 
 def load_note(viewer, _):
   # Sanity check
-  assert isinstance(viewer, centre.NoteViewer)
+  assert isinstance(viewer, centre.TensorViewer)
   # Select file
   file_path = filedialog.askopenfilename(
     title='Load note file', filetypes=(('TFrame note files', '*.note'),),

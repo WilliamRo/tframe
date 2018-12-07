@@ -9,14 +9,13 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 
 import tkinter as tk
-from tkinter import ttk
 from tkinter import Frame
 
 if matplotlib.get_backend() != 'module://backend_interagg':
   matplotlib.use("TkAgg")
 
 
-class LossFigure(Frame):
+class CriteriaFigure(Frame):
   # Configurations of LossFigure widget
   WIDTH = 500
   HEIGHT = 400
@@ -27,20 +26,20 @@ class LossFigure(Frame):
     # Call parent's constructor
     Frame.__init__(self, master)
 
+    # Attributes
+    self._step = None
+    self._loss = None
+    self._index = None
+    self.related_variable_viewer = None
+
     # Layout
     self.figure = None
     self.subplot = None
     self.figure_canvas = None
     self.tk_canvas = None
     self.scroll_bar = None
+
     self._create_layout()
-
-    # Attributes
-    self._step = None
-    self._loss = None
-    self._index = None
-
-    self.related_variable_viewer = None
 
   # region : Properties
 
@@ -169,7 +168,7 @@ if __name__ == '__main__':
   root = tk.Tk()
   # root.geometry('500x600+400+100')
   root.bind('<Escape>', lambda _: root.quit())
-  lf = LossFigure(root)
+  lf = CriteriaFigure(root)
   lf.pack(fill=tk.BOTH)
   # lf.configure(bg='red', height=200)
   # lf.set_step_and_loss(t, loss)

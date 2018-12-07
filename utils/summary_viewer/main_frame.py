@@ -45,8 +45,8 @@ class SummaryViewer(Viewer):
 
     # Create layout and bind key events
     self._set_global_style()
-    self._create_layout()
     self._bind_key_events()
+    self._create_layout()
 
     # Try to load summary
     if summary_path is not None:

@@ -9,6 +9,7 @@ import tensorflow as tf
 import tframe as tfr
 
 from tframe import console
+from tframe import context
 from tframe.data.base_classes import TFRData
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.enums import InputTypes, SaveMode
@@ -57,8 +58,10 @@ class Trainer(object):
     self._record_count = 0
     self._warm_up = True
 
+    self.HubClass = TrainerHub
+
     # TODO
-    tfr.trainer = self
+    context.trainer = self
 
   # region : Properties
 
@@ -473,6 +476,9 @@ class TrainerHub(Config):
   trainer_class = Trainer
 
   def __init__(self, trainer=None, as_global=False):
+    # Call parent's constructor
+    Config.__init__(self, as_global)
+
     self.trainer = trainer
     self.record_rnd = 0
     # metric log is a list of list
@@ -486,9 +492,6 @@ class TrainerHub(Config):
 
     self.force_terminate = False
     self.logs = {}
-
-    # Call parent's constructor
-    Config.__init__(self, as_global)
 
   # region : Properties
 
@@ -548,10 +551,3 @@ class TrainerHub(Config):
     self._stop = True
 
   # endregion : Public Methods
-
-
-# Register trainer hub
-TrainerHub.register()
-Trainer.HubClass = TrainerHub
-
-

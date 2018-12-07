@@ -5,11 +5,10 @@ from __future__ import print_function
 from . import pedia
 from .enums import *
 
-from tframe.configs.config_base import Config
-
-# Register
-Config.register()
-hub = Config()
+from .import core
+from .core.context import context
+from .core.context import hub
+from .core.context import monitor
 
 from .utils import checker
 from .utils import console
@@ -20,17 +19,3 @@ from .import models
 
 from .models import Predictor
 from .models import Classifier
-
-from .import core
-
-from .monitor import Monitor
-monitor = Monitor()
-
-# TODO:
-trainer = None
-
-
-# Record graph bound to the last initiated model
-# TODO
-current_graph = None
-

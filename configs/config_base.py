@@ -23,6 +23,7 @@ class Config(
   MonitorConfigs,
   CloudConfigs
 ):
+  registered = False
 
   record_dir = Flag.string('records', 'Root path for records')
   log_folder_name = Flag.string('logs', '...')
@@ -62,6 +63,9 @@ class Config(
                                     ' command line')
 
   def __init__(self, as_global=False):
+    # Try to register flags into tensorflow
+    if not self.__class__.registered: self.__class__.register()
+
     if as_global:
       tfr.hub.redirect(self)
 

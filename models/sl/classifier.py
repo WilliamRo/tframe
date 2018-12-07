@@ -56,7 +56,7 @@ class Classifier(Predictor):
   def evaluate_model(self, data, batch_size=None, extractor=None,
                      export_false=False, **kwargs):
     console.show_status('Evaluating classifier ...')
-    results = self._batch_evaluation(
+    results = self.batch_evaluation(
       self.metric_foreach, data, batch_size, extractor)
     if self.input_type is InputTypes.RNN_BATCH:
       results = np.concatenate([y.flatten() for y in results])
@@ -87,7 +87,7 @@ class Classifier(Predictor):
 
   @with_graph
   def classify(self, data, batch_size=None, extractor=None, return_probs=False):
-    probs = self._batch_evaluation(
+    probs = self.batch_evaluation(
       self._probabilities.tensor, data, batch_size, extractor)
     if return_probs: return probs
 

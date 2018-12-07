@@ -6,7 +6,7 @@ import six
 
 import tensorflow as tf
 
-from tframe import hub
+import tframe as tfr
 from . import console
 
 
@@ -22,7 +22,7 @@ def check_path(*paths, create_path=True):
   for p in paths:
     path += ('/' if len(path) > 0 else '') + p
     if not os.path.exists(path):
-      if hub.should_create_path and create_path:
+      if tfr.context.hub.should_create_path and create_path:
         os.mkdir(path)
       else: raise AssertionError('!! directory {} does not exist'.format(path))
 
@@ -60,7 +60,7 @@ def load_checkpoint(path, session, saver):
     console.show_status("Loaded {}".format(ckpt_name))
     return True, counter
   else:
-    if hub.train and hub.save_model:
+    if tfr.context.hub.train and tfr.context.hub.save_model:
       console.show_status('New checkpoints will be created ...')
     else:
       console.warning('Can not found model checkpoint')

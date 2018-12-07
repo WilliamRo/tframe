@@ -5,9 +5,15 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
+from collections import OrderedDict
+
+import tframe as tfr
 from tframe import hub
 from tframe import checker
+from tframe import pedia
+from tframe import context
 from tframe.nets.net import Net
+from tframe.utils.misc import ravel_nested_stuff
 
 
 class RNet(Net):
@@ -17,6 +23,8 @@ class RNet(Net):
   # .. tensor with shape (num_steps(=1), batch_size, *(y.shape))
   # .. and returns (grads_and_vars, new_grad_buffer)
   compute_gradients = None
+
+  MEMORY_TENSOR_DICT = 'MEMORY_TENSOR_DICT'
 
   def __init__(self, name):
     # Call parent's constructor
@@ -43,20 +51,6 @@ class RNet(Net):
     self._custom_vars = None
 
   # region : Properties
-
-  @property
-  def custom_var_list(self):
-    assert self.linked
-    if self._custom_vars is not None:
-      assert isinstance(self._custom_vars, (set, list, tuple))
-      return list(self._custom_vars)
-    else:
-      return self.parameters
-
-  @property
-  def default_var_list(self):
-    assert self.linked
-    return list(set(self.parameters) - set(self.custom_var_list))
 
   @property
   def rnn_cells(self):
@@ -88,33 +82,6 @@ class RNet(Net):
 
     return self._init_state
 
-  @property
-  def gradient_buffer_placeholder(self):
-    if self._gradient_buffer_placeholder is not None: return self._gradient_buffer_placeholder
-    # Initiate gradient buffer
-    if self.is_root:
-      buffer = []
-      with tf.name_scope('GradientBuffer'):
-        for rnn_cell in self.rnn_cells:
-          if rnn_cell.compute_gradients is not None:
-            buffer.append(rnn_cell.gradient_buffer_placeholder)
-      self._gradient_buffer_placeholder = tuple(buffer)
-    else:
-      raise NotImplementedError('!! Properties not implemented.')
-
-    return self._gradient_buffer_placeholder
-
-  @property
-  def repeater_containers(self):
-    """TODO: BETA"""
-    assert self.is_root
-    rcs = []
-    for child in self.children:
-      assert isinstance(child, Net)
-      if isinstance(child, RNet) and child.compute_gradients is not None:
-        rcs.append(child)
-    return tuple(rcs)
-
   # endregion : Properties
 
   # region : Overriden Methods
@@ -130,11 +97,15 @@ class RNet(Net):
     # Check inputs
     if pre_outputs is not None:
       assert isinstance(pre_outputs, tuple)
-      if hub.use_rtrl:
-        # TODO: BETA
+      if hub.use_rtrl or hub.export_dy_ds:
+        # TODO: BETA & ++export_tensors
         assert len(pre_outputs) == 3
       else: assert len(pre_outputs) == 2
       pre_states = pre_outputs[1]
+
+      # TODO: ++export_tensors
+      if hub.export_dy_ds: self._register_memories(pre_states)
+
       # The assertion below is not held by rnn_cells
       assert isinstance(pre_states, (tuple, list))
       assert len(pre_states) == self.rnn_cell_num
@@ -163,6 +134,9 @@ class RNet(Net):
     # TODO: BETA
     if hub.use_rtrl:
       result_tuple += self._get_grad_tensor_tuple(output),
+    # TODO: ++export_tensors
+    if hub.export_tensors_to_note:
+      result_tuple += self._get_tensors_to_export(output),
 
     return result_tuple
 
@@ -212,32 +186,6 @@ class RNet(Net):
 
   # region : Private Methods
 
-  def _get_grad_tensor_tuple(self, y):
-    """TODO: BETA
-    :param y: output tensor (B, D)
-    :return: a tuple: (dy/dR1, ..., dy/dRn)
-    """
-    assert self.is_root
-    containers = self.repeater_containers
-    assert len(containers) > 0
-
-    mascot = tf.placeholder(dtype=tf.float32)
-
-    grad_tensors = []
-    y_size = y.get_shape().as_list()[1]
-    y_list = tf.split(y, num_or_size_splits=y.shape[1], axis=1)
-
-    for r in [c.repeater_tensors for c in containers]:
-      # r.shape is (B, D_r) while y.shape is (B, D_y)
-      assert isinstance(r, tf.Tensor)
-      dy_dr = []
-      for yi in y_list:
-        dyi_dr = tf.gradients(yi, r)[0]  # (B, R)
-        dy_dr.append(tf.expand_dims(dyi_dr, 1))  # (B, 1, R)
-      dy_dr = tf.concat(dy_dr, axis=1)  # (B, D, R)
-      grad_tensors.append(dy_dr)
-    return tuple(grad_tensors)
-
   def _get_zero_state(self, batch_size):
     if self.is_root:
       state_array = []
@@ -258,31 +206,6 @@ class RNet(Net):
       state = tuple(state)
       if len(state) == 1: state = state[0]
       return state
-
-  def _get_zero_gradient_buffer(self, batch_size):
-    if self.is_root:
-      buffer = []
-      for rnn_cell in self.rnn_cells:
-        if rnn_cell.compute_gradients is not None:
-          buffer.append(rnn_cell._get_zero_gradient_buffer(batch_size))
-      return tuple(buffer)
-    else:
-      # Get zero gradient buffer according to self.gradient buffer
-      buffer = []
-      for dS_dWj in self.gradient_buffer_placeholder:
-        assert isinstance(dS_dWj, tf.Tensor)
-        shape_list = dS_dWj.shape.as_list()
-        shape_list[0] = batch_size
-        buffer.append(np.zeros(shape=shape_list))
-      # for dsk_dws in self.gradient_buffer_placeholder:
-      #   np_dws = []
-      #   for dw in dsk_dws:
-      #     assert isinstance(dw, tf.tensor)
-      #     shape_list = dw.shape.as_list()
-      #     shape_list[0] = batch_size
-      #     np_dws.append(np.zeros(shape=shape_list))
-      #   buffer.append(tuple(np_dws))
-      return tuple(buffer)
 
   def _get_rnn_dict(self, batch_size=None):
     """Get state dict together with gradient buffer if necessary
@@ -440,4 +363,135 @@ class RNet(Net):
     return y, grad
 
   # endregion : Customized Ops
+
+  # region : Real-time recurrent learning
+
+  @property
+  def custom_var_list(self):
+    assert self.linked
+    if self._custom_vars is not None:
+      assert isinstance(self._custom_vars, (set, list, tuple))
+      return list(self._custom_vars)
+    else:
+      return self.parameters
+
+  @property
+  def default_var_list(self):
+    assert self.linked
+    return list(set(self.parameters) - set(self.custom_var_list))
+
+  @property
+  def gradient_buffer_placeholder(self):
+    if self._gradient_buffer_placeholder is not None: return self._gradient_buffer_placeholder
+    # Initiate gradient buffer
+    if self.is_root:
+      buffer = []
+      with tf.name_scope('GradientBuffer'):
+        for rnn_cell in self.rnn_cells:
+          if rnn_cell.compute_gradients is not None:
+            buffer.append(rnn_cell.gradient_buffer_placeholder)
+      self._gradient_buffer_placeholder = tuple(buffer)
+    else:
+      raise NotImplementedError('!! Properties not implemented.')
+
+    return self._gradient_buffer_placeholder
+
+  @property
+  def repeater_containers(self):
+    """TODO: BETA"""
+    assert self.is_root
+    rcs = []
+    for child in self.children:
+      assert isinstance(child, Net)
+
+      if (isinstance(child, RNet) and
+          getattr(child, 'compute_gradients', None) is not None):
+        rcs.append(child)
+    return tuple(rcs)
+
+  def _get_grad_tensor_tuple(self, y):
+    """TODO: BETA
+    :param y: output tensor (B, D)
+    :return: a tuple: (dy/dR1, ..., dy/dRn)
+    """
+    assert self.is_root
+    containers = self.repeater_containers
+    assert len(containers) > 0
+
+    mascot = tf.placeholder(dtype=tf.float32)
+
+    grad_tensors = []
+    y_size = y.get_shape().as_list()[1]
+    y_list = tf.split(y, num_or_size_splits=y.shape[1], axis=1)
+
+    for r in [getattr(c, 'repeater_tensor') for c in containers]:
+      # r.shape is (B, D_r) while y.shape is (B, D_y)
+      assert isinstance(r, tf.Tensor)
+      dy_dr = []
+      for yi in y_list:
+        dyi_dr = tf.gradients(yi, r)[0]  # (B, R)
+        dy_dr.append(tf.expand_dims(dyi_dr, 1))  # (B, 1, R)
+      dy_dr = tf.concat(dy_dr, axis=1)  # (B, D, R)
+      grad_tensors.append(dy_dr)
+    return tuple(grad_tensors)
+
+  def _get_zero_gradient_buffer(self, batch_size):
+    if self.is_root:
+      buffer = []
+      for rnn_cell in self.rnn_cells:
+        if rnn_cell.compute_gradients is not None:
+          buffer.append(rnn_cell._get_zero_gradient_buffer(batch_size))
+      return tuple(buffer)
+    else:
+      # Get zero gradient buffer according to self.gradient buffer
+      buffer = []
+      for dS_dWj in self.gradient_buffer_placeholder:
+        assert isinstance(dS_dWj, tf.Tensor)
+        shape_list = dS_dWj.shape.as_list()
+        shape_list[0] = batch_size
+        buffer.append(np.zeros(shape=shape_list))
+      return tuple(buffer)
+
+  # endregion : Real-time recurrent learning
+
+  # region : Export tensors TODO ++export_tensor
+
+  @property
+  def num_tensors_to_export(self):
+    if hub.use_default_s_in_dy_ds: return self.rnn_cell_num
+    else:
+      return len(context.get_collection_by_key(
+        RNet.MEMORY_TENSOR_DICT, val_type=dict))
+
+  @staticmethod
+  def _register_memories(pre_states):
+    """Register memory tensors as a dict into tfr.collections"""
+    if not hub.use_default_s_in_dy_ds: return
+    assert isinstance(pre_states, (list, tuple))
+    d = OrderedDict()
+    for tensor, index in zip(
+        *ravel_nested_stuff(pre_states, with_indices=True)):
+      assert isinstance(index, list)
+      key = 'S{}'.format('-'.join([str(i + 1) for i in index]))
+      d[key] = tensor
+    context.add_collection(RNet.MEMORY_TENSOR_DICT, d)
+
+  @staticmethod
+  def _get_tensors_to_export(output):
+    tensors = []
+    for s_name, s in context.get_collection_by_key(
+        RNet.MEMORY_TENSOR_DICT, val_type=dict).items():
+      tensor = tf.gradients(output, s, name=s_name)[0]
+      tensors.append(tensor)
+      key = 'dy/d{}'.format(s_name)
+      context.add_to_dict_collection(pedia.tensors_to_export, key, None)
+    return tuple(tensors)
+
+  @staticmethod
+  def _set_tensors_to_export(scan_output):
+    tensor_dict = context.get_collection_by_key(pedia.tensors_to_export)
+    for key, tensor in zip(tensor_dict.keys(), scan_output):
+      tensor_dict[key] = tensor
+
+  # endregion : Export tensors
 

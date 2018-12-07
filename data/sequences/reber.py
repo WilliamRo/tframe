@@ -6,9 +6,13 @@ import os
 import numpy as np
 import random
 from enum import Enum, unique
+from collections import OrderedDict
 
 from tframe import checker
 from tframe import console
+from tframe import context
+from tframe import hub
+from tframe import pedia
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.data.base_classes import DataAgent
 
@@ -224,7 +228,7 @@ class ERG(DataAgent):
   def amu18(data, trainer):
     """Probe method accepts trainer as the only parameter"""
     # region : Whatever
-    acc_thres = 0.80
+    acc_thres = 0.00 if hub.export_tensors_to_note else 0.8
     # Import
     import os
     from tframe.trainers.trainer import Trainer
@@ -281,10 +285,42 @@ class ERG(DataAgent):
       # Take it down
       trainer.model.agent.put_down_criterion('ERC', counter)
 
+    # TODO: ++export_tensors
+    if hub.export_tensors_to_note:
+      ERG.export_tensors(RC, ERC, model, data)
+
     msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg
 
   # endregion : Probe Methods
+
+  # region : Export tensor
+
+  @staticmethod
+  def export_tensors(RC, ERC, model, data):
+    agent = model.agent
+    # Randomly select several samples
+    num = 3
+    indices = list(range(num))
+    samples = data[indices]
+    erg_list = samples.properties['erg_list']
+
+    # Fetch tensors we need
+    fetches_dict = context.get_collection_by_key(pedia.tensors_to_export)
+    fetches = list(fetches_dict.values())
+    values = model.batch_evaluation(fetches, samples)
+    for i, value in enumerate(values):
+      assert isinstance(value, list) and len(value) == num
+      for j in range(num): value[j] = value[j].reshape(value[j].shape[1:])
+
+    # Take down
+    tensors = OrderedDict()
+    for name, value in zip(fetches_dict.keys(), values):
+      for i, v in enumerate(value):
+        tensors['[{}]{}({})'.format(erg_list[i], name, i + 1)] = v
+    agent.take_down_scalars_and_tensors({'RC': RC, 'ERC': ERC}, tensors)
+
+  # endregion : Export tensor
 
 
 if __name__ == '__main__':

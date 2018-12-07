@@ -44,6 +44,8 @@ class SmartTrainer(Trainer):
     self.th = SmartTrainerHub(self)
     self.lr = self.th.learning_rate
 
+    self.HubClass = SmartTrainerHub
+
   # region : Train
 
   def _sanity_check(self):
@@ -92,10 +94,10 @@ class SmartTrainerHub(TrainerHub):
   trainer_class = SmartTrainer
 
   def __init__(self, trainer=None, as_global=False):
-    # Append attributes
-    self.bad_apples = 0
     # Call parent's constructor
     TrainerHub.__init__(self, trainer, as_global=as_global)
+    # Append attributes
+    self.bad_apples = 0
     # Freeze options
     if self.smart_train: self._freeze_flags()
 
@@ -109,6 +111,3 @@ class SmartTrainerHub(TrainerHub):
     self.get_flag('save_mode').freeze(SaveMode.ON_RECORD)
     self.get_flag('early_stop').freeze(True)
 
-
-SmartTrainerHub.register()
-SmartTrainer.HubClass = SmartTrainerHub

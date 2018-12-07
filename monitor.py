@@ -4,8 +4,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+import tframe as tfr
 from tframe import pedia
-from tframe import hub
 from tframe.utils.misc import get_name_by_levels
 from tframe.core import OperationSlot, SummarySlot, TensorSlot, Group
 
@@ -30,6 +30,7 @@ class Monitor(object):
 
   @property
   def activated(self):
+    hub = tfr.context.hub
     return hub.monitor_grad or hub.monitor_weight or hub.monitor_postact
 
   # endregion : Properties
@@ -105,6 +106,7 @@ class Monitor(object):
     self._postact_lounge.append(tensor)
 
   def add_weight(self, weight):
+    hub = tfr.context.hub
     assert isinstance(weight, tf.Variable)
     # Monitor weight itself
     if hub.monitor_weight:
@@ -115,6 +117,7 @@ class Monitor(object):
 
   def init_monitor(self, model):
     from tframe.models import Model
+    hub = tfr.context.hub
     assert isinstance(model, Model)
     # (2) Post-activation reception
     with tf.name_scope('Post_Activation'):

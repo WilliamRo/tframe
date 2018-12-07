@@ -13,6 +13,8 @@ from tframe.layers import Input
 from tframe.core.decorators import with_graph
 from tframe.core import TensorSlot, NestedTensorSlot
 
+from tframe.utils.misc import transpose_tensor
+
 
 class Recurrent(Model, RNet):
   """Recurrent neural network base class"""
@@ -61,25 +63,30 @@ class Recurrent(Model, RNet):
     self.input_.set_group_shape((None, None))
     # Transpose input so as to fit the input of tf.scan
     input_placeholder = self.input_()
-    assert isinstance(input_placeholder, tf.Tensor)
-    perm = list(range(len(input_placeholder.shape.as_list())))
-    # elems.shape = [num_steps, batch_size, *sample_shape]
-    elems = tf.transpose(input_placeholder, [1, 0] + perm[2:])
+    elems = transpose_tensor(input_placeholder, [1, 0])
 
     # Pop last softmax if necessary
     last_softmax = self.pop_last_softmax()
     # Call scan to produce a dynamic op
     initializer = self._mascot, self.init_state
-    # TODO: BETA
     if hub.use_rtrl:
+      assert not hub.export_tensors_to_note
+      # TODO: BETA
       initializer += ((self._mascot,) * len(self.repeater_containers),)
       scan_outputs, state_sequences, grads = tf.scan(
         self, elems, initializer=initializer, name='Scan')
-
       self._grad_tensors = Recurrent._get_last_tensors(grads)
       # dL/dLast_output = None
       # self._last_scan_output = Recurrent._get_last_tensors(scan_outputs)
       self.last_scan_output = scan_outputs
+    elif hub.export_tensors_to_note:
+      # TODO: ++export_tensors
+      initializer += ((self._mascot,) * self.num_tensors_to_export,)
+      scan_outputs, state_sequences, tensors_to_export = tf.scan(
+        self, elems, initializer=initializer, name='Scan')
+      assert isinstance(tensors_to_export, (list, tuple))
+      self._set_tensors_to_export(
+        [transpose_tensor(t, [1, 0]) for t in tensors_to_export])
     else:
       scan_outputs, state_sequences = tf.scan(
         self, elems, initializer=initializer, name='Scan')
@@ -99,9 +106,7 @@ class Recurrent(Model, RNet):
     if hub.test_grad: self._update_group.add(self.grad_delta_slot)
 
     # Transpose scan outputs to get final outputs
-    assert isinstance(scan_outputs, tf.Tensor)
-    perm = list(range(len(scan_outputs.shape.as_list())))
-    outputs = tf.transpose(scan_outputs, [1, 0] + perm[2:])
+    outputs = transpose_tensor(scan_outputs, [1, 0])
 
     # Apply last softmax if necessary
     if last_softmax is not None:
