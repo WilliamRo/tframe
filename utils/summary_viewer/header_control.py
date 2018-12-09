@@ -7,6 +7,8 @@ import tkinter.ttk as ttk
 
 from .base_control import BaseControl
 
+from tframe.utils.tensor_viewer.main_frame import TensorViewer
+
 
 class HeaderControl(BaseControl):
 
@@ -52,6 +54,8 @@ class HeaderControl(BaseControl):
     # Pack label
     self.label_notes_info.pack(side=tk.LEFT, fill=tk.Y)
     self.label_note_detail.pack(side=tk.RIGHT, fill=tk.Y)
+    self.label_note_detail.bind(
+      '<Button-1>', lambda _: self.on_label_detail_click())
 
     # Pack self
     self.pack(fill=fill, side=side, expand=expand)
@@ -94,9 +98,22 @@ class HeaderControl(BaseControl):
     text += ' '
     self.label_note_detail.configure(text=text)
 
+    # Fancy stuff
+    note = self._notes_buffer[self._cursor]
+    if note.contain_tensors:
+      self.label_note_detail.configure(cursor='hand2', foreground='firebrick')
+    else:
+      self.label_note_detail.configure(cursor='arrow', foreground='black')
+
   # endregion : Private
 
   # region : Events
+
+  def on_label_detail_click(self):
+    note = self._notes_buffer[self._cursor]
+    if note.contain_tensors:
+      viewer = TensorViewer(note=note)
+      viewer.show()
 
   def move_cursor(self, offset):
     assert offset in (-1, 1)

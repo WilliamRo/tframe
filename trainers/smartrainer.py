@@ -111,3 +111,5 @@ class SmartTrainerHub(TrainerHub):
     self.get_flag('save_mode').freeze(SaveMode.ON_RECORD)
     self.get_flag('early_stop').freeze(True)
 
+SmartTrainerHub.register()
+

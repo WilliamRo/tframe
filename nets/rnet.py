@@ -62,6 +62,12 @@ class RNet(Net):
     return len(self.rnn_cells)
 
   @property
+  def memory_block_num(self):
+    return sum([1 if not isinstance(cell.init_state, (tuple, list))
+                else len(cell.init_state)
+                for cell in self.rnn_cells])
+
+  @property
   def init_state(self):
     if self._init_state is not None: return self._init_state
     # Initiate init_state
@@ -418,10 +424,10 @@ class RNet(Net):
     containers = self.repeater_containers
     assert len(containers) > 0
 
-    mascot = tf.placeholder(dtype=tf.float32)
+    # mascot = tf.placeholder(dtype=tf.float32)
 
     grad_tensors = []
-    y_size = y.get_shape().as_list()[1]
+    # y_size = y.get_shape().as_list()[1]
     y_list = tf.split(y, num_or_size_splits=y.shape[1], axis=1)
 
     for r in [getattr(c, 'repeater_tensor') for c in containers]:
@@ -458,7 +464,7 @@ class RNet(Net):
 
   @property
   def num_tensors_to_export(self):
-    if hub.use_default_s_in_dy_ds: return self.rnn_cell_num
+    if hub.use_default_s_in_dy_ds: return self.memory_block_num
     else:
       return len(context.get_collection_by_key(
         RNet.MEMORY_TENSOR_DICT, val_type=dict))

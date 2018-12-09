@@ -64,7 +64,8 @@ class Config(
 
   def __init__(self, as_global=False):
     # Try to register flags into tensorflow
-    if not self.__class__.registered: self.__class__.register()
+    if not self.__class__.registered:
+      self.__class__.register()
 
     if as_global:
       tfr.hub.redirect(self)
@@ -145,6 +146,7 @@ class Config(
     for name, flag in queue.items():
       if flag.should_register: flag.register(name)
       elif flag.name is None: flag.name = name
+    cls.registered = True
 
   def redirect(self, config):
     """Redirect self to config"""
@@ -180,3 +182,5 @@ class Config(
     return flag
 
   # endregion : Public Methods
+
+Config.register()

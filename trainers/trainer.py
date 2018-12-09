@@ -551,3 +551,5 @@ class TrainerHub(Config):
     self._stop = True
 
   # endregion : Public Methods
+
+TrainerHub.register()

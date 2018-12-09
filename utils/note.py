@@ -48,6 +48,11 @@ class Note(object):
   # region : For SummaryViewer
 
   @property
+  def contain_tensors(self):
+    if getattr(self, '_tensors', None) is None: return False
+    return len(self._tensors) > 0
+
+  @property
   def configs(self):
     assert isinstance(self._configs, dict)
     return self._configs

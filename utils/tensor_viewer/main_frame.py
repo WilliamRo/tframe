@@ -23,7 +23,7 @@ except Exception as e:
 
 class TensorViewer(Viewer):
   """Note Viewer for tframe NOTE"""
-  SIZE = 500
+  SIZE = 600
 
   def __init__(self, note=None, note_path=None, init_dir=None, **kwargs):
     # Call parent's initializer
@@ -98,7 +98,7 @@ class TensorViewer(Viewer):
 
   def _global_refresh(self):
     # Refresh title
-    title = 'Note Viewer'
+    title = 'Tensor Viewer'
     if self.context.note_file_name is not None:
       title += ' - {}'.format(self.context.note_file_name)
     self.form.title(title)

@@ -36,7 +36,7 @@ def on_key_press(viewer, event):
     flag = not viewer.variable_viewer.show_value
     viewer.variable_viewer.show_value = flag
     viewer.variable_viewer.refresh()
-  elif key_symbol == 'c':
+  elif key_symbol in ['c', 'space']:
     flag = not viewer.variable_viewer.use_clim
     viewer.variable_viewer.use_clim = flag
     viewer.variable_viewer.refresh()

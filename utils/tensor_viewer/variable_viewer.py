@@ -96,7 +96,7 @@ class VariableViewer(Frame):
       if self.show_absolute_value: v = np.abs(v)
       im.set_clim(np.min(v), np.max(v))
 
-    title = '|W|' if self.show_absolute_value else 'W'
+    title = '|T|' if self.show_absolute_value else 'T'
     title += '({}x{})'.format(variable.shape[0], variable.shape[1])
     self.subplot.set_title(title)
 

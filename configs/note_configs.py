@@ -22,7 +22,7 @@ class NoteConfigs(object):
 
   # TODO: ++export_tensors
   export_tensors_to_note = Flag.boolean(
-    False, 'Whether to export tensors to note')
+    False, 'Whether to export tensors to note', is_key=None)
   export_dy_ds = Flag.boolean(False, '...')
   use_default_s_in_dy_ds = Flag.boolean(True, '...')
 
