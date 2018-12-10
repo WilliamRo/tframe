@@ -192,7 +192,8 @@ class Ham(RNet):
 
     # endregion : Static Methods
 
-  def __init__(self, output_dim, memory_units=None, mem_config=None, **kwargs):
+  def __init__(self, output_dim, memory_units=None, mem_config=None,
+               use_mem_wisely=False, **kwargs):
     # Call parent's constructor
     RNet.__init__(self, self.net_name)
 
@@ -203,9 +204,32 @@ class Ham(RNet):
     checker.check_type(self.memory_units, Ham.MemoryUnit)
 
     self._state_size = sum([mu.size for mu in self.memory_units])
-
     self._activation = activations.get('tanh', **kwargs)
+
+    self._use_mem_wisely = use_mem_wisely
     self._kwargs = kwargs
+
+  @staticmethod
+  def recommended_cell_for_erg(output_size, short_size=8, long_size=4):
+    # Initialize memory unites
+    short_memory_unit = Ham.MemoryUnit(
+      size=short_size,
+      in_gate=True,
+      forget_gate=True,
+      out_gate=False,
+      act_mem=True,
+      fc_mem=True)
+    long_memory_unit = Ham.MemoryUnit(
+      size=long_size,
+      in_gate=True,
+      forget_gate=False,
+      out_gate=False,
+      act_mem=True,
+      fc_mem=False)
+    cell = Ham(output_dim=output_size,
+               memory_units=[short_memory_unit, long_memory_unit],
+               use_mem_wisely=True)
+    return cell
 
   @property
   def detail_string(self):
@@ -239,14 +263,21 @@ class Ham(RNet):
     assert isinstance(self.memory_units, list)
     new_s_list, s_out_list = [], []
     for i, mu, s in zip(range(len(pre_s_list)), self.memory_units, pre_s_list):
+      if mu.use_input_gate or mu.use_forget_gate or mu.use_output_gate:
+        if self._use_mem_wisely:
+          if i == 0 or i == 1: mem = pre_s_list[0]
+          else: mem = tf.concat(pre_s_list[:i], axis=1)
+        else: mem = s
       fc_mem = mu.fully_connect_memory
       # New memory
       with tf.variable_scope('memory_unit_{}'.format(i + 1)):
         s_bar = forward('s_bar', s, fc_mem, mu.size)
         # Input gate
-        if mu.use_input_gate: s_bar = gate('in_gate', s_bar, s, fc_mem)
+        if mu.use_input_gate: s_bar = gate(
+          'in_gate', s_bar, mem, fc_mem or self._use_mem_wisely)
         # Forget gate
-        prev_s = gate('forget_gate', s, s, fc_mem) if mu.use_forget_gate else s
+        prev_s = (gate('forget_gate', s, mem, fc_mem or self._use_mem_wisely)
+                  if mu.use_forget_gate else s)
         # Add prev_s and s_bar
         new_s = tf.add(prev_s, s_bar)
       new_s_list.append(new_s)
@@ -254,7 +285,8 @@ class Ham(RNet):
       # Memory for calculating output y
       with tf.variable_scope('s_out_{}'.format(i + 1)):
         s_out = self._activation(s) if mu.activate_memory else s
-        if mu.use_output_gate: s_out = gate('out_gate', s_out, s, fc_mem)
+        if mu.use_output_gate: s_out = gate(
+          'out_gate', s_out, mem, fc_mem or self._use_mem_wisely)
       s_out_list.append(s_out)
 
     new_s = tf.concat(new_s_list, axis=1, name='new_s')

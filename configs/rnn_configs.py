@@ -62,6 +62,8 @@ class RNNConfigs(object):
   long_fc_mem = Flag.boolean(
     False, 'Whether to fully connect memory for long-term memory units',
     is_key=None)
+  use_mem_wisely = Flag.boolean(
+    False, 'Whether to use memory in a wise way', is_key=None)
 
   # BETA:
   use_rtrl = Flag.boolean(

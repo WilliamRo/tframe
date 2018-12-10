@@ -314,11 +314,14 @@ class ERG(DataAgent):
       for j in range(num): value[j] = value[j].reshape(value[j].shape[1:])
 
     # Take down
+    scalars = OrderedDict()
+    scalars['RC'] = RC
+    scalars['ERC'] = ERC
     tensors = OrderedDict()
     for name, value in zip(fetches_dict.keys(), values):
       for i, v in enumerate(value):
         tensors['[{}]{}({})'.format(erg_list[i], name, i + 1)] = v
-    agent.take_down_scalars_and_tensors({'RC': RC, 'ERC': ERC}, tensors)
+    agent.take_down_scalars_and_tensors(scalars, tensors)
 
   # endregion : Export tensor
 
