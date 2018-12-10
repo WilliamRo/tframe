@@ -301,7 +301,7 @@ class ConfigPanel(BaseControl):
 
     # Set value for each inactive combobox
     for control in self.inactive_dict.values():
-      if control.is_common: continue
+      if control.is_common or control.name not in note.configs.keys(): continue
       control.set_value(note.configs[control.name])
 
   # endregion : Public Methods
