@@ -117,19 +117,32 @@ class Note(object):
 
   @staticmethod
   def _append_to_dict(dst, src):
-    assert isinstance(dst, dict) and isinstance(src, dict)
-    for key, value in src.items():
-      # If dst is empty, init the corresponding list
+    assert isinstance(dst, OrderedDict) and isinstance(src, OrderedDict)
+    for key, val in src.items():
+      # Init dst[key] if necessary
       if key not in dst.keys():
-        dst[key] = []
-      # Append value to dst[key]
-      assert isinstance(dst[key], list)
-      dst[key].append(value)
+        if isinstance(val, OrderedDict): dst[key] = OrderedDict()
+        else:
+          assert not isinstance(val, dict)
+          dst[key] = []
+      # Append
+      if isinstance(val, OrderedDict): Note._append_to_dict(dst[key], val)
+      else:
+        assert not isinstance(val, dict) and isinstance(dst[key], list)
+        dst[key].append(val)
+
+  @staticmethod
+  def _check_dict(target, l):
+    assert isinstance(target, OrderedDict)
+    for v in target.values():
+      if isinstance(v, OrderedDict):
+        Note._check_dict(v, l)
+      else:
+        assert isinstance(v, list) and len(v) == l
 
   def _check_before_dump(self):
     l = len(self._steps)
-    for dict_ in [self._scalars, self._tensors]:
-      for lst in dict_.values():
-        assert isinstance(lst, list) and len(lst) == l
+    self._check_dict(self._scalars, l)
+    self._check_dict(self._tensors, l)
 
   # endregion : Private Methods

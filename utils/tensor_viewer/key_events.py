@@ -25,9 +25,13 @@ def on_key_press(viewer, event):
   elif key_symbol == 'L':
     viewer.criteria_figure.on_scroll('moveto', 1.0)
   elif key_symbol == 'j':
-    viewer.variable_viewer.next_or_previous(1)
+    viewer.variable_viewer.next_or_previous(1, 1)
   elif key_symbol == 'k':
-    viewer.variable_viewer.next_or_previous(-1)
+    viewer.variable_viewer.next_or_previous(-1, 1)
+  elif key_symbol == 'J':
+    viewer.variable_viewer.next_or_previous(1, 0)
+  elif key_symbol == 'K':
+    viewer.variable_viewer.next_or_previous(-1, 0)
   elif key_symbol == 'a':
     flag = not viewer.variable_viewer.show_absolute_value
     viewer.variable_viewer.show_absolute_value = flag
@@ -40,6 +44,8 @@ def on_key_press(viewer, event):
     flag = not viewer.variable_viewer.use_clim
     viewer.variable_viewer.use_clim = flag
     viewer.variable_viewer.refresh()
+  elif key_symbol == 't':
+    pass
 
 
 def load_note(viewer, _):

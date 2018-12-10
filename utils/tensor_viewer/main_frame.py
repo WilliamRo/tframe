@@ -65,7 +65,7 @@ class TensorViewer(Viewer):
     self._global_refresh()
 
     # TODO: somehow necessary
-    # self.criteria_figure.refresh()
+    self.criteria_figure.refresh()
 
   # endregion : Public Methods
 

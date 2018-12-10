@@ -259,10 +259,10 @@ class Agent(object):
     writer.write('=' * 79 + '\n')
     writer.write(self._note.content + '\n')
     writer.close()
-    console.show_status('Note exported to `{}`'.format(file_path))
     # Export .note file
     file_path = '{}/{}.note'.format(self.note_dir, filename)
     self._note.save(file_path)
+    console.show_status('Note exported to `{}`'.format(file_path))
 
   def gather_notes(self, take_down_time=False):
     assert hub.gather_note

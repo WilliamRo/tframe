@@ -225,7 +225,7 @@ class ERG(DataAgent):
   # region : Probe Methods
 
   @staticmethod
-  def amu18(data, trainer):
+  def amu18(data, trainer, **kwargs):
     """Probe method accepts trainer as the only parameter"""
     # region : Whatever
     acc_thres = 0.00 if hub.export_tensors_to_note else 0.8
@@ -287,7 +287,7 @@ class ERG(DataAgent):
 
     # TODO: ++export_tensors
     if hub.export_tensors_to_note:
-      ERG.export_tensors(RC_acc, ERC_acc, model, data)
+      ERG.export_tensors(RC_acc, ERC_acc, model, data, **kwargs)
 
     msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg
@@ -297,30 +297,52 @@ class ERG(DataAgent):
   # region : Export tensor
 
   @staticmethod
-  def export_tensors(RC, ERC, model, data):
+  def export_tensors(RC, ERC, model, data, **kwargs):
     agent = model.agent
     # Randomly select several samples
-    num = 3
-    indices = list(range(num))
-    samples = data[indices]
-    erg_list = samples.properties['erg_list']
+    num = hub.sample_num
+    assert num > 0 and isinstance(num, int)
+    erg_list = data.properties['erg_list']
 
     # Fetch tensors we need
     fetches_dict = context.get_collection_by_key(pedia.tensors_to_export)
     fetches = list(fetches_dict.values())
-    values = model.batch_evaluation(fetches, samples)
-    for i, value in enumerate(values):
-      assert isinstance(value, list) and len(value) == num
-      for j in range(num): value[j] = value[j].reshape(value[j].shape[1:])
+    if not hub.calculate_mean: data = data[:num]
+    results = model.batch_evaluation(fetches, data)
+
+    # Get average dy/dS for short and long trigger
+    tensors = OrderedDict()
+    if hub.calculate_mean: tensors['Mean'] = OrderedDict()
+    examplar_names = []
+    for i in range(num):
+      name = '({}){}'.format(i + 1, erg_list[i])
+      tensors[name] = OrderedDict()
+      examplar_names.append(name)
+
+    # Generate tensor dict
+    for i, array_list in enumerate(results):
+      name = list(fetches_dict.keys())[i]
+      short_buffer = np.zeros_like(array_list[0][0][0])
+      long_buffer = np.zeros_like(array_list[0][0][0])
+      for j, array in enumerate(array_list):
+        if j < num: tensors[examplar_names[j]][name] = array[0]
+        if not hub.calculate_mean: continue
+        short_buffer += np.sum(array[0], axis=0) - array[0][-2]
+        long_buffer += array[0][-2]
+      # Calculate mean of short/long result
+      if not hub.calculate_mean: continue
+      short_mean = short_buffer / (sum(data.structure) - 2 * data.size)
+      long_mean = long_buffer / data.size
+      tensors['Mean'][name] = np.concatenate(
+        [short_mean.reshape([1, -1]), long_mean.reshape([1, -1])])
 
     # Take down
     scalars = OrderedDict()
+    loss_dict = kwargs['loss_dict']
+    loss = [v for k, v in loss_dict.items() if k.name == 'Loss'][0]
+    scalars['Loss'] = loss
     scalars['RC'] = RC
     scalars['ERC'] = ERC
-    tensors = OrderedDict()
-    for name, value in zip(fetches_dict.keys(), values):
-      for i, v in enumerate(value):
-        tensors['[{}]{}({})'.format(erg_list[i], name, i + 1)] = v
     agent.take_down_scalars_and_tensors(scalars, tensors)
 
   # endregion : Export tensor

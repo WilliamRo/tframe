@@ -36,7 +36,8 @@ class CriteriaFigure(Frame):
 
     # Layout
     self.figure = None
-    self.subplot = None
+    self.ax1 = None
+    self.ax2 = None
     self.figure_canvas = None
     self.tk_canvas = None
 
@@ -56,6 +57,16 @@ class CriteriaFigure(Frame):
   @property
   def cursor(self):
     return 0 if self._cursor is None else self._cursor
+
+  @property
+  def min_and_max(self):
+    v_min, v_max = None, None
+    for n, c in self._criteria.items():
+      if n == 'Loss': continue
+      _min, _max = np.min(c), np.max(c)
+      if v_max is None or _max > v_max: v_max = _max
+      if v_min is None or _min < v_min: v_min = _min
+    return v_min, v_max
 
   # endregion : Properties
 
@@ -85,33 +96,46 @@ class CriteriaFigure(Frame):
     self._set_slider()
 
     # Clear subplot
-    self.subplot.cla()
-    self.subplot.set_xlabel('Epoch')
-    self.subplot.set_ylabel('Criteria')
+    self.ax1.cla()
+    self.ax2.cla()
+    self.ax1.set_xlabel('Epoch')
+    self.ax1.set_ylabel('Criteria')
+    self.ax1.set_xlim(self._step[0], self._step[-1])
 
     # Plot criteria
     assert 0 <= self._cursor < len(self._step)
     step = self._step[self._cursor]
 
+    # Draw vertical line
+    v_min, v_max = self.min_and_max
+    if v_min is not None:
+      self.ax1.plot([step, step], [v_min, v_max], '--', color='silver')
+
     criterion_strings = []
-    mark_list = []
+    ax1_mark_list = []
     for name, criterion in self._criteria.items():
-      # Plot curve
-      self.subplot.plot(self._step, criterion)
-      # Get string and mark
       val = criterion[self._cursor]
       criterion_strings.append('{} = {:.3f}'.format(name, val))
-      mark_list += [step, val, 'rs']
-    self.subplot.legend(list(self._criteria.keys()), loc='best')
+      # Plot curve
+      if name == 'Loss':
+        self.ax2.plot(self._step, criterion, 'r-', label=name)
+        self.ax2.set_ylabel('Loss', color='r')
+        self.ax2.tick_params('y', colors='r')
+        self.ax2.plot(step, val, 'rs')
+      else:
+        self.ax1.plot(self._step, criterion, label=name)
+        ax1_mark_list += [step, val, 'rs']
 
     # Set title and plot markers
-    self.subplot.set_title(', '.join(criterion_strings))
-    self.subplot.plot(*mark_list)
+    self.ax1.set_title(', '.join(criterion_strings))
+    if len(ax1_mark_list) > 0:
+      self.ax1.legend(loc='best')
+      self.ax1.plot(*ax1_mark_list)
 
-    # Tight layout
-    # self.figure.tight_layout()
     # Draw update on canvas
     self.figure_canvas.draw()
+    # Tight layout
+    self.figure.tight_layout()
 
     # Refresh related variable viewer if necessary
     if self.related_variable_viewer is not None:
@@ -159,12 +183,14 @@ class CriteriaFigure(Frame):
     self.figure = plt.Figure()
     self.figure.set_facecolor('white')
 
-    self.subplot = self.figure.add_subplot(111)
-    self.subplot.set_xlabel('Epoch')
-    self.subplot.set_ylabel('Criteria')
+    self.ax1 = self.figure.add_subplot(111)
+    self.ax1.set_xlabel('Epoch')
+    self.ax1.set_ylabel('Criteria')
+
+    self.ax2= self.ax1.twinx()
 
     self.figure_canvas = FigureCanvasTkAgg(self.figure, self)
-    self.figure_canvas.show()
+    # self.figure_canvas.show()
 
     self.tk_canvas = self.figure_canvas.get_tk_widget()
     self.tk_canvas.configure(height=self.HEIGHT, width=self.WIDTH)
@@ -195,6 +221,7 @@ if __name__ == '__main__':
   criteria = OrderedDict()
   criteria['y_sin'] = np.sin(t)
   criteria['y_cos'] = np.cos(t)
+  criteria['Loss'] = t
 
   root = tk.Tk()
   root.bind('<Escape>', lambda _: root.quit())

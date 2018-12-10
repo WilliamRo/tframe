@@ -265,7 +265,7 @@ class Trainer(object):
       if self._validate_model(rnd) and self._save_model_when_record_appears:
         self._save_model(inter_cut=True)
       # Probe
-      self._run_probe()
+      self._run_probe(loss_dict)
       # Take snapshot TODO: merge snapshot to probe
       self._snapshot()
       # After probing, training process may be terminated
@@ -384,10 +384,10 @@ class Trainer(object):
     self.model.agent.take_down_scalars_and_tensors(
       scalars, tensors=self.model.parameters_dict)
 
-  def _run_probe(self):
+  def _run_probe(self, loss_dict):
     if self._probe is None or self.th.probe_cycle == 0: return False
     if np.mod(self.counter, self.th.probe_cycle) != 0: return False
-    content = self._probe(self)
+    content = self._probe(self, loss_dict=loss_dict)
     if content is None or content == '': return
     self._inter_cut(content, prompt='[Probe]', start_time=self.th.start_time)
 

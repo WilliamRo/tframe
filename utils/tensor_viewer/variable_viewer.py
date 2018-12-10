@@ -37,7 +37,7 @@ class VariableViewer(Frame):
     self.figure_canvas = None
     self.tk_canvas = None
 
-    self.combo_box = None
+    self.combo_boxes = []
     self._create_layout()
     self._color_bar = None
 
@@ -53,13 +53,17 @@ class VariableViewer(Frame):
 
   # region : Public Methods
 
-  def next_or_previous(self, step):
-    assert step in (1, -1)
-    assert isinstance(self._variable_names, tuple)
-    i = self._variable_names.index(self.combo_box.get()) + step
-    if i < 0 or i > len(self._variable_names) - 1: return
+  def next_or_previous(self, step, level):
+    assert step in (1, -1) and level in (0, 1)
+    if len(self.combo_boxes) == 1: level = 0
+    combo_box = self.combo_boxes[level]
+    name_list = self._variable_names[level]
+    assert isinstance(name_list, tuple)
+
+    i = name_list.index(combo_box.get()) + step
+    if i < 0 or i > len(name_list) - 1: return
     # Set combo box to next or previous entry
-    self.combo_box.set(self._variable_names[i])
+    combo_box.set(name_list[i])
     self.refresh()
 
   def set_variable_dict(self, v_dict):
@@ -71,9 +75,7 @@ class VariableViewer(Frame):
     assert isinstance(v_dict, OrderedDict) and len(v_dict) > 0
     # Set variable dict
     self._variable_dict = v_dict
-    self._variable_names = tuple(v_dict.keys())
-    self.combo_box.configure(value=self._variable_names)
-    self.combo_box.set(self._variable_names[0])
+    self._init_combo_boxes()
     # Refresh
     self.refresh()
 
@@ -83,8 +85,15 @@ class VariableViewer(Frame):
     # Clear axes (important!! otherwise the memory will not be released)
     self.subplot.cla()
     plt.setp(self.subplot, xticks=[], yticks=[])
+    # Get variable
+    target = self._variable_dict
+    for combo in self.combo_boxes:
+      assert isinstance(combo, ttk.Combobox)
+      target = target[combo.get()]
+    assert isinstance(target, (tuple, list))
+
     # Show image
-    variable = self._variable_dict[self.combo_box.get()][self.index]
+    variable = target[self.index]
     image = np.abs(variable) if self.show_absolute_value else variable
 
     # Show heat_map
@@ -92,7 +101,7 @@ class VariableViewer(Frame):
     if self.show_value: self._annotate_heat_map(im, variable)
     if self.use_clim:
       # TODO
-      v = self._variable_dict[self.combo_box.get()]
+      v = target
       if self.show_absolute_value: v = np.abs(v)
       im.set_clim(np.min(v), np.max(v))
 
@@ -126,14 +135,33 @@ class VariableViewer(Frame):
     self.tk_canvas.pack(fill=tk.BOTH)
 
     # Create label
-    label = ttk.Label(self, text=' Selected Variable :  ')
+    label = ttk.Label(self, text=' Selected Tensor :  ')
     label.pack(side=tk.LEFT)
 
-    # Create drop-down list
-    self.combo_box = ttk.Combobox(self)
-    self.combo_box.pack(side=tk.LEFT, fill=tk.X, expand=1)
-    self.combo_box.configure(state='readonly')
-    self.combo_box.bind('<<ComboboxSelected>>', lambda _: self.refresh())
+  def _init_combo_boxes(self):
+    """Currently at most 2 combo boxes are supported"""
+    # Clear old combo boxes
+    for combo in self.combo_boxes: combo.pack_forget()
+    self.combo_boxes = []
+
+    # Get hierarchical tensor names
+    assert isinstance(self._variable_dict, OrderedDict)
+    self._variable_names = []
+    self._variable_names.append(tuple(self._variable_dict.keys()))
+    val0 = tuple(self._variable_dict.values())[0]
+    while isinstance(val0, OrderedDict):
+      self._variable_names.append(tuple(val0.keys()))
+      val0 = tuple(val0.values())[0]
+
+    # Create and pack combo boxes
+    bind_combo = lambda c: c.bind(
+      '<<ComboboxSelected>>', lambda _: self.refresh())
+    for keys in self._variable_names:
+      combo = ttk.Combobox(self, state='readonly', value=keys)
+      combo.pack(side=tk.LEFT, fill=tk.X, expand=1)
+      combo.set(keys[0])
+      bind_combo(combo)
+      self.combo_boxes.append(combo)
 
   def _heat_map(self, variable, **kwargs):
     """
@@ -181,11 +209,14 @@ class VariableViewer(Frame):
 if __name__ == '__main__':
   w1 = np.random.random(size=(5, 5))
   w2 = np.random.random(size=(6, 8))
-  w_dict = {'w1': [w1], 'w2': [w2]}
+  w_dict = OrderedDict()
+  w_dict['w1'] = [w1]
+  w_dict['w2'] = [w2]
 
   root = tk.Tk()
   root.bind('<Escape>', lambda _: root.quit())
   vv = VariableViewer(root)
   vv.pack(fill=tk.BOTH)
   vv.set_variable_dict(w_dict)
+  vv.master.title('Variable Viewer')
   root.mainloop()

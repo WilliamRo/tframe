@@ -25,6 +25,7 @@ class NoteConfigs(object):
     False, 'Whether to export tensors to note', is_key=None)
   export_dy_ds = Flag.boolean(False, '...')
   use_default_s_in_dy_ds = Flag.boolean(True, '...')
+  calculate_mean = Flag.boolean(False, '...')
 
 
   def smooth_out_note_configs(self):
