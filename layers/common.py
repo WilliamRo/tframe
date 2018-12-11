@@ -226,6 +226,7 @@ class Input(Layer):
     self.dtype = hub.dtype if dtype is None else dtype
     self.name = name
     self.place_holder = None
+    # self.rnn_single_step_input = None
 
     self.set_group_shape(group_shape)
 
@@ -245,6 +246,7 @@ class Input(Layer):
 
 
   def _link(self, *args, **kwargs):
+    assert self.place_holder is None
     # This method is only accessible by Function.__call__ thus a None will
     #   be given as input
     assert len(args) == 0 and len(kwargs) == 0
@@ -256,6 +258,8 @@ class Input(Layer):
     tf.add_to_collection(pedia.default_feed_dict, input_)
     # Return placeholder
     self.place_holder = input_
+    # self.rnn_single_step_input = tf.reshape(
+    #   input_, [-1] + list(self.sample_shape))
     return input_
 
 

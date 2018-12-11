@@ -24,10 +24,12 @@ class NoteConfigs(object):
   export_tensors_to_note = Flag.boolean(
     False, 'Whether to export tensors to note', is_key=None)
   export_dy_ds = Flag.boolean(False, '...')
+  export_gates = Flag.boolean(False, '...')
   use_default_s_in_dy_ds = Flag.boolean(True, '...')
   calculate_mean = Flag.boolean(False, '...')
 
 
   def smooth_out_note_configs(self):
-    if self.export_dy_ds: self.export_tensors_to_note = True
+    if self.export_dy_ds or self.export_gates:
+      self.export_tensors_to_note = True
 

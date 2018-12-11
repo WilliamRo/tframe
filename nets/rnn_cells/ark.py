@@ -7,6 +7,8 @@ import tensorflow as tf
 from tframe import activations
 from tframe import initializers
 from tframe import checker
+from tframe import context
+from tframe import hub
 
 from tframe.nets import RNet
 
@@ -207,6 +209,7 @@ class Ham(RNet):
     self._activation = activations.get('tanh', **kwargs)
 
     self._use_mem_wisely = use_mem_wisely
+    self._truncate = kwargs.get('truncate', False)
     self._kwargs = kwargs
 
   @staticmethod
@@ -235,6 +238,11 @@ class Ham(RNet):
   def detail_string(self):
     return ''.join([m.detail_string for m in self.memory_units])
 
+  @property
+  def gate_number(self):
+    return sum([mu.use_input_gate + mu.use_forget_gate + mu.use_output_gate
+                for mu in self.memory_units])
+
   def structure_string(self, detail=True, scale=True):
     if detail: scale_string = '_{}'.format(self.output_dim)
     else: scale_string = '[{}]_{}'.format(
@@ -248,13 +256,17 @@ class Ham(RNet):
     def forward(name, memory, fc_mem, output_dim, activation=self._activation):
       assert output_dim is not None
       return self._neurons_forward_with_memory(
-        x, memory, name, activation, fc_mem, output_dim, use_bias=True)
+        x, memory, name, activation, fc_mem, output_dim, use_bias=True,
+        truncate=self._truncate)
 
-    def gate(name, tensor, memory, fc_mem):
+    def gate(name, tensor, memory, fc_mem, gate_name=None):
+      multiply = self._truncate_multiply if self._truncate else tf.multiply
       g = forward(
         name, memory, fc_mem, output_dim=self._get_external_shape(tensor),
         activation=tf.sigmoid)
-      return tf.multiply(g, tensor)
+      if gate_name is not None:
+        context.add_to_dict_collection(self.GATES_ACTIVATIONS, gate_name, g)
+      return multiply(g, tensor)
 
     # Prepare splitted memory
     pre_s_list = self._split_memory(pre_s_block)
@@ -273,11 +285,14 @@ class Ham(RNet):
       with tf.variable_scope('memory_unit_{}'.format(i + 1)):
         s_bar = forward('s_bar', s, fc_mem, mu.size)
         # Input gate
+        gate_name = 'in_gate_{}'.format(i + 1) if hub.export_gates else None
         if mu.use_input_gate: s_bar = gate(
-          'in_gate', s_bar, mem, fc_mem or self._use_mem_wisely)
+          'in_gate', s_bar, mem, fc_mem or self._use_mem_wisely, gate_name)
         # Forget gate
-        prev_s = (gate('forget_gate', s, mem, fc_mem or self._use_mem_wisely)
-                  if mu.use_forget_gate else s)
+        gate_name = 'forget_gate_{}'.format(i + 1) if hub.export_gates else None
+        prev_s = (
+          gate('forget_gate', s, mem, fc_mem or self._use_mem_wisely, gate_name)
+          if mu.use_forget_gate else s)
         # Add prev_s and s_bar
         new_s = tf.add(prev_s, s_bar)
       new_s_list.append(new_s)
@@ -285,8 +300,9 @@ class Ham(RNet):
       # Memory for calculating output y
       with tf.variable_scope('s_out_{}'.format(i + 1)):
         s_out = self._activation(s) if mu.activate_memory else s
+        gate_name = 'out_gate_{}'.format(i + 1) if hub.export_gates else None
         if mu.use_output_gate: s_out = gate(
-          'out_gate', s_out, mem, fc_mem or self._use_mem_wisely)
+          'out_gate', s_out, mem, fc_mem or self._use_mem_wisely, gate_name)
       s_out_list.append(s_out)
 
     new_s = tf.concat(new_s_list, axis=1, name='new_s')

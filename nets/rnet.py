@@ -25,6 +25,7 @@ class RNet(Net):
   compute_gradients = None
 
   MEMORY_TENSOR_DICT = 'MEMORY_TENSOR_DICT'
+  GATES_ACTIVATIONS = 'GATES_ACTIVATIONS'
 
   def __init__(self, name):
     # Call parent's constructor
@@ -103,7 +104,7 @@ class RNet(Net):
     # Check inputs
     if pre_outputs is not None:
       assert isinstance(pre_outputs, tuple)
-      if hub.use_rtrl or hub.export_dy_ds:
+      if hub.use_rtrl or hub.export_tensors_to_note:
         # TODO: BETA & ++export_tensors
         assert len(pre_outputs) == 3
       else: assert len(pre_outputs) == 2
@@ -305,31 +306,37 @@ class RNet(Net):
     if hub.use_rtrl:
       assert g_cursor == len(self._grad_tensors)
 
-  def _neurons_forward(self, x, name, f, output_dim=None, use_bias=True):
+  def _neurons_forward(
+      self, x, name, f, output_dim=None, use_bias=True, truncate=False):
     assert name is not None and callable(f)
     x_size = self._get_external_shape(x)
     dim = self._state_size if output_dim is None else output_dim
 
+    matmul = self._truncate_matmul if truncate else tf.matmul
     with tf.variable_scope(name):
       bias = self._get_bias('bias', dim) if use_bias else None
       W = self._get_variable('W', shape=[x_size, dim])
-      net = tf.nn.bias_add(tf.matmul(x, W), bias)
+      net = tf.nn.bias_add(matmul(x, W), bias)
       return f(net)
 
   def _neurons_forward_with_memory(
-      self, x, s, name, f, fc_mem, output_dim=None, use_bias=True):
+      self, x, s, name, f, fc_mem, output_dim=None, use_bias=True,
+      truncate=False):
     # If fully connect memory
     if fc_mem:
       return self._neurons_forward(
-        tf.concat([x, s], axis=1), name, f, output_dim, use_bias)
+        tf.concat([x, s], axis=1), name, f, output_dim, use_bias, truncate)
     # Otherwise
     x_size = self._get_external_shape(x)
     dim = self._state_size if output_dim is None else output_dim
+
+    matmul = self._truncate_matmul if truncate else tf.matmul
+    multiply = self._truncate_multiply if truncate else tf.multiply
     with tf.variable_scope(name):
       Wx = self._get_variable('Wx', shape=[x_size, dim])
-      net_x = tf.matmul(x, Wx)
+      net_x = matmul(x, Wx)
       Ws = self._get_variable('Ws', shape=[1, dim])
-      net_s = tf.multiply(s, Ws)
+      net_s = multiply(s, Ws)
       bias = self._get_bias('bias', dim) if use_bias else None
       net = tf.nn.bias_add(tf.add(net_x, net_s), bias)
       return f(net)
@@ -464,10 +471,20 @@ class RNet(Net):
 
   @property
   def num_tensors_to_export(self):
-    if hub.use_default_s_in_dy_ds: return self.memory_block_num
+    # For dy/dS
+    if hub.use_default_s_in_dy_ds:
+      num_dydS = self.memory_block_num
     else:
-      return len(context.get_collection_by_key(
-        RNet.MEMORY_TENSOR_DICT, val_type=dict))
+      # TODO: this doesn't work since rnet has not been built yet
+      num_dydS = len(context.get_collection_by_key(
+      RNet.MEMORY_TENSOR_DICT, True, val_type=dict))
+    # For gates
+    num_gates = 0
+    if hub.export_gates:
+      for cell in self.rnn_cells:
+        if hasattr(cell, 'gate_number'): num_gates += cell.gate_number
+    # Return
+    return num_dydS + num_gates
 
   @staticmethod
   def _register_memories(pre_states):
@@ -485,12 +502,18 @@ class RNet(Net):
   @staticmethod
   def _get_tensors_to_export(output):
     tensors = []
+    # For dy/dS
     for s_name, s in context.get_collection_by_key(
-        RNet.MEMORY_TENSOR_DICT, val_type=dict).items():
+        RNet.MEMORY_TENSOR_DICT, True, val_type=dict).items():
       tensor = tf.gradients(output, s, name=s_name)[0]
       tensors.append(tensor)
       key = 'dy/d{}'.format(s_name)
       context.add_to_dict_collection(pedia.tensors_to_export, key, None)
+    # For gates
+    for g_name, g in context.get_collection_by_key(
+      RNet.GATES_ACTIVATIONS, True, val_type=dict).items():
+      tensors.append(g)
+      context.add_to_dict_collection(pedia.tensors_to_export, g_name, None)
     return tuple(tensors)
 
   @staticmethod

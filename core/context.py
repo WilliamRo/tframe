@@ -76,6 +76,16 @@ class Context(object):
     if val_type is not None: assert isinstance(val, val_type)
     return val
 
+  def write_value(self, key, val):
+    self.add_collection(key, val)
+
+  def read_value(self, key, **kwargs):
+    if key not in self._center_od_.keys():
+      if 'default_value' in kwargs.keys():
+        return kwargs.get('default_value')
+      else: raise KeyError('!! Value with key `{}` not found.'.format(key))
+    else: return self._center_od_[key]
+
   # endregion : Public Methods
 
 

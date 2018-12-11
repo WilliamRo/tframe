@@ -28,7 +28,7 @@ class Recurrent(Model, RNet):
     self._default_net = self
     # Attributes
     self._state_slot = NestedTensorSlot(self, 'State')
-    self._grad_buffer_slot = NestedTensorSlot(self, 'GradBuffer')
+    # self._while_loop_free_output = None
     # mascot will be initiated as a placeholder with no shape specified
     # .. and will be put into initializer argument of tf.scan
     self._mascot = None
@@ -36,6 +36,7 @@ class Recurrent(Model, RNet):
     # TODO: BETA
     self.last_scan_output = None
     self.grad_delta_slot = NestedTensorSlot(self, 'GradDelta')
+    self._grad_buffer_slot = NestedTensorSlot(self, 'GradBuffer')
 
   # region : Properties
 
@@ -46,6 +47,15 @@ class Recurrent(Model, RNet):
   # endregion : Properties
 
   # region : Build
+
+  def _build_while_free(self):
+    """TODO: Deprecated for now"""
+    assert isinstance(self.input_, Input)
+    assert self.input_.rnn_single_step_input is not None
+    input_placeholder = self.input_.rnn_single_step_input
+    pre_outputs = (None, self.init_state)
+    if hub.use_rtrl or hub.export_tensors_to_note: pre_outputs += (None,)
+    self._while_loop_free_output = self(pre_outputs, input_placeholder)
 
   @with_graph
   def _build(self, **kwargs):
@@ -64,6 +74,9 @@ class Recurrent(Model, RNet):
     # Transpose input so as to fit the input of tf.scan
     input_placeholder = self.input_()
     elems = transpose_tensor(input_placeholder, [1, 0])
+
+    # Build outside while loop
+    # self._build_while_free()
 
     # Pop last softmax if necessary
     last_softmax = self.pop_last_softmax()
