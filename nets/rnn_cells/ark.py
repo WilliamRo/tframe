@@ -5,10 +5,11 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tframe import activations
-from tframe import initializers
 from tframe import checker
 from tframe import context
 from tframe import hub
+from tframe import initializers
+from tframe import regularizers
 
 from tframe.nets import RNet
 
@@ -194,8 +195,11 @@ class Ham(RNet):
 
     # endregion : Static Methods
 
-  def __init__(self, output_dim, memory_units=None, mem_config=None,
-               use_mem_wisely=False, **kwargs):
+  def __init__(self, output_dim,
+               memory_units=None, mem_config=None,
+               use_mem_wisely=False,
+               weight_regularizer=None,
+               **kwargs):
     # Call parent's constructor
     RNet.__init__(self, self.net_name)
 
@@ -210,6 +214,8 @@ class Ham(RNet):
 
     self._use_mem_wisely = use_mem_wisely
     self._truncate = kwargs.get('truncate', False)
+    self._weight_regularizer = regularizers.get(weight_regularizer, **kwargs)
+    # self._use_global_reg = kwargs.get('global_reg', False)
     self._kwargs = kwargs
 
   @staticmethod
@@ -257,7 +263,7 @@ class Ham(RNet):
       assert output_dim is not None
       return self._neurons_forward_with_memory(
         x, memory, name, activation, fc_mem, output_dim, use_bias=True,
-        truncate=self._truncate)
+        truncate=self._truncate, w_reg=self._weight_regularizer)
 
     def gate(name, tensor, memory, fc_mem, gate_name=None):
       multiply = self._truncate_multiply if self._truncate else tf.multiply

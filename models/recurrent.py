@@ -103,6 +103,8 @@ class Recurrent(Model, RNet):
     else:
       scan_outputs, state_sequences = tf.scan(
         self, elems, initializer=initializer, name='Scan')
+    # Calculate regularizaion losses
+    self._calculate_reg()
     # Activate state slot
     assert isinstance(self._state_slot, NestedTensorSlot)
 

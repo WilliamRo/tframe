@@ -101,7 +101,8 @@ class Predictor(Feedforward, Recurrent):
                              tf.summary.scalar('loss_sum', loss_tensor))
       # Try to add regularization loss
       reg_loss = self.regularization_loss
-      if reg_loss is not None: loss_tensor += reg_loss
+      if reg_loss is not None:
+        loss_tensor += reg_loss
       # Plug in
       self.loss.plug(loss_tensor)
 

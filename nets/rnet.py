@@ -26,6 +26,8 @@ class RNet(Net):
 
   MEMORY_TENSOR_DICT = 'MEMORY_TENSOR_DICT'
   GATES_ACTIVATIONS = 'GATES_ACTIVATIONS'
+  W_TO_REG = 'W_TO_REG'
+  REG_LOSSES = 'REG_LOSSES'
 
   def __init__(self, name):
     # Call parent's constructor
@@ -88,6 +90,12 @@ class RNet(Net):
         dtype=hub.dtype, shape=(None, self._state_size), name='init_state')
 
     return self._init_state
+
+  @property
+  def regularization_loss(self):
+    if not context.has_collection(self.REG_LOSSES): return None
+    reg_losses = context.get_collection_by_key(self.REG_LOSSES, val_type=list)
+    return tf.add_n(reg_losses)
 
   # endregion : Properties
 
@@ -307,7 +315,8 @@ class RNet(Net):
       assert g_cursor == len(self._grad_tensors)
 
   def _neurons_forward(
-      self, x, name, f, output_dim=None, use_bias=True, truncate=False):
+      self, x, name, f, output_dim=None, use_bias=True, truncate=False,
+      w_reg=None):
     assert name is not None and callable(f)
     x_size = self._get_external_shape(x)
     dim = self._state_size if output_dim is None else output_dim
@@ -316,16 +325,18 @@ class RNet(Net):
     with tf.variable_scope(name):
       bias = self._get_bias('bias', dim) if use_bias else None
       W = self._get_variable('W', shape=[x_size, dim])
+      if w_reg: context.add_to_dict_collection(self.W_TO_REG, W, w_reg)
       net = tf.nn.bias_add(matmul(x, W), bias)
       return f(net)
 
   def _neurons_forward_with_memory(
       self, x, s, name, f, fc_mem, output_dim=None, use_bias=True,
-      truncate=False):
+      truncate=False, w_reg=None):
     # If fully connect memory
     if fc_mem:
       return self._neurons_forward(
-        tf.concat([x, s], axis=1), name, f, output_dim, use_bias, truncate)
+        tf.concat([x, s], axis=1), name, f, output_dim, use_bias, truncate,
+        w_reg=w_reg)
     # Otherwise
     x_size = self._get_external_shape(x)
     dim = self._state_size if output_dim is None else output_dim
@@ -334,8 +345,11 @@ class RNet(Net):
     multiply = self._truncate_multiply if truncate else tf.multiply
     with tf.variable_scope(name):
       Wx = self._get_variable('Wx', shape=[x_size, dim])
+      if w_reg: context.add_to_dict_collection(self.W_TO_REG, Wx, w_reg)
       net_x = matmul(x, Wx)
+
       Ws = self._get_variable('Ws', shape=[1, dim])
+      if w_reg: context.add_to_dict_collection(self.W_TO_REG, Ws, w_reg)
       net_s = multiply(s, Ws)
       bias = self._get_bias('bias', dim) if use_bias else None
       net = tf.nn.bias_add(tf.add(net_x, net_s), bias)
@@ -521,6 +535,12 @@ class RNet(Net):
     tensor_dict = context.get_collection_by_key(pedia.tensors_to_export)
     for key, tensor in zip(tensor_dict.keys(), scan_output):
       tensor_dict[key] = tensor
+
+  def _calculate_reg(self):
+    if not context.has_collection(self.W_TO_REG): return
+    w_r = context.get_collection_by_key(self.W_TO_REG)
+    reg_losses = [reg(w) for w, reg in w_r.items()]
+    context.add_collection(self.REG_LOSSES, reg_losses)
 
   # endregion : Export tensors
 

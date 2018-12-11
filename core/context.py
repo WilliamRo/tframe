@@ -51,6 +51,10 @@ class Context(object):
 
   # region : Public Methods
 
+  def has_collection(self, key):
+    assert isinstance(key, str)
+    return key in self._center_od_.keys()
+
   def add_to_list_collection(self, name, val):
     collection = self.get_collection_by_key(name, True, list)
     collection.append(val)
