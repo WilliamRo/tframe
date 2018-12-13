@@ -119,6 +119,11 @@ def print_progress(index=None, total=None, start_time=None, progress=None):
   _cache['last_called'] = print_progress
 
 
+def split(splitter='-'):
+  num = int(79 / len(splitter))
+  print(num * splitter)
+
+
 @auto_clear
 def write_line(content):
   stdout.write("\r{}\n".format(content))

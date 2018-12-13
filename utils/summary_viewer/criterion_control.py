@@ -181,10 +181,9 @@ class CriterionControl(BaseControl):
     val_str = self.to_str(note.criteria[self.name])
     console.show_status( 'Logs of note with {} `{}`({}):'.format(
       'max' if find_max else 'min', self.name, val_str), '::')
-    splitter = '-' * 79
-    print('- ' * 40)
+    console.split()
     print(note.content)
-    print(splitter)
+    console.split()
 
     # Set sort condition to header control
     self.header.package = self.name, find_max

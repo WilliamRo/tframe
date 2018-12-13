@@ -35,7 +35,9 @@ class SummaryViewer(Viewer):
     # Attributes
     self.context = Context(
       kwargs.get('default_inactive_flags', ()),
-      kwargs.get('default_inactive_criteria', ()))
+      kwargs.get('default_inactive_criteria', ()),
+      kwargs.get('flags_to_ignore', ())
+    )
 
     # Layout
     self.header = HeaderControl(self)

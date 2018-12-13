@@ -22,6 +22,10 @@ def on_key_press(viewer, event):
     viewer.header.move_cursor(-1)
   elif key_symbol in ('l', 'j'):
     viewer.header.move_cursor(1)
+  elif key_symbol == 'space':
+    viewer.header.show_selected_note_content()
+  elif key_symbol == 'Return':
+    viewer.header.on_label_detail_click()
 
 
 def load_notes(viewer, _):

@@ -7,6 +7,7 @@ import tkinter.ttk as ttk
 
 from .base_control import BaseControl
 
+from tframe import console
 from tframe.utils.tensor_viewer.main_frame import TensorViewer
 
 
@@ -74,6 +75,13 @@ class HeaderControl(BaseControl):
     # self._notes_buffer = self.final_participants
     self._refresh_detail()
 
+  def show_selected_note_content(self):
+    if len(self._notes_buffer) == 0: return
+    console.show_status('Logs of selected note in header:')
+    console.split()
+    print(self._notes_buffer[self._cursor].content)
+    console.split()
+
   # region : Public Methods
 
   # region : Private
@@ -110,6 +118,7 @@ class HeaderControl(BaseControl):
   # region : Events
 
   def on_label_detail_click(self):
+    if len(self._notes_buffer) == 0: return
     note = self._notes_buffer[self._cursor]
     if note.contain_tensors:
       viewer = TensorViewer(note=note)
@@ -124,6 +133,8 @@ class HeaderControl(BaseControl):
     if cursor < 0: cursor += total
     elif cursor >= total: cursor -= total
     if cursor != self._cursor:
+      # TODO
+      self.master.config_panel.set_note(self._notes_buffer[cursor])
       self._cursor = cursor
       self._refresh_detail()
 

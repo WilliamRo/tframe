@@ -13,7 +13,8 @@ class Context(object):
   PRESET_INACTIVE_CRI = ('Total Rounds', 'Mean Record')
   PRESET_INACTIVE_CFG = ('export_tensors_to_note',)
 
-  def __init__(self, default_inactive_flags=(), default_inactive_criteria=()):
+  def __init__(self, default_inactive_flags=(), default_inactive_criteria=(),
+               flags_to_ignore=()):
     self.summary_file_path = None
     self.notes = []
 
@@ -27,6 +28,8 @@ class Context(object):
     self.inactive_criteria_set = set()
     self.default_inactive_criteria = default_inactive_criteria
     self.default_inactive_criteria += self.PRESET_INACTIVE_CRI
+
+    self.flags_to_ignore = flags_to_ignore
 
   # region : Properties
 
@@ -100,6 +103,8 @@ class Context(object):
 
   def _init_flags(self):
     intersection, union = self._get_intersection_and_union('configs')
+    intersection -= set(self.flags_to_ignore)
+    union -= set(self.flags_to_ignore)
 
     # Remove default inactive flags from intersection
     self.active_flag_set = intersection - intersection.intersection(

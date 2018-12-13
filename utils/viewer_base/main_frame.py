@@ -37,7 +37,7 @@ class Viewer(ttk.Frame):
     self.style = ttk.Style()
 
     # Bind default key events
-    self.form.bind('<Escape>', lambda e: self.form.quit())
+    self.form.bind('<Escape>', lambda e: self.form.destroy())
 
   # region : Public Methods
 
@@ -51,7 +51,10 @@ class Viewer(ttk.Frame):
     return style_name
 
   def show(self):
-    self.form.after(DELAY_TO_SHOW_MS, self._move_to_center)
+    def init():
+      self._move_to_center()
+      self.form.focus_force()
+    self.form.after(DELAY_TO_SHOW_MS, init)
     self.form.mainloop()
 
   # endregion : Public Methods
