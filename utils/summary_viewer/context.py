@@ -60,6 +60,23 @@ class Context(object):
     self._init_flags()
     self._init_criteria()
 
+  def reload(self):
+    if not isinstance(self.summary_file_path, str): return
+    pre_length = len(self.notes)
+    try:
+      with open(self.summary_file_path, 'rb') as f:
+        self.notes = pickle.load(f)
+      assert isinstance(self.notes, list)
+    except:
+      print('!! Failed to reload {}'.format(self.summary_file_path))
+      return
+    # Print status
+    print('>> Reloaded notes from `{}`'.format(self.summary_file_path))
+    delta = len(self.notes) - pre_length
+    assert delta >= 0
+    delta_str = 'No' if delta == 0 else '{}'.format(delta)
+    print('>> {} notes added.'.format(delta_str))
+
   # endregion : Public Methods
 
   # region : Private Methods

@@ -124,6 +124,7 @@ class SummaryViewer(Viewer):
     self.form.bind('<Control-o>', lambda e: key_events.load_notes(self, e))
     self.form.bind(
       '<Control-d>', lambda e: key_events.toggle_debug_mode(self, e))
+    self.form.bind('<Control-r>', lambda e: key_events.reload_notes(self))
 
   def _create_layout(self):
     # Header

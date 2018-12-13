@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import messagebox
 
 from tframe import console
 from . import main_frame as centre
@@ -55,6 +56,16 @@ def on_key_press_debug(viewer, key_symbol):
   elif key_symbol == 'd':
     print('[DEBUG] Stop here!')
   else: print('Unmapped key symbol: {}'.format(key_symbol))
+
+
+def reload_notes(viewer):
+  assert isinstance(viewer, centre.SummaryViewer)
+  if viewer.context.summary_file_path is None: return
+  if not messagebox.askokcancel('Reload Notes', 'Click OK to reload'): return
+  viewer.context.reload()
+  # Refresh
+  viewer.header.refresh()
+  viewer.local_refresh()
 
 
 def _show_widget_size(widget, level=0):
