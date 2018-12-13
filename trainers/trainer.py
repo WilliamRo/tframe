@@ -302,10 +302,7 @@ class Trainer(object):
     self.model.agent.show_notes()
     # Export notes if necessary
     if self.th.export_note:
-      filename = self.th.mark
-      if self.th.validation_on and self.metric.activated:
-        filename += '={:.3f}'.format(self.model.record)
-      self.model.agent.export_notes(filename)
+      self.model.agent.export_notes()
     # Gather notes if necessary
     if self.th.gather_note:
       self.model.agent.gather_notes()

@@ -90,6 +90,9 @@ class Context(object):
       else: raise KeyError('!! Value with key `{}` not found.'.format(key))
     else: return self._center_od_[key]
 
+  def has_value(self, key):
+    return self.has_collection(key)
+
   # endregion : Public Methods
 
 

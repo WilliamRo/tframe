@@ -5,6 +5,7 @@ cascade = 'cascade'
 classes = 'CLASSES'
 concat = 'concat'
 cross_entropy = 'cross_entropy'
+custom_loss_f = 'custom_loss_f'
 
 default = 'default'
 default_feed_dict = 'default_feed_dict '

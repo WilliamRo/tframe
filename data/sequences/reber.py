@@ -8,11 +8,14 @@ import random
 from enum import Enum, unique
 from collections import OrderedDict
 
+import tensorflow as tf
+
 from tframe import checker
 from tframe import console
 from tframe import context
 from tframe import hub
 from tframe import pedia
+from tframe.nets.rnet import RNet
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.data.base_classes import DataAgent
 
@@ -353,6 +356,47 @@ class ERG(DataAgent):
     agent.take_down_scalars_and_tensors(scalars, tensors)
 
   # endregion : Export tensor
+
+  # region : Customized losses
+
+  @staticmethod
+  def gate_loss_for_ham(net):
+    """Try to control the input_gate and output_gate of long-term units"""
+    assert isinstance(net, RNet)
+
+    # Get long-term unit gate tensors
+    tensors_to_export = context.get_collection_by_key(pedia.tensors_to_export)
+    gate_tensors = {k: v for k, v in tensors_to_export.items()
+                    if k in ('out_gate_1', 'in_gate_2', 'out_gate_2')}
+    long_in_gate, long_out_gate, short_out_gate = None, None, None
+    for k, v in gate_tensors.items():
+      assert isinstance(v, tf.Tensor)
+      dim = v.shape.as_list()[-1]
+      v_2d = tf.reshape(v, (-1, dim), name=k)
+      if k == 'out_gate_1': short_out_gate = v_2d
+      elif k == 'in_gate_2': long_in_gate = v_2d
+      elif k == 'out_gate_2': long_out_gate = v_2d
+
+    loss_tensor = None
+    update_loss = lambda v: v if loss_tensor is None else loss_tensor + v
+    def get_loss(gate, index):
+      assert isinstance(gate, tf.Tensor)
+      dim = gate.shape.as_list()[-1]
+      loss = tf.reduce_sum(gate) + dim - 2 * tf.reduce_sum(gate[index])
+      return loss
+    if long_in_gate is not None:
+      # long_in_gate[1] should be 1, others should be 0
+      loss_tensor = update_loss(get_loss(long_in_gate, 1))
+    if long_out_gate is not None:
+      # long_out_gate[-2] should be 1, others should be 0
+      loss_tensor = update_loss(get_loss(long_out_gate, -2))
+    if short_out_gate is not None:
+      # short_out_gate[-2] should be 0
+      loss_tensor = update_loss(tf.reduce_sum(short_out_gate[-2]))
+
+    return loss_tensor * hub.gate_loss_strength
+
+  # endregion : Customized losses
 
 
 if __name__ == '__main__':

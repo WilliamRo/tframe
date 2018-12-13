@@ -93,9 +93,11 @@ class RNet(Net):
 
   @property
   def regularization_loss(self):
-    if not context.has_collection(self.REG_LOSSES): return None
-    reg_losses = context.get_collection_by_key(self.REG_LOSSES, val_type=list)
-    return tf.add_n(reg_losses)
+    if self._reg_loss is not None: return self._reg_loss
+    if context.has_collection(self.REG_LOSSES):
+      reg_losses = context.get_collection_by_key(self.REG_LOSSES, val_type=list)
+      self._reg_loss = tf.add_n(reg_losses)
+    return self._reg_loss
 
   # endregion : Properties
 
@@ -379,13 +381,14 @@ class RNet(Net):
     """x is usually larger than W"""
     x_shape = x.shape.as_list()
     W_shape = W.shape.as_list()
-    assert len(x_shape) == len(W_shape) == 2 and W_shape[0] == 1
+    assert len(x_shape) == len(W_shape) == 2
+    # assert W_shape[0] == 1
     y = tf.multiply(x, W)
     def grad(dy):
       dx = tf.zeros_like(x)
       # dx = tf.multiply(dy, W)
       # dW = tf.gradients(y, W, grad_ys=dy)[0]
-      dW = tf.reduce_sum(tf.multiply(dy, x), axis=0, keep_dims=True)
+      dW = tf.reduce_sum(tf.multiply(dy, x), axis=0, keepdims=True)
       return dx, dW
     return y, grad
 

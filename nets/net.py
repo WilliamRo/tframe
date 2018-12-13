@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from tframe.core import Function
+from tframe import context
 from tframe.layers.layer import Layer
 from tframe.layers import Activation
 from tframe.layers import Input
@@ -46,6 +47,11 @@ class Net(Function):
     self._kwargs = kwargs
 
     self._logits_tensor = None
+
+    # Losses
+    self._extra_loss = None
+    self._reg_loss = None
+    self._customized_loss = None
 
   # region : Properties
 
@@ -200,7 +206,6 @@ class Net(Function):
     # Check interconnection type
     if self._inter_type not in (pedia.cascade,
                                 self.RECURRENT) or self.is_branch: result += ')'
-
     # Add output scale
     if self.is_root and not self._inter_type == pedia.fork:
       result += ' => output_{}'.format(self.children[-1]._output_scale)
@@ -210,10 +215,37 @@ class Net(Function):
 
   @property
   def regularization_loss(self):
+    if self._reg_loss is not None: return self._reg_loss
+
     reg_losses = tf.get_collection(
       pedia.tfkey.regularization_losses, self.name)
-    return (None if len(reg_losses) == 0
-            else tf.add_n(reg_losses, name='reg_sum'))
+    if len(reg_losses) > 0:
+      self._reg_loss = tf.add_n(reg_losses, name='reg_sum')
+    return self._reg_loss
+
+  @property
+  def customized_loss(self):
+    if self._customized_loss is not None: return self._customized_loss
+
+    f = context.read_value(pedia.custom_loss_f, default_value=None)
+    if callable(f): self._customized_loss = f(self)
+
+    if self._customized_loss is not None:
+      assert isinstance(self._customized_loss, tf.Tensor)
+    return self._customized_loss
+
+  @property
+  def extra_loss(self):
+    if self._extra_loss is not None: return self._extra_loss
+    add = lambda v: v if self._extra_loss is None else self._extra_loss + v
+
+    if self.regularization_loss is not None:
+      self._extra_loss = add(self.regularization_loss)
+
+    if self.customized_loss is not None:
+      self._extra_loss = add(self.customized_loss)
+
+    return self._extra_loss
 
   # endregion : Properties
 

@@ -207,6 +207,7 @@ class Ham(RNet):
     self.output_dim = output_dim
     self.memory_units = (self.MemoryUnit.parse_units(mem_config) if
                          memory_units is None else memory_units)
+    self.memory_units = [mu for mu in self.memory_units if mu.size > 0]
     checker.check_type(self.memory_units, Ham.MemoryUnit)
 
     self._state_size = sum([mu.size for mu in self.memory_units])
@@ -257,6 +258,7 @@ class Ham(RNet):
     if scale: return self.net_name + scale_string
     else: return self.net_name
 
+  # region : Private Methods
 
   def _link(self, pre_s_block, x, **kwargs):
     def forward(name, memory, fc_mem, output_dim, activation=self._activation):
@@ -319,11 +321,16 @@ class Ham(RNet):
 
     return y, new_s
 
-
   def _split_memory(self, s):
     assert isinstance(s, tf.Tensor)
     size_splits = [m.size for m in self.memory_units]
     return tf.split(s, num_or_size_splits=size_splits, axis=1)
+
+  # endregion : Private Methods
+
+  # region : Public Methods
+
+  # endregion : Public Methods
 
 
 class Japheth(RNet):

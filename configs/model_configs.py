@@ -33,4 +33,7 @@ class ModelConfigs(object):
 
   output_size = Flag.integer(0, 'Output dimension for a single layer',
                              is_key=None)
+  add_customized_loss = Flag.boolean(False, 'Whether to add customized loss',
+                                     is_key=None)
+  gate_loss_strength = Flag.float(0.01, 'Strength for gate loss', is_key=None)
 

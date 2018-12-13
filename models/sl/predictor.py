@@ -99,10 +99,10 @@ class Predictor(Feedforward, Recurrent):
       if hub.summary:
         tf.add_to_collection(pedia.train_step_summaries,
                              tf.summary.scalar('loss_sum', loss_tensor))
-      # Try to add regularization loss
-      reg_loss = self.regularization_loss
-      if reg_loss is not None:
-        loss_tensor += reg_loss
+      # Try to add extra loss which is calculated by the corresponding net
+      # .. regularization loss is included
+      if self.extra_loss is not None:
+        loss_tensor += self.extra_loss
       # Plug in
       self.loss.plug(loss_tensor)
 

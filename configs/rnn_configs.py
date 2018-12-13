@@ -64,6 +64,7 @@ class RNNConfigs(object):
     is_key=None)
   use_mem_wisely = Flag.boolean(
     False, 'Whether to use memory in a wise way', is_key=None)
+  train_gates = Flag.boolean(False, 'Whether to train gates', is_key=None)
 
   # BETA:
   use_rtrl = Flag.boolean(
