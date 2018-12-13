@@ -18,6 +18,14 @@ WISDOMS_WITH_QUOTES = (
    '<Hercules>'),
   ("The greater the obstacle, the more glory in overcoming it.",
    "Moliere"),
+  ("Freedom lies in being bold.",
+   "Robert Frost"),
+  ("You've got to get up every morning with determination if you're going"
+   " to go to bed with satisfaction",
+   "George Horace Lorimer"),
+  ("He who is not everyday conquering some fear has not learned the secret of "
+   "life.",
+   "Emerson"),
 )
 
 
