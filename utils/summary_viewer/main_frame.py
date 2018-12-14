@@ -68,7 +68,9 @@ class SummaryViewer(Viewer):
     # h_header = self.header.winfo_height()
     h_header = 31
     h_configs = self.config_panel.minimum_height
-    return padding * 2 + h_header + h_configs
+    h_criteria = self.criteria_panel.minimum_height
+    h_main = max(h_configs, h_criteria)
+    return padding * 2 + h_header + h_main
 
   # endregion : Properties
 

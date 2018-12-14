@@ -219,6 +219,11 @@ class CriteriaPanel(BaseControl):
   def final_participants(self):
     return self._filter(self.config_panel.selected_notes)
 
+  @property
+  def minimum_height(self):
+    h_hidden = 48
+    h_each_control = 48
+    return h_hidden + len(self.explicit_dict) * h_each_control
   # endregion : Properties
 
   # region : Public Methods
