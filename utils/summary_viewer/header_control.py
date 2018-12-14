@@ -91,7 +91,7 @@ class HeaderControl(BaseControl):
     if self.package is None: return
     key, reverse = self.package
     self._notes_buffer.sort(key=lambda n: n.criteria[key], reverse=reverse)
-    self.package = None
+    # self.package = None
 
   def _refresh_detail(self):
     if len(self._notes_buffer) == 0:
