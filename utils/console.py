@@ -130,6 +130,11 @@ def write_line(content):
   stdout.flush()
 
 
+def write(content):
+  stdout.write(content)
+  stdout.flush()
+
+
 def set_logging_level(level):
   """
   Set tensorflow logging level 
@@ -147,3 +152,14 @@ def execute_py(path, **kwargs):
   os.system('python {} {}'.format(path, ' '.join(
     ['--{} {}'.format(k, kwargs[k]) for k in kwargs.keys()])))
 
+
+def read(msg, with_enter=True):
+  assert isinstance(msg, str)
+  if with_enter:
+    return input(msg)
+  else:
+    import msvcrt
+    write(msg)
+    char = str(msvcrt.getch())[2]
+    print()
+    return char

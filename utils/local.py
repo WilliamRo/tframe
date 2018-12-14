@@ -77,3 +77,65 @@ def write_file(path, content, append=False):
   f = open(path, mode)
   f.write(content)
   f.close()
+
+
+def wizard(extension, current_dir=None, max_depth=1, input_with_enter=True):
+  assert isinstance(max_depth, int) and max_depth >= 0
+  assert isinstance(extension, str) and len(extension) > 0
+
+  input = lambda msg: console.read(msg, input_with_enter)
+
+  # targets = []
+  is_file = lambda name: '.' in name
+  is_target = lambda name: is_file(name) and name.split('.')[-1] == extension
+  def contain_target(dir, max_depth):
+    full_path = lambda f: os.path.join(dir, f)
+    for file in os.listdir(dir):
+      if is_file(file):
+        if is_target(file): return True
+      elif max_depth > 0 and contain_target(full_path(file), max_depth - 1):
+        return True
+    return False
+  def search(dir, max_depth):
+    targets = []
+    full_path = lambda f: os.path.join(dir, f)
+    for file in os.listdir(dir):
+      if not is_file(file):
+        if max_depth > 0 and contain_target(full_path(file), max_depth - 1):
+          targets.append(file)
+      elif is_target(file): targets.append(file)
+    return targets
+
+  if current_dir is None: current_dir = os.getcwd()
+  dir_stack = []
+  selected_file = None
+  while selected_file is None:
+    targets = search(current_dir, max_depth - len(dir_stack))
+    if len(targets) == 0:
+      console.show_status('Can not find targets in `{}`'.format(current_dir))
+      return None
+    # Print targets
+    console.show_status('Current directory is `{}`'.format(current_dir))
+    for i, t in enumerate(targets):
+      console.supplement('[{}] {}'.format(i + 1, t))
+    selection = input('=> Please input: ')
+    while True:
+      if selection in ('..', '0') and len(dir_stack) > 0:
+        current_dir = dir_stack.pop(-1)
+        break
+      elif selection == 'q': quit()
+      elif selection in [str(i + 1) for i in range(len(targets))]:
+        file = targets[int(selection) - 1]
+        if is_target(file):
+          selected_file = os.path.join(current_dir, file)
+        else:
+          path = os.path.join(current_dir, file)
+          dir_stack.append(path)
+          current_dir = path
+        break
+      else:
+        selection = input(
+        '=> Invalid input `{}`, please input again: '.format(selection))
+
+  return selected_file
+
