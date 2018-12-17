@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import re
 import pickle
+from collections import OrderedDict
 from tframe.utils.note import Note
 
 
@@ -13,7 +14,9 @@ class Context(object):
   PRESET_INACTIVE_CRI = ('Total Rounds', 'Mean Record')
   PRESET_INACTIVE_CFG = ('export_tensors_to_note',)
 
-  def __init__(self, default_inactive_flags=(), default_inactive_criteria=(),
+  def __init__(self,
+               default_inactive_flags=(),
+               default_inactive_criteria=(),
                flags_to_ignore=()):
     self.summary_file_path = None
     self.notes = []
@@ -22,7 +25,7 @@ class Context(object):
     self.inactive_flag_set = set()
     self.default_inactive_flags = default_inactive_flags
     self.default_inactive_flags += self.PRESET_INACTIVE_CFG
-    self.flag_value_dict = dict()
+    self.flag_value_dict = OrderedDict()
 
     self.active_criteria_set = set()
     self.inactive_criteria_set = set()
@@ -39,6 +42,22 @@ class Context(object):
     if self.summary_file_path is None: return None
     assert isinstance(self.summary_file_path, str)
     return '/'.join(re.split(r'/|\\', self.summary_file_path)[-last_level:])
+
+  @property
+  def active_flag_list(self):
+    return self._set2list(self.active_flag_set)
+
+  @property
+  def inactive_flag_list(self):
+    return self._set2list(self.inactive_flag_set)
+
+  @property
+  def active_criteria_list(self):
+    return self._set2list(self.active_criteria_set)
+
+  @property
+  def inactive_criteria_list(self):
+    return self._set2list(self.inactive_criteria_set)
 
   # endregion : Properties
 
@@ -117,11 +136,16 @@ class Context(object):
         val = note.configs.get(k, None)
         if val is not None: values.add(val)
       assert len(values) > 0
+      values = list(values)
+      values.sort()
       return tuple(values)
 
     # Get flag_values
-    for key in union:
+    sorted_union = list(union)
+    sorted_union.sort()
+    for key in sorted_union:
       self.flag_value_dict[key] = get_flag_values(key)
+    a = 1
 
   def _init_criteria(self):
     intersection, union = self._get_intersection_and_union('criteria')
@@ -130,6 +154,12 @@ class Context(object):
     self.active_criteria_set = union - union.intersection(
       set(self.default_inactive_criteria))
     self.inactive_criteria_set = union - self.active_criteria_set
+
+  @staticmethod
+  def _set2list(s, reverse=False):
+    l = list(s)
+    l.sort(reverse=reverse)
+    return l
 
   # endregion : Private Methods
 

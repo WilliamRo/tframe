@@ -26,17 +26,26 @@ class HeaderControl(BaseControl):
 
     # Attributes
     self._cursor = 0
-    self._notes_buffer = []
+    # self._notes_buffer = []
 
     # Package from friends
-    self.package = None
+    # self.package = None
 
   # region : Properties
+
+  @property
+  def config_panel(self):
+    return self.master.config_panel
+
+  @property
+  def buffer(self):
+    return self.master.criteria_panel.notes_buffer
   
   @property
-  def final_participants(self):
-    return self.master.criteria_panel.final_participants
-  
+  def selected_note(self):
+    if self.buffer: return self.buffer[self._cursor]
+    else: return None
+
   # endregion : Properties
 
   # region : Public Methods
@@ -61,81 +70,70 @@ class HeaderControl(BaseControl):
     # Pack self
     self.pack(fill=fill, side=side, expand=expand)
 
-  def refresh(self):
+  def refresh_header(self):
     # Refresh basic info label
     num_notes = len(self.context.notes)
     num_qualified = len(self.master.config_panel.qualified_notes)
-    num_selected = len(self.master.config_panel.selected_notes)
+    num_selected = len(self.master.config_panel.matched_notes)
     self.label_notes_info.config(text=self.notes_info.format(
       num_notes, num_qualified, num_selected))
 
     # Refresh final info label
     self._cursor = 0
-    self._set_note_buffer()
-    # self._notes_buffer = self.final_participants
+    self.config_panel.set_note(self.selected_note)
     self._refresh_detail()
 
   def show_selected_note_content(self):
-    if len(self._notes_buffer) == 0: return
-    console.show_status('Logs of selected note in header:')
-    console.split()
-    print(self._notes_buffer[self._cursor].content)
-    console.split()
+    note = self.selected_note
+    if note is not None:
+      console.show_status('Logs of selected note in header:')
+      console.split()
+      print(note.content)
+      console.split()
 
   # region : Public Methods
 
   # region : Private
 
-  def _set_note_buffer(self):
-    self._notes_buffer = self.final_participants
-    if self.package is None: return
-    key, reverse = self.package
-    self._notes_buffer.sort(key=lambda n: n.criteria[key], reverse=reverse)
-    # self.package = None
-
   def _refresh_detail(self):
-    if len(self._notes_buffer) == 0:
+    note = self.selected_note
+    if note is None:
       self.label_note_detail.configure(text='')
       return
 
-    text = 'Note [{}/{}] '.format(self._cursor + 1, len(self._notes_buffer))
-    for i, key in enumerate(self.context.active_criteria_set):
+    text = 'Note [{}/{}] '.format(self._cursor + 1, len(self.buffer))
+    for i, key in enumerate(self.context.active_criteria_list):
       if i > 0: text += ' | '
-      text += '{}: {}'.format(key, self.to_str(
-        self._notes_buffer[self._cursor].criteria[key]))
+      text += '{}: {}'.format(key, self.to_str(note.criteria[key]))
     text += ' '
     self.label_note_detail.configure(text=text)
 
     # Fancy stuff
-    note = self._notes_buffer[self._cursor]
     if note.contain_tensors:
       self.label_note_detail.configure(cursor='hand2', foreground='firebrick')
-    else:
-      self.label_note_detail.configure(cursor='arrow', foreground='black')
+    else: self.label_note_detail.configure(cursor='arrow', foreground='black')
 
   # endregion : Private
 
   # region : Events
 
   def on_label_detail_click(self):
-    if len(self._notes_buffer) == 0: return
-    note = self._notes_buffer[self._cursor]
-    if note.contain_tensors:
+    note = self.selected_note
+    if note is not None and note.contain_tensors:
       viewer = TensorViewer(note=note)
       viewer.show()
 
   def move_cursor(self, offset):
     assert offset in (-1, 1)
-    total = len(self._notes_buffer)
+    total = len(self.buffer)
     if total == 0: return
     cursor = self._cursor
     cursor += offset
     if cursor < 0: cursor += total
     elif cursor >= total: cursor -= total
     if cursor != self._cursor:
-      # TODO
-      self.master.config_panel.set_note(self._notes_buffer[cursor])
       self._cursor = cursor
+      self.config_panel.set_note(self.selected_note)
       self._refresh_detail()
 
   # endregion : Events

@@ -59,6 +59,9 @@ def on_key_press_debug(viewer, key_symbol):
   if key_symbol == 's': _show_widget_size(viewer)
   elif key_symbol == 'd':
     print('[DEBUG] Stop here!')
+  elif key_symbol == 'y':
+    print('>> y !')
+    print(viewer.config_panel.sorted_hyper_list)
   else: print('Unmapped key symbol: {}'.format(key_symbol))
 
 
@@ -68,7 +71,13 @@ def reload_notes(viewer):
   if not messagebox.askokcancel('Reload Notes', 'Click OK to reload'): return
   viewer.context.reload()
   # Refresh
-  viewer.header.refresh()
+  config_panel, criteria_panel = viewer.config_panel, viewer.criteria_panel
+  assert isinstance(config_panel, centre.ConfigPanel)
+  assert isinstance(criteria_panel, centre.CriteriaPanel)
+  config_panel.clear_buffer()
+  criteria_panel.clear_buffer()
+
+  viewer.header.refresh_header()
   viewer.local_refresh()
 
 

@@ -5,6 +5,7 @@ from __future__ import print_function
 import tkinter as tk
 import tkinter.ttk as ttk
 
+from collections import OrderedDict
 from .base_control import BaseControl
 
 
@@ -14,8 +15,8 @@ def refresh_friends_at_last(method):
   def wrapper(self, *args, **kwargs):
     assert isinstance(self, (ConfigControl, ConfigPanel))
     method(self, *args, **kwargs)
-    self.header.refresh()
     self.criteria_panel.refresh()
+    self.header.refresh_header()
   return wrapper
 
 # endregion : Decorators
@@ -80,9 +81,21 @@ class ConfigControl(BaseControl):
     pass
 
   def set_value(self, val):
+    if self.current_value == val: return False
     index = self.values.index(val)
     assert index >= 0 and isinstance(self.values_control, ttk.Combobox)
     self.values_control.current(index)
+    return True
+
+  def indicate_possession(self, possess):
+    assert possess in (True, False)
+    if possess:
+      style = self.set_style(self.WidgetNames.TLabel, 'possess',
+                             foreground='black')
+    else:
+      style = self.set_style(self.WidgetNames.TLabel, 'not_possess',
+                             foreground='grey')
+    self.label_name.configure(style=style)
 
   # endregion : Public Methods
 
@@ -90,7 +103,6 @@ class ConfigControl(BaseControl):
 
   @refresh_friends_at_last
   def _on_combobox_selected(self, _):
-    # TODO:
     if not self._active: return
 
   @refresh_friends_at_last
@@ -115,6 +127,9 @@ class ConfigControl(BaseControl):
     # Modify sets in context
     src_set.remove(self.name)
     tgt_set.add(self.name)
+
+    # Clear buffer
+    self.config_panel.clear_buffer()
 
   @refresh_friends_at_last
   def _move_combo_cursor(self, offset):
@@ -187,16 +202,21 @@ class ConfigPanel(BaseControl):
     BaseControl.__init__(self, master)
 
     # Widgets
-    self.hyper_parameters = ttk.LabelFrame(self, text='Hyper-Parameters')
-    self.common_configs = ttk.LabelFrame(self, text='Common Configurations')
-    self.inactive_configs = ttk.LabelFrame(self, text='Inactive Configurations')
+    self.hyper_frame = ttk.LabelFrame(self, text='Hyper-Parameters')
+    self.common_frame = ttk.LabelFrame(self, text='Common Configurations')
+    self.inactive_frame = ttk.LabelFrame(self, text='Inactive Configurations')
 
     # Attributes
-    self.active_dict = {}
-    self.inactive_dict = {}
+    self.active_dict = OrderedDict()
+    self.inactive_dict = OrderedDict()
 
-    # Ancestor and friends
+    #l Ancestor and friends
     self.main_frame = self.master.master
+
+    # Buffers for faster sorting
+    self._candidates = None
+    self._groups = None
+    self._sorted_hyper = None
 
   # region : Properties
 
@@ -212,26 +232,65 @@ class ConfigPanel(BaseControl):
   def active_config_dict(self):
     return {k: self.active_dict[k].current_value
             for k in self.context.active_flag_set}
+
+  @property
+  def sorted_hyper_list(self):
+    if self._sorted_hyper is not None: return self._sorted_hyper
+    hypers = [name for name, widget in self.active_dict.items()
+              if name in self.context.active_flag_set and not widget.is_common]
+    hypers.sort()
+    self._sorted_hyper = hypers
+    return self._sorted_hyper
   
   @property
   def qualified_notes(self):
+    if self._candidates is not None: return self._candidates
     flag_of_interest = set(self.active_config_dict.keys())
-    return [note for note in self.context.notes
-            if set(note.configs.keys()).issuperset(flag_of_interest)]
-  
+    self._candidates = [
+      note for note in self.context.notes
+      if set(note.configs.keys()).issuperset(flag_of_interest)]
+    return self._candidates
+
+  @property
+  def groups(self):
+    if self._groups is not None: return self._groups
+    self._groups = OrderedDict()
+    for note in self.qualified_notes:
+      key = self._get_config_tuple(note)
+      if key not in self._groups.keys(): self._groups[key] = []
+      self._groups[key].append(note)
+    return self._groups
+
+  @property
+  def selected_group_values(self):
+    fixed_config_set = set(
+      [(k, self.active_dict[k].current_value)
+       for k in self.sorted_hyper_list if self.active_dict[k].fixed])
+
+    if len(fixed_config_set) == 0:
+      return tuple(self.groups.values())
+    else:
+      return tuple([v for k, v in self.groups.items()
+                    if set(k).issuperset(fixed_config_set)])
+
   @property
   def notes_for_sorting(self):
-    return self._filter(self.qualified_notes, self.fixed_config_dict)
+    results = []
+    for notes in self.selected_group_values:
+      results += notes
+    return results
+    # return self._filter(self.qualified_notes, self.fixed_config_dict)
+
+  # @property
+  # def fixed_config_dict(self):
+  #   return {k: self.active_dict[k].current_value
+  #           for k in self.context.active_flag_set
+  #           if self.active_dict[k].fixed}
 
   @property
-  def fixed_config_dict(self):
-    return {k: self.active_dict[k].current_value
-            for k in self.context.active_flag_set
-            if self.active_dict[k].fixed}
-
-  @property
-  def selected_notes(self):
-    return self._filter(self.qualified_notes, self.active_config_dict)
+  def matched_notes(self):
+    return self.groups.get(self._get_config_tuple(), [])
+    # return self._filter(self.qualified_notes, self.active_config_dict)
 
   @property
   def minimum_height(self):
@@ -248,20 +307,20 @@ class ConfigPanel(BaseControl):
     # self.inactive_dict, self.active_dict = {}, {}
     for k, v in self.context.flag_value_dict.items():
       # Create an active one
-      master = self.hyper_parameters if len(v) > 1 else self.common_configs
+      master = self.hyper_frame if len(v) > 1 else self.common_frame
       active_control = ConfigControl(master, k, v, True)
       self.active_dict[k] = active_control
       # Create an inactive one
-      inactive_control = ConfigControl(self.inactive_configs, k, v, False)
+      inactive_control = ConfigControl(self.inactive_frame, k, v, False)
       self.inactive_dict[k] = inactive_control
 
     # Clear 3 panels TODO: reloading is not allowed
     # self.hyper_parameters.
 
     # Pack config controls
-    for k in self.context.active_flag_set:
+    for k in self.context.active_flag_list:
       self.active_dict[k].load_to_master()
-    for k in self.context.inactive_flag_set:
+    for k in self.context.inactive_flag_list:
       self.inactive_dict[k].load_to_master()
 
 
@@ -269,14 +328,14 @@ class ConfigPanel(BaseControl):
     # Pack label-frames
     pack_params = {'fill': tk.BOTH, 'side': tk.TOP, 'expand': False}
     for label_frame in (
-        self.hyper_parameters,
-        self.common_configs,
-        self.inactive_configs,
+        self.hyper_frame,
+        self.common_frame,
+        self.inactive_frame,
     ):
       label_frame.configure(width=400, height=48)
       label_frame.pack(**pack_params)
-    self.inactive_configs.pack(expand=True)
-    self.inactive_configs.configure()
+    self.inactive_frame.pack(expand=True)
+    self.inactive_frame.configure()
 
     # Pack self
     self.configure(height=600)
@@ -284,25 +343,40 @@ class ConfigPanel(BaseControl):
 
 
   def refresh(self):
+    """Fill in combo boxes"""
+    # TODO
     pass
 
 
-  @refresh_friends_at_last
+  # @refresh_friends_at_last
   def set_note(self, note):
+    # Revert color of each name label in inactive configs
+    if note is None:
+      for widget in self.inactive_dict.values():
+        widget.indicate_possession(True)
+      return
+
     # Get explicit config control
-    config_controls = [
-      control for control in self.active_dict.values()
-      if not control.is_common and control.name in self.context.active_flag_set]
+    hyper_widgets = [
+      widget for widget in self.active_dict.values()
+      if not widget.is_common and widget.name in self.context.active_flag_set]
 
     # Set value for each combobox
-    for control in config_controls:
-      assert isinstance(control, ConfigControl)
-      control.set_value(note.configs[control.name])
+    for widget in hyper_widgets:
+      assert isinstance(widget, ConfigControl)
+      widget.set_value(note.configs[widget.name])
 
     # Set value for each inactive combobox
-    for control in self.inactive_dict.values():
-      if control.is_common or control.name not in note.configs.keys(): continue
-      control.set_value(note.configs[control.name])
+    for widget in self.inactive_dict.values():
+      possess = widget.name in note.configs.keys()
+      if possess and not widget.is_common:
+        widget.set_value(note.configs[widget.name])
+      widget.indicate_possession(possess)
+
+  def clear_buffer(self):
+    self._candidates = None
+    self._groups = None
+    self._sorted_hyper = None
 
   # endregion : Public Methods
 
@@ -320,6 +394,14 @@ class ConfigPanel(BaseControl):
           break
       if select: results.append(note)
     return results
+
+  def _get_config_tuple(self, note=None):
+    config_tuple = []
+    for key in self.sorted_hyper_list:
+      value = (note.configs[key] if note is not None
+               else self.active_dict[key].current_value)
+      config_tuple.append((key, value))
+    return tuple(config_tuple)
 
   # endregion : Private Methods
 

@@ -94,7 +94,7 @@ class SummaryViewer(Viewer):
     self.criteria_panel.initialize_criteria_controls()
 
     # Refresh header
-    self.header.refresh()
+    self.header.refresh_header()
 
     # Do local refresh
     self.local_refresh()
@@ -105,7 +105,7 @@ class SummaryViewer(Viewer):
 
   def local_refresh(self):
     # Refresh config panel
-    # self.config_panel.refresh()
+    self.config_panel.refresh()
     self.criteria_panel.refresh()
 
   # endregion : Public Methods

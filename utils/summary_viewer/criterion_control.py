@@ -6,6 +6,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 import numpy as np
+from collections import OrderedDict
 from tframe import console
 
 from .context import Context
@@ -18,7 +19,8 @@ def refresh_friends_at_last(method):
   def wrapper(self, *args, **kwargs):
     assert isinstance(self, CriterionControl)
     method(self, *args, **kwargs)
-    self.header.refresh()
+    self.header.refresh_header()
+    assert isinstance(self.criteria_panel, CriteriaPanel)
     self.criteria_panel.refresh()
   return wrapper
 
@@ -62,7 +64,7 @@ class CriterionControl(BaseControl):
   @property
   def value_list(self):
     return [note.criteria[self.name]
-            for note in self.criteria_panel.final_participants]
+            for note in self.criteria_panel.notes_buffer]
 
   # endregion : Properties
 
@@ -127,9 +129,13 @@ class CriterionControl(BaseControl):
     self.find_min_btn.configure(
       text='FMI',
       style=f_btn_style, command=lambda: self._on_find_btn_click(False))
+    self.find_min_btn.bind(
+      '<Button-3>', lambda _: self._on_find_btn_right_click(True))
     self.find_max_btn.configure(
       text='FMA',
       style=f_btn_style, command=lambda: self._on_find_btn_click(True))
+    self.find_max_btn.bind(
+      '<Button-3>', lambda _: self._on_find_btn_right_click(False))
     self.find_max_btn.pack(side=tk.RIGHT)
     self.find_min_btn.pack(side=tk.RIGHT)
 
@@ -161,6 +167,9 @@ class CriterionControl(BaseControl):
     src_set.remove(self.name)
     tgt_set.add(self.name)
 
+    # Clear buffer
+    self.criteria_panel.clear_buffer()
+
   def _on_detail_btn_click(self):
     if len(self.value_list) == 0:
       console.show_status('No notes with these criteria found under the '
@@ -172,7 +181,7 @@ class CriterionControl(BaseControl):
 
   def _on_find_btn_click(self, find_max):
     # Find the corresponding note
-    notes = self.criteria_panel._filter(self.config_panel.notes_for_sorting)
+    notes = self.criteria_panel.notes_for_global_sorting
     assert isinstance(notes, list) and len(notes) > 0
     notes.sort(key=lambda n: n.criteria[self.name], reverse=find_max)
     note = notes[0]
@@ -185,11 +194,17 @@ class CriterionControl(BaseControl):
     print(note.content)
     console.split()
 
-    # Set sort condition to header control
-    self.header.package = self.name, find_max
-
     # Set note to config_panel
     self.config_panel.set_note(note)
+
+    # Refresh note buffer
+    self.criteria_panel.refresh()
+    self.criteria_panel.update_and_sort_buffer(self.name, find_max)
+    self.header.refresh_header()
+
+  def _on_find_btn_right_click(self, find_max_min):
+
+    return
 
   # endregion : Events
 
@@ -205,19 +220,44 @@ class CriteriaPanel(BaseControl):
     self.hidden_panel = ttk.LabelFrame(self, text='Hidden Criteria')
 
     # Attributes
-    self.explicit_dict = {}
-    self.hidden_dict = {}
+    self.explicit_dict = OrderedDict()
+    self.hidden_dict = OrderedDict()
 
     # Ancestor and friends
     self.main_frame = self.master.master
     self.header = self.main_frame.header
     self.config_panel = self.main_frame.config_panel
 
+    # Buffers for faster sorting
+    self._candidates_set = None
+    self._notes_buffer = None
+
   # region : Properties
 
   @property
-  def final_participants(self):
-    return self._filter(self.config_panel.selected_notes)
+  def group_list(self):
+    return [self.criteria_filter(note_list)
+            for note_list in self.config_panel.selected_group_values]
+
+  @property
+  def notes_for_global_sorting(self):
+    return self.criteria_filter(self.config_panel.notes_for_sorting)
+
+  @property
+  def notes_buffer(self):
+    if self._notes_buffer is None:
+      self._notes_buffer = self.criteria_filter(self.config_panel.matched_notes)
+    return self._notes_buffer
+
+  @property
+  def notes_with_active_criteria(self):
+    if self._candidates_set is None:
+      self._candidates_set = set([
+        note for note in self.context.notes
+        if set(note.criteria.keys()).issuperset(
+          self.context.active_criteria_set)
+      ])
+    return self._candidates_set
 
   @property
   def minimum_height(self):
@@ -250,27 +290,38 @@ class CriteriaPanel(BaseControl):
       self.hidden_dict[k] = CriterionControl(self.hidden_panel, k, False)
 
     # Pack criteria controls
-    for k in self.context.active_criteria_set:
+    for k in self.context.active_criteria_list:
       self.explicit_dict[k].load_to_master()
-    for k in self.context.inactive_criteria_set:
+    for k in self.context.inactive_criteria_list:
       self.hidden_dict[k].load_to_master()
 
   def refresh(self):
-    min_max_btn_enabled = len(self.config_panel.notes_for_sorting) > 0
+    min_max_btn_enabled = len(self.notes_for_global_sorting) > 0
+    self._notes_buffer = None
     # Refresh each explicit criteria control
     for active_criterion in self.context.active_criteria_set:
+      # Get widget
       criterion_control = self.explicit_dict[active_criterion]
       assert isinstance(criterion_control, CriterionControl)
+      # Refresh widget
       criterion_control.refresh(min_max_btn_enabled)
+
+  def clear_buffer(self):
+    self._candidates_set = None
+    self._notes_buffer = None
+
+  def criteria_filter(self, note_set):
+    return list(set(note_set).intersection(self.notes_with_active_criteria))
+
+  def update_and_sort_buffer(self, criterion, reverse):
+    self._notes_buffer = None
+    self.notes_buffer.sort(
+      key=lambda note: note.criteria[criterion], reverse=reverse)
 
   # endregion : Public Methods
 
   # region : Private Methods
 
-  def _filter(self, note_set):
-    return [
-      note for note in note_set
-      if set(note.criteria.keys()).issuperset(self.context.active_criteria_set)]
 
   # endregion : Private Methods
 
