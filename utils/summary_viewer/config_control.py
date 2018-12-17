@@ -362,9 +362,13 @@ class ConfigPanel(BaseControl):
       if not widget.is_common and widget.name in self.context.active_flag_set]
 
     # Set value for each combobox
+    need_to_refresh_criteria_panel = False
     for widget in hyper_widgets:
       assert isinstance(widget, ConfigControl)
-      widget.set_value(note.configs[widget.name])
+      if widget.set_value(note.configs[widget.name]):
+        need_to_refresh_criteria_panel = True
+    if need_to_refresh_criteria_panel:
+      self.criteria_panel.refresh()
 
     # Set value for each inactive combobox
     for widget in self.inactive_dict.values():

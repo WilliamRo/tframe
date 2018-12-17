@@ -198,13 +198,31 @@ class CriterionControl(BaseControl):
     self.config_panel.set_note(note)
 
     # Refresh note buffer
-    self.criteria_panel.refresh()
-    self.criteria_panel.update_and_sort_buffer(self.name, find_max)
+    self.criteria_panel.notes_buffer.sort(
+      key=lambda n: n.criteria[self.name], reverse=find_max)
     self.header.refresh_header()
 
   def _on_find_btn_right_click(self, find_max_min):
+    """When right click [find min] button, find_max_min is True"""
+    assert find_max_min in (True, False)
+    assert isinstance(self.criteria_panel, CriteriaPanel)
+    groups = self.criteria_panel.group_list
+    for group in groups:
+      assert isinstance(group, list)
+      group.sort(key=lambda n: n.criteria[self.name])
+    index = 0 if find_max_min else 1
+    groups.sort(key=lambda g: g[index].criteria[self.name],
+                reverse=find_max_min)
 
-    return
+    note = groups[0][index]
+
+    # Set note to config_panel
+    self.config_panel.set_note(note)
+
+    # Refresh note buffer
+    self.criteria_panel.notes_buffer.sort(
+      key=lambda n: n.criteria[self.name], reverse=not find_max_min)
+    self.header.refresh_header()
 
   # endregion : Events
 
@@ -312,11 +330,6 @@ class CriteriaPanel(BaseControl):
 
   def criteria_filter(self, note_set):
     return list(set(note_set).intersection(self.notes_with_active_criteria))
-
-  def update_and_sort_buffer(self, criterion, reverse):
-    self._notes_buffer = None
-    self.notes_buffer.sort(
-      key=lambda note: note.criteria[criterion], reverse=reverse)
 
   # endregion : Public Methods
 
