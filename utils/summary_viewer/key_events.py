@@ -80,9 +80,9 @@ def reload_notes(viewer):
   assert isinstance(config_panel, centre.ConfigPanel)
   assert isinstance(criteria_panel, centre.CriteriaPanel)
   config_panel.clear_buffer()
+  config_panel.update_combo()
   criteria_panel.clear_buffer()
 
-  viewer.header.refresh_header()
   viewer.local_refresh()
 
 

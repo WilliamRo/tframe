@@ -18,6 +18,7 @@ def refresh_friends_at_last(method):
     method(self, *args, **kwargs)
     self.criteria_panel.refresh()
     self.header.refresh_header()
+    self.main_frame.force_buffer_not_empty()
   return wrapper
 
 # endregion : Decorators
@@ -39,17 +40,11 @@ class ConfigControl(BaseControl):
     # Attributes
     self.name = flag_name
     assert len(flag_values) > 0
+    self.all_values = flag_values
     self.values = flag_values
     assert isinstance(is_active, bool)
     self._active = is_active
     self.fixed = False
-
-    # Ancestors and friends
-    self.config_panel = self.master.master
-    assert isinstance(self.config_panel, ConfigPanel)
-    self.main_frame = self.config_panel.main_frame
-    self.header = self.main_frame.header
-    self.criteria_panel = self.main_frame.criteria_panel
 
     # Layout
     self.switch_button = ttk.Button(self, cursor='hand2')
@@ -61,15 +56,37 @@ class ConfigControl(BaseControl):
 
   @property
   def is_common(self):
-    return len(self.values) == 1
+    return len(self.all_values) == 1
 
   @property
   def current_value(self):
     if self.is_common:
-      return self.values[0]
+      return self.all_values[0]
     else:
       assert isinstance(self.values_control, ttk.Combobox)
       return self.values[self.values_control.current()]
+
+  # region : Friends and ancestors
+
+  @property
+  def config_panel(self):
+    panel = self.master.master
+    assert isinstance(panel, ConfigPanel)
+    return panel
+
+  @property
+  def main_frame(self):
+    return self.config_panel.main_frame
+
+  @property
+  def criteria_panel(self):
+    return self.config_panel.criteria_panel
+
+  @property
+  def header(self):
+    return self.main_frame.header
+
+  # endregion : Friends and ancestors
 
   # endregion : Properties
 
@@ -87,6 +104,17 @@ class ConfigControl(BaseControl):
     assert index >= 0 and isinstance(self.values_control, ttk.Combobox)
     self.values_control.current(index)
     return True
+
+  def reset_combo(self, values):
+    assert isinstance(values, (list, tuple))
+    # Save current value
+    old_val = self.current_value
+    # Try to set value back to combobox
+    self.values_control.config(values=values)
+    if old_val in values:
+      self.values_control.current(values.index(old_val))
+    else: self.values_control.current(0)
+    self.values = values
 
   def indicate_possession(self, possess):
     assert possess in (True, False)
@@ -131,6 +159,8 @@ class ConfigControl(BaseControl):
 
     # Clear buffer
     self.config_panel.clear_buffer()
+    # Update combo
+    self.config_panel.update_combo()
 
   @refresh_friends_at_last
   def _move_combo_cursor(self, offset):
@@ -182,11 +212,11 @@ class ConfigControl(BaseControl):
 
     # (3) Value
     if self.is_common:
-      self.values_control = ttk.Label(self, text=str(self.values[0]))
+      self.values_control = ttk.Label(self, text=str(self.all_values[0]))
     else:
       self.values_control = ttk.Combobox(
         self, state='readonly', justify=tk.RIGHT)
-      self.values_control.config(values=self.values)
+      self.values_control.config(values=self.all_values)
       self.values_control.current(0)
       if self._active:
         self.values_control.bind(
@@ -265,13 +295,6 @@ class ConfigPanel(BaseControl):
                     if set(k).issuperset(fixed_config_set)])
 
   @property
-  def notes_for_sorting(self):
-    results = []
-    for notes in self.selected_group_values:
-      results += notes
-    return results
-
-  @property
   def matched_notes(self):
     return self.groups.get(self._get_config_tuple(), [])
     # return self._filter(self.qualified_notes, self.active_config_dict)
@@ -325,9 +348,13 @@ class ConfigPanel(BaseControl):
 
     # Pack config controls
     for k in self.context.active_flag_list:
-      self.active_dict[k].load_to_master()
+      control = self.active_dict[k]
+      assert isinstance(control, ConfigControl)
+      control.load_to_master()
     for k in self.context.inactive_flag_list:
-      self.inactive_dict[k].load_to_master()
+      control = self.inactive_dict[k]
+      assert isinstance(control, ConfigControl)
+      control.load_to_master()
 
 
   def load_to_master(self, side=tk.LEFT, fill=tk.Y, expand=True):
@@ -352,6 +379,20 @@ class ConfigPanel(BaseControl):
     """Fill in combo boxes"""
     # TODO
     pass
+
+
+  def update_combo(self):
+    """This method must be called right after buffers are cleared"""
+    assert self._groups is None
+    active_value_dict = {}
+    group_keys = tuple(self.groups.keys())
+    assert len(group_keys) > 0
+    for i, (name, _) in enumerate(group_keys[0]):
+      active_value_dict[name] = list(set([gk[i][1] for gk in group_keys]))
+    for name, values in active_value_dict.items():
+      control = self.active_dict[name]
+      assert isinstance(control, ConfigControl)
+      control.reset_combo(values)
 
 
   # @refresh_friends_at_last

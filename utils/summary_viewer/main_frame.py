@@ -93,9 +93,6 @@ class SummaryViewer(Viewer):
     self.config_panel.initialize_config_controls()
     self.criteria_panel.initialize_criteria_controls()
 
-    # Refresh header
-    self.header.refresh_header()
-
     # Do local refresh
     self.local_refresh()
 
@@ -103,10 +100,22 @@ class SummaryViewer(Viewer):
     self.ROOT_HEIGHT = self.proper_height
     self._move_to_center()
 
+    # TODO
+    self.force_buffer_not_empty()
+
+  def force_buffer_not_empty(self):
+    if not self.criteria_panel.notes_buffer:
+      groups_for_sorting = self.criteria_panel.groups_for_sorting
+      if groups_for_sorting:
+        self.config_panel.set_note(groups_for_sorting[0][0])
+        self.header.refresh_header()
+
   def local_refresh(self):
-    # Refresh config panel
+    # Refresh panels
     self.config_panel.refresh()
     self.criteria_panel.refresh()
+    # Refresh header
+    self.header.refresh_header()
 
   # endregion : Public Methods
 

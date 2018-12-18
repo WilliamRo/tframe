@@ -61,7 +61,8 @@ class VariableViewer(Frame):
     assert isinstance(name_list, tuple)
 
     i = name_list.index(combo_box.get()) + step
-    if i < 0 or i > len(name_list) - 1: return
+    if i < 0: i = len(name_list) - 1
+    if i >= len(name_list): i = 0
     # Set combo box to next or previous entry
     combo_box.set(name_list[i])
     self.refresh()

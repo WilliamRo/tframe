@@ -265,10 +265,6 @@ class CriteriaPanel(BaseControl):
     return [g for g in groups if len(g) > 0]
 
   @property
-  def notes_for_global_sorting(self):
-    return self.criteria_filter(self.config_panel.notes_for_sorting)
-
-  @property
   def notes_buffer(self):
     if self._notes_buffer is None:
       self._notes_buffer = self.criteria_filter(self.config_panel.matched_notes)
