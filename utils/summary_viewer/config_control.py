@@ -7,6 +7,7 @@ import tkinter.ttk as ttk
 
 from collections import OrderedDict
 from .base_control import BaseControl
+from . import main_frame as centre
 
 
 # region : Decorators
@@ -210,23 +211,12 @@ class ConfigPanel(BaseControl):
     self.active_dict = OrderedDict()
     self.inactive_dict = OrderedDict()
 
-    #l Ancestor and friends
-    self.main_frame = self.master.master
-
     # Buffers for faster sorting
     self._candidates = None
     self._groups = None
     self._sorted_hyper = None
 
   # region : Properties
-
-  @property
-  def criteria_panel(self):
-    return self.main_frame.criteria_panel
-
-  @property
-  def header(self):
-    return self.main_frame.header
 
   @property
   def active_config_dict(self):
@@ -263,6 +253,7 @@ class ConfigPanel(BaseControl):
 
   @property
   def selected_group_values(self):
+    """Groups(buffered) filtered according to fixed configs"""
     fixed_config_set = set(
       [(k, self.active_dict[k].current_value)
        for k in self.sorted_hyper_list if self.active_dict[k].fixed])
@@ -279,13 +270,6 @@ class ConfigPanel(BaseControl):
     for notes in self.selected_group_values:
       results += notes
     return results
-    # return self._filter(self.qualified_notes, self.fixed_config_dict)
-
-  # @property
-  # def fixed_config_dict(self):
-  #   return {k: self.active_dict[k].current_value
-  #           for k in self.context.active_flag_set
-  #           if self.active_dict[k].fixed}
 
   @property
   def matched_notes(self):
@@ -298,6 +282,28 @@ class ConfigPanel(BaseControl):
     h_each_control = 27
     coef = 3 if len(self.active_dict) == 0 else 2
     return 3 * h_empty_panel + (coef + len(self.active_dict)) * h_each_control
+
+  # region : Friends and ancestors
+  
+  @property
+  def main_frame(self):
+    frame = self.master.master
+    assert isinstance(frame, centre.SummaryViewer)
+    return frame
+
+  @property
+  def criteria_panel(self):
+    panel = self.main_frame.criteria_panel
+    assert isinstance(panel, centre.CriteriaPanel)
+    return panel
+
+  @property
+  def header(self):
+    control = self.main_frame.header
+    assert isinstance(control, centre.HeaderControl)
+    return control
+
+  # endregion : Friends and ancestors
 
   # endregion : Properties
 

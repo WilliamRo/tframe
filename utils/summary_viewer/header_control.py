@@ -9,6 +9,7 @@ from .base_control import BaseControl
 
 from tframe import console
 from tframe.utils.tensor_viewer.main_frame import TensorViewer
+from . import main_frame as centre
 
 
 class HeaderControl(BaseControl):
@@ -26,21 +27,25 @@ class HeaderControl(BaseControl):
 
     # Attributes
     self._cursor = 0
-    # self._notes_buffer = []
-
-    # Package from friends
-    # self.package = None
 
   # region : Properties
 
   @property
+  def main_frame(self):
+    frame = self.master
+    assert isinstance(frame, centre.SummaryViewer)
+    return frame
+
+  @property
   def config_panel(self):
-    return self.master.config_panel
+    panel = self.main_frame.config_panel
+    assert isinstance(panel, centre.ConfigPanel)
+    return panel
 
   @property
   def buffer(self):
-    return self.master.criteria_panel.notes_buffer
-  
+    return self.main_frame.criteria_panel.notes_buffer
+
   @property
   def selected_note(self):
     if self.buffer: return self.buffer[self._cursor]
@@ -73,13 +78,19 @@ class HeaderControl(BaseControl):
   def refresh_header(self):
     # Refresh basic info label
     num_notes = len(self.context.notes)
-    num_qualified = len(self.master.config_panel.qualified_notes)
-    num_selected = len(self.master.config_panel.matched_notes)
+    num_qualified = len(self.config_panel.qualified_notes)
+    num_selected = len(self.config_panel.matched_notes)
     self.label_notes_info.config(text=self.notes_info.format(
       num_notes, num_qualified, num_selected))
 
     # Refresh final info label
     self._cursor = 0
+    stamp = self.main_frame.criteria_panel.button_stamp
+    if stamp is not None:
+      _, groups, _, index, note_index = stamp
+      assert note_index in (0, -1)
+      if note_index == -1:
+        self._cursor = len(self.buffer) - 1
     self.config_panel.set_note(self.selected_note)
     self._refresh_detail()
 
@@ -101,7 +112,17 @@ class HeaderControl(BaseControl):
       self.label_note_detail.configure(text='')
       return
 
-    text = 'Note [{}/{}] '.format(self._cursor + 1, len(self.buffer))
+    # Insert group info
+    text = ''
+    stamp = self.main_frame.criteria_panel.button_stamp
+    if stamp is not None:
+      _, groups, _, index, _ = stamp
+      text += 'Groups [{}/{}]'.format(index + 1, len(groups))
+    else:
+      text += '{} Groups -'.format(
+        len(self.main_frame.criteria_panel.groups_for_sorting))
+
+    text += ' Note [{}/{}] '.format(self._cursor + 1, len(self.buffer))
     for i, key in enumerate(self.context.active_criteria_list):
       if i > 0: text += ' | '
       text += '{}: {}'.format(key, self.to_str(note.criteria[key]))

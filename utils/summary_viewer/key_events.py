@@ -9,6 +9,7 @@ from . import main_frame as centre
 def on_key_press(viewer, event):
   # Sanity check
   assert isinstance(event, tk.Event)
+  assert isinstance(viewer, centre.SummaryViewer)
 
   key_symbol = getattr(event, 'keysym')
   if viewer.in_debug_mode:
@@ -22,6 +23,10 @@ def on_key_press(viewer, event):
     viewer.header.move_cursor(-1)
   elif key_symbol in ('l', 'j'):
     viewer.header.move_cursor(1)
+  elif key_symbol == 'n':
+    viewer.criteria_panel.move_between_groups(1)
+  elif key_symbol == 'p':
+    viewer.criteria_panel.move_between_groups(-1)
   elif key_symbol == 'space':
     viewer.header.show_selected_note_content()
   elif key_symbol == 'Return':

@@ -9,8 +9,8 @@ import numpy as np
 from collections import OrderedDict
 from tframe import console
 
-from .context import Context
 from .base_control import BaseControl
+from . import main_frame as centre
 
 
 # region : Decorators
@@ -40,13 +40,6 @@ class CriterionControl(BaseControl):
     self.name = name
     self._show = show
 
-    # Ancestors and friends
-    self.criteria_panel = self.master.master
-    assert isinstance(self.criteria_panel, CriteriaPanel)
-    self.main_frame = self.criteria_panel.main_frame
-    self.config_panel = self.main_frame.config_panel
-    self.header = self.main_frame.header
-
     # Layout
     self.label_frame = ttk.LabelFrame(self)
     self.switch_button = ttk.Button(
@@ -65,6 +58,34 @@ class CriterionControl(BaseControl):
   def value_list(self):
     return [note.criteria[self.name]
             for note in self.criteria_panel.notes_buffer]
+
+  # region : Friends and ancestors
+
+  @property
+  def main_frame(self):
+    panel = self.criteria_panel.main_frame
+    assert isinstance(panel, centre.SummaryViewer)
+    return panel
+
+  @property
+  def header(self):
+    widget = self.main_frame.header
+    assert isinstance(widget, centre.HeaderControl)
+    return widget
+
+  @property
+  def criteria_panel(self):
+    panel = self.master.master
+    assert isinstance(panel, CriteriaPanel)
+    return panel
+
+  @property
+  def config_panel(self):
+    panel = self.main_frame.config_panel
+    assert isinstance(panel, centre.ConfigPanel)
+    return panel
+
+  # endregin : Friends and ancestors
 
   # endregion : Properties
 
@@ -127,15 +148,25 @@ class CriterionControl(BaseControl):
     # (4) Find max & min button
     f_btn_style = self.set_style(self.WidgetNames.TButton, 'fd', width=4)
     self.find_min_btn.configure(
-      text='FMI',
-      style=f_btn_style, command=lambda: self._on_find_btn_click(False))
+      text='FMI', style=f_btn_style,
+      command=lambda: self._on_group_search_btn_click(0, 0, self.find_min_btn))
     self.find_min_btn.bind(
-      '<Button-3>', lambda _: self._on_find_btn_right_click(True))
+      '<Button-2>', lambda _: self.criteria_panel.move_between_groups(
+        1, self.find_min_btn))
+    self.find_min_btn.bind(
+      '<Button-3>', lambda _: self._on_group_search_btn_click(
+        0, -1, self.find_min_btn))
+
     self.find_max_btn.configure(
-      text='FMA',
-      style=f_btn_style, command=lambda: self._on_find_btn_click(True))
+      text='FMA', style=f_btn_style,
+      command=lambda: self._on_group_search_btn_click(
+        -1, -1, self.find_max_btn))
     self.find_max_btn.bind(
-      '<Button-3>', lambda _: self._on_find_btn_right_click(False))
+      '<Button-2>', lambda _: self.criteria_panel.move_between_groups(
+        1, self.find_max_btn))
+    self.find_max_btn.bind(
+      '<Button-3>', lambda _: self._on_group_search_btn_click(
+        -1, 0, self.find_max_btn))
     self.find_max_btn.pack(side=tk.RIGHT)
     self.find_min_btn.pack(side=tk.RIGHT)
 
@@ -179,49 +210,28 @@ class CriterionControl(BaseControl):
     for v in np.sort(self.value_list):
       console.supplement('{}'.format(v), level=2)
 
-  def _on_find_btn_click(self, find_max):
-    # Find the corresponding note
-    notes = self.criteria_panel.notes_for_global_sorting
-    assert isinstance(notes, list) and len(notes) > 0
-    notes.sort(key=lambda n: n.criteria[self.name], reverse=find_max)
-    note = notes[0]
+  def _on_group_search_btn_click(self, note_index, group_index, button):
+    """Groups, together with their corresponding notes, will be sorted
+       without reverse"""
+    assert note_index in (-1, 0) and group_index in (-1, 0)
+    # Sort groups and each note list
+    groups = self.criteria_panel.groups_for_sorting
+    num_groups = len(groups)
+    assert num_groups > 0
+    for g in groups: g.sort(key=lambda n: n.criteria[self.name])
+    groups.sort(key=lambda notes: notes[note_index].criteria[self.name])
 
-    # Print note's
-    val_str = self.to_str(note.criteria[self.name])
-    console.show_status( 'Logs of note with {} `{}`({}):'.format(
-      'max' if find_max else 'min', self.name, val_str), '::')
-    console.split()
-    print(note.content)
-    console.split()
-
-    # Set note to config_panel
+    # Set note and refresh corresponding stuff
+    note = groups[group_index][note_index]
     self.config_panel.set_note(note)
+    self.criteria_panel.notes_buffer = groups[group_index]
 
-    # Refresh note buffer
-    self.criteria_panel.notes_buffer.sort(
-      key=lambda n: n.criteria[self.name], reverse=find_max)
-    self.header.refresh_header()
+    # Make a stamp: (button, groups, multiplier, index, note_index)
+    index = group_index if group_index >= 0 else group_index + len(groups)
+    self.criteria_panel.button_stamp = (
+      button, groups, 1 if group_index == 0 else -1, index, note_index)
 
-  def _on_find_btn_right_click(self, find_max_min):
-    """When right click [find min] button, find_max_min is True"""
-    assert find_max_min in (True, False)
-    assert isinstance(self.criteria_panel, CriteriaPanel)
-    groups = self.criteria_panel.group_list
-    for group in groups:
-      assert isinstance(group, list)
-      group.sort(key=lambda n: n.criteria[self.name])
-    index = 0 if find_max_min else 1
-    groups.sort(key=lambda g: g[index].criteria[self.name],
-                reverse=find_max_min)
-
-    note = groups[0][index]
-
-    # Set note to config_panel
-    self.config_panel.set_note(note)
-
-    # Refresh note buffer
-    self.criteria_panel.notes_buffer.sort(
-      key=lambda n: n.criteria[self.name], reverse=not find_max_min)
+    # Finally refresh header
     self.header.refresh_header()
 
   # endregion : Events
@@ -241,21 +251,18 @@ class CriteriaPanel(BaseControl):
     self.explicit_dict = OrderedDict()
     self.hidden_dict = OrderedDict()
 
-    # Ancestor and friends
-    self.main_frame = self.master.master
-    self.header = self.main_frame.header
-    self.config_panel = self.main_frame.config_panel
-
     # Buffers for faster sorting
     self._candidates_set = None
     self._notes_buffer = None
+    self.button_stamp = None
 
   # region : Properties
 
   @property
-  def group_list(self):
-    return [self.criteria_filter(note_list)
-            for note_list in self.config_panel.selected_group_values]
+  def groups_for_sorting(self):
+    groups = [self.criteria_filter(note_list)
+              for note_list in self.config_panel.selected_group_values]
+    return [g for g in groups if len(g) > 0]
 
   @property
   def notes_for_global_sorting(self):
@@ -266,6 +273,11 @@ class CriteriaPanel(BaseControl):
     if self._notes_buffer is None:
       self._notes_buffer = self.criteria_filter(self.config_panel.matched_notes)
     return self._notes_buffer
+
+  @notes_buffer.setter
+  def notes_buffer(self, val):
+    assert isinstance(val, list) and len(val) > 0
+    self._notes_buffer = val
 
   @property
   def notes_with_active_criteria(self):
@@ -282,6 +294,29 @@ class CriteriaPanel(BaseControl):
     h_hidden = 48
     h_each_control = 48
     return h_hidden + len(self.explicit_dict) * h_each_control
+
+  # region : Friends and ancestors
+
+  @property
+  def main_frame(self):
+    frame = self.master.master
+    assert isinstance(frame, centre.SummaryViewer)
+    return frame
+
+  @property
+  def header(self):
+    control = self.main_frame.header
+    assert isinstance(control, centre.HeaderControl)
+    return control
+
+  @property
+  def config_panel(self):
+    panel = self.main_frame.config_panel
+    assert isinstance(panel, centre.ConfigPanel)
+    return panel
+
+  # endregion : Friends and ancestors
+
   # endregion : Properties
 
   # region : Public Methods
@@ -314,8 +349,9 @@ class CriteriaPanel(BaseControl):
       self.hidden_dict[k].load_to_master()
 
   def refresh(self):
-    min_max_btn_enabled = len(self.notes_for_global_sorting) > 0
+    min_max_btn_enabled = len(self.groups_for_sorting) > 0
     self._notes_buffer = None
+    self.button_stamp = None
     # Refresh each explicit criteria control
     for active_criterion in self.context.active_criteria_set:
       # Get widget
@@ -327,6 +363,7 @@ class CriteriaPanel(BaseControl):
   def clear_buffer(self):
     self._candidates_set = None
     self._notes_buffer = None
+    self.button_stamp = None
 
   def criteria_filter(self, note_set):
     return list(set(note_set).intersection(self.notes_with_active_criteria))
@@ -337,5 +374,32 @@ class CriteriaPanel(BaseControl):
 
 
   # endregion : Private Methods
+
+  # region : Fancy stuff
+
+  def move_between_groups(self, offset, button=None):
+    """stamp format: (button, groups, group_index, index)"""
+    # Sanity checks and unwrap
+    if self.button_stamp is None: return
+    last_button, groups, multiplier, index, note_index = self.button_stamp
+    if button is not None and  button is not last_button: return
+    offset *= multiplier
+    assert offset in (-1, 1) and note_index in (-1, 0)
+
+    # Set note and refresh corresponding stuff
+    index += offset
+    if index < 0: index += len(groups)
+    if index >= len(groups): index = 0
+    note = groups[index][note_index]
+    self.config_panel.set_note(note)
+    self.notes_buffer = groups[index]
+
+    # Set stamp
+    self.button_stamp = (button, groups, multiplier, index, note_index)
+
+    # Finally refresh header
+    self.header.refresh_header()
+
+  # endregion : Fancy stuff
 
 
