@@ -14,6 +14,7 @@ from tframe.utils import shape_string
 import tframe.utils.format_string as fs
 
 from tframe import pedia
+from tframe import hub
 from tframe.core.decorators import with_graph_if_has
 
 
@@ -236,15 +237,13 @@ class Net(Function):
 
   @property
   def extra_loss(self):
+    """When this property is accessed for the 1st time in model.build:
+        For RNN, self._extra_loss has already been calculated
+        For FNN, self._extra_loss is None, and needed to be calculated
+    """
     if self._extra_loss is not None: return self._extra_loss
-    add = lambda v: v if self._extra_loss is None else self._extra_loss + v
-
-    if self.regularization_loss is not None:
-      self._extra_loss = add(self.regularization_loss)
-
-    if self.customized_loss is not None:
-      self._extra_loss = add(self.customized_loss)
-
+    if context.loss_tensor_list:
+      self._extra_loss = tf.add_n(context.loss_tensor_list, 'extra_loss')
     return self._extra_loss
 
   # endregion : Properties
@@ -309,24 +308,6 @@ class Net(Function):
 
 
   # region : Public Methods
-
-  def pop_last_softmax(self):
-    """For RNN classifiers, softmax layer should be applied outside
-       while-loop"""
-    assert self.is_root
-    if not (isinstance(self.last_function, Activation)
-        and self.last_function.abbreviation == 'softmax'):
-      return None
-
-    last_net = self.children[-1]
-    assert isinstance(last_net, Net) and len(last_net.children) > 0
-    last_layer = last_net.children[-1]
-    assert (isinstance(last_layer, Activation)
-            and last_layer.abbreviation == 'softmax')
-    layer = last_net.children.pop(-1)
-
-    if len(last_net.children) == 0: self.children.pop(-1)
-    return layer
 
   def add_to_last_net(self, layer, only_cascade=False):
     from tframe.nets.rnet import RNet
@@ -417,3 +398,42 @@ class Net(Function):
     return get_name()
 
   # endregion: Private Methods
+
+  # region : Link tools
+
+  def neurons(self,
+              num,
+              activation=None,
+              use_bias=True,
+              weight_initializer='glorot_uniform',
+              bias_initializer='zeros',
+              kernel_regularizer=None,
+              bias_regularizer=None,
+              activity_regularizer=None,
+              **kwargs):
+    """Analogous to tf.keras.layers.Dense"""
+    pass
+
+  def _get_variable(self, name, shape, initializer=None):
+    if initializer is None:
+      initializer = getattr(
+        self, '_weight_initializer', tf.glorot_normal_initializer())
+    else:
+      assert callable(initializer)
+    return tf.get_variable(
+      name, shape, dtype=hub.dtype, initializer=initializer)
+
+  def _get_bias(self, name, dim, initializer=None):
+    if initializer is None:
+      initializer = getattr(self, '_bias_initializer', tf.zeros_initializer)
+    else:
+      assert callable(initializer)
+    return tf.get_variable(
+      name, shape=[dim], dtype=hub.dtype, initializer=initializer)
+
+  @staticmethod
+  def _get_shape_list(tensor):
+    assert isinstance(tensor, tf.Tensor)
+    return tensor.shape.as_list()
+
+  # endregion : Link tools

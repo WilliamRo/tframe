@@ -7,12 +7,18 @@ from collections import OrderedDict
 
 from tframe.configs.config_base import Config
 from tframe.monitor import Monitor
+import tframe.utils.checker as checker
 
 
 # Public methods
 
 class Context(object):
   """The author is too lazy to add a description"""
+  _LOSSES_LIST = '_LOSSES_LIST'
+  _EXPORT_DICT = '_EXPORT_DICT'
+
+  S_IN_DYDS = 'S_IN_DYDS'
+
   def __init__(self):
     # Private attribute
     self._center_od_ = OrderedDict()
@@ -46,6 +52,16 @@ class Context(object):
     from tframe.trainers.trainer import Trainer
     assert self._trainer is None and isinstance(val, Trainer)
     self._trainer = val
+
+  @property
+  def loss_tensor_list(self):
+    return self.get_collection_by_key(
+      self._LOSSES_LIST, init_if_necessary=True, val_type=list)
+
+  @property
+  def tensors_to_export(self):
+    return self.get_collection_by_key(
+      self._EXPORT_DICT, init_if_necessary=True, val_type=dict)
 
   # endregion : Properties
 
@@ -93,7 +109,23 @@ class Context(object):
   def has_value(self, key):
     return self.has_collection(key)
 
+  def clear_all_collections(self):
+    self._center_od_.clear()
+
   # endregion : Public Methods
+
+  # region : Collection short cuts
+
+  def add_loss_tensor(self, loss):
+    assert isinstance(loss, tf.Tensor)
+    checker.check(len(loss.shape) == 0, 'Input tensor must be a scalar')
+    self.add_to_list_collection(self._LOSSES_LIST, loss)
+
+  def add_tensor_to_export(self, name, tensor):
+    assert isinstance(name, str)
+    self.add_to_dict_collection(self._EXPORT_DICT, name, tensor)
+
+  # endregion : Collection short cuts
 
 
 # Initiate a context

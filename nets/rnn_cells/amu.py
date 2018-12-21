@@ -8,6 +8,7 @@ import numpy as np
 from tframe import checker
 from tframe import activations
 from tframe import initializers
+from tframe import linker
 from tframe import hub
 
 from tframe.nets.rnet import RNet
@@ -88,10 +89,8 @@ class AMU(RNet):
     s_ = tf.concat([s] * self._neurons_per_amu, axis=1)
     bias = None
     if self._use_bias: bias = self._get_bias('b', self.num_neurons)
-    matmul, multiply = tf.matmul, tf.multiply
-    if self._truncate_grad:
-      matmul = self._truncate_matmul
-      # matmul, multiply = self._truncate_matmul, self._truncate_multiply
+
+    matmul, multiply = linker.get_matmul(self._truncate_grad), tf.multiply
 
     net = tf.nn.bias_add(
       tf.add(matmul(tf.concat([x, h], axis=1), Wxh), multiply(s_, Ws)),

@@ -8,6 +8,7 @@ from tframe import activations
 from tframe import checker
 from tframe import context
 from tframe import hub
+from tframe import linker
 from tframe import initializers
 from tframe import regularizers
 
@@ -268,12 +269,13 @@ class Ham(RNet):
         truncate=self._truncate, w_reg=self._weight_regularizer)
 
     def gate(name, tensor, memory, fc_mem, gate_name=None):
-      multiply = self._truncate_multiply if self._truncate else tf.multiply
+      multiply = linker.get_multiply(self._truncate)
       g = forward(
         name, memory, fc_mem, output_dim=self._get_external_shape(tensor),
         activation=tf.sigmoid)
       if gate_name is not None:
-        context.add_to_dict_collection(self.GATES_ACTIVATIONS, gate_name, g)
+        context.add_tensor_to_export(gate_name, g)
+        # context.add_to_dict_collection(self.GATES_ACTIVATIONS, gate_name, g)
       return multiply(g, tensor)
 
     # Prepare splitted memory

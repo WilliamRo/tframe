@@ -5,10 +5,12 @@ from __future__ import print_function
 import tensorflow as tf
 import numpy as np
 
+from tframe import context
 from tframe import checker
 from tframe import activations
 from tframe import initializers
 from tframe import hub
+from tframe import linker
 
 from tframe.nets import RNet
 
@@ -86,23 +88,23 @@ class BasicLSTMCell(RNet):
 
     # Link
     if self._with_peepholes:
-      new_h, new_c = self._link_with_peepholes(input_, h, c)
-    else: new_h, new_c = self._basic_link(input_, h, c)
+      new_h, new_c, (i, f, o) = self._link_with_peepholes(input_, h, c)
+    else: new_h, new_c, (i, f, o) = self._basic_link(input_, h, c)
+
+    # Add activity regularizer if necessary
+    if hub.train_gates:
+      coef = hub.gate_loss_strength
+      context.add_loss_tensor(coef * tf.reduce_sum(tf.add_n([i, o])))
 
     # Return a tuple with the same structure as input pre_states
     return new_h, (new_h, new_c)
-
-  # def _get_zero_state(self, batch_size):
-  #   assert not self.is_root
-  #   return (np.zeros(shape=(batch_size, self._state_size)),
-  #           np.zeros(shape=(batch_size, self._state_size)))
 
   # endregion : Private Methods
 
   # region : Link Cores
 
   def _basic_link(self, x, h, c):
-    input_size = self._get_external_shape(x)
+    input_size = linker.get_dimension(x)
 
     # Determine the size of W and b according to gates to be used
     size_splits = 1 + self._input_gate + self._output_gate + self._forget_gate
@@ -150,12 +152,13 @@ class BasicLSTMCell(RNet):
     assert len(splits) == 0
 
     self._kernel, self._bias = W, bias
-    return new_h, new_c
+    return new_h, new_c, (i, f, o)
 
   def _link_with_peepholes(self, x, h, c):
     input_size = self._get_external_shape(x)
     Wi, Wf, W, Wo = (None,) * 4
     bi, bf, b, bo = (None,) * 4
+    i, f, o = (None,) * 3
 
     # Forget and write
     fi_inputs = tf.concat([h, x, c], axis=1)
@@ -192,7 +195,7 @@ class BasicLSTMCell(RNet):
         new_h = tf.multiply(new_h, o)
 
     self._kernel, self._bias = (Wi, Wf, W, Wo), (bi, bf, b, bo)
-    return new_h, new_c
+    return new_h, new_c, (i, f, o)
 
   # endregion : Link Cores
 
@@ -311,12 +314,9 @@ class OriginalLSTMCell(RNet):
     Wo = self._get_variable('Wo', [self._h_size + input_size, self._state_size])
     input_chunk = tf.concat([x, h], axis=1)
 
-    if self._truncate:
-      net_chunk_ci = self._truncate_matmul(input_chunk, Wci)
-      net_out = self._truncate_matmul(input_chunk, Wo)
-    else:
-      net_chunk_ci = tf.matmul(input_chunk, Wci)
-      net_out = tf.matmul(input_chunk, Wo)
+    matmul = linker.get_matmul(self._truncate)
+    net_chunk_ci = matmul(input_chunk, Wci)
+    net_out = matmul(input_chunk, Wo)
 
     # .. Unpack the chunk and add bias if necessary
     net_c, net_in = tf.split(

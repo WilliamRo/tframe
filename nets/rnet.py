@@ -9,9 +9,10 @@ from collections import OrderedDict
 
 import tframe as tfr
 from tframe import hub
-from tframe import checker
-from tframe import pedia
 from tframe import context
+from tframe import checker
+from tframe import linker
+from tframe import pedia
 from tframe.nets.net import Net
 from tframe.utils.misc import ravel_nested_stuff
 
@@ -25,7 +26,6 @@ class RNet(Net):
   compute_gradients = None
 
   MEMORY_TENSOR_DICT = 'MEMORY_TENSOR_DICT'
-  GATES_ACTIVATIONS = 'GATES_ACTIVATIONS'
   W_TO_REG = 'W_TO_REG'
   REG_LOSSES = 'REG_LOSSES'
 
@@ -114,10 +114,11 @@ class RNet(Net):
     # Check inputs
     if pre_outputs is not None:
       assert isinstance(pre_outputs, tuple)
-      if hub.use_rtrl or hub.export_tensors_to_note:
-        # TODO: BETA & ++export_tensors
-        assert len(pre_outputs) == 3
-      else: assert len(pre_outputs) == 2
+
+      # if hub.use_rtrl or hub.export_tensors_to_note:
+      #   # TODO: BETA & ++export_tensors
+      #   assert len(pre_outputs) == 3
+      # else: assert len(pre_outputs) == 2
       pre_states = pre_outputs[1]
 
       # TODO: ++export_tensors
@@ -148,12 +149,21 @@ class RNet(Net):
 
     result_tuple = output, tuple(states)
 
-    # TODO: BETA
-    if hub.use_rtrl:
-      result_tuple += self._get_grad_tensor_tuple(output),
+    # Add logits if necessary
+    if self.logits_tensor is not None:
+      result_tuple += self.logits_tensor,
+
+    # Add extra loss to result
+    if context.loss_tensor_list:
+      result_tuple += tf.add_n(context.loss_tensor_list, 'extra_loss'),
+
     # TODO: ++export_tensors
     if hub.export_tensors_to_note:
       result_tuple += self._get_tensors_to_export(output),
+
+    # TODO: BETA
+    if hub.use_rtrl:
+      result_tuple += self._get_grad_tensor_tuple(output),
 
     return result_tuple
 
@@ -273,33 +283,6 @@ class RNet(Net):
   def _get_placeholder(name, size):
     return tf.placeholder(dtype=hub.dtype, shape=(None, size), name=name)
 
-  def _get_variable(self, name, shape):
-    initializer = self._weight_initializer
-    if initializer is None:
-      initializer = tf.glorot_normal_initializer()
-    return tf.get_variable(
-      name, shape, dtype=hub.dtype, initializer=initializer)
-
-  def _get_bias(self, name, dim, initializer=None):
-    if initializer is None: initializer = self._bias_initializer
-    if initializer is None:
-      initializer = tf.zeros_initializer()
-    return tf.get_variable(
-      name, shape=[dim], dtype=hub.dtype, initializer=initializer)
-
-  def _get_weight_and_bias(self, weight_shape, use_bias, symbol=''):
-    assert isinstance(weight_shape, (list, tuple)) and len(weight_shape) == 2
-    W_name, b_name = 'W{}'.format(symbol), 'b{}'.format(symbol)
-    W = self._get_variable(W_name, weight_shape)
-    b = self._get_bias(b_name, weight_shape[1]) if use_bias else None
-    return W, b
-
-  def _net(self, x, W, b):
-    return tf.nn.bias_add(tf.matmul(x, W), b)
-
-  def _gate(self, x, W, b):
-    return tf.sigmoid(self._net(x, W, b))
-
   def _distribute_last_tensors(self):
     assert self.is_root
     s_cursor, g_cursor = 0, 0
@@ -316,20 +299,42 @@ class RNet(Net):
     if hub.use_rtrl:
       assert g_cursor == len(self._grad_tensors)
 
+  # endregion : Private Methods
+
+  # region : Link tools
+
+  def _get_weight_and_bias(self, weight_shape, use_bias, symbol=''):
+    assert isinstance(weight_shape, (list, tuple)) and len(weight_shape) == 2
+    W_name, b_name = 'W{}'.format(symbol), 'b{}'.format(symbol)
+    W = self._get_variable(W_name, weight_shape)
+    b = self._get_bias(b_name, weight_shape[1]) if use_bias else None
+    return W, b
+
+  def _net(self, x, W, b):
+    return tf.nn.bias_add(tf.matmul(x, W), b)
+
+  def _gate(self, x, W, b):
+    return tf.sigmoid(self._net(x, W, b))
+
+  # region : To be superceded
+
   def _neurons_forward(
       self, x, name, f, output_dim=None, use_bias=True, truncate=False,
       w_reg=None):
     assert name is not None and callable(f)
-    x_size = self._get_external_shape(x)
     dim = self._state_size if output_dim is None else output_dim
-
-    matmul = self._truncate_matmul if truncate else tf.matmul
-    with tf.variable_scope(name):
-      bias = self._get_bias('bias', dim) if use_bias else None
-      W = self._get_variable('W', shape=[x_size, dim])
-      if w_reg: context.add_to_dict_collection(self.W_TO_REG, W, w_reg)
-      net = tf.nn.bias_add(matmul(x, W), bias)
-      return f(net)
+    return linker.neurons(
+      dim, x, activation=f, use_bias=use_bias, truncate=truncate,
+      weight_regularizer=w_reg)
+    # x_size = self._get_external_shape(x)
+    #
+    # matmul = linker.get_matmul(truncate)
+    # with tf.variable_scope(name):
+    #   bias = self._get_bias('bias', dim) if use_bias else None
+    #   W = self._get_variable('W', shape=[x_size, dim])
+    #   if w_reg: context.add_to_dict_collection(self.W_TO_REG, W, w_reg)
+    #   net = tf.nn.bias_add(matmul(x, W), bias)
+    #   return f(net)
 
   def _neurons_forward_with_memory(
       self, x, s, name, f, fc_mem, output_dim=None, use_bias=True,
@@ -340,59 +345,29 @@ class RNet(Net):
         tf.concat([x, s], axis=1), name, f, output_dim, use_bias, truncate,
         w_reg=w_reg)
     # Otherwise
-    x_size = self._get_external_shape(x)
     dim = self._state_size if output_dim is None else output_dim
+    return linker.neurons(
+      dim, x, activation=f, memory=s, fc_memory=fc_mem, use_bias=use_bias,
+      truncate=truncate, weight_regularizer=w_reg)
+    # x_size = self._get_external_shape(x)
+    #
+    # matmul = linker.get_matmul(truncate)
+    # multiply = linker.get_multiply(truncate)
+    # with tf.variable_scope(name):
+    #   Wx = self._get_variable('Wx', shape=[x_size, dim])
+    #   if w_reg: context.add_to_dict_collection(self.W_TO_REG, Wx, w_reg)
+    #   net_x = matmul(x, Wx)
+    #
+    #   Ws = self._get_variable('Ws', shape=[1, dim])
+    #   if w_reg: context.add_to_dict_collection(self.W_TO_REG, Ws, w_reg)
+    #   net_s = multiply(s, Ws)
+    #   bias = self._get_bias('bias', dim) if use_bias else None
+    #   net = tf.nn.bias_add(tf.add(net_x, net_s), bias)
+    #   return f(net)
 
-    matmul = self._truncate_matmul if truncate else tf.matmul
-    multiply = self._truncate_multiply if truncate else tf.multiply
-    with tf.variable_scope(name):
-      Wx = self._get_variable('Wx', shape=[x_size, dim])
-      if w_reg: context.add_to_dict_collection(self.W_TO_REG, Wx, w_reg)
-      net_x = matmul(x, Wx)
+  # endregion : To be superceded
 
-      Ws = self._get_variable('Ws', shape=[1, dim])
-      if w_reg: context.add_to_dict_collection(self.W_TO_REG, Ws, w_reg)
-      net_s = multiply(s, Ws)
-      bias = self._get_bias('bias', dim) if use_bias else None
-      net = tf.nn.bias_add(tf.add(net_x, net_s), bias)
-      return f(net)
-
-  # endregion : Private Methods
-
-  # region : Customized Ops
-
-  # TODO: can be merged into a single method
-
-  @staticmethod
-  @tf.custom_gradient
-  def _truncate_matmul(x, W):
-    assert len(x.shape) == len(W.shape) == 2
-    y = tf.matmul(x, W)
-    def grad(dy):
-      dx = tf.zeros_like(x)
-      # dW = tf.gradients(y, W, grad_ys=dy)[0]
-      dW = tf.matmul(tf.transpose(x), dy)
-      return dx, dW
-    return y, grad
-
-  @staticmethod
-  @tf.custom_gradient
-  def _truncate_multiply(x, W):
-    """x is usually larger than W"""
-    x_shape = x.shape.as_list()
-    W_shape = W.shape.as_list()
-    assert len(x_shape) == len(W_shape) == 2
-    # assert W_shape[0] == 1
-    y = tf.multiply(x, W)
-    def grad(dy):
-      dx = tf.zeros_like(x)
-      # dx = tf.multiply(dy, W)
-      # dW = tf.gradients(y, W, grad_ys=dy)[0]
-      dW = tf.reduce_sum(tf.multiply(dy, x), axis=0, keepdims=True)
-      return dx, dW
-    return y, grad
-
-  # endregion : Customized Ops
+  # endregion : Link tools
 
   # region : Real-time recurrent learning
 
@@ -508,42 +483,45 @@ class RNet(Net):
     """Register memory tensors as a dict into tfr.collections"""
     if not hub.use_default_s_in_dy_ds: return
     assert isinstance(pre_states, (list, tuple))
-    d = OrderedDict()
+    # d = OrderedDict()
     for tensor, index in zip(
         *ravel_nested_stuff(pre_states, with_indices=True)):
       assert isinstance(index, list)
       key = 'S{}'.format('-'.join([str(i + 1) for i in index]))
-      d[key] = tensor
-    context.add_collection(RNet.MEMORY_TENSOR_DICT, d)
+      context.add_to_dict_collection(context.S_IN_DYDS, key, tensor)
+    #   d[key] = tensor
+    # context.add_collection(RNet.MEMORY_TENSOR_DICT, d)
 
   @staticmethod
   def _get_tensors_to_export(output):
     tensors = []
+    # For tensors already registered
+    tensors_to_export = context.tensors_to_export
+    for t_name, t in tensors_to_export.items():
+      tensors.append(t)
+      # tensors_to_export[t_name] = None
+    # For tensors need to be calculated using output
     # For dy/dS
     for s_name, s in context.get_collection_by_key(
-        RNet.MEMORY_TENSOR_DICT, True, val_type=dict).items():
+        context.S_IN_DYDS, True, val_type=dict).items():
       tensor = tf.gradients(output, s, name=s_name)[0]
       tensors.append(tensor)
       key = 'dy/d{}'.format(s_name)
-      context.add_to_dict_collection(pedia.tensors_to_export, key, None)
+      context.add_tensor_to_export(key, None)
+      # context.add_to_dict_collection(pedia.tensors_to_export, key, None)
     # For gates
-    for g_name, g in context.get_collection_by_key(
-      RNet.GATES_ACTIVATIONS, True, val_type=dict).items():
-      tensors.append(g)
-      context.add_to_dict_collection(pedia.tensors_to_export, g_name, None)
+    # for g_name, g in context.get_collection_by_key(
+    #   RNet.GATES_ACTIVATIONS, True, val_type=dict).items():
+    #   tensors.append(g)
+    #   context.add_to_dict_collection(pedia.tensors_to_export, g_name, None)
     return tuple(tensors)
 
   @staticmethod
   def _set_tensors_to_export(scan_output):
-    tensor_dict = context.get_collection_by_key(pedia.tensors_to_export)
+    # tensor_dict = context.get_collection_by_key(pedia.tensors_to_export)
+    tensor_dict = context.tensors_to_export
     for key, tensor in zip(tensor_dict.keys(), scan_output):
       tensor_dict[key] = tensor
-
-  def _calculate_reg(self):
-    if not context.has_collection(self.W_TO_REG): return
-    w_r = context.get_collection_by_key(self.W_TO_REG)
-    reg_losses = [reg(w) for w, reg in w_r.items()]
-    context.add_collection(self.REG_LOSSES, reg_losses)
 
   # endregion : Export tensors
 

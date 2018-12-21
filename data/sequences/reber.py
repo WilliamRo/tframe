@@ -308,7 +308,7 @@ class ERG(DataAgent):
     erg_list = data.properties['erg_list']
 
     # Fetch tensors we need
-    fetches_dict = context.get_collection_by_key(pedia.tensors_to_export)
+    fetches_dict = context.tensors_to_export
     fetches = list(fetches_dict.values())
     if not hub.calculate_mean: data = data[:num]
     results = model.batch_evaluation(fetches, data)
@@ -385,14 +385,23 @@ class ERG(DataAgent):
       loss = tf.reduce_sum(gate) + dim - 2 * tf.reduce_sum(gate[index])
       return loss
     if long_in_gate is not None:
-      # long_in_gate[1] should be 1, others should be 0
-      loss_tensor = update_loss(get_loss(long_in_gate, 1))
+      if hub.use_indis_gate_loss:
+        loss_tensor = update_loss(tf.reduce_sum(long_in_gate))
+      else:
+        # long_in_gate[1] should be 1, others should be 0
+        loss_tensor = update_loss(get_loss(long_in_gate, 1))
     if long_out_gate is not None:
-      # long_out_gate[-2] should be 1, others should be 0
-      loss_tensor = update_loss(get_loss(long_out_gate, -2))
+      if hub.use_indis_gate_loss:
+        loss_tensor = update_loss(tf.reduce_sum(long_out_gate))
+      else:
+        # long_out_gate[-2] should be 1, others should be 0
+        loss_tensor = update_loss(get_loss(long_out_gate, -2))
     if short_out_gate is not None:
-      # short_out_gate[-2] should be 0
-      loss_tensor = update_loss(tf.reduce_sum(short_out_gate[-2]))
+      if hub.use_indis_gate_loss:
+        loss_tensor = update_loss(tf.reduce_sum(short_out_gate))
+      else:
+        # short_out_gate[-2] should be 0
+        loss_tensor = update_loss(tf.reduce_sum(short_out_gate[-2]))
 
     return loss_tensor * hub.gate_loss_strength
 

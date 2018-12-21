@@ -50,3 +50,7 @@ def get_range(rng):
   if low >= high:
     raise AssertionError('!! Illegal range = ({}, {})'.format(low, high))
   return low, high
+
+
+def check(assertion, err_msg, err_type=AssertionError):
+  if not assertion: raise err_type('!! {}'.format(err_msg))

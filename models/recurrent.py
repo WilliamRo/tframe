@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tframe import context
 from tframe import hub
 
 from tframe.models.model import Model
@@ -11,7 +12,7 @@ from tframe.nets import RNet
 from tframe.layers import Input
 
 from tframe.core.decorators import with_graph
-from tframe.core import TensorSlot, NestedTensorSlot
+from tframe.core import NestedTensorSlot
 
 from tframe.utils.misc import transpose_tensor
 
@@ -28,10 +29,10 @@ class Recurrent(Model, RNet):
     self._default_net = self
     # Attributes
     self._state_slot = NestedTensorSlot(self, 'State')
-    # self._while_loop_free_output = None
     # mascot will be initiated as a placeholder with no shape specified
     # .. and will be put into initializer argument of tf.scan
     self._mascot = None
+    self._while_loop_free_output = None
 
     # TODO: BETA
     self.last_scan_output = None
@@ -49,7 +50,6 @@ class Recurrent(Model, RNet):
   # region : Build
 
   def _build_while_free(self):
-    """TODO: Deprecated for now"""
     assert isinstance(self.input_, Input)
     assert self.input_.rnn_single_step_input is not None
     input_placeholder = self.input_.rnn_single_step_input
@@ -57,13 +57,22 @@ class Recurrent(Model, RNet):
     if hub.use_rtrl or hub.export_tensors_to_note: pre_outputs += (None,)
     self._while_loop_free_output = self(pre_outputs, input_placeholder)
 
+    self._mascot = tf.placeholder(dtype=hub.dtype, name='mascot')
+    initializer = self._mascot, self.init_state
+    for output in self._while_loop_free_output[2:]:
+      if isinstance(output, tf.Tensor):
+        initializer += self._mascot,
+      else:
+        assert isinstance(output, (list, tuple))
+        initializer += ((self._mascot,) * len(output),)
+    # Clear stuff
+    context.clear_all_collections()
+    return initializer
+
   @with_graph
   def _build(self, **kwargs):
     # self.init_state should be called for the first time inside this method
     #  so that it can be initialized within the appropriate graph
-
-    # Do some initialization
-    self._mascot = tf.placeholder(dtype=hub.dtype, name='mascot')
 
     # :: Define output
     # Make sure input has been defined
@@ -75,36 +84,13 @@ class Recurrent(Model, RNet):
     input_placeholder = self.input_()
     elems = transpose_tensor(input_placeholder, [1, 0])
 
-    # Build outside while loop
-    # self._build_while_free()
+    # Build a shadow in order to foreknow the nested structure of `initializer`
+    initializer = self._build_while_free()
 
-    # Pop last softmax if necessary
-    last_softmax = self.pop_last_softmax()
-    # Call scan to produce a dynamic op
-    initializer = self._mascot, self.init_state
-    if hub.use_rtrl:
-      assert not hub.export_tensors_to_note
-      # TODO: BETA
-      initializer += ((self._mascot,) * len(self.repeater_containers),)
-      scan_outputs, state_sequences, grads = tf.scan(
-        self, elems, initializer=initializer, name='Scan')
-      self._grad_tensors = Recurrent._get_last_tensors(grads)
-      # dL/dLast_output = None
-      # self._last_scan_output = Recurrent._get_last_tensors(scan_outputs)
-      self.last_scan_output = scan_outputs
-    elif hub.export_tensors_to_note:
-      # TODO: ++export_tensors
-      initializer += ((self._mascot,) * self.num_tensors_to_export,)
-      scan_outputs, state_sequences, tensors_to_export = tf.scan(
-        self, elems, initializer=initializer, name='Scan')
-      assert isinstance(tensors_to_export, (list, tuple))
-      self._set_tensors_to_export(
-        [transpose_tensor(t, [1, 0]) for t in tensors_to_export])
-    else:
-      scan_outputs, state_sequences = tf.scan(
-        self, elems, initializer=initializer, name='Scan')
-    # Calculate regularizaion losses
-    self._calculate_reg()
+    # Send stuff into tf.scan and get results
+    results = tf.scan(self, elems, initializer=initializer, name='Scan')
+    scan_outputs, state_sequences = self._unwrap_outputs(results)
+
     # Activate state slot
     assert isinstance(self._state_slot, NestedTensorSlot)
 
@@ -116,19 +102,13 @@ class Recurrent(Model, RNet):
     # Plug last state to corresponding slot
     self._state_slot.plug(last_state)
     self._update_group.add(self._state_slot)
+
     # TODO: BETA
     if hub.use_rtrl: self._update_group.add(self.grad_buffer_slot)
     if hub.test_grad: self._update_group.add(self.grad_delta_slot)
 
     # Transpose scan outputs to get final outputs
     outputs = transpose_tensor(scan_outputs, [1, 0])
-
-    # Apply last softmax if necessary
-    if last_softmax is not None:
-      self._logits_tensor = outputs
-      outputs = last_softmax(outputs)
-      # Put last softmax back
-      self.add(last_softmax)
 
     # Output has a shape of [batch_size, num_steps, *output_shape]
     self.outputs.plug(outputs)
@@ -143,6 +123,28 @@ class Recurrent(Model, RNet):
     else:
       assert isinstance(states, tf.Tensor)
       return states[-1]
+
+  def _unwrap_outputs(self, results):
+    results = list(results)
+    y = results.pop(0)
+    state = results.pop(0)
+    # Logits
+    if self.logits_tensor is not None:
+      self._logits_tensor = transpose_tensor(results.pop(0), [1, 0])
+    # Losses
+    if context.loss_tensor_list:
+      self._extra_loss = tf.reduce_sum(results.pop(0))
+    # Tensors to export
+    if hub.export_tensors_to_note:
+      self._set_tensors_to_export(
+        [transpose_tensor(t, [1, 0]) for t in results.pop(0)])
+    # TODO: BETA
+    if hub.use_rtrl:
+      self._grad_tensors = self._get_last_tensors(results.pop(0))
+      self.last_scan_output = y
+    # Return
+    assert len(results) == 0
+    return y, state
 
   # endregion: Build
 

@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from functools import wraps
 import pprint as _pprint
 import time
 import os
@@ -25,6 +26,7 @@ _pp = _pprint.PrettyPrinter()
 
 
 def auto_clear(meth):
+  @wraps(meth)
   def wrapper(*args, **kwargs):
     if _cache['last_called'] is print_progress:
       clear_line()
