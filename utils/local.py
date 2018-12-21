@@ -129,8 +129,8 @@ def wizard(extension, current_dir=None, max_depth=1, input_with_enter=True):
         if is_target(file):
           selected_file = os.path.join(current_dir, file)
         else:
+          dir_stack.append(current_dir)
           path = os.path.join(current_dir, file)
-          dir_stack.append(path)
           current_dir = path
         break
       else:
