@@ -94,7 +94,13 @@ class BasicLSTMCell(RNet):
     # Add activity regularizer if necessary
     if hub.train_gates:
       coef = hub.gate_loss_strength
-      context.add_loss_tensor(coef * tf.reduce_sum(tf.add_n([i, o])))
+      gates = [g for g in (i, f, o) if g is not None]
+      if gates:
+        context.add_loss_tensor(coef * tf.reduce_sum(tf.add_n(gates)))
+    if hub.export_gates:
+      if i is not None: context.add_tensor_to_export('input_gate', i)
+      if f is not None: context.add_tensor_to_export('forget_gate', f)
+      if o is not None: context.add_tensor_to_export('output_gate', o)
 
     # Return a tuple with the same structure as input pre_states
     return new_h, (new_h, new_c)

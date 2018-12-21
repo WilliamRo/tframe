@@ -22,6 +22,10 @@ def identity():
 def get(identifier, **kwargs):
   if identifier is None or isinstance(identifier, init_ops.Initializer):
     return identifier
+
+  # TODO: ...
+  if callable(identifier): return identifier
+
   elif isinstance(identifier, six.string_types):
     # If identifier is a string
     identifier = identifier.lower()

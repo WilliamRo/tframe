@@ -53,6 +53,8 @@ class RNet(Net):
 
     self._custom_vars = None
 
+    self._gate_dict = OrderedDict()
+
   # region : Properties
 
   @property
@@ -159,7 +161,8 @@ class RNet(Net):
 
     # TODO: ++export_tensors
     if hub.export_tensors_to_note:
-      result_tuple += self._get_tensors_to_export(output),
+      y = self.logits_tensor if self.logits_tensor is not None else output
+      result_tuple += self._get_tensors_to_export(y),
 
     # TODO: BETA
     if hub.use_rtrl:
@@ -324,17 +327,8 @@ class RNet(Net):
     assert name is not None and callable(f)
     dim = self._state_size if output_dim is None else output_dim
     return linker.neurons(
-      dim, x, activation=f, use_bias=use_bias, truncate=truncate,
+      dim, x, activation=f, use_bias=use_bias, truncate=truncate, scope=name,
       weight_regularizer=w_reg)
-    # x_size = self._get_external_shape(x)
-    #
-    # matmul = linker.get_matmul(truncate)
-    # with tf.variable_scope(name):
-    #   bias = self._get_bias('bias', dim) if use_bias else None
-    #   W = self._get_variable('W', shape=[x_size, dim])
-    #   if w_reg: context.add_to_dict_collection(self.W_TO_REG, W, w_reg)
-    #   net = tf.nn.bias_add(matmul(x, W), bias)
-    #   return f(net)
 
   def _neurons_forward_with_memory(
       self, x, s, name, f, fc_mem, output_dim=None, use_bias=True,
@@ -348,22 +342,7 @@ class RNet(Net):
     dim = self._state_size if output_dim is None else output_dim
     return linker.neurons(
       dim, x, activation=f, memory=s, fc_memory=fc_mem, use_bias=use_bias,
-      truncate=truncate, weight_regularizer=w_reg)
-    # x_size = self._get_external_shape(x)
-    #
-    # matmul = linker.get_matmul(truncate)
-    # multiply = linker.get_multiply(truncate)
-    # with tf.variable_scope(name):
-    #   Wx = self._get_variable('Wx', shape=[x_size, dim])
-    #   if w_reg: context.add_to_dict_collection(self.W_TO_REG, Wx, w_reg)
-    #   net_x = matmul(x, Wx)
-    #
-    #   Ws = self._get_variable('Ws', shape=[1, dim])
-    #   if w_reg: context.add_to_dict_collection(self.W_TO_REG, Ws, w_reg)
-    #   net_s = multiply(s, Ws)
-    #   bias = self._get_bias('bias', dim) if use_bias else None
-    #   net = tf.nn.bias_add(tf.add(net_x, net_s), bias)
-    #   return f(net)
+      scope=name, truncate=truncate, weight_regularizer=w_reg)
 
   # endregion : To be superceded
 
@@ -489,8 +468,6 @@ class RNet(Net):
       assert isinstance(index, list)
       key = 'S{}'.format('-'.join([str(i + 1) for i in index]))
       context.add_to_dict_collection(context.S_IN_DYDS, key, tensor)
-    #   d[key] = tensor
-    # context.add_collection(RNet.MEMORY_TENSOR_DICT, d)
 
   @staticmethod
   def _get_tensors_to_export(output):
@@ -499,7 +476,6 @@ class RNet(Net):
     tensors_to_export = context.tensors_to_export
     for t_name, t in tensors_to_export.items():
       tensors.append(t)
-      # tensors_to_export[t_name] = None
     # For tensors need to be calculated using output
     # For dy/dS
     for s_name, s in context.get_collection_by_key(
@@ -508,17 +484,10 @@ class RNet(Net):
       tensors.append(tensor)
       key = 'dy/d{}'.format(s_name)
       context.add_tensor_to_export(key, None)
-      # context.add_to_dict_collection(pedia.tensors_to_export, key, None)
-    # For gates
-    # for g_name, g in context.get_collection_by_key(
-    #   RNet.GATES_ACTIVATIONS, True, val_type=dict).items():
-    #   tensors.append(g)
-    #   context.add_to_dict_collection(pedia.tensors_to_export, g_name, None)
     return tuple(tensors)
 
   @staticmethod
   def _set_tensors_to_export(scan_output):
-    # tensor_dict = context.get_collection_by_key(pedia.tensors_to_export)
     tensor_dict = context.tensors_to_export
     for key, tensor in zip(tensor_dict.keys(), scan_output):
       tensor_dict[key] = tensor
