@@ -208,7 +208,8 @@ class DataAgent(object):
       if paths[-1] == '': paths.pop(-1)
     path = ""
     for p in paths:
-      path = os.path.join(path, p)
+      if path[-1] == ':': path = '{}/{}'.format(path, p)
+      else: path = os.path.join(path, p)
       if not os.path.exists(path) and create_path:
         os.mkdir(path)
     # Return path
