@@ -20,7 +20,8 @@ def mlp(th):
   assert isinstance(th.fc_dims, list)
   for dim in th.fc_dims:
     model.add(Linear(output_dim=dim))
-    model.add(BatchNormalization())
+    if th.use_batchnorm:
+      model.add(BatchNormalization())
     model.add(Activation(th.actype1))
 
   # Add output layer
@@ -28,7 +29,9 @@ def mlp(th):
   model.add(Activation('softmax'))
 
   # Build model
-  optimizer=tf.train.AdamOptimizer(learning_rate=th.learning_rate)
+  optimizer = th.optimizer
+  if optimizer is None:
+    optimizer=tf.train.AdamOptimizer(learning_rate=th.learning_rate)
   model.build(optimizer=optimizer)
 
   return model

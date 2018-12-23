@@ -20,6 +20,7 @@ class ModelConfigs(object):
   actype1 = Flag.string('relu', 'Activation type 1', is_key=None)
   actype2 = Flag.string('relu', 'Activation type 2', is_key=None)
   use_bias = Flag.boolean(True, 'Whether to use bias', is_key=None)
+  use_batchnorm = Flag.boolean(False, 'Whether to use batch norm', is_key=None)
 
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   fc_dims = Flag.whatever(None, '...')

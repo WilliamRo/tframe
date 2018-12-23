@@ -9,3 +9,15 @@ def load_data(path):
   assert isinstance(val_set, DataSet)
   assert isinstance(test_set, DataSet)
   return train_set, val_set, test_set
+
+
+if __name__ == '__main__':
+  from tframe.data.images.image_viewer import ImageViewer
+
+  data_path = './data'
+  train_set, val_set, test_set = load_data(data_path)
+
+  viewer = ImageViewer(train_set)
+  viewer.show()
+
+
