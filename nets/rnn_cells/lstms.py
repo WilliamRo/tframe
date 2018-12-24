@@ -91,16 +91,9 @@ class BasicLSTMCell(RNet):
       new_h, new_c, (i, f, o) = self._link_with_peepholes(input_, h, c)
     else: new_h, new_c, (i, f, o) = self._basic_link(input_, h, c)
 
-    # Add activity regularizer if necessary
-    if hub.train_gates:
-      coef = hub.gate_loss_strength
-      gates = [g for g in (i, f, o) if g is not None]
-      if gates:
-        context.add_loss_tensor(coef * tf.reduce_sum(tf.add_n(gates)))
-    if hub.export_gates:
-      if i is not None: context.add_tensor_to_export('input_gate', i)
-      if f is not None: context.add_tensor_to_export('forget_gate', f)
-      if o is not None: context.add_tensor_to_export('output_gate', o)
+    # Register gates
+    for k, g in zip(('input_gate', 'forget_gate', 'output_gate'), (i, f, o)):
+      if g is not None: self._gate_dict[k] = g
 
     # Return a tuple with the same structure as input pre_states
     return new_h, (new_h, new_c)

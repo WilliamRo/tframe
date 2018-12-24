@@ -13,13 +13,14 @@ from tframe import context
 # region : Standard units
 
 def neurons(num,
-            x,
+            external_input,
             activation=None,
             memory=None,
             fc_memory=True,
             scope=None,
             use_bias=True,
             truncate=False,
+            num_or_size_splits=None,
             weight_initializer='glorot_uniform',
             bias_initializer='zeros',
             weight_regularizer=None,
@@ -34,26 +35,24 @@ def neurons(num,
   activity_regularizer = regularizers.get(activity_regularizer)
 
   def forward():
+    # Prepare a weight list for potential regularizer calculation
     weight_list = []
-    Wx = get_variable('W', [get_dimension(x), num], weight_initializer)
-    weight_list.append(Wx)
-    y = get_matmul(truncate)(x, Wx)
-    if memory is not None:
-      assert isinstance(memory, tf.Tensor)
+    x = (tf.concat([external_input, memory], axis=1, name='x_and_memory')
+         if memory is not None and fc_memory else external_input)
+    W = get_variable('W', [get_dimension(x), num], weight_initializer)
+    weight_list.append(W)
+    y = get_matmul(truncate)(x, W)
+    if memory is not None and not fc_memory:
       memory_dim = get_dimension(memory)
-      if fc_memory:
-        op = get_matmul(truncate)
-        Ws = get_variable('Ws', [memory_dim, num], weight_initializer)
-      else:
-        assert memory_dim == num
-        op = get_multiply(truncate)
-        Ws = get_variable('Ws', [1, num], weight_initializer)
-      y = tf.add(y, op(memory, Ws))
+      assert memory_dim == num
+      Ws = get_variable('Ws', [1, num], weight_initializer)
       weight_list.append(Ws)
+      y = tf.add(y, get_multiply(truncate)(memory, Ws))
     b = get_bias('bias', num, bias_initializer) if use_bias else None
     y = tf.nn.bias_add(y, b)
     if callable(activation): y = activation(y)
     return y, weight_list, b
+
   if scope is not None:
     with tf.variable_scope(scope): y, W_list, b = forward()
   else: y, W_list, b = forward()
@@ -66,6 +65,8 @@ def neurons(num,
   if callable(activity_regularizer):
     context.add_loss_tensor(activity_regularizer(y))
 
+  if num_or_size_splits is not None:
+    return tf.split(y, num_or_size_splits=num_or_size_splits, axis=1)
   return y
 
 # endregion : Standard units

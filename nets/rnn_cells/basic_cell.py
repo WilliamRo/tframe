@@ -5,8 +5,8 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tframe import activations
-from tframe import initializers
 from tframe import checker
+from tframe import initializers
 
 from tframe.nets import RNet
 
@@ -50,20 +50,6 @@ class BasicRNNCell(RNet):
 
   def _link(self, pre_state, input_, **kwargs):
     self._check_state(pre_state)
-    input_size = self._get_external_shape(input_)
-
-    # Initiate bias
-    bias = None
-    if self._use_bias: bias = self._get_bias('b', self._state_size)
-    W = self._get_variable(
-      'W', [self._state_size + input_size, self._state_size])
-
-    net = tf.nn.bias_add(
-      tf.matmul(tf.concat([input_, pre_state], axis=1), W), bias)
-    state = self._activation(net, name='state')
-
-    self._kernel, self._bias = W, bias
+    state = self.neurons(input_, pre_state, activation=self._activation)
     return state, state
-
-
 

@@ -67,6 +67,10 @@ def section(contents):
 def show_status(content, symbol=_config['status_prompt']):
   print("%s %s" % (symbol, content))
 
+@auto_clear
+def show_info(info, symbol='::'):
+  print("%s %s" % (symbol, info))
+
 
 @auto_clear
 def warning(content):

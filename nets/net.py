@@ -5,6 +5,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
+from tframe import console
 from tframe.core import Function
 from tframe import context
 from tframe.layers.layer import Layer
@@ -51,8 +52,7 @@ class Net(Function):
 
     # Losses
     self._extra_loss = None
-    self._reg_loss = None
-    self._customized_loss = None
+    # self._reg_loss = None
 
   # region : Properties
 
@@ -214,26 +214,15 @@ class Net(Function):
     # Return
     return result
 
-  @property
-  def regularization_loss(self):
-    if self._reg_loss is not None: return self._reg_loss
-
-    reg_losses = tf.get_collection(
-      pedia.tfkey.regularization_losses, self.name)
-    if len(reg_losses) > 0:
-      self._reg_loss = tf.add_n(reg_losses, name='reg_sum')
-    return self._reg_loss
-
-  @property
-  def customized_loss(self):
-    if self._customized_loss is not None: return self._customized_loss
-
-    f = context.read_value(pedia.custom_loss_f, default_value=None)
-    if callable(f): self._customized_loss = f(self)
-
-    if self._customized_loss is not None:
-      assert isinstance(self._customized_loss, tf.Tensor)
-    return self._customized_loss
+  # @property
+  # def regularization_loss(self):
+  #   if self._reg_loss is not None: return self._reg_loss
+  #
+  #   reg_losses = tf.get_collection(
+  #     pedia.tfkey.regularization_losses, self.name)
+  #   if len(reg_losses) > 0:
+  #     self._reg_loss = tf.add_n(reg_losses, name='reg_sum')
+  #   return self._reg_loss
 
   @property
   def extra_loss(self):
@@ -241,9 +230,7 @@ class Net(Function):
         For RNN, self._extra_loss has already been calculated
         For FNN, self._extra_loss is None, and needed to be calculated
     """
-    if self._extra_loss is not None: return self._extra_loss
-    if context.loss_tensor_list:
-      self._extra_loss = tf.add_n(context.loss_tensor_list, 'extra_loss')
+    if self._extra_loss is None: self._extra_loss = self._get_extra_loss()
     return self._extra_loss
 
   # endregion : Properties
@@ -397,22 +384,37 @@ class Net(Function):
 
     return get_name()
 
+  def _get_customized_loss(self, outer=False):
+    f = (context.customed_outer_loss_f_net if outer
+         else context.customed_loss_f_net)
+    if callable(f):
+      loss_list = f(self)
+      assert isinstance(loss_list, list)
+      return loss_list
+    else: return []
+
+  def _get_extra_loss(self):
+    loss_tensor_list = context.loss_tensor_list
+    assert isinstance(loss_tensor_list, list)
+    customized_loss = self._get_customized_loss()
+    if customized_loss:
+      loss_tensor_list += customized_loss
+    if loss_tensor_list:
+      result = tf.add_n(loss_tensor_list, 'extra_loss')
+    else: result = None
+
+    # Show loss list
+    if hub.show_extra_loss_info and loss_tensor_list:
+      console.show_info('Extra losses:')
+      for loss_tensor in loss_tensor_list:
+        assert isinstance(loss_tensor, tf.Tensor)
+        console.supplement(loss_tensor.name, level=2)
+      console.split()
+    return result
+
   # endregion: Private Methods
 
   # region : Link tools
-
-  def neurons(self,
-              num,
-              activation=None,
-              use_bias=True,
-              weight_initializer='glorot_uniform',
-              bias_initializer='zeros',
-              kernel_regularizer=None,
-              bias_regularizer=None,
-              activity_regularizer=None,
-              **kwargs):
-    """Analogous to tf.keras.layers.Dense"""
-    pass
 
   def _get_variable(self, name, shape, initializer=None):
     if initializer is None:

@@ -274,7 +274,8 @@ class Ham(RNet):
         name, memory, fc_mem, output_dim=self._get_external_shape(tensor),
         activation=tf.sigmoid)
       if gate_name is not None:
-        context.add_tensor_to_export(gate_name, g)
+        self._gate_dict[gate_name] = g
+        # context.add_tensor_to_export(gate_name, g)
         # context.add_to_dict_collection(self.GATES_ACTIVATIONS, gate_name, g)
       return multiply(g, tensor)
 

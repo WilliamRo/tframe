@@ -365,7 +365,7 @@ class ERG(DataAgent):
     assert isinstance(net, RNet)
 
     # Get long-term unit gate tensors
-    tensors_to_export = context.get_collection_by_key(pedia.tensors_to_export)
+    tensors_to_export = context.tensors_to_export
     gate_tensors = {k: v for k, v in tensors_to_export.items()
                     if k in ('out_gate_1', 'in_gate_2', 'out_gate_2')}
     long_in_gate, long_out_gate, short_out_gate = None, None, None
@@ -377,33 +377,30 @@ class ERG(DataAgent):
       elif k == 'in_gate_2': long_in_gate = v_2d
       elif k == 'out_gate_2': long_out_gate = v_2d
 
-    loss_tensor = None
-    update_loss = lambda v: v if loss_tensor is None else loss_tensor + v
-    def get_loss(gate, index):
+    loss_tensors = []
+    coef = hub.gate_loss_strength
+    def get_loss(name, gate, index, suppress=False):
       assert isinstance(gate, tf.Tensor)
+      name = '{}_loss'.format(name)
       dim = gate.shape.as_list()[-1]
-      loss = tf.reduce_sum(gate) + dim - 2 * tf.reduce_sum(gate[index])
-      return loss
-    if long_in_gate is not None:
-      if hub.use_indis_gate_loss:
-        loss_tensor = update_loss(tf.reduce_sum(long_in_gate))
+      if hub.apply_default_gate_loss:
+        loss = tf.reduce_sum(gate)
+      elif suppress:
+        loss = tf.reduce_sum(gate) + dim - 2 * tf.reduce_sum(gate[index])
       else:
-        # long_in_gate[1] should be 1, others should be 0
-        loss_tensor = update_loss(get_loss(long_in_gate, 1))
-    if long_out_gate is not None:
-      if hub.use_indis_gate_loss:
-        loss_tensor = update_loss(tf.reduce_sum(long_out_gate))
-      else:
-        # long_out_gate[-2] should be 1, others should be 0
-        loss_tensor = update_loss(get_loss(long_out_gate, -2))
-    if short_out_gate is not None:
-      if hub.use_indis_gate_loss:
-        loss_tensor = update_loss(tf.reduce_sum(short_out_gate))
-      else:
-        # short_out_gate[-2] should be 0
-        loss_tensor = update_loss(tf.reduce_sum(short_out_gate[-2]))
+        loss = tf.reduce_sum(gate[index])
+      console.show_status('{} `{}` added.'.format(
+        'Default' if hub.apply_default_gate_loss else 'Customized', name))
+      return tf.multiply(loss, coef, name=name)
 
-    return loss_tensor * hub.gate_loss_strength
+    if long_in_gate is not None:
+      loss_tensors.append(get_loss('long_in_gate', long_in_gate, 1))
+    if long_out_gate is not None:
+      loss_tensors.append(get_loss('long_out_gate', long_out_gate, -2))
+    if short_out_gate is not None:
+      loss_tensors.append(get_loss('short_out_gate', short_out_gate, -2,
+                                   suppress=True))
+    return loss_tensors
 
   # endregion : Customized losses
 

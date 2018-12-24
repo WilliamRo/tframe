@@ -29,6 +29,10 @@ class Context(object):
     self.hub = Config()
     self.monitor = Monitor()
 
+    # Nailed attributes
+    self.customed_loss_f_net = None
+    self.customed_outer_loss_f_net = None
+
   # region : Properties
 
   @property

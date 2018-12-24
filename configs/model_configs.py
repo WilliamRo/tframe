@@ -38,3 +38,7 @@ class ModelConfigs(object):
                                      is_key=None)
   gate_loss_strength = Flag.float(0.01, 'Strength for gate loss', is_key=None)
 
+  show_extra_loss_info = Flag.boolean(
+    False, 'Whether to show extra loss info while predictor calls '
+           'net.extra_loss')
+

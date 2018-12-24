@@ -12,7 +12,6 @@ from tframe import hub
 from tframe import context
 from tframe import checker
 from tframe import linker
-from tframe import pedia
 from tframe.nets.net import Net
 from tframe.utils.misc import ravel_nested_stuff
 
@@ -26,8 +25,6 @@ class RNet(Net):
   compute_gradients = None
 
   MEMORY_TENSOR_DICT = 'MEMORY_TENSOR_DICT'
-  W_TO_REG = 'W_TO_REG'
-  REG_LOSSES = 'REG_LOSSES'
 
   def __init__(self, name):
     # Call parent's constructor
@@ -38,7 +35,7 @@ class RNet(Net):
     self._state_array = None
     self._state_size = None
     self._init_state = None
-    self._kernel = None
+    self._weights = None
     self._bias = None
     self._weight_initializer = None
     self._bias_initializer = None
@@ -53,6 +50,7 @@ class RNet(Net):
 
     self._custom_vars = None
 
+    # Gate activations should be registered here
     self._gate_dict = OrderedDict()
 
   # region : Properties
@@ -92,14 +90,6 @@ class RNet(Net):
         dtype=hub.dtype, shape=(None, self._state_size), name='init_state')
 
     return self._init_state
-
-  @property
-  def regularization_loss(self):
-    if self._reg_loss is not None: return self._reg_loss
-    if context.has_collection(self.REG_LOSSES):
-      reg_losses = context.get_collection_by_key(self.REG_LOSSES, val_type=list)
-      self._reg_loss = tf.add_n(reg_losses)
-    return self._reg_loss
 
   # endregion : Properties
 
@@ -148,21 +138,24 @@ class RNet(Net):
         output = net(output)
 
     assert len(states) == len(pre_states)
-
     result_tuple = output, tuple(states)
+
+    # Register gates
+    self._register_gates()
 
     # Add logits if necessary
     if self.logits_tensor is not None:
       result_tuple += self.logits_tensor,
 
-    # Add extra loss to result
-    if context.loss_tensor_list:
-      result_tuple += tf.add_n(context.loss_tensor_list, 'extra_loss'),
-
     # TODO: ++export_tensors
     if hub.export_tensors_to_note:
       y = self.logits_tensor if self.logits_tensor is not None else output
       result_tuple += self._get_tensors_to_export(y),
+
+    # Add extra loss to result
+    extra_loss = self._get_extra_loss()
+    if extra_loss is not None:
+      result_tuple += extra_loss,
 
     # TODO: BETA
     if hub.use_rtrl:
@@ -302,6 +295,16 @@ class RNet(Net):
     if hub.use_rtrl:
       assert g_cursor == len(self._grad_tensors)
 
+  def _register_gates(self):
+    assert self.is_root
+    for cell in self.rnn_cells:
+      for k, g in cell._gate_dict.items():
+        if hub.export_gates: context.add_tensor_to_export(k, g)
+        if hub.train_gates:
+          coef = hub.gate_loss_strength
+          context.add_loss_tensor(tf.multiply(
+            coef, tf.reduce_sum(g), name='{}_loss'.format(k)))
+
   # endregion : Private Methods
 
   # region : Link tools
@@ -318,6 +321,47 @@ class RNet(Net):
 
   def _gate(self, x, W, b):
     return tf.sigmoid(self._net(x, W, b))
+
+  def neurons(self, x, s=None, num=None, fc_memory=True,
+              is_gate=False, activation=None,
+              scope=None, truncate=False,
+              num_or_size_splits=None,
+              weight_initializer=None,
+              use_bias=None,
+              bias_initializer=None,
+              weight_regularizer=None,
+              bias_regularizer=None,
+              activity_regularizer=None,
+              **kwargs):
+    if num is None:
+      multiplier = (1 if not isinstance(num_or_size_splits, int)
+                    else num_or_size_splits)
+      num = multiplier * self._state_size
+    if activation is None:
+      activation = tf.sigmoid if is_gate else tf.tanh
+    if weight_initializer is None:
+      weight_initializer = getattr(self, '_weight_initializer', None)
+    if use_bias is None:
+      use_bias = getattr(self, '_use_bias', None)
+    if bias_initializer is None:
+      bias_initializer = getattr(self, '_bias_initializer')
+    if weight_regularizer is None:
+      weight_regularizer = getattr(self, '_weight_regularizer', None)
+    if bias_regularizer is None:
+      bias_regularizer = getattr(self, '_bias_regularizer', None)
+    if activity_regularizer is None:
+      activity_regularizer = getattr(self, '_activity_regularizer', None)
+    return linker.neurons(
+      num=num, external_input=x, activation=activation,
+      memory=s, fc_memory=fc_memory, scope=scope,
+      use_bias=use_bias, truncate=truncate,
+      num_or_size_splits=num_or_size_splits,
+      weight_initializer=weight_initializer,
+      bias_initializer=bias_initializer,
+      weight_regularizer=weight_regularizer,
+      bias_regularizer=bias_regularizer,
+      activity_regularizer=activity_regularizer,
+      **kwargs)
 
   # region : To be superceded
 

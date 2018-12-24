@@ -55,7 +55,8 @@ class Recurrent(Model, RNet):
     input_placeholder = self.input_.rnn_single_step_input
     pre_outputs = (None, self.init_state)
     if hub.use_rtrl or hub.export_tensors_to_note: pre_outputs += (None,)
-    self._while_loop_free_output = self(pre_outputs, input_placeholder)
+    with tf.name_scope('OuterWhileLoop'):
+      self._while_loop_free_output = self(pre_outputs, input_placeholder)
 
     self._mascot = tf.placeholder(dtype=hub.dtype, name='mascot')
     initializer = self._mascot, self.init_state
@@ -131,13 +132,23 @@ class Recurrent(Model, RNet):
     # Logits
     if self.logits_tensor is not None:
       self._logits_tensor = transpose_tensor(results.pop(0), [1, 0])
-    # Losses
-    if context.loss_tensor_list:
-      self._extra_loss = tf.reduce_sum(results.pop(0))
     # Tensors to export
     if hub.export_tensors_to_note:
       self._set_tensors_to_export(
         [transpose_tensor(t, [1, 0]) for t in results.pop(0)])
+    # Losses
+    losses = []
+    if context.loss_tensor_list:
+      losses.append(tf.reduce_sum(results.pop(0)))
+    if callable(context.customed_outer_loss_f_net):
+      customized_losses = self._get_customized_loss(outer=True)
+      if hub.show_extra_loss_info:
+        print(':: {} outer losses added.'.format(len(customized_losses)))
+      losses +=  customized_losses
+    if len(losses) == 1:
+      self._extra_loss = losses[0]
+    elif losses:
+      self._extra_loss = tf.add_n(losses, name='extra_loss')
     # TODO: BETA
     if hub.use_rtrl:
       self._grad_tensors = self._get_last_tensors(results.pop(0))
