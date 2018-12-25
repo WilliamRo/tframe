@@ -147,7 +147,8 @@ class VariableViewer(Frame):
     # plt.xticks([1, 2, 3])
     # ... (modify style)
     self.figure_canvas = FigureCanvasTkAgg(self.figure, self)
-    self.figure_canvas.show()
+    try: self.figure_canvas.show()
+    except: print(' ! self.figure_canvas.show() failed')
     self.tk_canvas = self.figure_canvas.get_tk_widget()
     self.tk_canvas.configure(height=self.HEIGHT, width=self.WIDTH)
     self.tk_canvas.pack(fill=tk.BOTH)
@@ -237,7 +238,7 @@ class VariableViewer(Frame):
     tensor = tensor_list[0]
     if len(tensor.shape) == 2: return tensor_list
     elif len(tensor.shape) == 3 and tensor.shape[2] == 3: return tensor_list
-    elif len(tensor) == 4 and tensor.shape[2] != 3: return None
+    elif len(tensor.shape) == 4 and tensor.shape[2] != 3: return None
     elif len(tensor.shape) not in (3, 4): return None
     # Now len(tensor.shape) in (3, 4)
     console.show_status(
