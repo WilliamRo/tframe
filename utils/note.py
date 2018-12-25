@@ -48,9 +48,9 @@ class Note(object):
   # region : For SummaryViewer
 
   @property
-  def contain_tensors(self):
+  def has_history(self):
     if getattr(self, '_tensors', None) is None: return False
-    return len(self._tensors) > 0
+    return len(self._tensors) > 0 or len(self._scalars) > 0
 
   @property
   def configs(self):
@@ -74,14 +74,15 @@ class Note(object):
 
   # region : For TensorViewer
 
-  def take_down_scalars_and_tensors(self, step, scalars, tensors):
+  def take_down_scalars_and_tensors(self, step, scalars, tensors=None):
     assert isinstance(scalars, dict) and isinstance(tensors, dict)
     # Take down step
     self._steps.append(step)
     # Take down scalars
     self._append_to_dict(self._scalars, scalars)
     # Take down parameters
-    self._append_to_dict(self._tensors, tensors)
+    if tensors is not None:
+      self._append_to_dict(self._tensors, tensors)
 
   # endregion : For TensorViewer
 

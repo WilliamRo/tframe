@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import time
 import numpy as np
+from collections import OrderedDict
 
 import tensorflow as tf
 import tframe as tfr
@@ -15,6 +16,7 @@ from tframe.data.sequences.seq_set import SequenceSet
 from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
 from tframe.configs.config_base import Config, Flag
+from tframe.utils.maths.stat_tools import Statistic
 
 from tframe.trainers.metric import Metric
 
@@ -57,6 +59,9 @@ class Trainer(object):
     # Private Attributes
     self._record_count = 0
     self._warm_up = True
+    self.loss_history = Statistic(max_length=self.th.hist_buffer_len)
+    self.val_metric = Statistic(max_length=2)
+    self.train_metric = Statistic(max_length=2)
 
     self.HubClass = TrainerHub
 
@@ -172,22 +177,24 @@ class Trainer(object):
                  if self.model.input_type is InputTypes.RNN_BATCH else None)
     self.th.round_length = self.training_set.get_round_length(
       self.th.batch_size, num_steps)
+    def set_cycle(attr_name, num_per_round):
+      assert hasattr(self.th, attr_name)
+      if self.th.round_length is not None:
+        setattr(self.th, attr_name, self.th.round_length // num_per_round)
 
     # Check validation cycle
     if self.th.validation_per_round > 0 and self.validation_set is not None:
-      if self.th.round_length is not None:
-        self.th.validate_cycle = (
-          self.th.round_length // self.th.validation_per_round)
+      set_cycle('validate_cycle', self.th.validation_per_round)
 
     # Check probe cycle
     if self.th.probe_per_round > 0 and self._probe is not None:
-      if self.th.round_length is not None:
-        self.th.probe_cycle = self.th.round_length // self.th.probe_per_round
+      set_cycle('probe_cycle', self.th.probe_per_round)
 
     # Check note cycle
     if self.th.note_per_round > 0:
-      if self.th.round_length is not None:
-        self.th.note_cycle = self.th.round_length // self.th.note_per_round
+      set_cycle('note_cycle', self.th.note_per_round)
+    if self.th.note_cycle == 0 and self.th.export_tensors_upon_validation:
+      self.th.note_cycle = self.th.validate_cycle
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -256,9 +263,7 @@ class Trainer(object):
       self.th.cursor += 1
       self.counter += 1
       # Update model
-      loss_dict = self.model.update_model(data_batch=batch)
-      # Take notes
-      self._take_note_for_variables(loss_dict)
+      loss_dict = self._update_model(batch)
       # Print progress
       self._print_progress(rnd, loss_dict)
       # Validation
@@ -266,6 +271,8 @@ class Trainer(object):
         self._save_model(inter_cut=True)
       # Probe
       self._run_probe(loss_dict)
+      # Take notes
+      self._take_notes_for_export()
       # Take snapshot TODO: merge snapshot to probe
       self._snapshot()
       # After probing, training process may be terminated
@@ -312,6 +319,13 @@ class Trainer(object):
   # endregion : Train
 
   # region : Private Methods
+
+  def _update_model(self, data_batch):
+    loss_dict = self.model.update_model(data_batch=data_batch)
+    loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
+    assert len(loss_slots) > 0
+    self.loss_history.record(loss_dict[loss_slots[0]])
+    return loss_dict
 
   def _check_data(self, data_set=None, name='dataset'):
     if data_set is None:
@@ -367,19 +381,53 @@ class Trainer(object):
       self.th.round_name, rnd, total_rounds, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
-  def _take_note_for_variables(self, loss_dict):
+  def _take_notes_for_export(self):
     if self.th.note_cycle == 0: return
     if np.mod(self.counter - 1, self.th.note_cycle) != 0: return
+    if not self.loss_history.last_value: return
+    if self.th.validation_on:
+      if not self.val_metric.last_value: return
+      if self.th.validate_train_set and not self.train_metric.last_value: return
 
-    # Take down parameters
-    loss_key = 'Loss'
-    # loss_dict is a dict with Slots as keys
-    loss_slots = [s for s in loss_dict.keys() if s.name == loss_key]
-    assert len(loss_slots) > 0
-    loss_value = loss_dict[loss_slots[0]]
-    scalars = {loss_key: loss_value}
+    # Scalars
+    scalars = OrderedDict()
+    scalars['Loss'] = self.loss_history.running_average
+    if self.train_metric.last_value:
+      scalars['Train Acc'] = self.train_metric.last_value
+    if self.val_metric.last_value:
+      scalars['Val Acc'] = self.val_metric.last_value
+    # Tensors
+    tensors = OrderedDict()
+    def f(t, keys):
+      assert isinstance(t, tf.Variable)
+      last_scope = t.name.split('.')[-1]
+      for k in keys:
+        if k in last_scope: return True
+      return False
+    if self.th.export_weights:
+      variable_dict = self.model.get_trainable_variables(
+        f=lambda t: f(t, ('weight', 'W', 'kernel')))
+      tensors.update(**variable_dict)
+    if self.th.export_kernel:
+      tensors.update(**self.model.get_trainable_variables(
+        f=lambda t: f(t, ('kernel',))))
+    if self.th.export_bias:
+      tensors.update(**self.model.get_trainable_variables(
+        f=lambda t: f(t, ('bias',))))
+    # Take down
     self.model.agent.take_down_scalars_and_tensors(
-      scalars, tensors=self.model.parameters_dict)
+      scalars, tensors=tensors)
+    self._inter_cut('Notes taken down.', prompt='[Export]')
+
+    # # Take down parameters
+    # loss_key = 'Loss'
+    # # loss_dict is a dict with Slots as keys
+    # loss_slots = [s for s in loss_dict.keys() if s.name == loss_key]
+    # assert len(loss_slots) > 0
+    # loss_value = loss_dict[loss_slots[0]]
+    # scalars = {loss_key: loss_value}
+    # self.model.agent.take_down_scalars_and_tensors(
+    #   scalars, tensors=self.model.parameters_dict)
 
   def _run_probe(self, loss_dict):
     if self._probe is None or self.th.probe_cycle == 0: return False
@@ -395,19 +443,36 @@ class Trainer(object):
     # Get metric
     metric_dict = self.model.validate_model(
       self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary)
+
     new_record = None
-    content = ''
+    content_dict = OrderedDict()
     attachments = []
+    if self.th.validate_train_set:
+      train_dict = self.model.validate_model(
+        self.training_set, self.th.val_batch_size, allow_sum=False)
+      assert len(train_dict) == 1
+      for slot, val in train_dict.items():
+        assert isinstance(slot, Metric)
+        key = 'Train {}'.format(slot.name[:3])
+        content_dict[key] = val
+        self.train_metric.record(val)
+    # TODO: The code block below should be refactored
     for metric_slot, val in metric_dict.items():
       assert isinstance(metric_slot, Metric)
+      self.val_metric.record(val)
       if new_record is None:
         new_record = self.metric.take_down(val, rnd, gap=self.th.record_gap)
-        content = self._dict_to_string({metric_slot: val})
+        key = ('Val {}'.format(metric_slot.name[:3])
+               if self.th.validate_train_set else metric_slot.name)
+        content_dict[key] = val
+        # content = self._dict_to_string({metric_slot: val})
       else:
+        # TODO: what's this for ??
         metric_slot.take_down(val, rnd, gap=self.th.record_gap)
         attachments.append('{:.3f}'.format(val))
       if self.th.keep_trainer_log: self.th.logs[metric_slot.name] = val
 
+    content = self._dict_to_string(content_dict)
     if len(attachments) > 0:
       content = '{} ({})'.format(content, ', '.join(attachments))
     if new_record:
@@ -416,6 +481,9 @@ class Trainer(object):
     self._inter_cut(content, prompt='[Validate]')
 
     return new_record
+
+  def _export_tensors_upon_validation(self):
+    pass
 
   def _snapshot(self):
     if not self.th.snapshot: return
@@ -468,6 +536,9 @@ class TrainerHub(Config):
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
   round = Flag.integer(1, 'General concept of total outer loops, used'
                           ' when outer loop is not called epochs', is_key=None)
+  hist_buffer_len = Flag.integer(
+    20, 'Max length of historical statistics buffer length')
+  validate_train_set = Flag.boolean(False, 'Whether to validate train set')
 
   # endregion : Class Attributes
   trainer_class = Trainer

@@ -130,7 +130,7 @@ class HeaderControl(BaseControl):
     self.label_note_detail.configure(text=text)
 
     # Fancy stuff
-    if note.contain_tensors:
+    if note.has_history:
       self.label_note_detail.configure(cursor='hand2', foreground='firebrick')
     else: self.label_note_detail.configure(cursor='arrow', foreground='black')
 
@@ -140,7 +140,7 @@ class HeaderControl(BaseControl):
 
   def on_label_detail_click(self):
     note = self.selected_note
-    if note is not None and note.contain_tensors:
+    if note is not None and note.has_history:
       viewer = TensorViewer(note=note)
       viewer.show()
 

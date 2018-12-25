@@ -8,8 +8,8 @@ import numpy as np
 import pickle
 
 from tframe import console
-from tframe import pedia
 import tframe.utils.misc as misc
+from tframe import local
 
 
 class TFRData(object):
@@ -93,7 +93,7 @@ class TFRData(object):
   def save(self, filename):
     if filename.split('.')[-1] != self.EXTENSION:
       filename += '.{}'.format(self.EXTENSION)
-    with open(filename, 'wb') as output:
+    with open(local.check_path(filename), 'wb') as output:
       pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
   @classmethod

@@ -1,6 +1,6 @@
 import sys, os
 absolute_path = os.path.abspath(__file__)
-DIR_DEPTH = 3
+DIR_DEPTH = 2
 ROOT = absolute_path
 for _ in range(DIR_DEPTH + 1):
   ROOT = os.path.dirname(ROOT)
@@ -11,7 +11,7 @@ from tframe import local
 
 try:
   notes_path = local.wizard('sum', current_dir=os.path.dirname(__file__),
-                           input_with_enter=False)
+                            input_with_enter=False, max_depth=2)
   print('>> Loading notes, please wait ...')
 except Exception as e:
   import sys, traceback
@@ -19,6 +19,11 @@ except Exception as e:
   input('Press any key to quit ...')
   raise e
 
-viewer = SummaryViewer(notes_path)
+viewer = SummaryViewer(
+  notes_path,
+  default_inactive_flags=(
+    'epoch',
+    'mark',
+  ))
 viewer.show()
 

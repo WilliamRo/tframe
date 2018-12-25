@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy as np
+from collections import OrderedDict
 
 import tframe as tfr
 from tframe import DataSet
@@ -41,6 +42,7 @@ class Model(object):
     assert mark is not None
     if hub.prefix is not None: self.mark = hub.prefix + self.mark
     if hub.suffix is not None: self.mark += hub.suffix
+    hub.mark = self.mark
 
     # Each model has an agent to deal with some tensorflow stuff
     self.agent = Agent(self)
@@ -368,9 +370,18 @@ class Model(object):
 
   # region : Public Methods
 
-  def run_for_tensors(self, tensors, data_batch):
-    # Sanity check
-    checker.check_type(tensors, tf.Tensor) and isinstance(data_batch, TFRData)
+  def get_trainable_variables(self, f=None):
+    if f is None: f = lambda _: True
+    variables = [v for v in tf.trainable_variables() if f(v)]
+    values = self.session.run(variables)
+    variable_dict = OrderedDict()
+    for t, v in zip(variables, values):
+      variable_dict[t.name] = v
+    return variable_dict
+
+  # def run_for_tensors(self, tensors, data_batch):
+  #   # Sanity check
+  #   checker.check_type(tensors, tf.Tensor) and isinstance(data_batch, TFRData)
 
   def tune_lr(self, new_lr=None, coef=1.0):
     #TODO

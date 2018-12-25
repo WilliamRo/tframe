@@ -15,6 +15,7 @@ from tkinter import Frame
 
 if matplotlib.get_backend() != 'module://backend_interagg':
   matplotlib.use("TkAgg")
+from tframe import console
 
 
 class VariableViewer(Frame):
@@ -45,6 +46,7 @@ class VariableViewer(Frame):
     self.show_absolute_value = True  # key_symbol: a
     self.show_value = False          # key_symbol: v
     self.use_clim = True             # key_symbol: c
+    self.is_on = True
 
   @property
   def index(self):
@@ -54,6 +56,7 @@ class VariableViewer(Frame):
   # region : Public Methods
 
   def next_or_previous(self, step, level):
+    if not self.is_on: return
     assert step in (1, -1) and level in (0, 1)
     if len(self.combo_boxes) == 1: level = 0
     combo_box = self.combo_boxes[level]
@@ -75,13 +78,27 @@ class VariableViewer(Frame):
     # Sanity check
     assert isinstance(v_dict, OrderedDict) and len(v_dict) > 0
     # Set variable dict
-    self._variable_dict = v_dict
+    def recursively_flatten(src):
+      assert isinstance(src, OrderedDict)
+      dst = OrderedDict()
+      for k, v in src.items():
+        if isinstance(v, dict):
+          dst[k] = recursively_flatten(v)
+        elif isinstance(v, list):
+          flattened = self._flatten(v, name=k)
+          if flattened is not None: dst[k] = flattened
+          else: print(' ! Failed to set `{}` to viewer.'.format(k))
+        else: raise TypeError(
+            '!! Unknown type {} found in variable dict'.format(type(v)))
+      return dst
+
+    self._variable_dict = recursively_flatten(v_dict)
     self._init_combo_boxes()
     # Refresh
     self.refresh()
 
   def refresh(self):
-    if self._variable_dict is None: return
+    if self._variable_dict is None or not self.is_on: return
 
     # Clear axes (important!! otherwise the memory will not be released)
     self.subplot.cla()
@@ -171,11 +188,17 @@ class VariableViewer(Frame):
     kwargs['interpolation'] = 'none'
 
     # Plot the heat map
-    im = self.subplot.imshow(variable, **kwargs)
-
-    # Create color bar
-    if self._color_bar is not None: self._color_bar.remove()
-    self._color_bar = self.figure.colorbar(im, ax=self.subplot)
+    assert isinstance(variable, np.ndarray)
+    # console.split()
+    # console.show_status('shape = {}'.format(variable.shape))
+    # console.split()
+    if len(variable.shape) == 3:
+      im = self.subplot.imshow(variable, **kwargs)
+    else:
+      im = self.subplot.imshow(variable, **kwargs)
+      # Create color bar
+      if self._color_bar is not None: self._color_bar.remove()
+      self._color_bar = self.figure.colorbar(im, ax=self.subplot)
     return im
 
   def _annotate_heat_map(self, im, data, valfmt='{x:.2f}',
@@ -205,6 +228,44 @@ class VariableViewer(Frame):
         im.axes.text(j, i, valfmt(data[i, j], None), **kw)
 
   # endregion : Private Methods
+
+  # region : Utils
+
+  @staticmethod
+  def _flatten(tensor_list, name):
+    assert isinstance(tensor_list, list)
+    tensor = tensor_list[0]
+    if len(tensor.shape) == 2: return tensor_list
+    elif len(tensor.shape) == 3 and tensor.shape[2] == 3: return tensor_list
+    elif len(tensor) == 4 and tensor.shape[2] != 3: return None
+    elif len(tensor.shape) not in (3, 4): return None
+    # Now len(tensor.shape) in (3, 4)
+    console.show_status(
+      'Converting `{}` with shape {} ...'.format(name, tensor.shape))
+    h, w = tensor.shape[:2]
+    total = tensor.shape[-1]
+    edge = int(np.ceil(np.sqrt(total)))
+    H, W = h * edge + edge - 1, w * edge + edge - 1
+    new_shape = [H, W] + [3] if len(tensor.shape) == 4 else []
+    new_list = []
+    for t in tensor_list:
+      max_value = np.max(t)
+      pie = np.zeros(shape=new_shape, dtype=np.float32)
+      for i in range(total):
+        I = i // edge
+        J = i - I * edge
+        h_from = I * h + I
+        i_slice = slice(h_from, h_from + h)
+        w_from = J * w + J
+        j_slice = slice(w_from, w_from + w)
+        if len(tensor.shape) == 3:
+          pie[i_slice, j_slice] = t[:, :, i] / max_value
+        else: pie[i_slice, j_slice, :] = t[:, :, :, i] / max_value
+      new_list.append(pie)
+      # console.print_progress(i, total)
+    return new_list
+
+  # endregion : Utils
 
 
 if __name__ == '__main__':

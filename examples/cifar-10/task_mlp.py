@@ -6,11 +6,14 @@ import model_lib as models
 
 
 def main(_):
-  console.start('MLP task')
+  console.start('MLP task on CIFAR-10')
 
   # Configurations
   th = core.th
   th.model = models.mlp
+  th.job_dir = 'records_mlp'
+  th.gather_summ_name = 'mlp.sum'
+  th.prefix = '01_'
   th.fc_dims = [800, 500]
   th.actype1 = 'relu'
   th.use_batchnorm = True
@@ -20,7 +23,7 @@ def main(_):
   th.optimizer = tf.train.AdamOptimizer(th.learning_rate)
   th.batch_size = 64
   th.validation_per_round = 4
-  th.print_cycle = 20
+  th.print_cycle = 10
   th.shuffle = True
 
   th.train = True
@@ -28,6 +31,10 @@ def main(_):
   th.save_model = False
   th.overwrite = True
   th.summary = False
+  th.gather_note = True
+  th.validate_train_set = True
+  # th.export_weights = True
+  th.export_tensors_upon_validation = True
 
   description = ''
   th.mark = 'mlp_{}{}'.format(ms(th.fc_dims), description)

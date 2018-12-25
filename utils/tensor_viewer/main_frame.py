@@ -59,7 +59,13 @@ class TensorViewer(Viewer):
       self.context.note.step_array, self.context.note.scalar_dict)
 
     assert isinstance(self.variable_viewer, VariableViewer)
-    self.variable_viewer.set_variable_dict(self.context.note.tensor_dict)
+    tensor_dict = self.context.note.tensor_dict
+    if len(tensor_dict) > 0:
+      self.variable_viewer.set_variable_dict(self.context.note.tensor_dict)
+      self.variable_viewer.is_on = True
+    else:
+      self.variable_viewer.pack_forget()
+      self.variable_viewer.is_on = False
 
     # Global refresh
     self._global_refresh()

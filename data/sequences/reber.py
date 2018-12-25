@@ -228,7 +228,7 @@ class ERG(DataAgent):
   # region : Probe Methods
 
   @staticmethod
-  def amu18(data, trainer, **kwargs):
+  def amu18(data, trainer):
     """Probe method accepts trainer as the only parameter"""
     # region : Whatever
     acc_thres = 0.00 if hub.export_tensors_to_note else 0.8
@@ -290,7 +290,8 @@ class ERG(DataAgent):
 
     # TODO: ++export_tensors
     if hub.export_tensors_to_note:
-      ERG.export_tensors(RC_acc, ERC_acc, model, data, **kwargs)
+      ERG.export_tensors(RC_acc, ERC_acc, model, data,
+                         trainer.loss_history.running_average)
 
     msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg
@@ -300,7 +301,7 @@ class ERG(DataAgent):
   # region : Export tensor
 
   @staticmethod
-  def export_tensors(RC, ERC, model, data, **kwargs):
+  def export_tensors(RC, ERC, model, data, loss):
     agent = model.agent
     # Randomly select several samples
     num = hub.sample_num
@@ -342,15 +343,7 @@ class ERG(DataAgent):
     # Take down
     scalars = OrderedDict()
     # Calculate the running average of loss
-    loss_dict = kwargs['loss_dict']
-    loss = [v for k, v in loss_dict.items() if k.name == 'Loss'][0]
-    max_losses = 10
-    loss_history = context.get_collection_by_key('loss_history', True, list)
-    assert isinstance(loss_history, list)
-    loss_history.append(loss)
-    if len(loss_history) > max_losses: loss_history.pop(0)
-    loss_running_mean = np.mean(loss_history)
-    scalars['Loss'] = loss_running_mean
+    scalars['Loss'] = loss
     scalars['RC'] = RC
     scalars['ERC'] = ERC
     agent.take_down_scalars_and_tensors(scalars, tensors)

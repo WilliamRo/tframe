@@ -139,7 +139,8 @@ class CriteriaFigure(Frame):
 
     # Refresh related variable viewer if necessary
     if self.related_variable_viewer is not None:
-      self.related_variable_viewer.refresh()
+      if self.related_variable_viewer.is_on:
+        self.related_variable_viewer.refresh()
 
   # endregion : Public Methods
 

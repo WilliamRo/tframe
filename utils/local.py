@@ -19,12 +19,14 @@ def check_path(*paths, create_path=True):
     if len(paths) > 0 and paths[-1] == '':
       paths.pop(-1)
   path = ""
-  for p in paths:
+  for i, p in enumerate(paths):
     path += ('/' if len(path) > 0 else '') + p
-    if not os.path.exists(path):
+    is_file = '.' in p
+    if not is_file and not os.path.exists(path):
       if tfr.context.hub.should_create_path and create_path:
         os.mkdir(path)
       else: raise AssertionError('!! directory {} does not exist'.format(path))
+    if is_file: assert i == len(paths) - 1
 
   return path
 
