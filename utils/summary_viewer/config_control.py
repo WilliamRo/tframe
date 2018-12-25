@@ -12,14 +12,17 @@ from . import main_frame as centre
 
 # region : Decorators
 
-def refresh_friends_at_last(method):
-  def wrapper(self, *args, **kwargs):
-    assert isinstance(self, (ConfigControl, ConfigPanel))
-    method(self, *args, **kwargs)
-    self.criteria_panel.refresh()
-    self.header.refresh_header()
-    self.main_frame.force_buffer_not_empty()
-  return wrapper
+def refresh_friends_at_last(force_not_empty=False):
+  def outer_wrapper(method):
+    def inner_wrapper(self, *args, **kwargs):
+      assert isinstance(self, (ConfigControl, ConfigPanel))
+      method(self, *args, **kwargs)
+      self.criteria_panel.refresh()
+      self.header.refresh_header()
+      if force_not_empty:
+        self.main_frame.force_buffer_not_empty()
+    return inner_wrapper
+  return outer_wrapper
 
 # endregion : Decorators
 
@@ -130,11 +133,11 @@ class ConfigControl(BaseControl):
 
   # region : Events
 
-  @refresh_friends_at_last
+  @refresh_friends_at_last()
   def _on_combobox_selected(self, _):
     if not self._active: return
 
-  @refresh_friends_at_last
+  @refresh_friends_at_last(force_not_empty=True)
   def _on_button_click(self):
     # Hide this control
     self.pack_forget()
@@ -162,7 +165,7 @@ class ConfigControl(BaseControl):
     # Update combo
     self.config_panel.update_combo()
 
-  @refresh_friends_at_last
+  @refresh_friends_at_last()
   def _move_combo_cursor(self, offset):
     assert offset in (-1, 1) and isinstance(self.values_control, ttk.Combobox)
     if self.fixed: return
