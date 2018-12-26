@@ -10,7 +10,7 @@ import tframe as tfr
 from . import console
 
 
-def check_path(*paths, create_path=True):
+def check_path(*paths, create_path=True, is_file_name=False):
   assert len(paths) > 0
   if len(paths) == 1:
     paths = re.split(r'/|\\', paths[0])
@@ -21,11 +21,12 @@ def check_path(*paths, create_path=True):
   path = ""
   for i, p in enumerate(paths):
     path += ('/' if len(path) > 0 else '') + p
-    if not os.path.isfile(path) and not os.path.exists(path):
-      if tfr.context.hub.should_create_path and create_path:
-        os.mkdir(path)
+    if path[-1] == ':': continue
+    if not (is_file_name and i == len(paths) - 1):
+      if not os.path.exists(path):
+        if tfr.context.hub.should_create_path and create_path:
+          os.mkdir(path)
       else: raise AssertionError('!! directory {} does not exist'.format(path))
-
   return path
 
 
