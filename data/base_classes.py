@@ -93,7 +93,7 @@ class TFRData(object):
   def save(self, filename):
     if filename.split('.')[-1] != self.EXTENSION:
       filename += '.{}'.format(self.EXTENSION)
-    with open(local.check_path(filename), 'wb') as output:
+    with open(local.check_path(filename, is_file_name=True), 'wb') as output:
       pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
   @classmethod
