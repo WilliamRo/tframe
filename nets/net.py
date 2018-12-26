@@ -46,7 +46,7 @@ class Net(Function):
 
     self.children = []
     self.branch_outputs = []
-    self._kwargs = kwargs
+    self.kwargs = kwargs
 
     self._logits_tensor = None
 
@@ -213,16 +213,6 @@ class Net(Function):
 
     # Return
     return result
-
-  # @property
-  # def regularization_loss(self):
-  #   if self._reg_loss is not None: return self._reg_loss
-  #
-  #   reg_losses = tf.get_collection(
-  #     pedia.tfkey.regularization_losses, self.name)
-  #   if len(reg_losses) > 0:
-  #     self._reg_loss = tf.add_n(reg_losses, name='reg_sum')
-  #   return self._reg_loss
 
   @property
   def extra_loss(self):

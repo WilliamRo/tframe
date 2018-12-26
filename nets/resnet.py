@@ -70,7 +70,7 @@ class ResidualNet(tfr_net.Net):
     if self._force_transform or input_shape != output_shape:
       if len(input_shape) == 2:
         # Add linear layer
-        use_bias = self._kwargs.get('use_bias', False)
+        use_bias = self.kwargs.get('use_bias', False)
         self._transform_layer = Linear(
           output_dim=output_shape[1], use_bias=use_bias)
       else: raise TypeError(
