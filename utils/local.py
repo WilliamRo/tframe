@@ -26,7 +26,7 @@ def check_path(*paths, create_path=True, is_file_name=False):
       if not os.path.exists(path):
         if tfr.context.hub.should_create_path and create_path:
           os.mkdir(path)
-      else: raise AssertionError('!! directory {} does not exist'.format(path))
+        else: raise AssertionError('!! directory {} does not exist'.format(path))
   return path
 
 
