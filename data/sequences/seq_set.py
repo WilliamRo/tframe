@@ -163,6 +163,7 @@ class SequenceSet(DataSet):
     L = int(np.ceil(self.size / batch_size))
     counter = 0
     for i in range(L):
+      # Get sequence list of length `batch_size`
       indices = self._select(i, batch_size, shuffle)
       seq_batch = self[indices]
       active_length = None
@@ -174,12 +175,15 @@ class SequenceSet(DataSet):
           active_length = seq_batch.structure
           assert num_steps < 0
         seq_batch = seq_batch.padded_stack
+
+      # seq_batch.shape = (batches, steps, *shape)
+      # Use DataSet's gen_rnn_batches method to yield batches
       for batch in seq_batch.gen_rnn_batches(1, num_steps):
         batch.active_length = active_length
         yield batch
         counter += 1
-
         if counter == round_len: break
+
       if counter == round_len: break
 
     if not shuffle: assert counter == round_len
@@ -238,11 +242,11 @@ class SequenceSet(DataSet):
 
     # Check each item in summ_dict
     for name, summ_list in self.summ_dict.items():
-      checker.check_type(summ_list, np.ndarray)
       # Check type and length
       if not isinstance(summ_list, list) or len(summ_list) != list_length:
         raise ValueError('!! {} should be a list with length {}'.format(
           name, list_length))
+      checker.check_type(summ_list, np.ndarray)
       # Check structure
       for i, summ in enumerate(summ_list):
         if summ.shape[0] > 1: summ_list[i] = np.reshape(summ, (1, *summ.shape))

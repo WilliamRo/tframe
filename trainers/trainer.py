@@ -258,7 +258,7 @@ class Trainer(object):
     self._record_count = 0
     # Begin iteration
     self.th.cursor = 0
-    for batch in self._gen_batches():
+    for i, batch in enumerate(self._gen_batches()):
       # Increase iteration counter
       self.th.cursor += 1
       self.counter += 1
@@ -275,6 +275,9 @@ class Trainer(object):
       self._take_notes_for_export()
       # Take snapshot TODO: merge snapshot to probe
       self._snapshot()
+      # Check if reaches max iteration#
+      if self.th.max_iterations is not None and i + 1 >= self.th.max_iterations:
+        self.th.force_terminate = True
       # After probing, training process may be terminated
       if self.th.force_terminate: break
     if self._warm_up and self._record_count < self.th.warm_up_thres:
@@ -511,6 +514,7 @@ class TrainerHub(Config):
   # region : Class Attributes
 
   epoch = Flag.integer(1, 'Epoch number to train', is_key=None)
+  max_iterations = Flag.integer(None, 'Max inner iterations')
   batch_size = Flag.integer(1, 'Batch size', is_key=None)
   num_steps = Flag.integer(None, 'Number of time steps', is_key=None)
   shuffle = Flag.boolean(False, 'Whether to shuffle', is_key=None)

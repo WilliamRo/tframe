@@ -31,6 +31,10 @@ class RNNConfigs(object):
   with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
                                 is_key=None)
 
+  # AMU configs
+  num_units = Flag.integer(0, 'Units# used in AMU model', is_key=None)
+  unit_size = Flag.integer(0, 'Size for each AMU', is_key=None)
+
   # Ham configs
   mem_cfg = Flag.string('', 'e.g. `7-a-f;8-na-nf`')
   short_mem_size = Flag.integer(0, 'Size of short-term memory units',

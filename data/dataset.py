@@ -9,7 +9,6 @@ from tframe import pedia
 from tframe import hub
 
 from tframe.data.base_classes import TFRData
-# from tframe.data.sequences.paral_engine import ParallelEngine
 
 
 class DataSet(TFRData):
@@ -170,6 +169,8 @@ class DataSet(TFRData):
     else:
       data_set = (self if self.batch_preprocessor is None
                   else self.batch_preprocessor(self))
+      # Total steps will be data_size // batch_size, i.e. data may be
+      # .. truncated
       rnn_data = data_set._convert_to_rnn_input(batch_size)
 
     round_len = self.get_round_length(batch_size, num_steps)
@@ -177,12 +178,15 @@ class DataSet(TFRData):
 
     # Generate batches
     for i in range(round_len):
+      # Last data_batch may be shorter. (a = [1, 2], a[:9] is legal)
       f = lambda x: x[:, i*num_steps:(i + 1)*num_steps]
       batch = DataSet(
         data_dict=rnn_data._apply(f), is_rnn_input=True,
         name=self.name + '_batch_{}_of_{}'.format(i + 1, round_len),
         **self.properties)
+      # Signal for predictor's _get_default_feed_dict method
       if i == 0: batch.should_reset_state = True
+      # Yield data batch
       yield batch
 
   # endregion : Basic APIs

@@ -109,6 +109,7 @@ class Predictor(Feedforward, Recurrent):
     # Define metric
     if metric is not None:
       # Create placeholder for val_targets if necessary
+      # Common targets will be plugged into val_target slot by default
       self._plug_val_target_in(kwargs.get('val_targets', None))
 
       metric_function = metrics.get(metric)

@@ -61,6 +61,11 @@ class Config(
                                ' command line')
   bool_para_1 = Flag.boolean(False, 'Used to pass a boolean parameter using'
                                     ' command line')
+  alpha = Flag.float(0.0, 'Alpha', is_key=None)
+  beta = Flag.float(0.0, 'Beta', is_key=None)
+  gamma = Flag.float(0.0, 'Gamma', is_key=None)
+  epsilon = Flag.float(0.0, 'Epsilon', is_key=None)
+  delta = Flag.float(0.0, 'Delta', is_key=None)
 
   def __init__(self, as_global=False):
     # Try to register flags into tensorflow
