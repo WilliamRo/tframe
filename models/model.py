@@ -28,6 +28,7 @@ from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
 from tframe.data.base_classes import TFRData
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.data.bigdata import BigData
+from tframe.data.perpetual_machine import PerpetualMachine
 
 
 class Model(object):
@@ -268,7 +269,7 @@ class Model(object):
     :return: a generator or a list
     """
     # Data set must be an instance of DataSet or BigData
-    assert isinstance(data_set, (DataSet, BigData))
+    assert isinstance(data_set, (DataSet, BigData, PerpetualMachine))
     if self.input_type is InputTypes.BATCH:
       # If model's input type is normal batch, num_steps will be ignored
       # If batch size is not specified and data is a DataSet, feed it all at
@@ -324,6 +325,9 @@ class Model(object):
             metric_list.append(sum(result))
             total += len(result)
           else:
+            if isinstance(result, np.ndarray):
+              assert len(result) == 1
+              result = result[0]
             assert np.isscalar(result)
             metric_list.append(result)
             total += 1

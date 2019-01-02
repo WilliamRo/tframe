@@ -1,4 +1,15 @@
+import tensorflow as tf
 import numpy as np
+
+
+def check_tensor_shape(tensor1, tensor2, name1, name2):
+  assert isinstance(name1, str) and isinstance(name2, str)
+  assert isinstance(tensor1, tf.Tensor) and isinstance(tensor2, tf.Tensor)
+  shape1, shape2 = tensor1.shape.as_list(), tensor2.shape.as_list()
+  if shape1 != shape2:
+    raise ValueError(
+      '!! {}.shape({}) should be equal with {}.shape({}) '.format(
+        name1, shape1, name2, shape2))
 
 
 def check_type(inputs, type_tuples):

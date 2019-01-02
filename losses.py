@@ -1,8 +1,11 @@
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import six
-
 import tensorflow as tf
+
+from tframe import checker
 
 
 def _flatten(tensor):
@@ -15,24 +18,28 @@ def _flatten(tensor):
 
 
 def sigmoid_cross_entropy(labels, logits):
+  checker.check_tensor_shape(labels, logits, 'labels', 'logits')
   # Convert labels and logits to 2-D tensors
   tensors = [labels, logits]
-  for i, tensor in enumerate(tensors):
-    tensors[i] = _flatten(tensor)
+  # for i, tensor in enumerate(tensors):
+  #   tensors[i] = _flatten(tensor)
   # Calculate average cross-entropy
-  with tf.name_scope('binary_cross_entropy'): return tf.reduce_mean(
-    tf.nn.sigmoid_cross_entropy_with_logits(
+  with tf.name_scope('binary_cross_entropy'):
+    return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
       labels=tensors[0], logits=tensors[1]))
 
 
 def cross_entropy(labels, logits):
+  # Make sure labels and logits has a same shape
+  checker.check_tensor_shape(labels, logits, 'labels', 'logits')
   # Convert labels and logits to 2-D tensors
   tensors = [labels, logits]
-  for i, tensor in enumerate(tensors):
-    tensors[i] = _flatten(tensor)
+  # TODO: no need to flatten
+  # for i, tensor in enumerate(tensors):
+  #   tensors[i] = _flatten(tensor)
   # Calculate average cross-entropy
-  with tf.name_scope('cross_entropy'): return tf.reduce_mean(
-      tf.nn.softmax_cross_entropy_with_logits_v2(
+  with tf.name_scope('cross_entropy'):
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
         labels=tensors[0], logits=tensors[1]))
 
 

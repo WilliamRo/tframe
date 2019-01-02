@@ -155,7 +155,8 @@ class Trainer(object):
     self._take_notes_before_loops()
 
     # Train with graph
-    with self.session.as_default(): rounds = self._outer_loop()
+    with self.session.as_default():
+      rounds = self._outer_loop()
 
     # :: After training
     self._end_training(rounds)
@@ -181,6 +182,10 @@ class Trainer(object):
       assert hasattr(self.th, attr_name)
       if self.th.round_length is not None:
         setattr(self.th, attr_name, self.th.round_length // num_per_round)
+
+    # Set progress bar
+    if self.th.progress_bar:
+      self.th.progress_bar = self.th.round_length is not None
 
     # Check validation cycle
     if self.th.validation_per_round > 0 and self.validation_set is not None:
@@ -223,7 +228,10 @@ class Trainer(object):
     rnd = 0
     for _ in range(hub.total_outer_loops):
       rnd += 1
-      if hub.progress_bar: console.section('{} {}'.format(hub.round_name, rnd))
+      if hub.progress_bar:
+        console.section('{} {}'.format(hub.round_name, rnd))
+      else:
+        console.section('Iterations Begin')
       hub.tic()
 
       # Do inner loop
@@ -380,8 +388,11 @@ class Trainer(object):
     loss_string = self._dict_to_string(loss_dict)
     total_rounds = (' - ' if self.total_rounds is None else
                     ' ({:.1f} Total) '.format(self.total_rounds))
-    content = '{} {}{}{}'.format(
-      self.th.round_name, rnd, total_rounds, loss_string)
+    if self.th.round_length is not None:
+      content = '{} {}{}{}'.format(
+        self.th.round_name, rnd, total_rounds, loss_string)
+    else:
+      content = 'Counter {} - {}'.format(self.counter, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
   def _take_notes_for_export(self):
