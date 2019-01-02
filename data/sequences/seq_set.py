@@ -19,13 +19,15 @@ class SequenceSet(DataSet):
   PADDED_STACK = 'PADDED_STACK'
 
   def __init__(self, features=None, targets=None, data_dict=None,
-               summ_dict=None, name='seqset', **kwargs):
+               summ_dict=None, n_to_one=False, name='seqset', **kwargs):
     """
     A SequenceSet stores lists of sequences.
     :param summ_dict: stores summaries of sequences.
     """
     # Attributes
     self.summ_dict = {} if summ_dict is None else summ_dict
+    assert isinstance(n_to_one, bool)
+    kwargs['n_to_one'] = n_to_one
 
     # Call parent's constructor
     super().__init__(features, targets, data_dict, name, **kwargs)
@@ -64,6 +66,8 @@ class SequenceSet(DataSet):
       full_data = []
       for summ, seq_len in zip(summ_list, self.structure):
         assert isinstance(summ, np.ndarray) and summ.shape[0] == 1
+        if len(summ.shape) == 1:
+          summ = np.reshape(summ, (1, 1))
         full_data.append(np.broadcast_to(summ, (seq_len, *summ.shape[1:])))
       merged_dict[name] = full_data
     return merged_dict

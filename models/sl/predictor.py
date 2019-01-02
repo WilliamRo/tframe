@@ -88,7 +88,8 @@ class Predictor(Feedforward, Recurrent):
     # Define loss
     loss_function = losses.get(loss)
     with tf.name_scope('Loss'):
-      if loss == 'cross_entropy':
+      # if loss == 'cross_entropy':
+      if isinstance(loss, str) and 'cross_entropy' in loss:
         output_tensor = self.logits_tensor
         # TODO: PTB assertion failure
         # KEY: softmax activation should be added manually

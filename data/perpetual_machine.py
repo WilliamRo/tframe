@@ -15,7 +15,8 @@ class PerpetualMachine(TFRData):
   def __init__(self, name, engine, **kwargs):
     """Construct a `perpetual machine`
     :param name: name
-    :param engine: a function accepts `size` as input
+    :param engine: a function accepts `size` as input. engine takes care of
+                   properties like `n_to_one`.
     """
     # Call parent't constructor
     super().__init__(name)
@@ -25,7 +26,8 @@ class PerpetualMachine(TFRData):
     self.generate_sequence = None
     # Force to examine engine
     self._examine_engine()
-    # if kwargs.get('examine_engine', True): self._examine_engine()
+    # Set property
+    self.properties = kwargs
 
   # region : Properties
 

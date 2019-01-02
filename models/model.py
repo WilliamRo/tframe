@@ -315,11 +315,18 @@ class Model(object):
     for batch in self.get_data_batches(data, batch_size, -1, False):
       # Batch validation on irregular data
       if batch.active_length is not None:
+        # TODO: need a corresponding mechanism to ensure metric_foreach
+        #       exists
         results = self._get_active_tensor(batch, self.metric_foreach)
         for result in results:
-          assert isinstance(result, np.ndarray) and len(result.shape) == 1
-          metric_list.append(sum(result))
-          total += len(result)
+          if not batch.n_to_one:
+            assert isinstance(result, np.ndarray) and len(result.shape) == 1
+            metric_list.append(sum(result))
+            total += len(result)
+          else:
+            assert np.isscalar(result)
+            metric_list.append(result)
+            total += 1
         continue
 
       # Calculate weight
@@ -429,9 +436,10 @@ class Model(object):
     for data_batch in self.get_data_batches(data_set, batch_size):
       # Calculate output
       data_batch = self._sanity_check_before_use(data_batch)
+      # TODO: consider n_to_one cases
       batch_outputs = self._get_active_tensor(data_batch, fetches)
       assert isinstance(batch_outputs, (tuple, list))
-      # Extract if possible
+      # Extract if necessary
       if extractor is not None:
         assert callable(extractor)
         batch_outputs = [extractor(bo) for bo in batch_outputs]
@@ -469,6 +477,9 @@ class Model(object):
       if al is not None:
         assert isinstance(al, list) and len(al) == batch.size
         outputs = [[y[:l] for y, l in zip(value, al)] for value in values]
+        # If this model is for classifying a whole sequence
+        if batch.n_to_one:
+          outputs = [[y[-1] for y in output] for output in outputs]
       else: outputs = [[value] for value in values]
     else: outputs = values
 

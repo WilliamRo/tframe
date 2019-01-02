@@ -83,7 +83,7 @@ class TSP(DataAgent):
       targets.append(y)
     # Wrap data into a SequenceSet
     data_set = SequenceSet(
-      features, summ_dict={'targets': targets},
+      features, summ_dict={'targets': targets}, n_to_one=True,
       name='Noisy Sequences' if noisy else 'Noise-free Sequences',
       N=N, T=T, mu=mu, var=var, noisy=noisy)
     return data_set

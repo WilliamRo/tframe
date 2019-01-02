@@ -65,6 +65,10 @@ class DataSet(TFRData):
       else: raise TypeError('!! Unsupported target type {}'.format(type(val)))
 
   @property
+  def n_to_one(self):
+    return self.properties.get('n_to_one', False)
+
+  @property
   def representative(self):
     array = list(self.data_dict.values())[0]
     assert isinstance(array, np.ndarray)
