@@ -12,6 +12,7 @@ import tframe as tfr
 from tframe import console
 from tframe import context
 from tframe.data.base_classes import TFRData
+from tframe.data.perpetual_machine import PerpetualMachine
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
@@ -81,6 +82,10 @@ class Trainer(object):
     if self._validation_set is not None:
       assert isinstance(self._validation_set, TFRData)
     return self._validation_set
+
+  @property
+  def is_online(self):
+    return isinstance(self.training_set, PerpetualMachine)
 
   @property
   def session(self):
@@ -228,10 +233,8 @@ class Trainer(object):
     rnd = 0
     for _ in range(hub.total_outer_loops):
       rnd += 1
-      if hub.progress_bar:
-        console.section('{} {}'.format(hub.round_name, rnd))
-      else:
-        console.section('Iterations Begin')
+      if self.is_online: console.section('Iterations Begin')
+      else: console.section('{} {}'.format(hub.round_name, rnd))
       hub.tic()
 
       # Do inner loop
@@ -241,14 +244,16 @@ class Trainer(object):
         console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
           hub.round_name, hub.toc()))
       # Maybe give a report on metric
-      if hub.validation_on:
+      if not self.is_online and hub.validation_on:
         self.model.end_round(rnd)
         if self.metric.get_idle_rounds(rnd) > self.th.patience:
           self.th.raise_stop_flag()
+
       # Advanced strategy
-      self._advanced_strategy(rnd)
+      # self._advanced_strategy(rnd)
       # Export monitor info
-      if tfr.monitor.activated: tfr.monitor.export()
+      # if tfr.monitor.activated: tfr.monitor.export()
+
       # Maybe save model
       if self._save_model_at_round_end: self._save_model()
       # Early stop
@@ -257,7 +262,10 @@ class Trainer(object):
       if hub.force_terminate: break
 
     if hub.gather_note:
-      self.model.agent.put_down_criterion('Total Rounds', rnd)
+      if self.is_online:
+        self.model.agent.put_down_criterion('Total Iterations', self.counter)
+      else:
+        self.model.agent.put_down_criterion('Total Rounds', rnd)
     if self._save_model_at_training_end: self._save_model()
 
     return rnd
@@ -281,11 +289,18 @@ class Trainer(object):
       self._run_probe(loss_dict)
       # Take notes
       self._take_notes_for_export()
+
       # Take snapshot TODO: merge snapshot to probe
-      self._snapshot()
-      # Check if reaches max iteration#
-      if self.th.max_iterations is not None and i + 1 >= self.th.max_iterations:
-        self.th.force_terminate = True
+      # self._snapshot()
+
+      # Check early stop condition
+      if self.is_online:
+        if self.th.max_iterations is not None:
+          if i + 1 >= self.th.max_iterations:
+            self.th.force_terminate = True
+        if self.th.early_stop:
+          if self.metric.get_idle_counts(self.counter) > self.th.patience:
+            self.th.force_terminate = True
       # After probing, training process may be terminated
       if self.th.force_terminate: break
     if self._warm_up and self._record_count < self.th.warm_up_thres:
@@ -305,10 +320,14 @@ class Trainer(object):
     if self.th.summary or self.th.hp_tuning:
       self.model.agent.summary_writer.flush()
     # Take notes
-    total_round = '' if self.total_rounds is None else ' ({:.1f} total)'.format(
-      self.total_rounds)
-    self.model.agent.take_notes(
-      'End training after {} rounds{}'.format(rounds, total_round))
+    if self.is_online:
+      self.model.agent.take_notes(
+        'End training after {} iterations'.format(self.counter))
+    else:
+      total_round = ('' if self.total_rounds is None
+                     else ' ({:.1f} total)'.format(self.total_rounds))
+      self.model.agent.take_notes(
+        'End training after {} rounds{}'.format(rounds, total_round))
 
   def _handle_notes(self):
     # Add metric info into notes
@@ -397,7 +416,7 @@ class Trainer(object):
 
   def _take_notes_for_export(self):
     if self.th.note_cycle == 0: return
-    if np.mod(self.counter - 1, self.th.note_cycle) != 0: return
+    if np.mod(self.counter, self.th.note_cycle) != 0: return
     if not self.loss_history.last_value: return
     if self.th.validation_on:
       if not self.val_metric.last_value: return
@@ -475,14 +494,15 @@ class Trainer(object):
       assert isinstance(metric_slot, Metric)
       self.val_metric.record(val)
       if new_record is None:
-        new_record = self.metric.take_down(val, rnd, gap=self.th.record_gap)
+        new_record = self.metric.take_down(
+          val, rnd, self.counter, gap=self.th.record_gap)
         key = ('Val {}'.format(metric_slot.name[:3])
                if self.th.validate_train_set else metric_slot.name)
         content_dict[key] = val
         # content = self._dict_to_string({metric_slot: val})
       else:
         # TODO: what's this for ??
-        metric_slot.take_down(val, rnd, gap=self.th.record_gap)
+        metric_slot.take_down(val, rnd, self.counter, gap=self.th.record_gap)
         attachments.append('{:.3f}'.format(val))
       if self.th.keep_trainer_log: self.th.logs[metric_slot.name] = val
 
@@ -492,6 +512,9 @@ class Trainer(object):
     if new_record:
       content += ' <New Record>'
       self._record_count += 1
+    elif self.is_online and self.th.early_stop:
+      content += ' (Patience {}/{})'.format(
+        self.metric.get_idle_counts(self.counter), self.th.patience)
     self._inter_cut(content, prompt='[Validate]')
 
     return new_record
@@ -541,8 +564,9 @@ class TrainerHub(Config):
 
   early_stop = Flag.boolean(True, 'Early stop option', is_key=None)
   record_gap = Flag.float(0.001, 'Minimum improvement')
-  patience = Flag.integer(20, 'Tolerance of idle rounds when early stop is on',
-                          is_key=None)
+  patience = Flag.integer(
+    20, 'Tolerance of idle rounds(or iterations) when early stop is on',
+    is_key=None)
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']")
   warm_up_thres = Flag.integer(1, 'Warm up threshold', is_key=None)

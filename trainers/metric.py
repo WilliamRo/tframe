@@ -18,6 +18,7 @@ class Metric(TensorSlot):
     self._as_loss = None
     self.symbol = None
     self._record_round = 0
+    self._record_counter = 0
     # :: Attribute for take down metric history
     self._metric_logs = [[]]
     self._record = VariableSlot(self._model)
@@ -71,6 +72,9 @@ class Metric(TensorSlot):
   def get_idle_rounds(self, rnd):
     return rnd - self._record_round
 
+  def get_idle_counts(self, counter):
+    return counter - self._record_counter
+
   def is_better_than(self, metric1, metric2, gap=0):
     assert self._as_loss is not None
     if self._as_loss: return metric1 < metric2 - gap
@@ -118,7 +122,7 @@ class Metric(TensorSlot):
 
     return new_record
 
-  def take_down(self, metric, rnd, gap=0):
+  def take_down(self, metric, rnd, counter, gap=0):
     new_record = False
     # Add new metric to log
     self._add_to_log(metric)
@@ -127,6 +131,7 @@ class Metric(TensorSlot):
     if (self._record.never_assigned or
         self.is_better_than(metric, self.record, gap=gap)):
       self._record_round = rnd
+      self._record_counter = counter
       self.record = metric
       new_record = True
 
