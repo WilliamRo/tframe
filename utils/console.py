@@ -8,6 +8,7 @@ import time
 import os
 
 from sys import stdout
+import tensorflow as tf
 
 
 _config = {
@@ -169,3 +170,13 @@ def read(msg, with_enter=True):
     char = str(msvcrt.getch())[2]
     print()
     return char
+
+
+def eval_show(tensor, name='result', feed_dict=None):
+  sess = tf.get_default_session()
+  val = sess.run(tensor, feed_dict=feed_dict)
+  if len(val.shape) > 1:
+    show_status('{} = '.format(name))
+    pprint(val)
+  else: show_status('{} = {}'.format(name, val))
+

@@ -16,5 +16,5 @@ records
 # Ignore .tfd files
 *.tfd
 
-
 *.ipynb
+institute/

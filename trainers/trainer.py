@@ -286,7 +286,7 @@ class Trainer(object):
       if self._validate_model(rnd) and self._save_model_when_record_appears:
         self._save_model(inter_cut=True)
       # Probe
-      self._run_probe(loss_dict)
+      self._run_probe()
       # Take notes
       self._take_notes_for_export()
 
@@ -407,11 +407,11 @@ class Trainer(object):
     loss_string = self._dict_to_string(loss_dict)
     total_rounds = (' - ' if self.total_rounds is None else
                     ' ({:.1f} Total) '.format(self.total_rounds))
-    if self.th.round_length is not None:
+    if not self.is_online:
       content = '{} {}{}{}'.format(
         self.th.round_name, rnd, total_rounds, loss_string)
     else:
-      content = 'Counter {} - {}'.format(self.counter, loss_string)
+      content = 'Iteration {} - {}'.format(self.counter, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
   def _take_notes_for_export(self):
@@ -462,10 +462,11 @@ class Trainer(object):
     # self.model.agent.take_down_scalars_and_tensors(
     #   scalars, tensors=self.model.parameters_dict)
 
-  def _run_probe(self, loss_dict):
+  def _run_probe(self):
     if self._probe is None or self.th.probe_cycle == 0: return False
     if np.mod(self.counter, self.th.probe_cycle) != 0: return False
-    content = self._probe(self, loss_dict=loss_dict)
+    # content = self._probe(self, loss_dict=loss_dict)
+    content = self._probe(self)
     if content is None or content == '': return
     self._inter_cut(content, prompt='[Probe]', start_time=self.th.start_time)
 
@@ -519,9 +520,6 @@ class Trainer(object):
 
     return new_record
 
-  def _export_tensors_upon_validation(self):
-    pass
-
   def _snapshot(self):
     if not self.th.snapshot: return
     if not self.th.snapshot_cycle > 0: return
@@ -562,7 +560,7 @@ class TrainerHub(Config):
   probe_per_round = Flag.integer(0, 'Probe per round')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
-  early_stop = Flag.boolean(True, 'Early stop option', is_key=None)
+  early_stop = Flag.boolean(False, 'Early stop option', is_key=None)
   record_gap = Flag.float(0.001, 'Minimum improvement')
   patience = Flag.integer(
     20, 'Tolerance of idle rounds(or iterations) when early stop is on',

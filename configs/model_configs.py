@@ -30,6 +30,10 @@ class ModelConfigs(object):
   num_classes = Flag.integer(-1, 'Class number for classification tasks')
   memory_depth = Flag.integer(1, 'Memory depth for system identification')
   loss_function = Flag.whatever('cross_entropy', 'Loss function')
+  use_logits = Flag.boolean(False, 'Whether to use logits to calculate losses')
+  last_only = Flag.boolean(
+    False, 'Whether to use only the value in the last step in sequence '
+           'prediction tasks')
   optimizer = Flag.whatever(None, 'optimizer')
 
   output_size = Flag.integer(0, 'Output dimension for a single layer',

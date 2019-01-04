@@ -87,13 +87,15 @@ class Predictor(Feedforward, Recurrent):
 
     # Define loss
     loss_function = losses.get(loss)
+    use_logits = kwargs.get('use_logits', False)
     with tf.name_scope('Loss'):
       # if loss == 'cross_entropy':
-      if isinstance(loss, str) and 'cross_entropy' in loss:
+      if use_logits or isinstance(loss, str) and 'cross_entropy' in loss:
         output_tensor = self.logits_tensor
         # TODO: PTB assertion failure
         # KEY: softmax activation should be added manually
         assert output_tensor is not None
+        console.show_status('Logits are used for calculating loss')
       else: output_tensor = self.outputs.tensor
       loss_tensor = loss_function(self._targets.tensor, output_tensor)
       # TODO: with or without regularization loss?

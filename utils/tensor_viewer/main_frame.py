@@ -55,8 +55,13 @@ class TensorViewer(Viewer):
 
     # Set loss and variables
     assert isinstance(self.criteria_figure, CriteriaFigure)
+    ax1_text = 'Step'
+    if 'Total Rounds' in note.criteria.keys():
+      ax1_text = 'Epoch'
+    elif 'Total Iterations' in note.criteria.keys():
+      ax1_text = 'Iterations'
     self.criteria_figure.set_context(
-      self.context.note.step_array, self.context.note.scalar_dict)
+      self.context.note.step_array, self.context.note.scalar_dict, ax1_text)
 
     assert isinstance(self.variable_viewer, VariableViewer)
     tensor_dict = self.context.note.tensor_dict

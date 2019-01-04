@@ -29,6 +29,7 @@ class CriteriaFigure(Frame):
     Frame.__init__(self, master)
 
     # Attributes
+    self._ax1_text = 'Unknown'
     self._step = None
     self._criteria = OrderedDict()
     self._cursor = None
@@ -72,7 +73,7 @@ class CriteriaFigure(Frame):
 
   # region : Public Methods
 
-  def set_context(self, step, criteria):
+  def set_context(self, step, criteria, ax1_text='Step'):
     # Sanity check
     if isinstance(step, (list, tuple)): step = np.array(step)
     assert isinstance(step, np.ndarray) and isinstance(criteria, OrderedDict)
@@ -82,6 +83,7 @@ class CriteriaFigure(Frame):
       assert v.size == step.size
 
     # Set step and loss
+    self._ax1_text = ax1_text
     self._step = step
     self._criteria = criteria
     self._cursor = 0
@@ -98,7 +100,7 @@ class CriteriaFigure(Frame):
     # Clear subplot
     self.ax1.cla()
     self.ax2.cla()
-    self.ax1.set_xlabel('Epoch')
+    self.ax1.set_xlabel(self._ax1_text)
     self.ax1.set_ylabel('Criteria')
     self.ax1.set_xlim(self._step[0], self._step[-1])
 
@@ -185,7 +187,7 @@ class CriteriaFigure(Frame):
     self.figure.set_facecolor('white')
 
     self.ax1 = self.figure.add_subplot(111)
-    self.ax1.set_xlabel('Epoch')
+    self.ax1.set_xlabel(self._ax1_text)
     self.ax1.set_ylabel('Criteria')
 
     self.ax2= self.ax1.twinx()

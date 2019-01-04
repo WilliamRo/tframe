@@ -440,7 +440,8 @@ class Model(object):
     for data_batch in self.get_data_batches(data_set, batch_size):
       # Calculate output
       data_batch = self._sanity_check_before_use(data_batch)
-      # TODO: consider n_to_one cases
+      # TODO: consider n_to_one cases (happens to act correctly in
+      #       Predictor.predict)
       batch_outputs = self._get_active_tensor(data_batch, fetches)
       assert isinstance(batch_outputs, (tuple, list))
       # Extract if necessary

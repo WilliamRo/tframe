@@ -27,7 +27,9 @@ class Note(object):
 
   @property
   def step_array(self):
-    return np.array(self._steps) / 1000
+    if 'Total Rounds' in self.criteria.keys():
+      return np.array(self._steps) / 1000
+    else: return np.array(self._steps)
 
   @property
   def scalar_dict(self):
