@@ -33,6 +33,8 @@ class ImageViewer(object):
   MIN_HEIGHT = 260
 
   def __init__(self, dataset=None, **kwargs):
+    self.kwargs = kwargs
+
     # Variables
     self.filename = None
     self.image_height = self.MIN_HEIGHT
@@ -57,8 +59,6 @@ class ImageViewer(object):
     self.labels = None
     self.set_data(dataset)
     self._update_title()
-
-    self.kwargs = kwargs
 
   # region : Properties
 
@@ -123,8 +123,8 @@ class ImageViewer(object):
           assert shadows.shape == features.shape
           images = []
           for x, y, in zip(features, shadows):
-            images.append(x)
-            images.append(y)
+            images.append(np.reshape(x, (1,) + x.shape))
+            images.append(np.reshape(y, (1,) + y.shape))
           data_set.features = np.concatenate(images, axis=0)
 
       console.show_status('Data set set to ImageViewer')
