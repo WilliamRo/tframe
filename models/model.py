@@ -333,11 +333,13 @@ class Model(object):
             total += 1
         continue
 
-      # Calculate weight
-      weight = batch.targets.shape[0]
+      # Calculate weight TODO: the code block below should be merged
       if self.input_type is InputTypes.RNN_BATCH:
         # shape of RNN batch targets is (batch_size, num_steps, *target_dim)
-        weight *= batch.targets.shape[1]
+        weight = batch.targets.shape[0] * batch.targets.shape[1]
+      else:
+        # weight = batch.targets.shape[0]
+        weight = np.prod(batch.targets.shape)
       assert weight > 0
       total += weight
 
