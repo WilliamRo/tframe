@@ -107,29 +107,33 @@ class Net(Function):
     Currently only work for sequential model
     """
     from tframe.nets.rnet import RNet
-    widths = [50, 16]
+    widths = [37, 26, 14]
     indent = 3
 
     rows = []
+    add_to_rows = lambda cols: rows.append(fs.table_row(cols, widths))
     total_params = 0
     if self.is_root:
-      input_info = 'Input_{}'.format(shape_string(self.input_.sample_shape))
-      rows.append(fs.table_row([input_info, ''], widths))
+      # input_info = 'input_{}'.format(shape_string(self.input_.sample_shape))
+      # rows.append(fs.table_row([input_info, ''], widths))
+      add_to_rows(['input', shape_string(self.input_.sample_shape), ''])
     for child in self.children:
       if isinstance(child, Layer):
         # Try to find variable in child
         tensors = [v for v in self.var_list if child.group_name in v.name]
         num = sum([np.prod(t.shape) for t in tensors])
         num_str = '' if num == 0 else '{}'.format(num)
-        cols = [self._get_layer_string(child, True, True), num_str]
-
-        rows.append(fs.table_row(cols, widths))
+        cols = [self._get_layer_string(child, True, True),
+                child.output_shape_str, num_str]
+        add_to_rows(cols)
+        # rows.append(fs.table_row(cols, widths))
         total_params += num
       elif isinstance(child, RNet):
         num = child.params_num
-        cols = [child.structure_string(), '{}'.format(num)]
-
-        rows.append(fs.table_row(cols, widths))
+        cols = [child.structure_string(), child.output_shape_str,
+                '{}'.format(num)]
+        add_to_rows(cols)
+        # rows.append(fs.table_row(cols, widths))
         total_params += num
       elif isinstance(child, Net):
         _rows, _total_params = child.structure_detail
@@ -145,7 +149,7 @@ class Net(Function):
       width = sum(widths)
       detail = add_with_indent(detail, '-' * width)
       detail = add_with_indent(
-        detail, fs.table_row(['Layers', 'Params #'], widths))
+        detail, fs.table_row(['Layers', 'Output Shape', 'Params #'], widths))
       detail = add_with_indent(detail, '=' * width)
       # Content
       for i, row in enumerate(rows):
@@ -164,10 +168,12 @@ class Net(Function):
     assert isinstance(f, Layer)
     result = f.abbreviation if not full_name else f.full_name
     if scale and f.neuron_scale is not None:
-      self._output_scale = shape_string(
-        f.neuron_scale if f.output_scale is None else f.output_scale)
-      result += '_{}'.format(f.neuron_scale if len(f.neuron_scale) > 1 else
-                             f.neuron_scale[0])
+      # self._output_scale = shape_string(
+      #   f.neuron_scale if f.output_scale is None else f.output_scale)
+      ns_str = 'x'.join(['{}'.format(d) for d in f.neuron_scale])
+      result += '({})'.format(ns_str)
+      # result += '({})'.format(f.neuron_scale if len(f.neuron_scale) > 1 else
+      #                         f.neuron_scale[0])
     return result
 
   def structure_string(self, detail=True, scale=True):
@@ -177,7 +183,7 @@ class Net(Function):
           or detail or f.is_nucleus]
 
     # Add input layer
-    result = ('' if self.input_ is None else 'input_{} => '.format(
+    result = ('' if self.input_ is None else 'input[{}] => '.format(
       shape_string(self.input_.sample_shape)))
 
     # Check interconnection type
@@ -209,7 +215,7 @@ class Net(Function):
                                 self.RECURRENT) or self.is_branch: result += ')'
     # Add output scale
     if self.is_root and not self._inter_type == pedia.fork:
-      result += ' => output_{}'.format(self.children[-1]._output_scale)
+      result += ' => output[{}]'.format(self.output_shape_str)
 
     # Return
     return result
@@ -244,7 +250,7 @@ class Net(Function):
 
     # Check children
     assert isinstance(self.children, list)
-    if len(self.children) == 0: raise ValueError('!! Net is empty')
+    # if len(self.children) == 0: raise ValueError('!! Net is empty')
 
     pioneer = input_
     output_list = []
@@ -279,6 +285,9 @@ class Net(Function):
     elif self._inter_type != self.CASCADE:
       raise TypeError('!! Unknown net inter type {}'.format(self._inter_type))
 
+    # This will only happens when Net is empty
+    if output is None: output = input_
+
     return output
 
   # endregion : Overrode Methods
@@ -307,7 +316,12 @@ class Net(Function):
 
     return net
 
-  def add(self, f=None, inter_type=pedia.cascade):
+  def add(self, f=None, inter_type=pedia.cascade, return_net=False):
+    """Add a net or a layer in to this model
+    :param f: \in (Net, Layer)
+    :param inter_type: inter-connection type
+    :return: f or f's container
+    """
     # If add an empty net
     if f is None:
       name = self._get_new_name(inter_type)
@@ -316,22 +330,25 @@ class Net(Function):
       return net
 
     # If add a function to this net
+    container = self
     if isinstance(f, Input):
       # If f is a placeholder
       self.input_ = f
-      return self
     elif (isinstance(f, Net) or not self.is_root or
           self._inter_type not in (self.CASCADE, self.RECURRENT)):
       # Net should be added directly into self.children of any net
       # Layer should be added directly into self.children for non-cascade nets
-      return self._save_add(f)
+      container = self._save_add(f)
     elif isinstance(f, Layer):
       # If layer is a nucleus or the 1st layer added into this Net
       if f.is_nucleus or len(self.children) == 0:
         self._add_new_subnet(f)
       # Otherwise add this layer to last Net of self.children
-      return self.add_to_last_net(f, only_cascade=True)
+      container = self.add_to_last_net(f, only_cascade=True)
     else: raise ValueError('!! Object added to a Net must be a Layer or a Net')
+
+    if return_net: return container
+    else: return f
 
   # endregion : Public Methods
 
@@ -354,11 +371,12 @@ class Net(Function):
     # Input f should be a layer
     assert isinstance(layer, Layer)
     # Specify the name of the Net
-    if len(self.children) == 0: name = 'Preprocess'
+    # if len(self.children) == 0: name = 'Preprocess'
+    if len(self.children) == 0 and not layer.is_nucleus: name = 'Preprocess'
     else: name = self._get_new_name(layer.abbreviation)
 
     # Wrap the layer into a new Net
-    return self.add(Net(name, level=self._level + 1))
+    return self.add(Net(name, level=self._level + 1), return_net=True)
 
   def _get_new_name(self, entity):
     if isinstance(entity, Net): name = entity.group_name
@@ -429,3 +447,13 @@ class Net(Function):
     return tensor.shape.as_list()
 
   # endregion : Link tools
+
+  # region : Overrides
+
+  def __str__(self):
+    return self.structure_string()
+
+  def __repr__(self):
+    return self.structure_string()
+
+  # endregion : Overrides

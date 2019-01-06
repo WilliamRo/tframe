@@ -180,3 +180,9 @@ def eval_show(tensor, name='result', feed_dict=None):
     pprint(val)
   else: show_status('{} = {}'.format(name, val))
 
+
+def warning_with_pause(msg):
+  print(' ! {}'.format(msg))
+  print('.. Input `q` to quit, and any others to continue:')
+  if input() == 'q': exit()
+

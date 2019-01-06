@@ -20,13 +20,19 @@ class MaxPool2D(Layer, MaxPool2D_):
   abbreviation = 'maxpool'
 
   @init_with_graph
-  def __init__(self, *args, **kwargs):
-    super(Function, self).__init__(*args, **kwargs)
+  def __init__(self, pool_size, strides,
+               padding='same', data_format='channels_last',
+               name=None, **kwargs):
+    MaxPool2D_.__init__(
+      self, pool_size, strides, padding, data_format, name, **kwargs)
 
   @single_input
-  def __call__(self, input_=None, **kwargs):
+  def _link(self, input_=None, **kwargs):
     assert isinstance(input_, tf.Tensor)
     output = MaxPool2D_.__call__(self, input_, scope=self.full_name)
     self.neuron_scale = get_scale(output)
     return output
+
+  def __call__(self, *args, **kwargs):
+    return Layer.__call__(self, *args, **kwargs)
 

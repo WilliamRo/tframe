@@ -4,11 +4,30 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from ..layers.layer import Layer
-from ..utils import get_scale
+from tframe import console
+from tframe.layers.layer import Layer, single_input
+from tframe.utils import get_scale
 
 
 class Concatenate(Layer):
+  full_name = 'concatenate'
+  abbreviation = 'concat'
+
+  def __init__(self, *definitions, axis=-1):
+    if len(definitions) == 0:
+      console.warning_with_pause('Nothing to be concatenated.')
+    self.definitions = definitions
+    self.axis = axis
+
+  @single_input
+  def _link(self, input_, **kwargs):
+    assert isinstance(input_, tf.Tensor)
+    if len(self.definitions) == 0: return input_
+    tensors = [input_] + [f.output_tensor for f in self.definitions]
+    return tf.concat(tensors, axis=self.axis)
+
+
+class ConcatenateForGAN(Layer):
   full_name = 'concatenate'
   abbreviation = 'concat'
 
@@ -22,7 +41,7 @@ class Concatenate(Layer):
                         at the specific position
     """
     # Check companion
-    if not companions is None:
+    if companions is not None:
       for key in companions.keys():
         if not isinstance(key, tf.Tensor):
           raise TypeError('key must be a tensor')

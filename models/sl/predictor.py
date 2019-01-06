@@ -87,16 +87,23 @@ class Predictor(Feedforward, Recurrent):
 
     # Define loss
     loss_function = losses.get(loss)
-    use_logits = kwargs.get('use_logits', False)
+    use_logits = (kwargs.get('use_logits', False) or
+                  isinstance(loss, str) and 'cross_entropy' in loss)
     with tf.name_scope('Loss'):
       # if loss == 'cross_entropy':
-      if use_logits or isinstance(loss, str) and 'cross_entropy' in loss:
+      if use_logits and self.logits_tensor is not None:
         output_tensor = self.logits_tensor
         # TODO: PTB assertion failure
         # KEY: softmax activation should be added manually
         assert output_tensor is not None
         console.show_status('Logits are used for calculating loss')
-      else: output_tensor = self.outputs.tensor
+      else:
+        if use_logits:
+          console.warning_with_pause(
+            'Logits are supposed to be used for loss calculation but'
+            ' somehow can not be found. It is recommended to add an'
+            ' activation layer to this model at last.')
+        output_tensor = self.outputs.tensor
       loss_tensor = loss_function(self._targets.tensor, output_tensor)
       # TODO: with or without regularization loss?
       if hub.summary:

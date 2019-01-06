@@ -12,6 +12,15 @@ class Function(object):
 
   parameters = None
   linked = False
+  output_tensor = None
+
+  @property
+  def output_shape_str(self):
+    tensor = self.output_tensor
+    if tensor is None: return ''
+    assert isinstance(tensor, tf.Tensor)
+    shape_list = tensor.shape.as_list()
+    return 'x'.join(['{}'.format(d) for d in shape_list[1:]])
 
   def group_name(self):
     raise NotImplementedError('Property "group_name" has not implemented yet')
@@ -42,6 +51,8 @@ class Function(object):
       output = get_output_and_register()
 
     self.linked = True
+    assert isinstance(output, tf.Tensor)
+    self.output_tensor = output
     return output
 
 
