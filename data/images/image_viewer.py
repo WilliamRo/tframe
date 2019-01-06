@@ -32,7 +32,7 @@ class ImageViewer(object):
   MIN_WIDTH = 260
   MIN_HEIGHT = 260
 
-  def __init__(self, dataset=None):
+  def __init__(self, dataset=None, **kwargs):
     # Variables
     self.filename = None
     self.image_height = self.MIN_HEIGHT
@@ -57,6 +57,8 @@ class ImageViewer(object):
     self.labels = None
     self.set_data(dataset)
     self._update_title()
+
+    self.kwargs = kwargs
 
   # region : Properties
 
@@ -104,9 +106,27 @@ class ImageViewer(object):
         data_set = data_set.stack
       self.data_set = data_set
       self._set_cursor(0)
+      # For DataSet like MNIST and CIFAR-XXX
       if self.data_set.targets is not None:
-        self.labels = misc.convert_to_dense_labels(
-          self.data_set.targets).flatten()
+        if len(self.data_set.targets.shape) == 2:
+          self.labels = misc.convert_to_dense_labels(
+            self.data_set.targets).flatten()
+      # Consider DataSets in image segmentation tasks
+      interleave_key = self.kwargs.get('interleave_key', None)
+      if interleave_key is not None:
+        if not interleave_key in data_set.data_dict.keys():
+          raise KeyError(
+            '!! Can not find `{}` in DataSet'.format(interleave_key))
+        else:
+          shadows = getattr(data_set, interleave_key)
+          features = data_set.features
+          assert shadows.shape == features.shape
+          images = []
+          for x, y, in zip(features, shadows):
+            images.append(x)
+            images.append(y)
+          data_set.features = np.concatenate(images, axis=0)
+
       console.show_status('Data set set to ImageViewer')
 
       # Refresh image viewer
@@ -116,6 +136,12 @@ class ImageViewer(object):
     assert isinstance(self.form, tk.Tk)
     self.form.after(20, self._move_to_center)
     self.form.mainloop()
+
+  @staticmethod
+  def show_images(data_set, **kwargs):
+    assert isinstance(data_set, DataSet) and data_set.is_regular_array
+    viewer = ImageViewer(data_set, **kwargs)
+    viewer.show()
 
   # endregion : Public Methods
 
