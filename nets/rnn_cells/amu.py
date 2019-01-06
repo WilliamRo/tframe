@@ -81,7 +81,7 @@ class AMU(RNet):
     """
     self._check_state(pre_states, (self.num_neurons, self._output_dim))
     h, s = pre_states  # h: (B, A * N); s: (B, A)
-    input_size = self._get_external_shape(x)
+    input_size = linker.get_dimension(x)
 
     Wxh = self._get_variable(
       'Wxh', [self.num_neurons + input_size, self.num_neurons])
