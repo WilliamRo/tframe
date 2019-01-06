@@ -239,6 +239,8 @@ class ImageViewer(object):
       assert isinstance(self.data_set, DataSet)
       cursor = self._cursor
       image = np.squeeze(self.data_set.features[cursor])
+      # For grey scale images, remove their last dimension
+      if image.shape[-1] == 1: image = image.reshape(image.shape[:-1])
       if not self.sample_can_be_displayed:
         self.canvas.config(bg='light grey')
         return
