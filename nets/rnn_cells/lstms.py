@@ -30,7 +30,6 @@ class BasicLSTMCell(RNet):
       input_gate=True,
       output_gate=True,
       forget_gate=True,
-      output_gate_bias_initializer=None,
       with_peepholes=False,
       **kwargs):
     """
@@ -49,8 +48,6 @@ class BasicLSTMCell(RNet):
     self._use_bias = checker.check_type(use_bias, bool)
     self._weight_initializer = initializers.get(weight_initializer)
     self._bias_initializer = initializers.get(bias_initializer)
-    self._output_gate_bias_initializer = initializers.get(
-      output_gate_bias_initializer)
 
     self._input_gate = checker.check_type(input_gate, bool)
     self._output_gate = checker.check_type(output_gate, bool)
@@ -103,30 +100,13 @@ class BasicLSTMCell(RNet):
   # region : Link Cores
 
   def _basic_link(self, x, h, c):
-    input_size = linker.get_dimension(x)
-
-    # Determine the size of W and b according to gates to be used
+    # Determine size_splits according to gates to be used
     size_splits = 1 + self._input_gate + self._output_gate + self._forget_gate
-    dim = self._state_size * size_splits
-
-    # Initiate bias
-    bias = None
-    if self._use_bias:
-      if self._output_gate_bias_initializer is None:
-        bias = self._get_bias('b', dim)
-      else:
-        gif_bias = self._get_bias('gif_bias', dim - self._state_size)
-        o_bias = self._get_bias(
-          'o_bias', self._state_size, self._output_gate_bias_initializer)
-        bias = tf.concat([gif_bias, o_bias], axis=0)
-
-    W = self._get_variable('W', [self._state_size + input_size, dim])
-    gate_inputs = tf.matmul(tf.concat([x, h], axis=1), W)
-    if self._use_bias: gate_inputs = tf.nn.bias_add(gate_inputs, bias)
 
     # i = input_gate, g = new_input, f = forget_gate, o = output_gate
     i, f, o = (None,) * 3
-    splits = list(tf.split(gate_inputs, num_or_size_splits=size_splits, axis=1))
+    splits = list(self.neurons(
+      x, h, scope='net_input_chunk', num_or_size_splits=size_splits))
     # Note that using `add` and `multiply` instead of `+` and `*` gives a
     # performance improvement. So using those at the cost of readability.
     # - Calculate candidates to write
@@ -150,50 +130,39 @@ class BasicLSTMCell(RNet):
         new_h = tf.multiply(o, new_h)
     assert len(splits) == 0
 
-    self._kernel, self._bias = W, bias
     return new_h, new_c, (i, f, o)
 
   def _link_with_peepholes(self, x, h, c):
-    input_size = self._get_external_shape(x)
-    Wi, Wf, W, Wo = (None,) * 4
-    bi, bf, b, bo = (None,) * 4
     i, f, o = (None,) * 3
-
-    # Forget and write
-    fi_inputs = tf.concat([h, x, c], axis=1)
-    weight_shape = [input_size + self._state_size * 2, self._state_size]
-    # - Calculate candidates to write
-    W = self._get_variable(
-      'W', [input_size + self._state_size, self._state_size])
-    if self._use_bias: b = self._get_bias('b', self._state_size)
-    g = self._activation(tf.nn.bias_add(
-      tf.matmul(tf.concat([h, x], axis=1), W), b))
-    # - Forget
-    if self._forget_gate:
-      with tf.name_scope('forget_gate'):
-        Wf = self._get_variable('Wf', weight_shape)
-        if self._use_bias: bf = self._get_bias('bf', self._state_size)
-        f = tf.sigmoid(tf.nn.bias_add(tf.matmul(fi_inputs, Wf), bf))
-        c = tf.multiply(f, c)
+    # - Calculate g
+    g = self.neurons(x, h, activation=self._activation, scope='g')
+    # :: Calculate gates
+    num_splits = self._forget_gate +  self._input_gate
+    if num_splits > 0:
+      x_h_c = tf.concat([x, h, c], axis=1)
+      splits = list(self.neurons(
+        x_h_c, scope='fi_chunk', is_gate=True,
+        num_or_size_splits=num_splits))
+      # - Forget
+      if self._forget_gate:
+        with tf.name_scope('forget_gate'):
+          f = splits.pop(0)
+          c = tf.multiply(f, c)
+      # - Input gate
+      if self._input_gate:
+        with tf.name_scope('input_gate'):
+          i = splits.pop(0)
+          g = tf.multiply(i, g)
     # - Write
-    if self._input_gate:
-      with tf.name_scope('write_gate'):
-        Wi = self._get_variable('Wi', weight_shape)
-        if self._use_bias: bi = self._get_bias('bi', self._state_size)
-        i = tf.sigmoid(tf.nn.bias_add(tf.matmul(fi_inputs, Wi), bi))
-        g = tf.multiply(i, g)
-    with tf.name_scope('write'): new_c = tf.add(c, g)
+    with tf.name_scope('write'):
+      new_c = tf.add(c, g)
     # - Read
     new_h = self._activation(new_c)
     if self._output_gate:
-      with tf.name_scope('read_gate'):
-        Wo = self._get_variable('Wo', weight_shape)
-        if self._use_bias: bo = self._get_bias('bo', self._state_size)
-        o = tf.sigmoid(tf.nn.bias_add(
-          tf.matmul(tf.concat([h, x, new_c], axis=1), Wo), bo))
-        new_h = tf.multiply(new_h, o)
+      o = self.neurons(
+        tf.concat([x, h, new_c], axis=1), is_gate=True, scope='o')
+      new_h = tf.multiply(o, new_h)
 
-    self._kernel, self._bias = (Wi, Wf, W, Wo), (bi, bf, b, bo)
     return new_h, new_c, (i, f, o)
 
   # endregion : Link Cores
@@ -208,14 +177,15 @@ class OriginalLSTMCell(RNet):
   def __init__(
       self,
       state_size,
-      cell_activation='sigmoid',
+      cell_activation='sigmoid',                # g
       cell_activation_range=(-2, 2),
-      memory_activation='sigmoid',
+      memory_activation='sigmoid',              # h
       memory_activation_range=(-1, 1),
-      weight_initializer='xavier_uniform',
-      weight_initial_range=None,
+      weight_initializer='random_uniform',
+      weight_initial_range=(-0.1, 0.1),
       use_cell_bias=False,
-      cell_bias_initializer='zeros',
+      cell_bias_initializer='random_uniform',
+      cell_bias_init_range=(-0.1, 0.1),
       use_in_bias=True,
       in_bias_initializer='zeros',
       use_out_bias=True,
@@ -231,6 +201,8 @@ class OriginalLSTMCell(RNet):
     self._state_size = state_size
 
     # Set activation
+    # .. In LSTM98, cell activation is referred to as 'g',
+    # .. while memory activation is 'h' and gate activation is 'f'
     self._cell_activation = activations.get(
       cell_activation, range=cell_activation_range)
     self._memory_activation = activations.get(
@@ -241,7 +213,8 @@ class OriginalLSTMCell(RNet):
     self._weight_initializer = initializers.get(
       weight_initializer, range=weight_initial_range)
     self._use_cell_bias = use_cell_bias
-    self._cell_bias_initializer = initializers.get(cell_bias_initializer)
+    self._cell_bias_initializer = initializers.get(
+      cell_bias_initializer, range=cell_bias_init_range)
     self._use_in_bias = use_in_bias
     self._in_bias_initializer = initializers.get(in_bias_initializer)
     self._use_out_bias = use_out_bias
@@ -298,68 +271,44 @@ class OriginalLSTMCell(RNet):
 
   # region : Private Methods
 
-  def _link(self, pre_states, x, **kwargs):
-    # Get input size and previous states
-    input_size = self._get_external_shape(x)
-    self._check_state(pre_states, (self._h_size, self._state_size))
-    h, c = pre_states
+  def _link(self, u_and_s, x, **kwargs):
+    # Unpack previous states and prepare activation functions
+    self._check_state(u_and_s, (self._h_size, self._state_size))
+    u, s = u_and_s
+    f = self._gate_activation
+    h = self._memory_activation
+    g = self._cell_activation
+    def neurons(activation, scope, use_bias, bias_initializer):
+      return self.neurons(
+        x, u, num=self._state_size, activation=activation, scope=scope,
+        truncate=self._truncate, weight_initializer=self._weight_initializer,
+        use_bias=use_bias, bias_initializer=bias_initializer)
 
-    # :: Calculate net_c, net_in, net_out using h = [y_c, y_in, y_out] when
-    #    forward gate (otherwise h = y_c) and x
-    # .. Calculate net chunk before adding bias
-    Wci = self._get_variable(
-      'Wci', [self._h_size + input_size,
-              (self._num_splits - 1) * self._state_size])
-    Wo = self._get_variable('Wo', [self._h_size + input_size, self._state_size])
-    input_chunk = tf.concat([x, h], axis=1)
+    # Calculate y^{in}(t)
+    y_in = neurons(
+      f, 'in_gate', self._use_in_bias, self._in_bias_initializer)
+    # Calculate y^{out}(t)
+    y_out = neurons(
+      f, 'out_gate', self._use_out_bias, self._out_bias_initializer)
+    # Calculate g(net_c(t))
+    g_net_c = neurons(
+      g, 'g_net_c', self._use_cell_bias, self._cell_bias_initializer)
+    # Calculate the internal state s and y_c
+    new_s = tf.add(s, tf.multiply(y_in, g_net_c))
+    y_c = tf.multiply(y_out, h(new_s))
 
-    matmul = linker.get_matmul(self._truncate)
-    net_chunk_ci = matmul(input_chunk, Wci)
-    net_out = matmul(input_chunk, Wo)
+    # Wrap gate units into u if necessary
+    new_u = tf.concat([y_c, y_in, y_out], axis=1) if self._forward_gate else y_c
 
-    # .. Unpack the chunk and add bias if necessary
-    net_c, net_in = tf.split(
-      net_chunk_ci, num_or_size_splits=self._num_splits - 1, axis=1)
-
-    # Calculate input gate
-    in_bias = None
-    if self._use_in_bias:
-      in_bias = self._get_bias(
-        'in_bias', self._state_size, initializer=self._in_bias_initializer)
-      net_in = tf.nn.bias_add(net_in, in_bias)
-    y_in = self._gate_activation(net_in)
-
-    # Calculate new state
-    cell_bias = None
-    if self._use_cell_bias:
-      cell_bias = self._get_bias(
-        'cell_bias', self._state_size, initializer=self._cell_bias_initializer)
-      net_c = tf.nn.bias_add(net_c, cell_bias)
-    new_c = tf.add(c, tf.multiply(y_in, self._cell_activation(net_c)), name='c')
-
-    # Calculate output gate
-    out_bias = None
-    if self._use_out_bias:
-      out_bias = self._get_bias(
-        'out_bias', self._state_size, initializer=self._out_bias_initializer)
-      net_out = tf.nn.bias_add(net_out, out_bias)
-    y_out = self._gate_activation(net_out)
-
-    # Calculate output
-    y_c = tf.multiply(y_out, self._memory_activation(new_c))
-
-    self._kernel = [Wci, Wo]
-    self._bias = [b for b in (in_bias, out_bias, cell_bias) if b is not None]
-    # Generate new_h and return
-    new_h = (tf.concat([y_c, y_in, y_out], axis=1) if self._forward_gate
-             else y_c)
+    # Register gates
+    for key, gate in zip(('input_gate', 'output_gate'), (y_in, y_out)):
+      if gate is not None: self._gate_dict[key] = gate
 
     # TODO: BETA
-    self.repeater_tensors = new_c
-    self._custom_vars = [Wci] + [b for b in (in_bias, cell_bias)
-                                 if b is not None]
-
-    return y_c, (new_h, new_c)
+    # self.repeater_tensors = new_c
+    # self._custom_vars = [Wci] + [b for b in (in_bias, cell_bias)
+    #                              if b is not None]
+    return y_c, (new_u, new_s)
 
   # endregion : Private Methods
 

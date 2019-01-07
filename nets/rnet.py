@@ -337,8 +337,8 @@ class RNet(Net):
       multiplier = (1 if not isinstance(num_or_size_splits, int)
                     else num_or_size_splits)
       num = multiplier * self._state_size
-    if activation is None:
-      activation = tf.sigmoid if is_gate else tf.tanh
+    if activation is None and is_gate:
+      activation = tf.sigmoid
     if weight_initializer is None:
       weight_initializer = getattr(self, '_weight_initializer', None)
     if use_bias is None:

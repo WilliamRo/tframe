@@ -19,6 +19,8 @@ class RNNConfigs(object):
           'step', is_key=None)
 
   # LSTM-based configs
+  state_size = Flag.integer(0, 'State size for some specific RNN cells',
+                            is_key=None)
   neurons_per_unit = Flag.integer(3, '...', is_key=None)
   input_gate = Flag.boolean(True, 'Whether to use input gate in LSTM',
                             is_key=None)
