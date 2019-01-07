@@ -51,8 +51,11 @@ class Function(object):
       output = get_output_and_register()
 
     self.linked = True
-    assert isinstance(output, tf.Tensor)
-    self.output_tensor = output
+    if isinstance(output, (list, tuple)):
+      self.output_tensor = output[0]
+    else:
+      assert isinstance(output, tf.Tensor)
+      self.output_tensor = output
     return output
 
 
