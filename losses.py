@@ -60,7 +60,8 @@ def cross_entropy(labels, logits, last_only=False):
 
 
 def mean_squared_error(y_true, y_predict, last_only=False):
-  if last_only: y_true, y_predict = _extract_last(y_true, y_predict)
+  if last_only:
+    y_true, y_predict = _extract_last(y_true, y_predict)
   return tf.reduce_mean(tf.square(y_true - y_predict))
   # return tf.reduce_mean(tf.square(tf.abs(y_true - y_predict)))
 

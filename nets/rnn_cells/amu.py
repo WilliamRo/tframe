@@ -64,6 +64,23 @@ class AMU(RNet):
     assert isinstance(self._neurons_per_amu, int)
     return self._output_dim * self._neurons_per_amu
 
+  @property
+  def truncated_multiply(self):
+    @tf.custom_gradient
+    def _truncated_multiply(x, W):
+      y = tf.multiply(x, W)
+      def grad(dy):
+        """At sequence end, sum(dy[0][self._output_dim:]) == 0
+        """
+        s = tf.reduce_sum(dy[0][self._output_dim:])
+        dx = tf.cond(
+          tf.equal(s, 0), lambda: tf.multiply(dy, W), lambda: tf.zeros_like(x))
+        dW = tf.reduce_sum(tf.multiply(dy, x), axis=0, keepdims=True)
+        # dx = tf.Print(dx, [dx[0][0]], message='dx[0][0] = ')
+        return dx, dW
+      return y, grad
+    return _truncated_multiply
+
   # endregion : Properties
 
   # region : Private Methods
@@ -90,7 +107,8 @@ class AMU(RNet):
     bias = None
     if self._use_bias: bias = self._get_bias('b', self.num_neurons)
 
-    matmul, multiply = linker.get_matmul(self._truncate_grad), tf.multiply
+    matmul = linker.get_matmul(self._truncate_grad)
+    multiply = self.truncated_multiply if self._truncate_grad else tf.multiply
 
     net = tf.nn.bias_add(
       tf.add(matmul(tf.concat([x, h], axis=1), Wxh), multiply(s_, Ws)),
@@ -105,7 +123,6 @@ class AMU(RNet):
       new_s = tf.add(s, tf.reduce_prod(r, axis=1))
 
     # return outputs, states
-    self._kernel, self._bias = (Wxh, Ws), bias
     return r[:, 0, :], (new_h, new_s)
 
   # endregion : Private Methods

@@ -31,6 +31,7 @@ class BasicLSTMCell(RNet):
       output_gate=True,
       forget_gate=True,
       with_peepholes=False,
+      truncate_grad=False,
       **kwargs):
     """
     :param state_size: state size: positive int
@@ -53,6 +54,7 @@ class BasicLSTMCell(RNet):
     self._output_gate = checker.check_type(output_gate, bool)
     self._forget_gate = checker.check_type(forget_gate, bool)
     self._with_peepholes = checker.check_type(with_peepholes, bool)
+    self._truncate_grad = checker.check_type(truncate_grad, bool)
 
     self._output_scale = state_size
 
@@ -106,7 +108,8 @@ class BasicLSTMCell(RNet):
     # i = input_gate, g = new_input, f = forget_gate, o = output_gate
     i, f, o = (None,) * 3
     splits = list(self.neurons(
-      x, h, scope='net_input_chunk', num_or_size_splits=size_splits))
+      x, h, scope='net_input_chunk', num_or_size_splits=size_splits,
+      truncate=self._truncate_grad))
     # Note that using `add` and `multiply` instead of `+` and `*` gives a
     # performance improvement. So using those at the cost of readability.
     # - Calculate candidates to write
@@ -135,13 +138,14 @@ class BasicLSTMCell(RNet):
   def _link_with_peepholes(self, x, h, c):
     i, f, o = (None,) * 3
     # - Calculate g
-    g = self.neurons(x, h, activation=self._activation, scope='g')
+    g = self.neurons(x, h, activation=self._activation, scope='g',
+                     truncate=self._truncate_grad)
     # :: Calculate gates
     num_splits = self._forget_gate +  self._input_gate
     if num_splits > 0:
       x_h_c = tf.concat([x, h, c], axis=1)
       splits = list(self.neurons(
-        x_h_c, scope='fi_chunk', is_gate=True,
+        x_h_c, scope='fi_chunk', is_gate=True, truncate=self._truncate_grad,
         num_or_size_splits=num_splits))
       # - Forget
       if self._forget_gate:
@@ -159,8 +163,8 @@ class BasicLSTMCell(RNet):
     # - Read
     new_h = self._activation(new_c)
     if self._output_gate:
-      o = self.neurons(
-        tf.concat([x, h, new_c], axis=1), is_gate=True, scope='o')
+      o = self.neurons(tf.concat([x, h, new_c], axis=1), is_gate=True,
+                       scope='o', truncate=self._truncate_grad)
       new_h = tf.multiply(o, new_h)
 
     return new_h, new_c, (i, f, o)

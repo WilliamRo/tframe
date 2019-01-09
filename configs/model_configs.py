@@ -35,7 +35,7 @@ class ModelConfigs(object):
   last_only = Flag.boolean(
     False, 'Whether to use only the value in the last step in sequence '
            'prediction tasks', is_key=None)
-  optimizer = Flag.whatever(None, 'optimizer')
+  optimizer = Flag.whatever(None, 'optimizer', is_key=None)
 
   output_size = Flag.integer(0, 'Output dimension for a single layer',
                              is_key=None)
