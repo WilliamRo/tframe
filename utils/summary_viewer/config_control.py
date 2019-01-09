@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import re
 import tkinter as tk
 import tkinter.ttk as ttk
 
@@ -215,7 +216,13 @@ class ConfigControl(BaseControl):
 
     # (3) Value
     if self.is_common:
-      self.values_control = ttk.Label(self, text=str(self.all_values[0]))
+      # TODO: temporary patch to handle long label text issue
+      value = self.all_values[0]
+      if not isinstance(value, str):
+        value = str(value)
+        m = re.match(r"<class '([\w]+.)+([\w]+)'>", value)
+        if m is not None: value = m.group(1)
+      self.values_control = ttk.Label(self, text=value)
     else:
       self.values_control = ttk.Combobox(
         self, state='readonly', justify=tk.RIGHT)
