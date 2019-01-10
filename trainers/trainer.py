@@ -206,6 +206,10 @@ class Trainer(object):
     if self.th.note_cycle == 0 and self.th.export_tensors_upon_validation:
       self.th.note_cycle = self.th.validate_cycle
 
+    # Other setting
+    if not self.th.warm_up:
+      self._warm_up = False
+
   def _sanity_check(self):
     """Should be overrode by subclasses"""
     pass
@@ -568,6 +572,7 @@ class TrainerHub(Config):
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']")
   warm_up_thres = Flag.integer(1, 'Warm up threshold', is_key=None)
+  warm_up = Flag.boolean(True, 'Whether to warm up')
   at_most_save_once_per_round = Flag.integer(False, '...')
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
