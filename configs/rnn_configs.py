@@ -74,6 +74,9 @@ class RNNConfigs(object):
   apply_default_gate_loss = Flag.boolean(
     True, 'Whether to use indiscriminate gate loss in training', is_key=None)
 
+  # Clockwork RNN
+  periods = Flag.whatever(None, 'Periods for each module in CWRNN', is_key=None)
+
   # BETA:
   use_rtrl = Flag.boolean(
     False, 'Whether to use RTRL in training RNN', is_key=None)

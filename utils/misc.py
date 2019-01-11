@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import inspect
 
 import tensorflow as tf
 
@@ -111,3 +112,19 @@ def transpose_tensor(tensor, perm):
   assert isinstance(tensor, tf.Tensor)
   perm += list(range(len(tensor.shape.as_list())))[len(perm):]
   return tf.transpose(tensor, perm)
+
+
+def retrieve_name(var):
+  """Gets the name of var. Does it from the out most frame inner-wards.
+  Works only on Python 3.
+  Reference: https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+
+  :param var: variable to get name from.
+  :return: string
+  """
+  for fi in reversed(inspect.stack()):
+    names = [var_name for var_name, var_val in fi.frame.f_locals.items()
+             if var_val is var]
+    if len(names) > 0: return names[0]
+    else: return 'unknown_name'
+

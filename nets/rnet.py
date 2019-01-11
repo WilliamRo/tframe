@@ -266,7 +266,9 @@ class RNet(Net):
     assert len(state) == len(sizes)
     for s, size in zip(state, sizes):
       assert isinstance(s, tf.Tensor) and isinstance(size, int)
-      assert s.shape.as_list()[1] == size
+      if size == 1:
+        assert len(s.shape.as_list()) == 1 or s.shape.as_list()[1] == 1
+      else: assert s.shape.as_list()[1] == size
 
   @staticmethod
   def _get_external_shape(input_):

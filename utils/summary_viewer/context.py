@@ -133,8 +133,8 @@ class Context(object):
     def get_flag_values(k):
       values = set()
       for note in self.notes:
-        val = note.configs.get(k, None)
-        if val is not None: values.add(val)
+        if k in note.configs.keys():
+          values.add(note.configs[k])
       assert len(values) > 0
       values = list(values)
       values.sort()
@@ -145,7 +145,6 @@ class Context(object):
     sorted_union.sort()
     for key in sorted_union:
       self.flag_value_dict[key] = get_flag_values(key)
-    a = 1
 
   def _init_criteria(self):
     intersection, union = self._get_intersection_and_union('criteria')

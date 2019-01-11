@@ -10,6 +10,8 @@ import os
 from sys import stdout
 import tensorflow as tf
 
+from tframe.utils import misc
+
 
 _config = {
   'default_line_width': 80,
@@ -172,7 +174,8 @@ def read(msg, with_enter=True):
     return char
 
 
-def eval_show(tensor, name='result', feed_dict=None):
+def eval_show(tensor, name=None, feed_dict=None):
+  if name is None: name = misc.retrieve_name(tensor)
   sess = tf.get_default_session()
   val = sess.run(tensor, feed_dict=feed_dict)
   if len(val.shape) > 1:

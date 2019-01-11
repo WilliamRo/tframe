@@ -1,8 +1,12 @@
 import tensorflow as tf
 import numpy as np
 
+from tframe.utils import misc
 
-def check_tensor_shape(tensor1, tensor2, name1, name2):
+
+def check_tensor_shape(tensor1, tensor2, name1=None, name2=None):
+  if name1 is None: name1 = misc.retrieve_name(tensor1)
+  if name2 is None: name2 = misc.retrieve_name(tensor2)
   assert isinstance(name1, str) and isinstance(name2, str)
   assert isinstance(tensor1, tf.Tensor) and isinstance(tensor2, tf.Tensor)
   shape1, shape2 = tensor1.shape.as_list(), tensor2.shape.as_list()
@@ -46,7 +50,8 @@ def check_type(inputs, type_tuples):
   else: return inputs
 
 
-def check_positive_integer(x, name='value'):
+def check_positive_integer(x, name=None):
+  if name is None: name = misc.retrieve_name(x)
   if not isinstance(x, int) or x <= 0:
     raise ValueError('!! {} must be a positive integer'.format(name))
   return x
