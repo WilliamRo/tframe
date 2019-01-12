@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from tframe.data.sequences.signals.signal import Signal
+from tframe.data.sequences.signals.tf_signal import Signal
 
 try:
   from matplotlib import pyplot as plt

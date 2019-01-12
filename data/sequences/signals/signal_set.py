@@ -7,26 +7,33 @@ import numpy as np
 from tframe import checker
 from tframe import pedia
 from tframe.data.dataset import DataSet
-from tframe.data.sequences.signals.signal import Signal
+from tframe.data.sequences.seq_set import SequenceSet
+
+from tframe.data.sequences.signals.tf_signal import Signal
 
 import tframe.utils.misc as misc
 
 
-class SignalSet(DataSet):
+class SignalSet(SequenceSet):
   """Container for signals. Signal data should only be stored in
      signals and responses. Otherwise errors may occur while loading
      from local"""
-  EXTENSION = 'tfds'
 
   def __init__(self, signals, responses=None, data_dict=None,
-               name='signal_set1', **kwargs):
+               summ_dict=None, n_to_one=False, name='signal_set1',
+               converter=None, **kwargs):
     # Check signals
     signal_dict, fs = self._check_signals(signals, responses)
     data_dict = {} if data_dict is None else data_dict
     data_dict.update(signal_dict)
     kwargs.update({pedia.sampling_frequency: fs})
-    # Call parent't constructor
-    DataSet.__init__(self, data_dict=data_dict, name=name, **kwargs)
+
+    # Call parent's constructor
+    SequenceSet.__init__(self, data_dict=data_dict, summ_dict=summ_dict,
+                         n_to_one=n_to_one, name=name, **kwargs)
+    # Attributes
+    if converter is not None: assert callable(converter)
+    self.converter = converter
 
   # region : Properties
 
@@ -70,6 +77,7 @@ class SignalSet(DataSet):
     if not isinstance(data_set, SignalSet):
       raise TypeError('!! Can not resolve data set of type {}'.format(
         type(data_set)))
+    # TODO
     # Set fs to each signal
     fs = data_set.fs
     for s in data_set.signals: s.fs = fs

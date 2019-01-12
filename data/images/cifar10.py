@@ -24,15 +24,16 @@ class CIFAR10(ImageDataAgent):
 
   PROPERTIES = {
     pedia.classes: ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog',
-                  'frog', 'horse', 'ship', 'truck'],
+                    'frog', 'horse', 'ship', 'truck'],
     DataSet.NUM_CLASSES: 10
   }
 
   @classmethod
   def load(cls, data_dir, train_size=40000, validate_size=10000,
-           test_size=10000, flatten=False, one_hot=True):
+           test_size=10000, flatten=False, one_hot=True, over_classes=False):
     return super().load(
-      data_dir, train_size, validate_size, test_size, flatten, one_hot)
+      data_dir, train_size, validate_size, test_size, flatten, one_hot,
+      over_classes=over_classes)
 
   @classmethod
   def load_as_numpy_arrays(cls, data_dir):

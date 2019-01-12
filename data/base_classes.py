@@ -88,7 +88,11 @@ class TFRData(object):
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
     raise NotImplementedError
 
-  # region : Load and Save
+  # region : Public Methods
+
+  def remove_batch_preprocessor(self):
+    if self.BATCH_PREPROCESSOR in self.properties:
+      self.properties.pop(self.BATCH_PREPROCESSOR)
 
   def save(self, filename):
     if filename.split('.')[-1] != self.EXTENSION:
@@ -114,7 +118,8 @@ class TFRData(object):
     with open(filename, 'rb') as input_:
       return pickle.load(input_)
 
-  # endregion : Load and Save
+  # endregion : Public Methods
+
 
 class DataAgent(object):
   """A abstract class defines basic APIs for an data agent"""
@@ -146,17 +151,20 @@ class DataAgent(object):
     raise NotImplementedError
 
   @classmethod
-  def load(cls, data_dir, train_size, validate_size, test_size, **kwargs):
+  def load(cls, data_dir, train_size, validate_size, test_size,
+           over_classes, **kwargs):
     """Load data"""
     data_set = cls.load_as_tframe_data(data_dir)
-    return cls._split_and_return(data_set, train_size, validate_size, test_size)
+    return cls._split_and_return(
+      data_set, train_size, validate_size, test_size, over_classes=over_classes)
 
   @classmethod
-  def _split_and_return(cls, data_set, train_size, validate_size, test_size):
+  def _split_and_return(cls, data_set, train_size, validate_size, test_size,
+                        over_classes=False):
     from tframe.data.dataset import DataSet
     assert isinstance(data_set, DataSet)
     data_sets = data_set.split(
-      train_size, validate_size, test_size,
+      train_size, validate_size, test_size, over_classes=over_classes,
       names=('Train set', 'Validation set', 'Test set'))
     # Show data info
     cls._show_data_sets_info(data_sets)
@@ -239,7 +247,7 @@ class ImageDataAgent(DataAgent):
   """This class defines some common methods for image data agents"""
   @classmethod
   def load(cls, data_dir, train_size, validate_size, test_size,
-           flatten=False, one_hot=True):
+           flatten=False, one_hot=True, over_classes=False):
     data_set = cls.load_as_tframe_data(data_dir)
     if flatten:
       data_set.features = data_set.features.reshape(data_set.size, -1)
@@ -247,7 +255,8 @@ class ImageDataAgent(DataAgent):
       data_set.targets = misc.convert_to_one_hot(
         data_set.targets, data_set[data_set.NUM_CLASSES])
 
-    return cls._split_and_return(data_set, train_size, validate_size, test_size)
+    return cls._split_and_return(
+      data_set, train_size, validate_size, test_size, over_classes=over_classes)
 
   @classmethod
   def load_as_tframe_data(cls, data_dir):

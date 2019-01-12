@@ -41,14 +41,15 @@ class PerpetualMachine(TFRData):
   def get_round_length(self, *args, **kwargs):
     return None
 
-  def gen_batches(self, batch_size, shuffle=False):
+  def gen_batches(self, batch_size, shuffle=False, is_training=False):
     checker.check_positive_integer(batch_size)
     while True:
       # gen_batches for sequences is not supported yet
       assert not self.generate_sequence
       yield self.engine(batch_size)
 
-  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
+  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False,
+                      is_training=False):
     checker.check_positive_integer(batch_size)
     while True:
       data_set = self.engine(batch_size)

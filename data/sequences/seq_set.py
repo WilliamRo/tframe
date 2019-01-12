@@ -127,7 +127,10 @@ class SequenceSet(DataSet):
       if self.batch_preprocessor is None:
         return self.stack.get_round_length(batch_size)
       else:
-        if self.length_calculator is None: return None
+        if self.length_calculator is None:
+          # TODO: restrict batch preprocessors not to change sequence length
+          return self.stack.get_round_length(batch_size)
+          # return None
         else:
           L = sum([self.length_calculator(l) for l in self.structure])
           round_len = np.ceil(L / batch_size)
@@ -146,7 +149,8 @@ class SequenceSet(DataSet):
           round_len = np.ceil(self.size / batch_size)
     return int(round_len)
 
-  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
+  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False,
+                      is_training=False):
     """Generate RNN batches in which each data item has shape
       (batch_size, steps, *sample_shape)
       If parallel option is on, batches will be yielded from a BETA method
@@ -172,7 +176,8 @@ class SequenceSet(DataSet):
       seq_batch = self[indices]
       active_length = None
       if self.batch_preprocessor is not None:
-        seq_batch = self.batch_preprocessor(seq_batch)
+        seq_batch = self.batch_preprocessor(seq_batch, is_training)
+        seq_batch.remove_batch_preprocessor()
 
       if isinstance(seq_batch, SequenceSet):
         if seq_batch.size > 1:
@@ -182,7 +187,8 @@ class SequenceSet(DataSet):
 
       # seq_batch.shape = (batches, steps, *shape)
       # Use DataSet's gen_rnn_batches method to yield batches
-      for batch in seq_batch.gen_rnn_batches(1, num_steps):
+      for batch in seq_batch.gen_rnn_batches(
+          1, num_steps, is_training=is_training):
         batch.active_length = active_length
         yield batch
         counter += 1
@@ -206,6 +212,8 @@ class SequenceSet(DataSet):
     data_set = super()._finalize(data_set, indices)
     data_set.properties.pop(self.DATA_STACK, None)
     data_set.properties.pop(self.PADDED_STACK, None)
+    if self.num_classes is not None and 'targets' in self.summ_dict.keys():
+      data_set.refresh_groups()
     return data_set
 
   def _check_data(self):

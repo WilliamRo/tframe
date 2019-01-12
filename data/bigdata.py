@@ -75,7 +75,7 @@ class BigData(TFRData):
     # Return round length
     return round_len
 
-  def gen_batches(self, batch_size, shuffle=False):
+  def gen_batches(self, batch_size, shuffle=False, is_training=False):
     for f in self.files.keys():
       file_path = os.path.join(self.data_dir, f)
       data_set = self._load_data_set(file_path)
@@ -84,7 +84,8 @@ class BigData(TFRData):
         yield batch
       del data_set
 
-  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False):
+  def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False,
+                      is_training=False):
     for f in self.files.keys():
       file_path = os.path.join(self.data_dir, f)
       data_set = self._load_data_set(file_path)

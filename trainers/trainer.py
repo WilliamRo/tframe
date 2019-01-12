@@ -382,7 +382,8 @@ class Trainer(object):
           self.training_set.batch_preprocessor is None):
         raise AssertionError('!! parallel engine is not activated')
     return self.model.get_data_batches(
-      self.training_set, self.th.batch_size, self.th.num_steps, self.th.shuffle)
+      self.training_set, self.th.batch_size, self.th.num_steps,
+      self.th.shuffle, is_training=True)
 
   def _advanced_strategy(self, rnd):
     """Should be overridden"""

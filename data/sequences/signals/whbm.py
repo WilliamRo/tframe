@@ -9,7 +9,7 @@ from tframe import console
 from tframe import pedia
 from tframe import checker
 from tframe.data.base_classes import DataAgent
-from tframe.data.sequences.signals.signal import Signal
+from tframe.data.sequences.signals.tf_signal import Signal
 from tframe.data.sequences.signals.signal_set import SignalSet
 
 

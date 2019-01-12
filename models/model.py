@@ -258,7 +258,7 @@ class Model(object):
     return self._update_group.run(feed_dict)
 
   def get_data_batches(self, data_set, batch_size, num_steps=None,
-                       shuffle=False):
+                       shuffle=False, is_training=False):
     """ Get batch generator.
     :param data_set: an instance of DataSet or BigData from which data batches
                       will be extracted
@@ -277,7 +277,8 @@ class Model(object):
       if batch_size is None and isinstance(data_set, DataSet):
         return [data_set.stack]
       checker.check_positive_integer(batch_size)
-      data_batches = data_set.gen_batches(batch_size, shuffle=shuffle)
+      data_batches = data_set.gen_batches(
+        batch_size, shuffle=shuffle, is_training=is_training)
 
     elif self.input_type is InputTypes.RNN_BATCH:
       if num_steps is None: num_steps = -1
@@ -291,7 +292,8 @@ class Model(object):
 
       checker.check_positive_integer(batch_size)
       checker.check_type(num_steps, int)
-      data_batches = data_set.gen_rnn_batches(batch_size, num_steps, shuffle)
+      data_batches = data_set.gen_rnn_batches(
+        batch_size, num_steps, shuffle, is_training=is_training)
     else: raise ValueError('!! Can not resolve input type of this model')
 
     return data_batches
