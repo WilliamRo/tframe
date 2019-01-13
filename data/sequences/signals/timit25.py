@@ -7,8 +7,11 @@ import numpy as np
 
 from collections import OrderedDict
 
+import tframe.utils.maths.dsp as dsp
+
 from tframe import checker
 from tframe import console
+from tframe import local
 from tframe import pedia
 from tframe.utils import misc
 from tframe.data.base_classes import DataAgent
@@ -35,6 +38,9 @@ class TIMIT25(DataAgent):
   DATA_NAME = 'TIMIT-25'
   TFD_FILE_NAME = 'timit-25.tfds'
 
+  # Sampling rate is 16000 according to `https://catalog.ldc.upenn.edu/LDC93S1`
+  SAMPLING_RATE = 16000
+
   CLUSTERS = (
     ('making', 'walking', 'cooking', 'looking', 'working'),
     ('biblical', 'cyclical', 'technical', 'classical', 'critical'),
@@ -49,17 +55,21 @@ class TIMIT25(DataAgent):
   }
 
   @classmethod
-  def load(cls, data_dir, train_size_foreach, raw_data_dir='TIMIT25', **kwargs):
-
-    train_set, test_set = None, None
-    return train_set, test_set
+  def load(cls, data_dir, num_train_foreach, raw_data_dir='TIMIT25',
+           random=True, **kwargs):
+    signal_set = cls.load_as_tframe_data(data_dir)
+    return signal_set.split(
+      num_train_foreach, None, names=('train_set', 'test_set'),
+      over_classes=True, random=random)
 
   @classmethod
-  def load_as_tframe_data(cls, data_dir, file_name=None, raw_data_dir=None):
+  def load_as_tframe_data(cls, data_dir, file_name=None, raw_data_dir=None,
+                          force_create=False):
     # Check file_name
     if file_name is None: file_name = 'timit-25.tfds'
     data_path = os.path.join(data_dir, file_name)
-    if os.path.exists(data_path): return SignalSet.load(data_path)
+    if not force_create and os.path.exists(data_path):
+      return SignalSet.load(data_path)
     # If data does not exist, create a new data set
     console.show_status('Loading data ...')
     if raw_data_dir is None:
@@ -82,12 +92,12 @@ class TIMIT25(DataAgent):
       groups.append(group_indices)
     data_set = SignalSet(
       signals, summ_dict={'targets': targets}, n_to_one=True, name='TIMIT25',
-      converter=None, **cls.PROPERTIES)
+      converter=cls.converter, **cls.PROPERTIES)
     data_set.properties[data_set.GROUPS] = groups
-    data_set.converter = lambda: cls.converter(data_set)
     data_set.batch_preprocessor = cls.preprocessor
-    data_set.save(data_path)
-    console.show_status('Data set saved to `{}`'.format(data_path))
+    if not force_create:
+      data_set.save(data_path)
+      console.show_status('Data set saved to `{}`'.format(data_path))
     return data_set
 
   @classmethod
@@ -98,15 +108,6 @@ class TIMIT25(DataAgent):
 
     :return an OrderedDict with structure {word1: [seq1, ..., seq7], ...}
     """
-    # Sampling rate is 16000 according to `https://catalog.ldc.upenn.edu/LDC93S1`
-    sampling_rate = 16000
-
-    # Try to import librosa
-    try: import librosa
-    except: raise ImportError(
-      '!! Can not import librosa. You should install this ' 
-      'package before reading .wav files.')
-
     # Read data
     timit25 = OrderedDict()
     for cluster in cls.CLUSTERS:
@@ -116,35 +117,74 @@ class TIMIT25(DataAgent):
         path = os.path.join(raw_data_dir, '{}'.format(word))
         for i in range(7):
           wav_path = os.path.join(path, '{}.wav'.format(i + 1))
-          data, _ = librosa.core.load(wav_path, sr=sampling_rate)
+          data, sr = local.load_wav_file(wav_path)
+          assert sr == cls.SAMPLING_RATE
           timit25[word].append(data)
 
-    return timit25, sampling_rate
+    return timit25, cls.SAMPLING_RATE
 
   @classmethod
   def converter(cls, signal_set):
     """Convert signal set to sequence set. See Jan Koutnic, etc (2014):
        `Each sequence element consists of 12-dimensional MFCC vector with
-        a pre-emphasis coefﬁcient of 0.97. Each of the 13 channels was then
+        a pre-emphasis coefficient of 0.97. Each of the 13 channels was then
         normalized to have zero mean and unit variance over the whole
         training set.`
     """
     assert isinstance(signal_set, SignalSet)
-    
-    signal_set.features = None
+    # Try to import librosa
+    try: import librosa
+    except: raise ImportError(
+      '!! Can not import librosa. You should install this '
+      'package before reading .wav files.')
+
+    # Specify arguments
+    pre_emp_coef = 0.97
+    n_fft = int(cls.SAMPLING_RATE / 1000 * 25)
+    hop_length = int(cls.SAMPLING_RATE / 1000 * 10)
+    features = []
+    for signal_ in signal_set.signals:
+      assert isinstance(signal_, Signal)
+      # Do pre-emphasis
+      signal_ = dsp.pre_emphasize(signal_, pre_emp_coef)
+      # TODO: generate 13 channels using MFCC
+      mfcc = librosa.feature.mfcc(
+        signal_, sr=cls.SAMPLING_RATE, n_mfcc=13,
+        n_fft=n_fft, hop_length=hop_length)
+      # Transpose mfcc matrix to shape (length, 13)
+      mfcc = np.transpose(mfcc)
+      # Append to feature
+      features.append(mfcc)
+    # Calculate mean and variance for each channel
+    stack = np.concatenate(features)
+    mean = np.mean(stack, axis=0)
+    sigma = np.std(stack, axis=0)
+    # Normalize each channel
+    for i, array in enumerate(features):
+      features[i] = (array - mean) / sigma
+    signal_set.features = features
     return signal_set
 
   @classmethod
   def preprocessor(cls, data_set, is_training):
     if not is_training: return data_set
     assert isinstance(data_set, SequenceSet)
+    sigma = 0.6
+    for i, input_ in enumerate(data_set.features):
+      data_set.features[i] = input_ + np.random.randn(*input_.shape) * sigma
     return data_set
 
-
-if __name__ == '__main__':
-  data_dir = r'E:\rnn_club\03-TIMIT\data'
-  raw_data_dir = r'E:\rnn_club\03-TIMIT\data\TIMIT25'
-  data_set = TIMIT25.load_as_tframe_data(data_dir)
-  s1, s2 = data_set.split(5, 2, over_classes=True, random=True)
-  _ = None
+  @classmethod
+  def evaluate(cls, trainer, data_set):
+    from tframe.trainers.trainer import Trainer
+    assert isinstance(trainer, Trainer)
+    assert isinstance(data_set, SequenceSet)
+    console.show_status('Evaluating on test set ...')
+    metric_dict = trainer.model.validate_model(data_set, 5)
+    accuracy = 100 * list(metric_dict.values())[0]
+    err = 100 - accuracy
+    msg = 'Error % on test set is {:.1f}'.format(err)
+    console.show_status(msg)
+    trainer.model.agent.put_down_criterion('Error %', err)
+    trainer.model.agent.take_notes(msg)
 

@@ -36,10 +36,12 @@ class SmartTrainer(Trainer):
       training_set=None,
       validation_set=None,
       snapshot=None,
-      probe=None):
+      probe=None,
+      **kwargs
+  ):
     # Call parent's constructor
     Trainer.__init__(
-      self, model, training_set, validation_set, snapshot, probe)
+      self, model, training_set, validation_set, snapshot, probe, **kwargs)
     # Override trainer hub with SmartTrainerHub
     self.th = SmartTrainerHub(self)
     self.lr = self.th.learning_rate

@@ -140,3 +140,14 @@ def wizard(extension, current_dir=None, max_depth=1, input_with_enter=True):
 
   return selected_file
 
+
+def load_wav_file(file_name, use_librosa=False, sr=None):
+  if use_librosa:
+    import librosa
+    if sr is None: sr = 22050
+    signal_, fs = librosa.core.load(file_name, sr)
+  else:
+    import scipy.io.wavfile as wavfile
+    fs, signal_ = wavfile.read(file_name)
+  return signal_, fs
+

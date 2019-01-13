@@ -39,7 +39,7 @@ class ClockworkRNN(RNet):
 
     # Attributes
     self._state_size = checker.check_positive_integer(state_size)
-    self._periods = self._get_periods(periods)
+    self._periods = self._get_periods(periods, **kwargs)
     self._activation = activations.get(activation, **kwargs)
     self._use_bias = checker.check_type(use_bias, bool)
     self._weight_initializer = initializers.get(weight_initializer)
@@ -47,7 +47,7 @@ class ClockworkRNN(RNet):
 
     # modules = [(start_index, size, period)+]
     self._modules = []
-    self._init_modules()
+    self._init_modules(**kwargs)
 
   # region : Properties
 
@@ -100,15 +100,21 @@ class ClockworkRNN(RNet):
 
   # region : Private
 
-  def _get_periods(self, periods):
+  def _get_periods(self, periods, **kwargs):
+    # Get max groups
+    max_groups = kwargs.get('max_groups', 7)
     if periods is None:
       periods = []
-      for i in range(self._state_size):
+      i = 0
+      for _ in range(self._state_size):
         periods.append(2 ** i)
+        i += 1
+        if i >= max_groups: i = 0
     else: checker.check_type(periods, int)
+    assert len(periods) == self._state_size
     return sorted(periods)
 
-  def _init_modules(self):
+  def _init_modules(self, **kwargs):
     for i, p in enumerate(self._periods):
       if len(self._modules) == 0 or self._modules[-1].period != p:
         self._modules.append(Module(p, i, self))
@@ -137,6 +143,6 @@ class Module(object):
 
 
 if __name__ == '__main__':
-  cwrnn = ClockworkRNN(state_size=3)
+  cwrnn = ClockworkRNN(state_size=100)
   for p in cwrnn._periods:
     print(p)

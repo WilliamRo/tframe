@@ -9,6 +9,7 @@ from collections import OrderedDict
 import tensorflow as tf
 import tframe as tfr
 
+from tframe import checker
 from tframe import console
 from tframe import context
 from tframe.data.base_classes import TFRData
@@ -39,7 +40,9 @@ class Trainer(object):
       training_set=None,
       validation_set=None,
       snapshot=None,
-      probe=None):
+      probe=None,
+      evaluate=None,
+  ):
     # Set model for trainer
     if not isinstance(model, tfr.models.Model):
       raise TypeError('!! model must be an instance of tframe Model')
@@ -51,8 +54,9 @@ class Trainer(object):
     self.set_data(training_set, validation_set)
 
     # Set callable attributes
-    self._snapshot_function = self._check_callable(snapshot, 'snapshot')
-    self._probe = self._check_callable(probe, 'probe')
+    self._snapshot_function = checker.check_callable(snapshot)
+    self._probe = checker.check_callable(probe)
+    self._evaluate = checker.check_callable(evaluate)
 
     # Initiate trainer hub
     self.th = TrainerHub(self)
@@ -332,6 +336,8 @@ class Trainer(object):
                      else ' ({:.1f} total)'.format(self.total_rounds))
       self.model.agent.take_notes(
         'End training after {} rounds{}'.format(rounds, total_round))
+    # Evaluate
+    if self._evaluate is not None: self._evaluate(self)
 
   def _handle_notes(self):
     # Add metric info into notes
@@ -370,7 +376,8 @@ class Trainer(object):
       raise TypeError('!! {} must be an instance of TFRData'.format(name))
 
   @staticmethod
-  def _check_callable(f, name):
+  def _check_callable(f, name=None):
+    if name is None: return
     if f is not None and not callable(f):
       raise TypeError('!! {} must be callable'.format(name))
     return f

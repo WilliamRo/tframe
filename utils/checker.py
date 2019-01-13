@@ -68,5 +68,14 @@ def get_range(rng):
   return low, high
 
 
+def check_callable(f, name=None, allow_none=True):
+  if name is None: name = misc.retrieve_name(f)
+  flag = True
+  if not allow_none and f is None: flag = False
+  if f is not None and not callable(f): flag = False
+  if flag: return f
+  else: raise TypeError('!! {} must be callable'.format(name))
+
+
 def check(assertion, err_msg, err_type=AssertionError):
   if not assertion: raise err_type('!! {}'.format(err_msg))

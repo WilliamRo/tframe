@@ -19,6 +19,8 @@ class SignalSet(SequenceSet):
      signals and responses. Otherwise errors may occur while loading
      from local"""
 
+  CONVERTER = 'CONVERTER'
+
   def __init__(self, signals, responses=None, data_dict=None,
                summ_dict=None, n_to_one=False, name='signal_set1',
                converter=None, **kwargs):
@@ -32,10 +34,20 @@ class SignalSet(SequenceSet):
     SequenceSet.__init__(self, data_dict=data_dict, summ_dict=summ_dict,
                          n_to_one=n_to_one, name=name, **kwargs)
     # Attributes
-    if converter is not None: assert callable(converter)
-    self.converter = converter
+    if converter is not None:
+      assert callable(converter)
+      self.converter = converter
 
   # region : Properties
+
+  @property
+  def converter(self):
+    return self.properties[self.CONVERTER]
+
+  @converter.setter
+  def converter(self, val):
+    assert callable(val)
+    self.properties[self.CONVERTER] = val
 
   @property
   def structure(self):
@@ -66,6 +78,14 @@ class SignalSet(SequenceSet):
     fs = self.properties.get(pedia.sampling_frequency, None)
     assert isinstance(fs, (int, float)) and fs > 0
     return fs
+
+  @property
+  def as_sequence_set(self):
+    return self._convert_to(SequenceSet)
+
+  @property
+  def as_data_set(self):
+    return self._convert_to(DataSet)
 
   # endregion : Properties
 
@@ -184,6 +204,17 @@ class SignalSet(SequenceSet):
       signal_dict[pedia.responses] = responses
     # Return signal dict and fs
     return signal_dict, fs
+
+  def _convert_to(self, _class_=SequenceSet):
+    assert _class_ in (SequenceSet, DataSet)
+    assert callable(self.converter)
+    data_set = self.converter(self)
+    assert isinstance(data_set, DataSet)
+    data_set.properties[pedia.signals] = data_set.data_dict.pop(pedia.signals)
+    if pedia.responses in self.data_dict.keys():
+      data_set.properties[pedia.responses] = data_set.data_dict.pop(
+        pedia.responses)
+    return data_set
 
   # endregion : Private Methods
 
