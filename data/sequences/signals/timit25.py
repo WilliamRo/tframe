@@ -147,14 +147,20 @@ class TIMIT25(DataAgent):
       assert isinstance(signal_, Signal)
       # Do pre-emphasis
       signal_ = dsp.pre_emphasize(signal_, pre_emp_coef)
-      # TODO: generate 13 channels using MFCC
-      mfcc = librosa.feature.mfcc(
-        signal_, sr=cls.SAMPLING_RATE, n_mfcc=13,
+      # Generate 12 channels using MFCC
+      mfcc12 = librosa.feature.mfcc(
+        signal_, sr=cls.SAMPLING_RATE, n_mfcc=12,
         n_fft=n_fft, hop_length=hop_length)
       # Transpose mfcc matrix to shape (length, 13)
-      mfcc = np.transpose(mfcc)
+      mfcc12 = np.transpose(mfcc12)
+
+      # Calculate energy
+      energy = dsp.short_time_energy(signal_, n_fft, stride=hop_length)
+      energy = energy.reshape((-1, 1))
+      assert mfcc12.shape[0] == energy.shape[0]
+      feature = np.concatenate((mfcc12, energy), axis=1)
       # Append to feature
-      features.append(mfcc)
+      features.append(feature)
     # Calculate mean and variance for each channel
     stack = np.concatenate(features)
     mean = np.mean(stack, axis=0)
