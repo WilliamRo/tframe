@@ -45,7 +45,7 @@ def get(identifier, **kwargs):
       # Find initializer in tensorflow.python.ops.init_ops
       initializer = (
         init_ops.__dict__.get(identifier, None) or
-        init_ops.__dict__.get('{}_initializer'.format(identifier),None))
+        init_ops.__dict__.get('{}_initializer'.format(identifier), None))
       # If nothing is found
       if initializer is None:
         raise ValueError('Can not resolve "{}"'.format(identifier))
@@ -53,7 +53,7 @@ def get(identifier, **kwargs):
       return initializer
   elif np.isscalar(identifier):
     # Note string is scalar
-    return init_ops.Constant(value=identifier)
+    return tf.initializers.constant(value=identifier)
   else:
     raise TypeError('identifier must be a Initializer or a string')
 

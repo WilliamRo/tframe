@@ -80,21 +80,49 @@ class Noah(RNet):
 class Shem(RNet):
   net_name = 'shem'
 
-  def __init__(self, state_size, **kwargs):
+  def __init__(
+      self,
+      state_size,
+      activation='tanh',
+      weight_initializer='xavier_uniform',
+      input_gate=True,
+      forget_gate=True,
+      output_gate=True,
+      use_g_bias=True,
+      g_bias_initializer='zeros',
+      use_i_bias=True,
+      i_bias_initializer='zeros',
+      use_f_bias=True,
+      f_bias_initializer='zeros',
+      use_o_bias=True,
+      o_bias_initializer='zeros',
+      output_as_mem=True,
+      fully_connect_memory=True,
+      activate_memory=True,
+      truncate_grad=False,
+      **kwargs):
     # Call parent's constructor
     RNet.__init__(self, self.net_name)
 
     # Attributes
     self._state_size = state_size
-    self._activation = activations.get('tanh', **kwargs)
+    self._input_gate = checker.check_type(input_gate, bool)
+    self._forget_gate = checker.check_type(forget_gate, bool)
+    self._output_gate = checker.check_type(output_gate, bool)
+    self._activation = activations.get(activation, **kwargs)
+    self._weight_initializer = initializers.get(weight_initializer)
+    self._use_g_bias = checker.check_type(use_g_bias, bool)
+    self._g_bias_initializer = initializers.get(g_bias_initializer)
+    self._use_i_bias = checker.check_type(use_i_bias, bool)
+    self._i_bias_initializer = initializers.get(i_bias_initializer)
+    self._use_f_bias = checker.check_type(use_f_bias, bool)
+    self._f_bias_initializer = initializers.get(f_bias_initializer)
+    self._use_o_bias = checker.check_type(use_o_bias, bool)
+    self._o_bias_initializer = initializers.get(o_bias_initializer)
+    self._activate_mem = checker.check_type(activate_memory, bool)
+    self._truncate_grad = checker.check_type(truncate_grad, bool)
+    self._fc_memory = checker.check_type(fully_connect_memory, bool)
     self._kwargs = kwargs
-
-    # Key word arguments
-    self._use_forget_gate = kwargs.get('forget_gate', False)
-    self._use_input_gate = kwargs.get('input_gate', False)
-    self._use_output_gate = kwargs.get('output_gate', False)
-    self._fc_memory = kwargs.get('fc_mem', True)
-    self._activate_mem = kwargs.get('act_mem', True)
 
 
   def structure_string(self, detail=True, scale=True):
@@ -102,24 +130,32 @@ class Shem(RNet):
 
 
   def _link(self, s, x, **kwargs):
+    def neurons(name, activation, use_bias, bias_init, mem=s):
+      return self.neurons(
+        x, mem, self._state_size, self._fc_memory, activation=activation,
+        scope=name, truncate=self._truncate_grad, use_bias=use_bias,
+        bias_initializer=bias_init)
+    def gate(input_, name, use_bias, bias_init):
+      gate_ = neurons(name, 'sigmoid', use_bias, bias_init)
+      return tf.multiply(gate_, input_)
 
-    def fn(name, f, mem=s, fcm=self._fc_memory):
-      return self._neurons_forward_with_memory(x, mem, name, f, fcm)
+    # - Calculate memory
+    # ..Calculate g
+    g = neurons('g', self._activation, self._use_g_bias,
+                self._g_bias_initializer)
+    if self._input_gate: g = gate(
+      g, 'input_gate', self._use_i_bias, self._i_bias_initializer)
+    # ..Maybe forget
+    s_prev = s
+    if self._forget_gate: s_prev = gate(
+      s, 'forget_gate', self._use_f_bias, self._f_bias_initializer)
+    new_s = tf.add(s_prev, g)
 
-    def gate(name, tensor, mem=s):
-      g = fn(name, tf.sigmoid, mem=mem)
-      return tf.multiply(g, tensor)
-
-    # Calculate memory
-    s_bar = fn('s_bar', self._activation)
-    if self._use_input_gate: s_bar = gate('in_gate', s_bar)
-    s_prev = gate('forget_gate', s) if self._use_forget_gate else s
-    new_s = tf.add(s_prev, s_bar)
-
-    # Calculate output
+    # - Calculate output
     s_out = self._activation(s) if self._activate_mem else s
-    if self._use_output_gate: s_out = gate('out_gate', s_out)
-    y = fn('output', self._activation, mem=s_out)
+    if self._output_gate: s_out = gate(
+      s_out, 'output_gate', self._use_o_bias, self._o_bias_initializer)
+    y = neurons('y', self._activation, True, 'zeros', s_out)
 
     return y, new_s
 

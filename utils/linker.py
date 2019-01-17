@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import tframe.activations as activations
 import tframe.initializers as initializers
 import tframe.regularizers as regularizers
 
@@ -28,6 +29,7 @@ def neurons(num,
             activity_regularizer=None,
             **kwargs):
   """Analogous to tf.keras.layers.Dense"""
+  activation = activations.get(activation)
   weight_initializer = initializers.get(weight_initializer)
   bias_initializer = initializers.get(bias_initializer)
   weight_regularizer = regularizers.get(weight_regularizer)
@@ -48,8 +50,10 @@ def neurons(num,
       Ws = get_variable('Ws', [1, num], weight_initializer)
       weight_list.append(Ws)
       y = tf.add(y, get_multiply(truncate)(memory, Ws))
-    b = get_bias('bias', num, bias_initializer) if use_bias else None
-    y = tf.nn.bias_add(y, b)
+    b = None
+    if use_bias:
+      b = get_bias('bias', num, bias_initializer)
+      y = tf.nn.bias_add(y, b)
     if callable(activation): y = activation(y)
     return y, weight_list, b
 

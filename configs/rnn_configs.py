@@ -28,6 +28,12 @@ class RNNConfigs(object):
                              is_key=None)
   output_gate = Flag.boolean(True, 'Whether to use output gate in LSTM',
                              is_key=None)
+  input_bias_initializer = Flag.float(
+    0., 'input gate bias initializer', is_key=None)
+  output_bias_initializer = Flag.float(
+    0., 'output gate bias initializer', is_key=None)
+  forget_bias_initializer = Flag.float(
+    0., 'forget gate bias initializer', is_key=None)
   fc_memory = Flag.boolean(True, 'Whether to fully connect memory', is_key=None)
   act_memory = Flag.boolean(True, 'Whether to activate memory', is_key=None)
   with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
@@ -36,6 +42,10 @@ class RNNConfigs(object):
   # AMU configs
   num_units = Flag.integer(0, 'Units# used in AMU model', is_key=None)
   unit_size = Flag.integer(0, 'Size for each AMU', is_key=None)
+
+  # Shem configs
+  output_as_mem = Flag.boolean(
+    True, 'Whether to pass forward output as cell state', is_key=None)
 
   # Ham configs
   mem_cfg = Flag.string('', 'e.g. `7-a-f;8-na-nf`')
