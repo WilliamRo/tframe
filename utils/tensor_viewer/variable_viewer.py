@@ -6,6 +6,8 @@ import numpy as np
 from collections import OrderedDict
 
 import matplotlib
+if matplotlib.get_backend() != 'module://backend_interagg':
+  matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 
@@ -13,8 +15,6 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import Frame
 
-if matplotlib.get_backend() != 'module://backend_interagg':
-  matplotlib.use("TkAgg")
 from tframe import console
 
 

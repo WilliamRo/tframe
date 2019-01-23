@@ -122,6 +122,7 @@ class Shem(RNet):
     self._activate_mem = checker.check_type(activate_memory, bool)
     self._truncate_grad = checker.check_type(truncate_grad, bool)
     self._fc_memory = checker.check_type(fully_connect_memory, bool)
+    self._output_as_mem = checker.check_type(output_as_mem, bool)
     self._kwargs = kwargs
 
 
@@ -130,6 +131,7 @@ class Shem(RNet):
 
 
   def _link(self, s, x, **kwargs):
+
     def neurons(name, activation, use_bias, bias_init, mem=s):
       return self.neurons(
         x, mem, self._state_size, self._fc_memory, activation=activation,

@@ -10,7 +10,7 @@ import tframe as tfr
 from . import console
 
 
-def check_path(*paths, create_path=True, is_file_name=False):
+def check_path(*paths, create_path=True, is_file_path=False):
   assert len(paths) > 0
   if len(paths) == 1:
     paths = re.split(r'/|\\', paths[0])
@@ -20,13 +20,27 @@ def check_path(*paths, create_path=True, is_file_name=False):
       paths.pop(-1)
   path = ""
   for i, p in enumerate(paths):
-    path += ('/' if len(path) > 0 else '') + p
-    if path[-1] == ':': continue
-    if not (is_file_name and i == len(paths) - 1):
+    # The first p should be treated differently
+    if i == 0:
+      assert path == "" and p != ""
+      if p[-1] != ':':
+        # Put `/` back to front for Unix-like systems
+        path = '/' + p
+      else:
+        # This will only happen in Windows system family
+        path = p
+        continue
+    else:
+      path = os.path.join(path, p)
+
+    # Make directory if necessary
+    if not (is_file_path and i == len(paths) - 1):
       if not os.path.exists(path):
+        # TODO: flag in context.hub should not be used here
         if tfr.context.hub.should_create_path and create_path:
           os.mkdir(path)
-        else: raise AssertionError('!! directory {} does not exist'.format(path))
+        else:
+          raise AssertionError('!! Directory {} does not exist'.format(path))
   return path
 
 

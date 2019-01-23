@@ -40,9 +40,8 @@ class Slot(object):
   # region : Public Methods
 
   def plug(self, op, **kwargs):
-    if op.__class__ not in self.op_classes:
-      print(' ! op should be in {}'.format(self.op_classes))
-      # raise TypeError('!! op should be in {}'.format(self.op_classes))
+    if not isinstance(op, tuple(self.op_classes)):
+      raise TypeError('!! op should be in {}'.format(self.op_classes))
     self._op = op
 
   def substitute(self, op):

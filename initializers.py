@@ -36,7 +36,7 @@ def get(identifier, **kwargs):
     elif identifier in ['random_norm', 'random_normal']:
       mean = kwargs.get('mean', 0.)
       stddev = kwargs.get('stddev', 1.)
-      return init_ops.RandomNormal(mean=mean, stddev=stddev)
+      return init_ops.truncated_normal_initializer(mean=mean, stddev=stddev)
     elif identifier in ['glorot_uniform', 'xavier_uniform']:
       return glorot_uniform()
     elif identifier in ['id', 'identity']:
