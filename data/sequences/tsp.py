@@ -115,6 +115,8 @@ class TSP(DataAgent):
     assert isinstance(val_set, SequenceSet) and val_set.size == 256
     assert isinstance(test_set, SequenceSet) and test_set.size == 2560
     SATISFY_C1 = 'SATISFY_C1'
+    BEST_ACC = 'BEST_ACC'
+    BEST_MAE = 'BEST_MAE'
     if SATISFY_C1 not in val_set.properties.keys():
       val_set.properties[SATISFY_C1] = False
 
@@ -127,6 +129,17 @@ class TSP(DataAgent):
     trues =  abs_deltas < hub.prediction_threshold
     accuracy = sum(trues) / len(trues)
     MAE = np.average(abs_deltas)
+
+    # Put down criterion if records appear
+    if (BEST_ACC not in val_set.properties.keys()
+        or val_set[BEST_ACC] < accuracy):
+      val_set.properties[BEST_ACC] = accuracy
+      trainer.model.agent.put_down_criterion('Best Acc', accuracy)
+
+    if (BEST_MAE not in val_set.properties.keys()
+        or val_set[BEST_MAE] > MAE):
+      val_set.properties[BEST_MAE] = MAE
+      trainer.model.agent.put_down_criterion('Best MAE', MAE)
 
     # Export tensors if necessary
     if hub.export_tensors_to_note:
