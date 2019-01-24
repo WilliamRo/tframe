@@ -77,7 +77,7 @@ class Linear(Layer):
   def __init__(self, output_dim,
                force_real=False,
                use_bias=True,
-               weight_initializer='xavier_uniform',
+               weight_initializer='xavier_normal',
                bias_initializer='zeros',
                weight_regularizer=None,
                bias_regularizer=None,

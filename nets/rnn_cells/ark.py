@@ -32,7 +32,7 @@ class Noah(RNet):
     self._state_size = state_size
     self._activation = activations.get('tanh', **kwargs)
     # self._use_bias = True
-    self._weight_initializer = initializers.get('xavier_uniform')
+    self._weight_initializer = initializers.get('xavier_normal')
     self._bias_initializer = initializers.get('zeros')
     self._output_scale = state_size
     self._fully_connect_memories = mem_fc

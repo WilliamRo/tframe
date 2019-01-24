@@ -186,6 +186,8 @@ class Model(object):
     self.agent.take_notes('Model built successfully')
     self.agent.take_notes('Structure:', date_time=False)
     self.agent.take_notes('Total params: {}'.format(total_params))
+    hub.total_params = int(total_params)
+
     for line in description:
       self.agent.take_notes(line, date_time=False)
     if hub.show_structure_detail:

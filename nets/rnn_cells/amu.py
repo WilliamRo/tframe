@@ -27,7 +27,7 @@ class AMU(RNet):
       neurons_per_amu=3,
       activation='tanh',
       use_bias=True,
-      weight_initializer='xavier_uniform',
+      weight_initializer='xavier_normal',
       bias_initializer='zeros',
       truncate_grad=False,
       **kwargs):

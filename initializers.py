@@ -39,6 +39,8 @@ def get(identifier, **kwargs):
       return init_ops.truncated_normal_initializer(mean=mean, stddev=stddev)
     elif identifier in ['glorot_uniform', 'xavier_uniform']:
       return glorot_uniform()
+    elif identifier in ['glorot_normal', 'xavier_normal']:
+      return init_ops.glorot_normal_initializer()
     elif identifier in ['id', 'identity']:
       return identity()
     else:

@@ -33,6 +33,9 @@ class NoteConfigs(object):
   use_default_s_in_dy_ds = Flag.boolean(True, '...')
   calculate_mean = Flag.boolean(False, '...')
 
+  # Statistics only for note summary
+  total_params = Flag.integer(0, 'Parameters #', is_key=None)
+
 
   def smooth_out_note_configs(self):
     if (self.export_dy_ds or self.export_gates or

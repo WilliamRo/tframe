@@ -32,6 +32,11 @@ def check_flag_name(method):
 
 class Helper(object):
 
+  # Class variables
+  true_and_false = (True, False)
+  true = True
+  false = False
+
   def __init__(self, module_name):
     self.module_name = module_name
     self._check_module()
