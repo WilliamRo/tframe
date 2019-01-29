@@ -486,37 +486,47 @@ class RNet(Net):
 
   # region : Export tensors TODO ++export_tensor
 
-  @property
-  def num_tensors_to_export(self):
-    # For dy/dS
-    if hub.use_default_s_in_dy_ds:
-      num_dydS = self.memory_block_num
-    else:
-      # TODO: this doesn't work since rnet has not been built yet
-      num_dydS = len(context.get_collection_by_key(
-      RNet.MEMORY_TENSOR_DICT, True, val_type=dict))
-    # For gates
-    num_gates = 0
-    if hub.export_gates:
-      for cell in self.rnn_cells:
-        if hasattr(cell, 'gate_number'): num_gates += cell.gate_number
-    # Return
-    return num_dydS + num_gates
+  # @property
+  # def num_tensors_to_export(self):
+  #   # For dy/dS
+  #   if hub.use_default_s_in_dy_ds:
+  #     num_dydS = self.memory_block_num
+  #   else:
+  #     # TODO: this doesn't work since rnet has not been built yet
+  #     num_dydS = len(context.get_collection_by_key(
+  #     RNet.MEMORY_TENSOR_DICT, True, val_type=dict))
+  #   # For gates
+  #   num_gates = 0
+  #   if hub.export_gates:
+  #     for cell in self.rnn_cells:
+  #       if hasattr(cell, 'gate_number'): num_gates += cell.gate_number
+  #   # Return
+  #   return num_dydS + num_gates
 
   @staticmethod
   def _register_memories(pre_states):
     """Register memory tensors as a dict into tfr.collections"""
-    if not hub.use_default_s_in_dy_ds: return
+    if not hub.use_default_s_in_dy_ds and not hub.export_states: return
     assert isinstance(pre_states, (list, tuple))
-    # d = OrderedDict()
-    for tensor, index in zip(
-        *ravel_nested_stuff(pre_states, with_indices=True)):
+    tensors, indices = ravel_nested_stuff(pre_states, with_indices=True)
+
+    for tensor, index in zip(tensors, indices):
       assert isinstance(index, list)
-      key = 'S{}'.format('-'.join([str(i + 1) for i in index]))
-      context.add_to_dict_collection(context.S_IN_DYDS, key, tensor)
+      if len(tensors) == 1: key = 'S'
+      else: key = 'S{}'.format('-'.join([str(i + 1) for i in index]))
+      if hub.export_states:
+        context.add_tensor_to_export(key, tensor)
+      if hub.use_default_s_in_dy_ds:
+        context.add_to_dict_collection(context.S_IN_DYDS, key, tensor)
+
+    # for tensor, index in zip(
+    #     *ravel_nested_stuff(pre_states, with_indices=True)):
+    #   assert isinstance(index, list)
+    #   key = 'S{}'.format('-'.join([str(i + 1) for i in index]))
+    #   context.add_to_dict_collection(context.S_IN_DYDS, key, tensor)
 
   @staticmethod
-  def _get_tensors_to_export(output):
+  def _get_tensors_to_export(y):
     tensors = []
     # For tensors already registered
     tensors_to_export = context.tensors_to_export
@@ -526,10 +536,19 @@ class RNet(Net):
     # For dy/dS
     for s_name, s in context.get_collection_by_key(
         context.S_IN_DYDS, True, val_type=dict).items():
-      tensor = tf.gradients(output, s, name=s_name)[0]
-      tensors.append(tensor)
-      key = 'dy/d{}'.format(s_name)
-      context.add_tensor_to_export(key, None)
+      y_shape = y.shape.as_list()
+      assert len(y_shape) == 2
+      # y here must be splitted
+      for i in range(y_shape[1]):
+        tensor = tf.gradients(y[0, i], s, name=s_name)[0]
+        tensors.append(tensor)
+        key = 'dy{}/d{}'.format(i + 1, s_name)
+        context.add_tensor_to_export(key, None)
+
+      # tensor = tf.gradients(y, s, name=s_name)[0]
+      # tensors.append(tensor)
+      # key = 'dy/d{}'.format(s_name)
+      # context.add_tensor_to_export(key, None)
     return tuple(tensors)
 
   @staticmethod

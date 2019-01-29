@@ -84,7 +84,7 @@ class Shem(RNet):
       self,
       state_size,
       activation='tanh',
-      weight_initializer='xavier_uniform',
+      weight_initializer='xavier_normal',
       input_gate=True,
       forget_gate=True,
       output_gate=True,

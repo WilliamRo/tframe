@@ -317,11 +317,11 @@ class ERG(DataAgent):
     # Get average dy/dS for short and long trigger
     tensors = OrderedDict()
     if hub.calculate_mean: tensors['Mean'] = OrderedDict()
-    examplar_names = []
+    exemplar_names = []
     for i in range(num):
       name = '({}){}'.format(i + 1, erg_list[i])
       tensors[name] = OrderedDict()
-      examplar_names.append(name)
+      exemplar_names.append(name)
 
     # Generate tensor dict
     for i, array_list in enumerate(results):
@@ -329,7 +329,8 @@ class ERG(DataAgent):
       short_buffer = np.zeros_like(array_list[0][0][0])
       long_buffer = np.zeros_like(array_list[0][0][0])
       for j, array in enumerate(array_list):
-        if j < num: tensors[examplar_names[j]][name] = array[0]
+        # The shape of array is (batch, step, *dim)
+        if j < num: tensors[exemplar_names[j]][name] = array[0]
         if not hub.calculate_mean: continue
         short_buffer += np.sum(array[0], axis=0) - array[0][-2]
         long_buffer += array[0][-2]

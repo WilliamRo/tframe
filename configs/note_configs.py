@@ -25,6 +25,7 @@ class NoteConfigs(object):
     False, 'Whether to export tensors to note', is_key=None)
   export_tensors_upon_validation = Flag.boolean(
     False, 'Whether to export tensors after validation')
+  export_states = Flag.boolean(False, '...')
   export_dy_ds = Flag.boolean(False, '...')
   export_gates = Flag.boolean(False, '...')
   export_weights = Flag.boolean(False, '...')
@@ -38,7 +39,9 @@ class NoteConfigs(object):
 
 
   def smooth_out_note_configs(self):
-    if (self.export_dy_ds or self.export_gates or
+    if self.use_default_s_in_dy_ds: self.export_dy_ds = True
+
+    if (self.export_dy_ds or self.export_gates or self.export_states or
         self.export_weights or self.export_bias or self.export_kernel):
       self.export_tensors_to_note = True
 

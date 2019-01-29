@@ -29,7 +29,7 @@ def neurons(num,
             activity_regularizer=None,
             **kwargs):
   """Analogous to tf.keras.layers.Dense"""
-  activation = activations.get(activation)
+  if activation is not None: activation = activations.get(activation)
   weight_initializer = initializers.get(weight_initializer)
   bias_initializer = initializers.get(bias_initializer)
   weight_regularizer = regularizers.get(weight_regularizer)

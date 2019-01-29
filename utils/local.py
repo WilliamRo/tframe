@@ -23,13 +23,14 @@ def check_path(*paths, create_path=True, is_file_path=False):
     # The first p should be treated differently
     if i == 0:
       assert path == "" and p != ""
-      if p[-1] != ':':
+      # if p[-1] != ':':
+      if ':' not in p:
         # Put `/` back to front for Unix-like systems
         path = '/' + p
       else:
         # This will only happen in Windows system family
         path = p + '/'
-        continue
+        # continue
     else:
       path = os.path.join(path, p)
 

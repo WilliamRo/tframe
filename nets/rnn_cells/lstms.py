@@ -25,7 +25,7 @@ class BasicLSTMCell(RNet):
       state_size,
       activation='tanh',
       use_bias=True,
-      weight_initializer='xavier_uniform',
+      weight_initializer='xavier_normal',
       bias_initializer='zeros',
       input_gate=True,
       output_gate=True,
