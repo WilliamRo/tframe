@@ -253,6 +253,12 @@ class RNet(Net):
     return rnn_dict
 
   def _check_state(self, state, num_or_sizes=1):
+    """Check cell state
+    :param state: a tuple of states or a state array
+    :param num_or_sizes: can be
+        (1) an integer: number of tensor arrays of size `self._state_size`
+        (2) a tuple: tuple([get_size(s) for s in `state tuple`])
+    """
     # Check num_or_sizes
     if isinstance(num_or_sizes, int):
       assert num_or_sizes > 0 and self._state_size is not None

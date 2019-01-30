@@ -115,7 +115,8 @@ class VariableViewer(Frame):
     image = np.abs(variable) if self.show_absolute_value else variable
 
     # Show heat_map
-    im = self._heat_map(image, cmap='YlGn')
+    cmap = 'Oranges' if self.show_absolute_value else 'bwr'
+    im = self._heat_map(image, cmap=cmap)
     if self.show_value: self._annotate_heat_map(im, variable)
     if self.use_clim:
       # TODO
