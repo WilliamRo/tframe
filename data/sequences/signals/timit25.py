@@ -58,6 +58,7 @@ class TIMIT25(DataAgent):
   def load(cls, data_dir, num_train_foreach, raw_data_dir='TIMIT25',
            random=True, **kwargs):
     signal_set = cls.load_as_tframe_data(data_dir)
+    signal_set = signal_set.as_sequence_set
     return signal_set.split(
       num_train_foreach, None, names=('train_set', 'test_set'),
       over_classes=True, random=random)
@@ -151,7 +152,7 @@ class TIMIT25(DataAgent):
       mfcc12 = librosa.feature.mfcc(
         signal_, sr=cls.SAMPLING_RATE, n_mfcc=12,
         n_fft=n_fft, hop_length=hop_length)
-      # Transpose mfcc matrix to shape (length, 13)
+      # Transpose mfcc matrix to shape (length, 12)
       mfcc12 = np.transpose(mfcc12)
 
       # Calculate energy
@@ -161,6 +162,7 @@ class TIMIT25(DataAgent):
       feature = np.concatenate((mfcc12, energy), axis=1)
       # Append to feature
       features.append(feature)
+
     # Calculate mean and variance for each channel
     stack = np.concatenate(features)
     mean = np.mean(stack, axis=0)
@@ -168,6 +170,7 @@ class TIMIT25(DataAgent):
     # Normalize each channel
     for i, array in enumerate(features):
       features[i] = (array - mean) / sigma
+
     signal_set.features = features
     return signal_set
 

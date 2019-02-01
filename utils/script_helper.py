@@ -9,10 +9,17 @@ from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
 
-flags = [attr for attr in
-         [getattr(SmartTrainerHub, key) for key in dir(SmartTrainerHub)]
-         if isinstance(attr, Flag)]
-flag_names = [f.name for f in flags]
+flags, flag_names = None, None
+
+def register_flags(config_class):
+  global flags, flag_names
+  flags = [attr for attr in
+           [getattr(config_class, key) for key in dir(config_class)]
+           if isinstance(attr, Flag)]
+  flag_names = [f.name for f in flags]
+
+register_flags(SmartTrainerHub)
+
 
 def check_flag_name(method):
   def wrapper(obj, flag_name, *args, **kwargs):
@@ -62,6 +69,10 @@ class Helper(object):
   # endregion : Properties
 
   # region : Public Methods
+
+  @staticmethod
+  def register_flags(config_class):
+    register_flags(config_class)
 
   @check_flag_name
   def register(self, flag_name, val):
