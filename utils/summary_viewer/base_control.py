@@ -53,7 +53,12 @@ class BaseControl(ttk.Frame):
   @staticmethod
   def measure(txt):
     a, b, s = 1.5, 1, 12
-    if BaseControl.ruler is None:
-      BaseControl.ruler = tkFont.Font(family='Helvetica', size=s)
-    x = BaseControl.ruler.measure(txt)
+    try:
+      # TODO: raise `can't invoke "font" command: application has been
+      #       destroyed` exception if reopen in the same thread
+      if BaseControl.ruler is None:
+        BaseControl.ruler = tkFont.Font(family='Helvetica', size=s)
+      x = BaseControl.ruler.measure(txt)
+    except:
+      x = len(txt) * 8
     return int(1.0 * x / s * a + b)
