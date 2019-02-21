@@ -46,8 +46,9 @@ class Config(
           'information')
   progress_bar = Flag.boolean(True, 'Whether to show progress bar')
 
-  # TODO: ???
-  keep_trainer_log = Flag.boolean(False, 'Whether to keep trainer logs.')
+  keep_trainer_log = Flag.boolean(
+    False, 'Whether to keep trainer logs. Usually be used for probe '
+           'methods')
 
   # Device related config
   visible_gpu_id = Flag.string(

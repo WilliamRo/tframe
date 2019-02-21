@@ -114,7 +114,8 @@ class RNet(Net):
       pre_states = pre_outputs[1]
 
       # TODO: ++export_tensors
-      if hub.export_dy_ds: self._register_memories(pre_states)
+      if hub.export_dy_ds or hub.export_states:
+        self._register_memories(pre_states)
 
       # The assertion below is not held by rnn_cells
       assert isinstance(pre_states, (tuple, list))

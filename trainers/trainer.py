@@ -609,6 +609,7 @@ class TrainerHub(Config):
     self.cursor = None
 
     self.force_terminate = False
+    # Sometimes probe method should know the accuracy history
     self.logs = {}
 
   # region : Properties
