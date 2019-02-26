@@ -9,6 +9,7 @@ from tframe.models.feedforward import Feedforward
 from tframe.models.recurrent import Recurrent
 
 from tframe import console
+from tframe import context
 from tframe import losses
 from tframe import pedia
 from tframe import metrics
@@ -36,11 +37,11 @@ class Predictor(Feedforward, Recurrent):
     if not net_type in (Feedforward, Recurrent):
       raise TypeError('!! Unknown net type')
     self.master = net_type
-    # Call parent's constructor
-    net_type.__init__(self, mark)
     # Attributes
     self._targets = TensorSlot(self, 'targets')
     self._val_targets = TensorSlot(self, 'val_targets')
+    # Call parent's constructor
+    net_type.__init__(self, mark)
 
   # region : Properties
 
@@ -76,6 +77,10 @@ class Predictor(Feedforward, Recurrent):
   def _build(self, optimizer=None, loss='euclid',
              metric=None, metric_is_like_loss=True, metric_name='Metric',
              **kwargs):
+    # Get loss function before build
+    loss_function = losses.get(loss)
+    context.loss_function = loss_function
+
     # Call parent's build method
     # Usually output tensor has been plugged into Model._outputs slot
     self.master._build(self)
@@ -85,7 +90,6 @@ class Predictor(Feedforward, Recurrent):
     self._plug_target_in(self.outputs.shape_list)
 
     # Define loss
-    loss_function = losses.get(loss)
     use_logits = (kwargs.get('use_logits', False) or
                   isinstance(loss, str) and 'cross_entropy' in loss)
     with tf.name_scope('Loss'):
@@ -104,6 +108,7 @@ class Predictor(Feedforward, Recurrent):
             ' activation layer to this model at last.')
         output_tensor = self.outputs.tensor
       loss_tensor = loss_function(self._targets.tensor, output_tensor)
+
       # TODO: with or without regularization loss?
       if hub.summary:
         tf.add_to_collection(pedia.train_step_summaries,
@@ -139,6 +144,12 @@ class Predictor(Feedforward, Recurrent):
     self._define_train_step(optimizer)
 
   def _plug_target_in(self, shape):
+    # Handle recurrent situation
+    if self._targets.tensor is not None:
+      # targets placeholder has been plugged in Recurrent._build_while_free
+      #   method
+      assert self.master == Recurrent
+      return
     target_tensor = tf.placeholder(hub.dtype, shape, name='targets')
     self._targets.plug(target_tensor, collection=pedia.default_feed_dict)
 

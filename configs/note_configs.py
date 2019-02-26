@@ -34,6 +34,8 @@ class NoteConfigs(object):
   use_default_s_in_dy_ds = Flag.boolean(False, '...')
   calculate_mean = Flag.boolean(False, '...')
 
+  export_dl_dx = Flag.boolean(False, '...')
+
   # Statistics only for note summary
   total_params = Flag.integer(0, 'Parameters #', is_key=None)
 
@@ -42,6 +44,8 @@ class NoteConfigs(object):
     if self.use_default_s_in_dy_ds: self.export_dy_ds = True
 
     if (self.export_dy_ds or self.export_gates or self.export_states or
-        self.export_weights or self.export_bias or self.export_kernel):
+        self.export_weights or self.export_bias or self.export_kernel or
+        self.export_dl_dx):
       self.export_tensors_to_note = True
+
 

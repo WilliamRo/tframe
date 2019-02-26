@@ -6,6 +6,10 @@ from .flag import Flag
 
 
 class RNNConfigs(object):
+  # VIC
+  allow_loss_in_loop = Flag.boolean(
+    False, 'Set to False to avoid being slow')
+
   # Training configs
   parallel_on = Flag.boolean(False, 'Whether to turn on parallel option')
 

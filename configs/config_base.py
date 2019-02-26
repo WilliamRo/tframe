@@ -182,6 +182,9 @@ class Config(
     self.smooth_out_monitor_configs()
     self.smooth_out_note_configs()
 
+    if self.export_dl_dx:
+      self.allow_loss_in_loop = True
+
   def get_attr(self, name):
     return object.__getattribute__(self, name)
 

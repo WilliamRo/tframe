@@ -56,6 +56,11 @@ class RNet(Net):
   # region : Properties
 
   @property
+  def loss_in_loop(self):
+    from tframe.models import Predictor
+    return isinstance(self, Predictor) and hub.allow_loss_in_loop
+
+  @property
   def rnn_cells(self):
     assert self.is_root
     return [net for net in self.children if isinstance(net, RNet)]
@@ -121,46 +126,76 @@ class RNet(Net):
       assert isinstance(pre_states, (tuple, list))
       assert len(pre_states) == self.rnn_cell_num
     else: raise ValueError('!! pre_outputs can not be None')  # TODO
-    assert isinstance(input_, tf.Tensor)
+
+    # Unwrap input_
+    inputs, targets = None, None
+    if isinstance(input_, (list, tuple)):
+      assert len(input_) == 2
+      inputs, targets = input_
+    else:
+      assert isinstance(input_, tf.Tensor)
+      inputs = input_
+    assert isinstance(inputs, tf.Tensor)
+    # Here if `targets` is not None, self.loss_in_while_loop must be True
 
     # Link
     states = []
-    output = input_
+    outputs = inputs
     state_cursor = 0
     for net in self.children:
       assert isinstance(net, Net)
       if isinstance(net, RNet):
         # rnn_cells in self.children accept state and input
         # .. and gives (output, state)
-        output, state = net(pre_states[state_cursor], output)
+        outputs, state = net(pre_states[state_cursor], outputs)
         states.append(state)
         state_cursor += 1
       else:
-        output = net(output)
+        outputs = net(outputs)
 
     assert len(states) == len(pre_states)
-    result_tuple = output, tuple(states)
+    # Set y for future use (4 & 7 below)
+    # Use logits if possible for logits provide larger slope
+    y = self.logits_tensor if self.logits_tensor is not None else outputs
+
+    # The order from 1 to 6 should be the same as that in recurrent.py
+    # 1&2. outputs and states
+    result_tuple = outputs, tuple(states)
 
     # Register gates
     self._register_gates()
 
-    # Add logits if necessary
+    # 3. Add logits if necessary
     if self.logits_tensor is not None:
       result_tuple += self.logits_tensor,
 
-    # TODO: ++export_tensors
+    # 4. TODO: ++export_tensors
     if hub.export_tensors_to_note:
-      y = self.logits_tensor if self.logits_tensor is not None else output
       result_tuple += self._get_tensors_to_export(y),
 
-    # Add extra loss to result
+    # 5. Add extra loss to result
     extra_loss = self._get_extra_loss()
     if extra_loss is not None:
       result_tuple += extra_loss,
 
-    # TODO: BETA
+    # 6. TODO: BETA
     if hub.use_rtrl:
-      result_tuple += self._get_grad_tensor_tuple(output),
+      result_tuple += self._get_grad_tensor_tuple(outputs),
+
+    # 7. Loss related tensors
+    if targets is not None:
+      # Handle while-free situation
+      if 'mascot' in targets.name: targets = y
+      assert self.loss_in_loop and callable(context.loss_function)
+      # Raw loss does not need to be exported
+      loss = context.loss_function(targets, y)
+      # result_tuple += loss,
+      if hub.export_dl_dx:
+        # (1) dl_t / dx_{t-1} and (2) dx_t/dx_{t-1} must be exported
+        # (1)
+        result_tuple += self._calc_dL_dS_prev(loss, pre_states),
+        # (2)
+        result_tuple += self._calc_dS_dS_prev(states, pre_states),
 
     return result_tuple
 
@@ -493,23 +528,6 @@ class RNet(Net):
 
   # region : Export tensors TODO ++export_tensor
 
-  # @property
-  # def num_tensors_to_export(self):
-  #   # For dy/dS
-  #   if hub.use_default_s_in_dy_ds:
-  #     num_dydS = self.memory_block_num
-  #   else:
-  #     # TODO: this doesn't work since rnet has not been built yet
-  #     num_dydS = len(context.get_collection_by_key(
-  #     RNet.MEMORY_TENSOR_DICT, True, val_type=dict))
-  #   # For gates
-  #   num_gates = 0
-  #   if hub.export_gates:
-  #     for cell in self.rnn_cells:
-  #       if hasattr(cell, 'gate_number'): num_gates += cell.gate_number
-  #   # Return
-  #   return num_dydS + num_gates
-
   @staticmethod
   def _register_memories(pre_states):
     """Register memory tensors as a dict into tfr.collections"""
@@ -525,12 +543,6 @@ class RNet(Net):
         context.add_tensor_to_export(key, tensor)
       if hub.use_default_s_in_dy_ds:
         context.add_to_dict_collection(context.S_IN_DYDS, key, tensor)
-
-    # for tensor, index in zip(
-    #     *ravel_nested_stuff(pre_states, with_indices=True)):
-    #   assert isinstance(index, list)
-    #   key = 'S{}'.format('-'.join([str(i + 1) for i in index]))
-    #   context.add_to_dict_collection(context.S_IN_DYDS, key, tensor)
 
   @staticmethod
   def _get_tensors_to_export(y):
@@ -552,17 +564,44 @@ class RNet(Net):
         key = 'dy{}/d{}'.format(i + 1, s_name)
         context.add_tensor_to_export(key, None)
 
-      # tensor = tf.gradients(y, s, name=s_name)[0]
-      # tensors.append(tensor)
-      # key = 'dy/d{}'.format(s_name)
-      # context.add_tensor_to_export(key, None)
     return tuple(tensors)
 
   @staticmethod
-  def _set_tensors_to_export(scan_output):
+  def _set_tensors_to_export(tensor_list):
+    # TODO: the order of tensors in tensor_list somehow matches
+    #       that in context
     tensor_dict = context.tensors_to_export
-    for key, tensor in zip(tensor_dict.keys(), scan_output):
+    for key, tensor in zip(tensor_dict.keys(), tensor_list):
       tensor_dict[key] = tensor
 
   # endregion : Export tensors
+
+  # region : Export dL/dx
+
+  def _calc_dL_dS_prev(self, loss, pre_states):
+    assert isinstance(loss, tf.Tensor)
+    return tuple(tf.gradients(loss, pre_states))
+
+  def _calc_dS_dS_prev(self, states, pre_states):
+    # states & pre_states can be tuples/lists or tensors
+    if isinstance(states, tf.Tensor):
+      # states.shape is [batch_size, state_size].
+      assert isinstance(pre_states, tf.Tensor)
+      assert len(pre_states.shape) == len(states.shape) == 2
+      # each entry has a shape of [batch_size, 1]
+      splitted_states = tf.split(states, states.shape[1], axis=1)
+      # output has shape [batch_size, pre_s_size, s_size]
+      # i.e. the output is a standard Jacobian
+      return tf.stack(
+        [tf.gradients(s, pre_states)[0] for s in splitted_states], axis=2)
+    else:
+      assert isinstance(states, (tuple, list))
+      assert isinstance(pre_states, (tuple, list))
+      assert len(states) == len(pre_states)
+      results = []
+      for s, pre_s in zip(states, pre_states):
+        results.append(self._calc_dS_dS_prev(s, pre_s))
+      return tuple(results)
+
+  # endregion : Export dL/dx
 
