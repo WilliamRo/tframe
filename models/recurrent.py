@@ -232,7 +232,8 @@ class Recurrent(Model, RNet):
 
       # Say T = num_steps, (dL/dSi)j is a T by T lower triangular matrix
       triangle = self._form_triangle(dlds, dsds)
-      od[grad_name + '*'] = tf.reduce_sum(tf.abs(triangle), axis=0)
+      od[grad_name + '*'] = tf.reduce_sum(
+        tf.abs(triangle), axis=0, keepdims=True)
       assert isinstance(triangle, tf.Tensor)
       for i, t in enumerate(tf.split(triangle, triangle.shape.as_list()[0])):
         od['{}{}'.format(grad_name, i + 1)] = t
