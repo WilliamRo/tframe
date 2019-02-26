@@ -228,15 +228,15 @@ class Recurrent(Model, RNet):
       # Generate key for dL/dSi
       if len(dlds_flat) == 1: grad_name = 'S'
       else: grad_name = 'S{}'.format('-'.join([str(i + 1) for i in index]))
-      grad_name = '(dL/d{})'.format(grad_name)
+      grad_name = 'dL/d{}'.format(grad_name)
 
       # Say T = num_steps, (dL/dSi)j is a T by T lower triangular matrix
       triangle = self._form_triangle(dlds, dsds)
-      od[grad_name + '*'] = tf.reduce_sum(
+      od[grad_name + '[*]'] = tf.reduce_sum(
         tf.abs(triangle), axis=0, keepdims=True)
       assert isinstance(triangle, tf.Tensor)
       for i, t in enumerate(tf.split(triangle, triangle.shape.as_list()[0])):
-        od['{}{}'.format(grad_name, i + 1)] = t
+        od['{}[{}]'.format(grad_name, i + 1)] = t
 
     return od
 

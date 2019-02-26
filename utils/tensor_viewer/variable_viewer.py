@@ -118,11 +118,24 @@ class VariableViewer(Frame):
     cmap = 'Oranges' if self.show_absolute_value else 'bwr'
     im = self._heat_map(image, cmap=cmap)
     if self.show_value: self._annotate_heat_map(im, variable)
-    if self.use_clim:
-      # TODO
+
+    # Set color limits
+    if self.show_absolute_value:
+      if self.use_clim:
+        abs_all = np.abs(target)
+        im.set_clim(np.min(abs_all), np.max(abs_all))
+    else:
+      abs_current = np.abs(image)
+      lim = np.max(abs_current)
+      im.set_clim(-lim, lim)
+
+    if self.use_clim and False:
       v = target
-      if self.show_absolute_value: v = np.abs(v)
-      im.set_clim(np.min(v), np.max(v))
+      v = np.abs(v)
+      if self.show_absolute_value:
+        im.set_clim(np.min(v), np.max(v))
+      else:
+        pass
 
     title = '|T|' if self.show_absolute_value else 'T'
     title += '({}x{})'.format(variable.shape[0], variable.shape[1])
@@ -213,7 +226,8 @@ class VariableViewer(Frame):
     if threshold is not None:
       threshold = im.norm(threshold)
     else:
-      threshold = im.norm(im_data.max()) / 2.
+      # threshold = im.norm(im_data.max()) / 2.
+      threshold = np.max(np.abs(im_data)) / 2.
 
     # Set alignment to center
     kw = dict(horizontalalignment='center', verticalalignment='center')
@@ -226,7 +240,10 @@ class VariableViewer(Frame):
     # Change the text's color depending on the data
     for i in range(data.shape[0]):
       for j in range(data.shape[1]):
-        kw.update(color=text_colors[im.norm(im_data[i, j]) > threshold])
+        val = im_data[i, j]
+        if not self.show_absolute_value:
+          val = np.abs(val)
+        kw.update(color=text_colors[val > threshold])
         im.axes.text(j, i, valfmt(data[i, j], None), **kw)
 
   # endregion : Private Methods
