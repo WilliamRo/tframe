@@ -112,7 +112,8 @@ class VariableViewer(Frame):
 
     # Show image
     variable = target[self.index]
-    image = np.abs(variable) if self.show_absolute_value else variable
+    abs_variable = np.abs(variable)
+    image = abs_variable if self.show_absolute_value else variable
 
     # Show heat_map
     cmap = 'Oranges' if self.show_absolute_value else 'bwr'
@@ -120,22 +121,12 @@ class VariableViewer(Frame):
     if self.show_value: self._annotate_heat_map(im, variable)
 
     # Set color limits
+    pool = np.abs(target) if self.use_clim else abs_variable
     if self.show_absolute_value:
-      if self.use_clim:
-        abs_all = np.abs(target)
-        im.set_clim(np.min(abs_all), np.max(abs_all))
+      im.set_clim(np.min(pool), np.max(pool))
     else:
-      abs_current = np.abs(image)
-      lim = np.max(abs_current)
+      lim = np.max(pool)
       im.set_clim(-lim, lim)
-
-    if self.use_clim and False:
-      v = target
-      v = np.abs(v)
-      if self.show_absolute_value:
-        im.set_clim(np.min(v), np.max(v))
-      else:
-        pass
 
     title = '|T|' if self.show_absolute_value else 'T'
     title += '({}x{})'.format(variable.shape[0], variable.shape[1])

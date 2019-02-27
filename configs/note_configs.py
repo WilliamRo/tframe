@@ -35,6 +35,8 @@ class NoteConfigs(object):
   calculate_mean = Flag.boolean(False, '...')
 
   export_dl_dx = Flag.boolean(False, '...')
+  max_states_per_block = Flag.integer(
+    -1, 'Max state size for each state block to export')
 
   # Statistics only for note summary
   total_params = Flag.integer(0, 'Parameters #', is_key=None)

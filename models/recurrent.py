@@ -209,8 +209,10 @@ class Recurrent(Model, RNet):
       #       added to context.tensors_to_export
       export_dict = context.tensors_to_export
       od = self._get_dL_dS_dict(dl_dsp, ds_dsp)
-      for k, v in od.items():
-        export_dict[k] = v
+      for _, block_dict in od.items():
+        assert isinstance(block_dict, OrderedDict)
+        for k, v in block_dict.items():
+          export_dict[k] = v
 
     # Return
     assert len(results) == 0
@@ -229,14 +231,17 @@ class Recurrent(Model, RNet):
       if len(dlds_flat) == 1: grad_name = 'S'
       else: grad_name = 'S{}'.format('-'.join([str(i + 1) for i in index]))
       grad_name = 'dL/d{}'.format(grad_name)
+      block_dict = OrderedDict()
+      od[grad_name] = block_dict
 
       # Say T = num_steps, (dL/dSi)j is a T by T lower triangular matrix
       triangle = self._form_triangle(dlds, dsds)
-      od[grad_name + '[*]'] = tf.reduce_sum(
+      block_dict[grad_name + '[*]'] = tf.reduce_sum(
         tf.abs(triangle), axis=0, keepdims=True)
       assert isinstance(triangle, tf.Tensor)
       for i, t in enumerate(tf.split(triangle, triangle.shape.as_list()[0])):
-        od['{}[{}]'.format(grad_name, i + 1)] = t
+        if hub.max_states_per_block > 0 and hub.max_states_per_block == i: break
+        block_dict['{}[{}]'.format(grad_name, i + 1)] = t
 
     return od
 
