@@ -580,7 +580,12 @@ class RNet(Net):
 
   def _calc_dL_dS_prev(self, loss, pre_states):
     assert isinstance(loss, tf.Tensor)
-    return tuple(tf.gradients(loss, pre_states))
+    dL_dS = []
+    for state in pre_states:
+      # state is a single tensor or a list of tensors
+      checker.check_type(state, tf.Tensor)
+      dL_dS.append(tuple(tf.gradients(loss, state)))
+    return tuple(dL_dS)
 
   def _calc_dS_dS_prev(self, states, pre_states):
     # states & pre_states can be tuples/lists or tensors

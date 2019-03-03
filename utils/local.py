@@ -135,13 +135,18 @@ def wizard(extension, current_dir=None, max_depth=1, input_with_enter=True):
     for i, t in enumerate(targets):
       console.supplement('[{}] {}'.format(i + 1, t))
     selection = input('=> Please input: ')
+
+    int_list = list(range(1, 16))
+    str_list = [str(i) for i in range(1, 10)] + list('abcdef')
+    def get_str(i): return {i: s for i, s in zip(int_list, str_list)}[i]
+    def get_int(s): return {s: i for i, s in zip(int_list, str_list)}[s]
     while True:
       if selection in ('..', '0') and len(dir_stack) > 0:
         current_dir = dir_stack.pop(-1)
         break
       elif selection == 'q': quit()
-      elif selection in [str(i + 1) for i in range(len(targets))]:
-        file = targets[int(selection) - 1]
+      elif selection in [get_str(i + 1) for i in range(len(targets))]:
+        file = targets[get_int(selection) - 1]
         if is_target(file):
           selected_file = os.path.join(current_dir, file)
         else:
