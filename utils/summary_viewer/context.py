@@ -134,7 +134,21 @@ class Context(object):
       values = set()
       for note in self.notes:
         if k in note.configs.keys():
-          values.add(note.configs[k])
+          value = note.configs[k]
+          # For type value
+          if isinstance(value, type):
+            value = str(value)
+            m = re.match(r"<class '([\w]+.)+([\w]+)'>", value)
+            if m is not None: value = m.group(1)
+            # Set string value back to note
+            note.configs[k] = value
+          # TODO: for values if str(value) is too long
+          if not isinstance(value, str) and len(str(value)) > 15:
+            m = re.match(r"<class '([\w]+.)+([\w]+)'>", str(type(value)))
+            if m is not None:
+              value = m.group(1)
+              note.configs[k] = value
+          values.add(value)
       assert len(values) > 0
       values = list(values)
       values.sort()
