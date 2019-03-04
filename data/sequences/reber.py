@@ -134,7 +134,7 @@ class ReberGrammar(object):
     # Return a list of Reber string
     return reber_list
 
-  def check_grammar(self, probs):
+  def check_grammar_amu18(self, probs):
     """Return lists of match situations for both RC and ERC criteria
        ref: AMU, 2018"""
     assert isinstance(probs, np.ndarray)
@@ -147,6 +147,19 @@ class ReberGrammar(object):
 
     ERC = [_check_token(p, q) for q, p in zip(probs, self.transfer_prob)]
     return ERC[:-2], ERC
+
+  def check_grammar(self, probs):
+    """Check short and long criteria"""
+    assert isinstance(probs, np.ndarray)
+    assert len(probs) == self.value.size - 1
+
+    def _check_token(p, q):
+      assert isinstance(p, np.ndarray) and len(p.shape) == 1
+      assert isinstance(q, np.ndarray) and len(q.shape) == 1
+      return np.sum(p * q) == np.sum(np.sort(p) * np.sort(q))
+
+    ACC = [_check_token(p, q) for q, p in zip(probs, self.transfer_prob)]
+    return ACC[:-2], ACC[-2:], ACC
 
   # endregion : Public Methods
 
@@ -260,7 +273,7 @@ class ERG(DataAgent):
     RCs, ERCs = [], []
     for p, reber in zip(probs, erg_list):
       assert isinstance(reber, ReberGrammar)
-      RC_detail, ERC_detail = reber.check_grammar(p)
+      RC_detail, ERC_detail = reber.check_grammar_amu18(p)
       RCs.append(np.mean(RC_detail) == 1.0)
       ERCs.append(np.mean(ERC_detail) == 1.0)
 
@@ -296,12 +309,95 @@ class ERG(DataAgent):
     msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg
 
+
+  @staticmethod
+  def probe(data, trainer):
+    """New probe method using long/short criteria"""
+
+    # region : Preparation
+    acc_thres = 0.00 if hub.export_tensors_to_note else 0.8
+    # Import
+    import os
+    from tframe.trainers.trainer import Trainer
+    from tframe.models.sl.classifier import Classifier
+    from tframe.data.sequences.seq_set import SequenceSet
+    # Sanity check
+    assert isinstance(trainer, Trainer)
+    # There is no need to check RC or ERC when validation accuracy is low
+    # .. otherwise a lot of time will be wasted
+    if len(trainer.th.logs) == 0 or trainer.th.logs['Accuracy'] < acc_thres:
+      return None
+    model = trainer.model
+    agent = model.agent
+    assert isinstance(model, Classifier)
+    assert isinstance(data, SequenceSet)
+    # Check state
+    SATISFY_SHORT = 'SATISFY_SHORT'
+    SATISFY_LONG = 'SATISFY_LONG'
+    ERG_LIST = 'erg_list'
+    # endregion : Preparation
+
+    # region : Calculate 2 criteria
+
+    probs = model.classify(data, batch_size=-1, return_probs=True)
+    erg_list = data[ERG_LIST]
+    SHORTs, LONGs, ALLs = [], [], []
+    for p, reber in zip(probs, erg_list):
+      assert isinstance(reber, ReberGrammar)
+      SHORT_detail, LONG_detail, ALL_detail = reber.check_grammar(p)
+      SHORTs.append(np.mean(SHORT_detail) == 1.0)
+      LONGs.append(np.mean(LONG_detail) == 1.0)
+      ALLs.append(np.mean(ALL_detail) == 1.0)
+
+    SHORT_acc, LONG_acc, ALL_acc = np.mean(SHORTs), np.mean(LONGs), np.mean(ALLs)
+    SHORT, LONG, ALL = SHORT_acc == 1, LONG_acc == 1, ALL_acc == 1
+
+    # endregion : Calculate 2 criteria
+
+    # region : Check 2 criteria
+
+    counter = model.counter
+    for key, criterion, accuracy in zip(
+        (SATISFY_SHORT, SATISFY_LONG), (SHORT, LONG), (SHORT_acc, LONG_acc)):
+      if key not in data.properties.keys(): data.properties[key] = False
+      if not data.properties[key] and criterion:
+        if key == SATISFY_SHORT: name, op_name, op_acc = 'SC', 'LC', LONG_acc
+        else: name, op_name, op_acc = 'LC', 'SC', SHORT_acc
+        # Write msg to note
+        msg = (
+          '{} is satisfied after {} sequences, {} accuracy = {:.2f}%'.format(
+            name, counter, op_name, 100 * op_acc))
+        agent.take_notes(msg)
+        data.properties[key] = True
+        # Take it down to note for view
+        agent.put_down_criterion(name, counter)
+        agent.put_down_criterion('{}({}S)'.format(op_name, name), 100 * op_acc)
+
+    if ALL:
+      trainer.th.force_terminate = True
+      agent.take_notes('ALL is satisfied after {} sequences.'.format(counter))
+      agent.put_down_criterion('ALL', counter)
+
+    # endregion : Check 2 criteria
+
+    # region : Export and return
+
+    if hub.export_tensors_to_note:
+      ERG.export_tensors(
+        SHORT_acc, LONG_acc, model, data, trainer.loss_history.running_average,
+        'SC', 'LC')
+
+    return 'S = {:.1f}%, L = {:.1f}%, A = {:.1f}%'.format(
+      100 * SHORT_acc, 100 * LONG_acc, 100 * ALL_acc)
+
+    # endregion : Export and return
+
   # endregion : Probe Methods
 
   # region : Export tensor
 
   @staticmethod
-  def export_tensors(RC, ERC, model, data, loss):
+  def export_tensors(CR1, CR2, model, data, loss, CR1_STR='RC', CR2_STR='ERC'):
     agent = model.agent
     # Randomly select several samples
     num = hub.sample_num
@@ -345,8 +441,8 @@ class ERG(DataAgent):
     scalars = OrderedDict()
     # Calculate the running average of loss
     scalars['Loss'] = loss
-    scalars['RC'] = RC
-    scalars['ERC'] = ERC
+    scalars[CR1_STR] = CR1
+    scalars[CR2_STR] = CR2
     agent.take_down_scalars_and_tensors(scalars, tensors)
 
   # endregion : Export tensor
