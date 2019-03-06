@@ -151,7 +151,11 @@ class Context(object):
           values.add(value)
       assert len(values) > 0
       values = list(values)
-      values.sort()
+
+      # TODO: workaround for avoiding sort stuff like (None, 4)
+      try: values.sort()
+      except: pass
+
       return tuple(values)
 
     # Get flag_values
