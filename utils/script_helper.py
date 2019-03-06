@@ -4,7 +4,9 @@ from __future__ import print_function
 
 import os
 from subprocess import call
+from collections import OrderedDict
 
+from tframe import checker
 from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
@@ -48,8 +50,9 @@ class Helper(object):
     self.module_name = module_name
     self._check_module()
 
-    self.common_parameters = {}
-    self.hyper_parameters = {}
+    self.common_parameters = OrderedDict()
+    self.hyper_parameters = OrderedDict()
+    self.constraints = OrderedDict()
 
   # region : Properties
 
@@ -70,12 +73,22 @@ class Helper(object):
 
   # region : Public Methods
 
+  def constrain(self, conditions, constraints):
+    checker.check_type(conditions, dict)
+    checker.check_type(constraints, dict)
+    key = tuple([(k, v) for k, v in conditions.items()])
+    self.constraints[key] = constraints
+
   @staticmethod
   def register_flags(config_class):
     register_flags(config_class)
 
   @check_flag_name
-  def register(self, flag_name, val):
+  def register(self, flag_name, *val):
+    """Flag value can not be a tuple or a list"""
+    assert len(val) > 0
+    if len(val) == 1 and isinstance(val[0], (tuple, list)): val = val[0]
+
     if isinstance(val, (list, tuple)) and len(val) > 1:
       self.hyper_parameters[flag_name] = val
     else:
@@ -91,31 +104,72 @@ class Helper(object):
     for _ in range(times):
       counter += 1
       if save: self.common_parameters['suffix'] = '_{}{}'.format(mark, counter)
-      for hyper in self._hyper_parameter_lists():
-        call(self.command_head + hyper)
+      history = []
+      for hyper_dict in self._hyper_parameter_dicts():
+        self._apply_constraints(hyper_dict)
+        hyper_list = self._get_config_strings(hyper_dict)
+        hyper_string = ' '.join(hyper_list)
+        if hyper_string in history: continue
+        history.append(hyper_string)
+        # print(hyper_string)
+        call(self.command_head + hyper_list)
         print()
 
   # endregion : Public Methods
 
   # region : Private Methods
 
+  def _apply_constraints(self, configs):
+    assert isinstance(configs, dict)
+
+    def _satisfy(condition):
+      assert isinstance(condition, tuple) and len(condition) > 0
+      for key, values in condition:
+        if not isinstance(values, (tuple, list)): values = values,
+        if key in configs.keys() and configs[key] not in values: return False
+      return True
+
+    def _set_flag(flag_name, value):
+      if flag_name not in flag_names:
+        raise KeyError(
+          '!! Failed to set `{}`  since it has not been registered'.format(
+            flag_name))
+      configs[flag_name] = value
+
+    for condition, constraint in self.constraints.items():
+      assert isinstance(constraint, dict)
+      if _satisfy(condition):
+        for key, value in constraint.items(): _set_flag(key, value)
+
+
   @staticmethod
   def _get_config_string(flag_name, val):
     return '--{}={}'.format(flag_name, val)
+
+  @staticmethod
+  def _get_config_strings(config_dict):
+    assert isinstance(config_dict, dict)
+    return [Helper._get_config_string(key, val) for key, val in
+            config_dict.items()]
 
   def _check_module(self):
     if not os.path.exists(self.module_name):
       raise AssertionError(
         '!! module {} does not exist'.format(self.module_name))
 
-  def _hyper_parameter_lists(self, keys=None):
+  def _hyper_parameter_dicts(self, keys=None):
     """Provide a generator of hyper-parameters for running"""
     if keys is None: keys = list(self.hyper_parameters.keys())
-    if len(keys) == 0: yield []
+    if len(keys) == 0: yield {}
     else:
       for val in self.hyper_parameters[keys[0]]:
-        cfg_str = self._get_config_string(keys[0], val)
-        for cfg_list in self._hyper_parameter_lists(keys[1:]):
-          yield [cfg_str] + cfg_list
+        configs = OrderedDict()
+        configs[keys[0]] = val
+        # cfg_str = self._get_config_string(keys[0], val)
+        for cfg_dict in self._hyper_parameter_dicts(keys[1:]):
+          configs.update(cfg_dict)
+          yield configs
+        # for cfg_list in self._hyper_parameter_lists(keys[1:]):
+        #   yield [cfg_str] + cfg_list
 
   # endregion : Private Methods
