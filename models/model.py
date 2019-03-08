@@ -503,7 +503,8 @@ class Model(object):
     for tensor in tf.get_collection(pedia.default_feed_dict):
       if 'input' in tensor.name.lower():
         feed_dict[tensor] = batch[pedia.features]
-      elif 'target' in tensor.name:
+      elif tensor.name.lower() in ('target', 'targets'):
+      # elif 'target' in tensor.name:
         # TODO: when predict without outputing loss ...
         if batch.targets is not None: feed_dict[tensor] = batch.targets
       else:
