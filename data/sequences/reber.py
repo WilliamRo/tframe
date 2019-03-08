@@ -45,22 +45,35 @@ class ReberGrammar(object):
   for i, choices in enumerate(TRANSFER[:-1]):
     indices = (choices[0][0].value, choices[1][0].value)
     TRANSFER_MATRIX[i, indices] = 0.5
-  TRANSFER_MATRIX[(-2, -1), (6, 0)] = 1.0
+  # TM[-2]: E; TM[-1]: B
+  TRANSFER_MATRIX[(-2, -1), (-1, 0)] = 1.0
   # Generate observation table
   OB_TABLE = np.eye(len(Symbol), dtype=np.float32)
 
-  def __init__(self, embedded=False):
+  def __init__(self, embedded=False, multiple=1):
     self._symbol_list = [Symbol.B]
+    self._multiple = checker.check_positive_integer(multiple)
     self.transfer_prob = None
     self.observed_prob = None
     transfer_list = []
 
+    # BT(BTXSE)(BPVVE)TE  <- stat
+    # TB TSXEB  TTPET E   <- transfer
+    # P  PXS    PVV
+
     # Randomly make a string
-    stat = 0
+    stat, count = 0, 0
     while stat is not None:
       transfer_list.append(self.TRANSFER_MATRIX[stat])
       symbol, stat = self._transfer(stat)
       self._symbol_list.append(symbol)
+      # Generate next embedded if necessary
+      if stat is None:
+        count += 1
+        if count < self._multiple:
+          self._symbol_list.append(Symbol.B)
+          transfer_list.append(self.TRANSFER_MATRIX[-1])
+          stat = 0
 
     # Embed
     if embedded:
@@ -113,7 +126,7 @@ class ReberGrammar(object):
 
   @classmethod
   def make_strings(cls, num, unique=True, exclusive=None, embedded=False,
-                   verbose=False):
+                   multiple=1, verbose=False):
     # Check input
     if exclusive is None: exclusive = []
     elif not isinstance(exclusive, list):
@@ -122,7 +135,7 @@ class ReberGrammar(object):
     reber_list = []
     for i in range(num):
       while True:
-        string = ReberGrammar(embedded)
+        string = ReberGrammar(embedded, multiple=multiple)
         if unique and string in reber_list: continue
         if string in exclusive: continue
         reber_list.append(string)
@@ -178,13 +191,13 @@ class ERG(DataAgent):
 
   @classmethod
   def load(cls, data_dir, train_size=256, validate_size=0, test_size=256,
-           file_name=None, amu18=True, cheat=True, local_binary=True,
-           **kwargs):
+           file_name=None, amu18=True, cheat=True, local_binary=False,
+           multiple=1, **kwargs):
     # Load .tfd data
     num = train_size + validate_size + test_size
     data_set = cls.load_as_tframe_data(
       data_dir, file_name=file_name, size=num, unique_=True, amu18=True,
-      cheat=cheat, local_binary=local_binary)
+      cheat=cheat, local_binary=local_binary, multiple=multiple)
 
     return cls._split_and_return(data_set, train_size, validate_size, test_size)
 
@@ -192,10 +205,11 @@ class ERG(DataAgent):
   @classmethod
   def load_as_tframe_data(cls, data_dir, file_name=None, size=512,
                           unique_=True, amu18=False, cheat=True,
-                          local_binary=True):
+                          local_binary=True, multiple=1):
     # Check file_name
     if file_name is None:
-      file_name = cls._get_file_name(size, unique_, amu18, cheat, local_binary)
+      file_name = cls._get_file_name(
+        size, unique_, amu18, cheat, local_binary, multiple)
     data_path = os.path.join(data_dir, file_name)
     if os.path.exists(data_path): return SequenceSet.load(data_path)
     # If data does not exist, create a new one
@@ -203,13 +217,14 @@ class ERG(DataAgent):
 
     if amu18:
       train_list = ReberGrammar.make_strings(
-        256, False, embedded=True, verbose=True)
+        256, False, embedded=True, verbose=True, multiple=multiple)
       test_list = ReberGrammar.make_strings(
-        256, False, embedded=True, exclusive=train_list, verbose=True)
+        256, False, embedded=True, exclusive=train_list, verbose=True,
+        multiple=multiple)
       erg_list = train_list + test_list
     else:
       erg_list = ReberGrammar.make_strings(
-        size, unique_, embedded=True, verbose=True)
+        size, unique_, embedded=True, verbose=True, multiple=multiple)
 
     # Wrap erg into a DataSet
     features = [erg.one_hot for erg in erg_list]
@@ -227,15 +242,18 @@ class ERG(DataAgent):
     return data_set
 
   @classmethod
-  def _get_file_name(cls, num, unique_, amu18, cheat, local_binary):
+  def _get_file_name(cls, num, unique_, amu18, cheat, local_binary, multiple):
     checker.check_positive_integer(num)
+    checker.check_positive_integer(multiple)
     checker.check_type(unique_, bool)
     if amu18: tail = 'AMU18'
     elif unique_: tail = 'U'
     else: tail = 'NU'
-    file_name = '{}_{}_{}_{}_{}.tfds'.format(
-      cls.DATA_NAME, num, tail, 'C' if cheat else 'NC',
+    file_name = '{}{}_{}_{}_{}_{}.tfds'.format(
+      cls.DATA_NAME, '' if multiple == 1 else '(x{})'.format(multiple),
+      num, tail, 'C' if cheat else 'NC',
       'LB' if local_binary else 'P')
+    if multiple > 1: file_name = 'm' + file_name
     return file_name
 
   # region : Probe Methods
@@ -498,7 +516,7 @@ class ERG(DataAgent):
 if __name__ == '__main__':
   console.show_status('Making data ...')
   data_set = ReberGrammar.make_strings(
-    5, unique=True, verbose=True, embedded=True)
+    5, unique=True, verbose=True, embedded=True, multiple=1)
   console.show_status('{} strings have been made'.format(len(data_set)))
 
 
