@@ -58,6 +58,7 @@ class Config(
     0.4, 'config.gpu_options.per_process_gpu_memory_fraction')
 
   # Other fancy stuff
+  cheat = Flag.boolean(True, '...', is_key=None)
   noisy = Flag.boolean(None, 'Whether XXX is noisy.', is_key=None)
   prediction_threshold = Flag.float(
     None, 'The prediction threshold used as an parameter for metric function',
