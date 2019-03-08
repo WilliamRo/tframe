@@ -116,6 +116,7 @@ class TFRData(object):
       raise TypeError('!! {} can not load .{} file'.format(
         cls.__name__, extension))
     with open(filename, 'rb') as input_:
+      console.show_status('Loading `{}` ...'.format(filename))
       return pickle.load(input_)
 
   # endregion : Public Methods
