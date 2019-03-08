@@ -43,9 +43,9 @@ class VariableViewer(Frame):
     self._color_bar = None
 
     # Options
-    self.show_absolute_value = True  # key_symbol: a
-    self.show_value = False          # key_symbol: v
-    self.use_clim = True             # key_symbol: c
+    self.show_absolute_value = False  # key_symbol: a
+    self.show_value = False           # key_symbol: v
+    self.use_clim = False             # key_symbol: c
     self.is_on = True
 
   @property
