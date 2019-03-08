@@ -59,6 +59,7 @@ class Config(
 
   # Other fancy stuff
   cheat = Flag.boolean(True, '...', is_key=None)
+  multiple = Flag.integer(1, '...', is_key=None)
   noisy = Flag.boolean(None, 'Whether XXX is noisy.', is_key=None)
   prediction_threshold = Flag.float(
     None, 'The prediction threshold used as an parameter for metric function',
