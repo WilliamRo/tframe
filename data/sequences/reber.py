@@ -94,6 +94,12 @@ class ReberGrammar(object):
   # region : Properties
 
   @property
+  def abbreviation(self):
+    reber = str(self)
+    if self._multiple == 1: return reber
+    return reber[:2] + '[x{}]'.format(self._multiple) + reber[-2:]
+
+  @property
   def value(self):
     return np.array([s.value for s in self._symbol_list], dtype=np.int32)
 
@@ -433,7 +439,9 @@ class ERG(DataAgent):
     if hub.calculate_mean: tensors['Mean'] = OrderedDict()
     exemplar_names = []
     for i in range(num):
-      name = '({}){}'.format(i + 1, erg_list[i])
+      r = erg_list[i]
+      assert isinstance(r, ReberGrammar)
+      name = '({}){}'.format(i + 1, r.abbreviation)
       tensors[name] = OrderedDict()
       exemplar_names.append(name)
 
