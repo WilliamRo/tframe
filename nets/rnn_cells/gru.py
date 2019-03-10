@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe.nets.rnn_cells.basic_cell import BasicRNNCell
+from tframe.nets.rnn_cells.srn import BasicRNNCell
 
 
 class GRU(BasicRNNCell):

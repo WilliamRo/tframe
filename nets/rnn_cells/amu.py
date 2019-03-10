@@ -12,7 +12,7 @@ from tframe import linker
 from tframe import hub
 
 from tframe.nets.rnet import RNet
-from tframe.nets.rnn_cells.basic_cell import BasicRNNCell
+from tframe.nets.rnn_cells.srn import BasicRNNCell
 
 
 class AMU(RNet):
