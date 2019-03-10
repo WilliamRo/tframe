@@ -52,6 +52,7 @@ class ReberGrammar(object):
 
   def __init__(self, embedded=False, multiple=1):
     self._symbol_list = [Symbol.B]
+    self._sub_rebers = [[Symbol.B]]
     self._multiple = checker.check_positive_integer(multiple)
     self.transfer_prob = None
     self.observed_prob = None
@@ -67,13 +68,17 @@ class ReberGrammar(object):
       transfer_list.append(self.TRANSFER_MATRIX[stat])
       symbol, stat = self._transfer(stat)
       self._symbol_list.append(symbol)
+      self._sub_rebers[count].append(symbol)
       # Generate next embedded if necessary
       if stat is None:
         count += 1
         if count < self._multiple:
+          self._sub_rebers.append([])
           self._symbol_list.append(Symbol.B)
+          self._sub_rebers[count].append(symbol.B)
           transfer_list.append(self.TRANSFER_MATRIX[-1])
           stat = 0
+    assert len(self._sub_rebers) == self._multiple
 
     # Embed
     if embedded:
@@ -96,8 +101,15 @@ class ReberGrammar(object):
   @property
   def abbreviation(self):
     reber = str(self)
-    if self._multiple == 1: return reber
-    return reber[:2] + '[x{}]'.format(self._multiple) + reber[-2:]
+    max_len = 25
+    expand = len(reber) < max_len
+    result = reber[:2]
+    for sub in self._sub_rebers:
+      assert isinstance(sub, list)
+      sub_str = '({})'.format(
+        ''.join([s.name for s in sub]) if expand else 'L:{}'.format(len(sub)))
+      result += sub_str
+    return result + reber[-2:]
 
   @property
   def value(self):
@@ -178,7 +190,8 @@ class ReberGrammar(object):
       return np.sum(p * q) == np.sum(np.sort(p) * np.sort(q))
 
     ACC = [_check_token(p, q) for q, p in zip(probs, self.transfer_prob)]
-    return ACC[:-2], ACC[-2:], ACC
+    # SC, LC, ALL
+    return ACC[:-2] + [ACC[-1]], [ACC[-2]], ACC
 
   # endregion : Public Methods
 
@@ -196,9 +209,9 @@ class ERG(DataAgent):
   DATA_NAME = 'EmbeddedReberGrammar'
 
   @classmethod
-  def load(cls, data_dir, train_size=256, validate_size=0, test_size=256,
-           file_name=None, amu18=True, cheat=True, local_binary=False,
-           multiple=1, **kwargs):
+  def load(cls, data_dir, train_size=1000, validate_size=0, test_size=200,
+           file_name=None, amu18=False, cheat=True, local_binary=False,
+           multiple=1, pau19=True, **kwargs):
     # Load .tfd data
     num = train_size + validate_size + test_size
     data_set = cls.load_as_tframe_data(
@@ -209,19 +222,22 @@ class ERG(DataAgent):
 
 
   @classmethod
-  def load_as_tframe_data(cls, data_dir, file_name=None, size=512,
+  def load_as_tframe_data(cls, data_dir, file_name=None, size=1200,
                           unique_=True, amu18=False, cheat=True,
-                          local_binary=True, multiple=1):
+                          local_binary=True, multiple=1, pau19=True):
     # Check file_name
     if file_name is None:
       file_name = cls._get_file_name(
-        size, unique_, amu18, cheat, local_binary, multiple)
+        size, unique_, amu18, cheat, local_binary, multiple, pau19)
     data_path = os.path.join(data_dir, file_name)
     if os.path.exists(data_path): return SequenceSet.load(data_path)
     # If data does not exist, create a new one
     console.show_status('Making data ...')
 
-    if amu18:
+    if pau19:
+      erg_list = ReberGrammar.make_strings(
+        size, True, embedded=True, multiple=multiple, verbose=True)
+    elif amu18:
       train_list = ReberGrammar.make_strings(
         256, False, embedded=True, verbose=True, multiple=multiple)
       test_list = ReberGrammar.make_strings(
@@ -248,11 +264,13 @@ class ERG(DataAgent):
     return data_set
 
   @classmethod
-  def _get_file_name(cls, num, unique_, amu18, cheat, local_binary, multiple):
+  def _get_file_name(cls, num, unique_, amu18, cheat, local_binary, multiple,
+                     pau19):
     checker.check_positive_integer(num)
     checker.check_positive_integer(multiple)
     checker.check_type(unique_, bool)
-    if amu18: tail = 'AMU18'
+    if pau19: tail = 'PAU19'
+    elif amu18: tail = 'AMU18'
     elif unique_: tail = 'U'
     else: tail = 'NU'
     file_name = '{}{}_{}_{}_{}_{}.tfds'.format(
