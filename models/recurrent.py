@@ -236,12 +236,12 @@ class Recurrent(Model, RNet):
 
       # Say T = num_steps, (dL/dSi)j is a T by T lower triangular matrix
       triangle = self._form_triangle(dlds, dsds)
-      block_dict[grad_name + '[*]'] = tf.reduce_sum(
-        tf.abs(triangle), axis=0, keepdims=True)
       assert isinstance(triangle, tf.Tensor)
       for i, t in enumerate(tf.split(triangle, triangle.shape.as_list()[0])):
         if hub.max_states_per_block > 0 and hub.max_states_per_block == i: break
         block_dict['{}[{}]'.format(grad_name, i + 1)] = t
+      block_dict[grad_name + '[*]'] = tf.reduce_sum(
+        tf.abs(triangle), axis=0, keepdims=True)
 
     return od
 
