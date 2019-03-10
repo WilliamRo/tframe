@@ -13,6 +13,7 @@ from .note_configs import NoteConfigs
 from .rnn_configs import RNNConfigs
 from .monitor_configs import MonitorConfigs
 from .cloud_configs import CloudConfigs
+from .dataset_configs import DataConfigs
 
 
 class Config(
@@ -21,7 +22,8 @@ class Config(
   NoteConfigs,
   RNNConfigs,
   MonitorConfigs,
-  CloudConfigs
+  CloudConfigs,
+  DataConfigs,
 ):
   registered = False
 
@@ -58,12 +60,6 @@ class Config(
     0.4, 'config.gpu_options.per_process_gpu_memory_fraction')
 
   # Other fancy stuff
-  cheat = Flag.boolean(True, '...', is_key=None)
-  multiple = Flag.integer(1, '...', is_key=None)
-  noisy = Flag.boolean(None, 'Whether XXX is noisy.', is_key=None)
-  prediction_threshold = Flag.float(
-    None, 'The prediction threshold used as an parameter for metric function',
-    is_key=None)
   int_para_1 = Flag.integer(0, 'Used to pass an integer parameter using '
                                ' command line')
   bool_para_1 = Flag.boolean(False, 'Used to pass a boolean parameter using'
