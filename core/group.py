@@ -58,6 +58,10 @@ class Group(object):
       raise TypeError('!! member added to a group must be a Slot')
     self._slots.append(slot)
 
+  def remove(self, slot):
+    assert isinstance(slot, Slot)
+    self._slots.remove(slot)
+
   # endregion : Public Methods
 
   # region : Private Methods

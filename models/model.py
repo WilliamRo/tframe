@@ -162,6 +162,10 @@ class Model(object):
 
   @with_graph
   def build(self, optimizer=None, **kwargs):
+    # Remove metric from update group if necessary
+    # .. (e.g. when loss == metric == mse)
+    if kwargs.get('remove_metric_from_update_group', False):
+      self._update_group.remove(self._metric)
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
     #
