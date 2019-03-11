@@ -242,7 +242,8 @@ class Model(object):
 
   @with_graph
   def train(self, training_set, trainer_hub=None, validation_set=None,
-            snapshot=None, probe=None, evaluate=None, **kwargs):
+            snapshot=None, probe=None, evaluate=None, terminator=None,
+            **kwargs):
     if trainer_hub is None:
       trainer_class = SmartTrainer if hub.smart_train else Trainer
     else:
@@ -251,7 +252,7 @@ class Model(object):
       trainer_class = trainer_hub.trainer_class
     trainer = trainer_class(
       self, training_set=training_set, validation_set=validation_set,
-      snapshot=snapshot, probe=probe, evaluate=evaluate)
+      snapshot=snapshot, probe=probe, evaluate=evaluate, terminator=terminator)
     trainer.train(hub=trainer_hub, **kwargs)
 
   def update_model(self, data_batch, **kwargs):

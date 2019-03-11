@@ -43,6 +43,7 @@ class Trainer(object):
       snapshot=None,
       probe=None,
       evaluate=None,
+      terminator=None,
   ):
     # Set model for trainer
     if not isinstance(model, tfr.models.Model):
@@ -70,6 +71,8 @@ class Trainer(object):
     self.train_metric = Statistic(max_length=2)
 
     self.HubClass = TrainerHub
+    if terminator is not None: assert callable(terminator)
+    self._terminator = terminator
 
     # TODO
     context.trainer = self
@@ -453,9 +456,12 @@ class Trainer(object):
     scalars = OrderedDict()
     scalars['Loss'] = self.loss_history.running_average
     if self.train_metric.last_value:
-      scalars['Train Acc'] = self.train_metric.last_value
+      scalars['Train {}'.format(
+        context.metric_name)] = self.train_metric.last_value
     if self.val_metric.last_value:
-      scalars['Val Acc'] = self.val_metric.last_value
+      scalars['Val {}'.format(
+        context.metric_name)] = self.val_metric.last_value
+
     # Tensors
     tensors = OrderedDict()
     def f(t, keys):
@@ -478,16 +484,6 @@ class Trainer(object):
     self.model.agent.take_down_scalars_and_tensors(
       scalars, tensors=tensors)
     self._inter_cut('Notes taken down.', prompt='[Export]')
-
-    # # Take down parameters
-    # loss_key = 'Loss'
-    # # loss_dict is a dict with Slots as keys
-    # loss_slots = [s for s in loss_dict.keys() if s.name == loss_key]
-    # assert len(loss_slots) > 0
-    # loss_value = loss_dict[loss_slots[0]]
-    # scalars = {loss_key: loss_value}
-    # self.model.agent.take_down_scalars_and_tensors(
-    #   scalars, tensors=self.model.parameters_dict)
 
   def _run_probe(self):
     if self._probe is None or self.th.probe_cycle == 0: return False
@@ -524,6 +520,10 @@ class Trainer(object):
       if new_record is None:
         new_record = self.metric.take_down(
           val, rnd, self.counter, gap=self.th.record_gap)
+        # Terminator will check `val` if new_record appears
+        if callable(self._terminator) and self._terminator(val):
+          self.th.force_terminate = True
+
         key = ('Val {}'.format(metric_slot.name[:3])
                if self.th.validate_train_set else metric_slot.name)
         content_dict[key] = val
@@ -604,6 +604,7 @@ class TrainerHub(Config):
   hist_buffer_len = Flag.integer(
     20, 'Max length of historical statistics buffer length')
   validate_train_set = Flag.boolean(False, 'Whether to validate train set')
+  terminal_threshold = Flag.float(0., 'Terminal threshold')
 
   # endregion : Class Attributes
   trainer_class = Trainer

@@ -69,6 +69,7 @@ class Predictor(Feedforward, Recurrent):
   @with_graph
   def build(self, optimizer=None, loss='euclid', metric=None,
             metric_is_like_loss=True, metric_name='Metric', **kwargs):
+    context.metric_name = metric_name
     Model.build(
       self, optimizer=optimizer, loss=loss, metric=metric,
       metric_name=metric_name, metric_is_like_loss=metric_is_like_loss,

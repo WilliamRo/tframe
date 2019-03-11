@@ -366,6 +366,13 @@ class RNet(Net):
   def _gate(self, x, W, b):
     return tf.sigmoid(self._net(x, W, b))
 
+  def add_bias(self, x, bias_initializer=None, name='unnamed'):
+    if bias_initializer is None:
+      bias_initializer = getattr(self, '_bias_initializer')
+    initializer = linker.initializers.get(bias_initializer)
+    bias = linker.get_bias(name + 'bias', linker.get_dimension(x), initializer)
+    return tf.nn.bias_add(x, bias, name=name + '_add_bias')
+
   def neurons(self, x, s=None, num=None, fc_memory=True,
               is_gate=False, activation=None,
               scope=None, truncate=False,

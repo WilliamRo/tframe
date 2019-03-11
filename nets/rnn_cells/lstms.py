@@ -30,6 +30,9 @@ class BasicLSTMCell(RNet):
       input_gate=True,
       output_gate=True,
       forget_gate=True,
+      input_bias_initializer='zeros',
+      output_bias_initializer='zeros',
+      forget_bias_initializer='zeros',
       with_peepholes=False,
       truncate_grad=False,
       **kwargs):
@@ -49,6 +52,9 @@ class BasicLSTMCell(RNet):
     self._use_bias = checker.check_type(use_bias, bool)
     self._weight_initializer = initializers.get(weight_initializer)
     self._bias_initializer = initializers.get(bias_initializer)
+    self._input_bias_initializer = initializers.get(input_bias_initializer)
+    self._output_bias_initializer = initializers.get(output_bias_initializer)
+    self._forget_bias_initializer = initializers.get(forget_bias_initializer)
 
     self._input_gate = checker.check_type(input_gate, bool)
     self._output_gate = checker.check_type(output_gate, bool)
@@ -104,24 +110,30 @@ class BasicLSTMCell(RNet):
   def _basic_link(self, x, h, c):
     # Determine size_splits according to gates to be used
     size_splits = 1 + self._input_gate + self._output_gate + self._forget_gate
+    def _add_bias(tensor, initializer, name):
+      if self._use_bias: return self.add_bias(tensor, initializer, name)
+      else: return tensor
 
     # i = input_gate, g = new_input, f = forget_gate, o = output_gate
     i, f, o = (None,) * 3
     splits = list(self.neurons(
       x, h, scope='net_input_chunk', num_or_size_splits=size_splits,
-      truncate=self._truncate_grad))
+      truncate=self._truncate_grad, use_bias=False))
     # Note that using `add` and `multiply` instead of `+` and `*` gives a
     # performance improvement. So using those at the cost of readability.
     # - Calculate candidates to write
-    g = self._activation(splits.pop(0))
+    g = self._activation(_add_bias(splits.pop(0), self._bias_initializer, 'g'))
+
     if self._input_gate:
       with tf.name_scope('write_gate'):
-        i = tf.sigmoid(splits.pop(0))
+        i = tf.sigmoid(
+          _add_bias(splits.pop(0), self._input_bias_initializer, 'i'))
         g = tf.multiply(i, g)
     # - Forget
     if self._forget_gate:
       with tf.name_scope('forget_gate'):
-        f = tf.sigmoid(splits.pop(0))
+        f = tf.sigmoid(
+          _add_bias(splits.pop(0), self._forget_bias_initializer, 'f'))
         c = tf.multiply(f, c)
     # - Write
     with tf.name_scope('write'): new_c = tf.add(c, g)
@@ -129,7 +141,8 @@ class BasicLSTMCell(RNet):
     new_h = self._activation(new_c)
     if self._output_gate:
       with tf.name_scope('read_gate'):
-        o = tf.sigmoid(splits.pop(0))
+        o = tf.sigmoid(
+          _add_bias(splits.pop(0), self._output_bias_initializer, 'o'))
         new_h = tf.multiply(o, new_h)
     assert len(splits) == 0
 

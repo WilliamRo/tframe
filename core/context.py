@@ -37,6 +37,9 @@ class Context(object):
     #   RNet._link)
     self.loss_function = None
 
+    # Global variables
+    self.metric_name = 'Metric'
+
   # region : Properties
 
   @property

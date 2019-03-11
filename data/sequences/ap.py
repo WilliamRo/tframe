@@ -32,7 +32,8 @@ def engine(T, fixed_length):
   indicators[k2] = 1.0
 
   sequence = np.stack([values, indicators], axis=1)
-  target = (values[k1] + values[k2]) / 2.
+  # target = (values[k1] + values[k2]) / 2.
+  target = values[k1] + values[k2]
   return sequence, np.array([target])
 
 
