@@ -79,7 +79,8 @@ class Predictor(Feedforward, Recurrent):
              metric_is_like_loss=True, metric_name='Metric',
              **kwargs):
     # For some RNN predictors, their last step is counted as the only output
-    last_only = kwargs.get('last_only', False)
+    last_only = False
+    if 'last_only' in kwargs.keys(): last_only = kwargs.pop('last_only')
 
     # Get loss function before build
     loss_function = losses.get(loss, last_only)

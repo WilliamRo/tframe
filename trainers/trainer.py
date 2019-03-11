@@ -347,7 +347,7 @@ class Trainer(object):
 
   def _handle_notes(self):
     # Add metric info into notes
-    if self.th.validation_on: self.model.take_down_metric()
+    if self.th.validation_on: self.model.take_down_metric(self.is_online)
     # Put down key configurations to note
     self.model.agent.put_down_configs(self.th)
 

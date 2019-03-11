@@ -363,10 +363,11 @@ class Model(object):
     if allow_sum: self._batch_val_summ.write(metric_mean)
     return {self._metric: metric_mean}
 
-  def take_down_metric(self):
+  def take_down_metric(self, is_online):
     if not self.metric.activated: return
-    notes = 'Record: {:.3f}, Mean Record: {:.3f}'.format(
-      self.metric.record, self.metric.mean_record)
+    notes = 'Record: {:.3f}'.format(self.metric.record)
+    if not is_online:
+      notes += ', Mean Record: {:.3f}'.format(self.metric.mean_record)
     self.agent.take_notes(notes, date_time=False)
     # Add history into notes if necessary
     if hub.show_record_history_in_note:
@@ -374,7 +375,8 @@ class Model(object):
         self.metric.metric_mean_history_str, date_time=False)
     # Add record and mean record to notes
     self.agent.put_down_criterion('Record', self.metric.record)
-    self.agent.put_down_criterion('Mean Record', self.metric.mean_record)
+    if not is_online:
+      self.agent.put_down_criterion('Mean Record', self.metric.mean_record)
 
   def end_round(self, rnd):
     self.metric.end_round(rnd)
