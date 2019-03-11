@@ -6,6 +6,7 @@ import six
 import tensorflow as tf
 
 from tframe import checker
+from tframe.utils.tensor_tools import extract_last_wrapper
 
 
 def _flatten(tensor):
@@ -17,21 +18,8 @@ def _flatten(tensor):
   return tensor
 
 
-def _extract_last(labels, logits):
-  """ Extract last output for sequence classification task.
-      Currently can not be used with parallel engine.
-      :param labels & logits: tensors of with shape
-                              [batch_size(=1), num_steps, *shape]
-  """
-  assert isinstance(labels, tf.Tensor) and isinstance(logits, tf.Tensor)
-  # tf.assert_equal(labels.shape[0], 1)
-  # tf.assert_equal(logits.shape[0], 1)
-  return labels[0, -1], logits[0, -1]
-
-
-def sigmoid_cross_entropy(labels, logits, last_only=False):
+def sigmoid_cross_entropy(labels, logits):
   checker.check_tensor_shape(labels, logits, 'labels', 'logits')
-  if last_only: labels, logits = _extract_last(labels, logits)
   # Convert labels and logits to 2-D tensors
   # tensors = [labels, logits]
   # for i, tensor in enumerate(tensors):
@@ -44,10 +32,9 @@ def sigmoid_cross_entropy(labels, logits, last_only=False):
     #   labels=tensors[0], logits=tensors[1]))
 
 
-def cross_entropy(labels, logits, last_only=False):
+def cross_entropy(labels, logits):
   # Make sure labels and logits has a same shape
   checker.check_tensor_shape(labels, logits, 'labels', 'logits')
-  if last_only: labels, logits = _extract_last(labels, logits)
   # Convert labels and logits to 2-D tensors
   # tensors = [labels, logits]
   # TODO: no need to flatten
@@ -59,11 +46,8 @@ def cross_entropy(labels, logits, last_only=False):
       labels=labels, logits=logits))
 
 
-def mean_squared_error(y_true, y_predict, last_only=False):
-  if last_only:
-    y_true, y_predict = _extract_last(y_true, y_predict)
+def mean_squared_error(y_true, y_predict):
   return tf.reduce_mean(tf.square(y_true - y_predict))
-  # return tf.reduce_mean(tf.square(tf.abs(y_true - y_predict)))
 
 
 def euclidean(y_true, y_predict):
@@ -71,21 +55,24 @@ def euclidean(y_true, y_predict):
   return tf.reduce_mean(distances)
 
 
-def get(identifier):
+def get(identifier, last_only=False):
   if callable(identifier):
     return identifier
   elif isinstance(identifier, six.string_types):
     identifier = identifier.lower()
     if identifier in ['mean_squared', 'mean_squared_error', 'mse']:
-      return mean_squared_error
+      f =  mean_squared_error
     elif identifier in ['cross_entropy', 'softmax_cross_entropy']:
-      return cross_entropy
+      f =  cross_entropy
     elif identifier in ['sigmoid_cross_entropy', 'binary_cross_entropy']:
-      return sigmoid_cross_entropy
+      f =  sigmoid_cross_entropy
     elif identifier in ['euclid', 'euclidean']:
-      return euclidean
+      f =  euclidean
     else:
       raise ValueError('Can not resolve "{}"'.format(identifier))
+
+    if last_only: return extract_last_wrapper(f)
+    else: return f
   else:
     raise TypeError('identifier must be a function or a string')
 

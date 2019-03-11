@@ -74,11 +74,14 @@ class Predictor(Feedforward, Recurrent):
       metric_name=metric_name, metric_is_like_loss=metric_is_like_loss,
       **kwargs)
 
-  def _build(self, optimizer=None, loss='euclid',
-             metric=None, metric_is_like_loss=True, metric_name='Metric',
+  def _build(self, optimizer=None, loss='euclid', metric=None,
+             metric_is_like_loss=True, metric_name='Metric',
              **kwargs):
+    # For some RNN predictors, their last step is counted as the only output
+    last_only = kwargs.get('last_only', False)
+
     # Get loss function before build
-    loss_function = losses.get(loss)
+    loss_function = losses.get(loss, last_only)
     context.loss_function = loss_function
 
     # Call parent's build method
@@ -126,7 +129,7 @@ class Predictor(Feedforward, Recurrent):
       # Common targets will be plugged into val_target slot by default
       self._plug_val_target_in(kwargs.get('val_targets', None))
 
-      metric_function = metrics.get(metric)
+      metric_function = metrics.get(metric, last_only, **kwargs)
       with tf.name_scope('Metric'):
         metric_tensor = metric_function(
           self._val_targets.tensor, self._outputs.tensor)

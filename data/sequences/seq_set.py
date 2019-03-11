@@ -191,6 +191,8 @@ class SequenceSet(DataSet):
           assert num_steps < 0
         # padded_stack is_rnn_input, and is a DataSet, not SeqSet any more
         seq_batch = seq_batch.padded_stack
+        # At this point, seq_batch is a DataSet with active_length being
+        #   not None
 
       # seq_batch.shape = (batches, steps, *shape)
       # Use DataSet's gen_rnn_batches method to yield batches
@@ -282,7 +284,7 @@ class SequenceSet(DataSet):
     checker.check_positive_integer(max_steps)
     checker.check_type(sequences, np.ndarray)
 
-    if all([s.shape[0] for s in sequences]):
+    if all([s.shape[0] == sequences[0].shape[0] for s in sequences]):
       return np.stack(sequences, axis=0)
 
     sample_shape = sequences[0].shape[1:]

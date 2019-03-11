@@ -13,6 +13,7 @@ from tframe import checker
 from tframe import console
 from tframe import context
 from tframe.data.base_classes import TFRData
+from tframe.data.dataset import DataSet
 from tframe.data.perpetual_machine import PerpetualMachine
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.enums import InputTypes, SaveMode
@@ -283,6 +284,8 @@ class Trainer(object):
     # Begin iteration
     self.th.cursor = 0
     for i, batch in enumerate(self._gen_batches()):
+      # Sanity check (make sure sequence batch is equal-length)
+      self._check_data_batch(batch)
       # Increase iteration counter
       self.th.cursor += 1
       self.counter += 1
@@ -385,12 +388,24 @@ class Trainer(object):
   def _gen_batches(self):
     """This method will be called only in the inner loop of train process."""
     if isinstance(self.training_set, SequenceSet):
-      if (self.th.batch_size > 1 and not self.training_set.parallel_on and
-          self.training_set.batch_preprocessor is None):
-        raise AssertionError('!! parallel engine is not activated')
+      # TODO: for now a batch consists of sequences with different lengths can
+      #  not be used for training for the padded 0s may produce inappropriate
+      #  gradients.
+      # if (self.th.batch_size > 1 and not self.training_set.parallel_on and
+      #     self.training_set.batch_preprocessor is None):
+      #   # a batch of equal-length sequences is allowed
+      #   raise AssertionError('!! parallel engine is not activated')
+      pass
     return self.model.get_data_batches(
       self.training_set, self.th.batch_size, self.th.num_steps,
       self.th.shuffle, is_training=True)
+
+  @staticmethod
+  def _check_data_batch(batch):
+    assert isinstance(batch, DataSet)
+    if batch.is_rnn_input and batch.active_length is not None:
+      if max(batch.active_length) > min(batch.active_length):
+        raise ValueError('!! Sequence batches must be equal-length')
 
   def _advanced_strategy(self, rnd):
     """Should be overridden"""

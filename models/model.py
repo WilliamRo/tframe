@@ -319,7 +319,8 @@ class Model(object):
     total = 0
     for batch in self.get_data_batches(data, batch_size, -1, False):
       # Batch validation on irregular data
-      if batch.active_length is not None:
+      if (batch.active_length is not None and
+          max(batch.active_length) > min(batch.active_length)):
         # TODO: need a corresponding mechanism to ensure metric_foreach
         #       exists
         results = self._get_active_tensor(batch, self.metric_foreach)
@@ -448,6 +449,7 @@ class Model(object):
       data_batch = self._sanity_check_before_use(data_batch)
       # TODO: consider n_to_one cases (happens to act correctly in
       #       Predictor.predict)
+      # `_get_active_tensor` returns a list if fetches is a list
       batch_outputs = self._get_active_tensor(data_batch, fetches)
       assert isinstance(batch_outputs, (tuple, list))
       # Extract if necessary
@@ -472,6 +474,16 @@ class Model(object):
   # region : Private Methods
 
   def _get_active_tensor(self, batch, fetches):
+    """
+    Returns a list if fetches is a list. Otherwise a tf.Tensor will be returned.
+    For common data batches, this method returns a (list of) tf.Tensor
+    For RNN batches (with batch_size N) which is probably pad-stacked,
+      this method returns a list if tf.Tensor for each fetcher.
+
+    This method is used in
+    (1) batch_evaluation: fetches is a list of tensors.
+    (2) validate_model: fetches is a single metric.
+    """
     checker.check_type(fetches, tf.Tensor)
     assert isinstance(batch, DataSet)
     fetches_is_single = not isinstance(fetches, (tuple, list))
@@ -491,7 +503,9 @@ class Model(object):
         # If this model is for classifying a whole sequence
         if batch.n_to_one:
           outputs = [[y[-1] for y in output] for output in outputs]
-      else: outputs = [[value] for value in values]
+      else:
+        # al is None indicates batch_size is 1
+        outputs = [[value] for value in values]
     else: outputs = values
 
     if fetches_is_single: outputs = outputs[0]
