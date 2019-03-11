@@ -74,6 +74,8 @@ class SequenceSet(DataSet):
 
   @property
   def stack(self):
+    """Concatenate this sequence set (a list consists of sequences with shape
+       [steps, *dim]) to a regular array with shape [sum(steps), *dim]"""
     if self.DATA_STACK in self.properties.keys():
       stack = self.properties[self.DATA_STACK]
       assert isinstance(stack, DataSet)
@@ -85,6 +87,8 @@ class SequenceSet(DataSet):
   
   @property
   def padded_stack(self):
+    """Stack this sequence set with 0 padded. The output shape is
+       (self.size, max_steps, *dim)"""
     if self.PADDED_STACK in self.properties.keys():
       stack = self.properties[self.PADDED_STACK]
       assert isinstance(stack, DataSet)
@@ -124,6 +128,8 @@ class SequenceSet(DataSet):
 
   def get_round_length(self, batch_size, num_steps=None):
     if num_steps is None:
+      # when num_steps is None, this seq_set is treated as common data_set
+      # and always contains single sequence
       if self.batch_preprocessor is None:
         return self.stack.get_round_length(batch_size)
       else:
@@ -183,6 +189,7 @@ class SequenceSet(DataSet):
         if seq_batch.size > 1:
           active_length = seq_batch.structure
           assert num_steps < 0
+        # padded_stack is_rnn_input, and is a DataSet, not SeqSet any more
         seq_batch = seq_batch.padded_stack
 
       # seq_batch.shape = (batches, steps, *shape)
@@ -274,6 +281,9 @@ class SequenceSet(DataSet):
     assert isinstance(sequences, list)
     checker.check_positive_integer(max_steps)
     checker.check_type(sequences, np.ndarray)
+
+    if all([s.shape[0] for s in sequences]):
+      return np.stack(sequences, axis=0)
 
     sample_shape = sequences[0].shape[1:]
     assert len(sample_shape) > 0
