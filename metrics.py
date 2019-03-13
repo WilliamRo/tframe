@@ -184,6 +184,8 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
 
     if identifier in ['accuracy', 'acc']:
       f = accuracy(pred_thres)
+    elif identifier in ['generalized_accuracy', 'gen_acc']:
+      f = generalized_accuracy
     elif identifier in ['seq_acc', 'seq_accuracy']:
       f = accuracy(pred_thres)
       last_only = True
