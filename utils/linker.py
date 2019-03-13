@@ -116,15 +116,17 @@ def get_matmul(truncate=False):
   else: return tf.matmul
 
 @tf.custom_gradient
-def truncate_multiply(x, W):
+def truncate_multiply(x, y):
   """Gradients do not back-prop through the first argument (a tensor)"""
-  assert len(x.shape) == len(W.shape) == 2
-  y = tf.multiply(x, W)
-  def grad(dy):
+  assert len(x.shape) == len(y.shape) == 2
+  z = tf.multiply(x, y)
+  def grad(dz):
     dx = tf.zeros_like(x)
-    dW = tf.reduce_sum(tf.multiply(dy, x), axis=0, keepdims=True)
-    return dx, dW
-  return y, grad
+    dy = tf.multiply(dz, x)
+    # TODO
+    # db = tf.reduce_sum(tf.multiply(dy, a), axis=0, keepdims=True)
+    return dx, dy
+  return z, grad
 
 def get_multiply(truncate=False):
   if truncate: return truncate_multiply
