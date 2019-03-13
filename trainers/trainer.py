@@ -444,6 +444,33 @@ class Trainer(object):
       content = 'Iteration {} - {}'.format(self.counter, loss_string)
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
+  def _get_tensors_to_export(self):
+    """For now only RNN dynamics are tracked"""
+    tensors = OrderedDict()
+    if (self.model.input_type is not InputTypes.RNN_BATCH or
+        not self.th.validation_on):
+      return tensors
+    num = checker.check_positive_integer(self.th.sample_num)
+    # .. fetch tensors
+    fetches_dict = context.tensors_to_export
+    if len(fetches_dict) == 0: return tensors
+    results = self.model.batch_evaluation(
+      list(fetches_dict.values()), self.validation_set[:num])
+    # .. initialize each sub-dict
+    exemplar_names = []
+    for i in range(num):
+      name = 'Exemplar {}'.format(i)
+      tensors[name] = OrderedDict()
+      exemplar_names.append(name)
+
+    # .. fill tensor_dict
+    for i, array_list in enumerate(results):
+      tensor_name = list(fetches_dict.keys())[i]
+      for j, array in enumerate(array_list):
+        if j < num: tensors[exemplar_names[j]][tensor_name] = array[0]
+
+    return tensors
+
   def _take_notes_for_export(self):
     if self.th.note_cycle == 0: return
     if np.mod(self.counter, self.th.note_cycle) != 0: return
@@ -452,7 +479,7 @@ class Trainer(object):
       if not self.val_metric.last_value: return
       if self.th.validate_train_set and not self.train_metric.last_value: return
 
-    # Scalars
+    # - Scalars
     scalars = OrderedDict()
     scalars['Loss'] = self.loss_history.running_average
     if self.train_metric.last_value:
@@ -462,24 +489,26 @@ class Trainer(object):
       scalars['Val {}'.format(
         context.metric_name)] = self.val_metric.last_value
 
-    # Tensors
-    tensors = OrderedDict()
-    def f(t, keys):
-      assert isinstance(t, tf.Variable)
-      last_scope = t.name.split('.')[-1]
-      for k in keys:
-        if k in last_scope: return True
-      return False
-    if self.th.export_weights:
-      variable_dict = self.model.get_trainable_variables(
-        f=lambda t: f(t, ('weight', 'W', 'kernel')))
-      tensors.update(**variable_dict)
-    if self.th.export_kernel:
-      tensors.update(**self.model.get_trainable_variables(
-        f=lambda t: f(t, ('kernel',))))
-    if self.th.export_bias:
-      tensors.update(**self.model.get_trainable_variables(
-        f=lambda t: f(t, ('bias',))))
+    # - Tensors
+    tensors = self._get_tensors_to_export()
+
+    # def f(t, keys):
+    #   assert isinstance(t, tf.Variable)
+    #   last_scope = t.name.split('.')[-1]
+    #   for k in keys:
+    #     if k in last_scope: return True
+    #   return False
+    # if self.th.export_weights:
+    #   variable_dict = self.model.get_trainable_variables(
+    #     f=lambda t: f(t, ('weight', 'W', 'kernel')))
+    #   tensors.update(**variable_dict)
+    # if self.th.export_kernel:
+    #   tensors.update(**self.model.get_trainable_variables(
+    #     f=lambda t: f(t, ('kernel',))))
+    # if self.th.export_bias:
+    #   tensors.update(**self.model.get_trainable_variables(
+    #     f=lambda t: f(t, ('bias',))))
+
     # Take down
     self.model.agent.take_down_scalars_and_tensors(
       scalars, tensors=tensors)
