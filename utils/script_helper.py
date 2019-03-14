@@ -106,13 +106,16 @@ class Helper(object):
       if save: self.common_parameters['suffix'] = '_{}{}'.format(mark, counter)
       history = []
       for hyper_dict in self._hyper_parameter_dicts():
-        self._apply_constraints(hyper_dict)
-        hyper_list = self._get_config_strings(hyper_dict)
-        hyper_string = ' '.join(hyper_list)
-        if hyper_string in history: continue
-        history.append(hyper_string)
-        # print(hyper_string)
-        call(self.command_head + hyper_list)
+        params = self._get_all_configs(hyper_dict)
+        self._apply_constraints(params)
+
+        params_list = self._get_config_strings(params)
+        params_string = ' '.join(params_list)
+        if params_string in history: continue
+        history.append(params_string)
+
+        call(['python', self.module_name] + params_list)
+        # call(self.command_head + params_list)
         print()
 
   # endregion : Public Methods
@@ -126,7 +129,8 @@ class Helper(object):
       assert isinstance(condition, tuple) and len(condition) > 0
       for key, values in condition:
         if not isinstance(values, (tuple, list)): values = values,
-        if key in configs.keys() and configs[key] not in values: return False
+        if key not in configs.keys(): return False
+        elif configs[key] not in values: return False
       return True
 
     def _set_flag(flag_name, value):
@@ -151,6 +155,13 @@ class Helper(object):
     assert isinstance(config_dict, dict)
     return [Helper._get_config_string(key, val) for key, val in
             config_dict.items()]
+
+  def _get_all_configs(self, hyper_dict):
+    assert isinstance(hyper_dict, OrderedDict)
+    all_configs = OrderedDict()
+    all_configs.update(self.common_parameters)
+    all_configs.update(hyper_dict)
+    return all_configs
 
   def _check_module(self):
     if not os.path.exists(self.module_name):
