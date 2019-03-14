@@ -9,7 +9,9 @@ from tframe.nets import RNet
 
 
 class CellBase(RNet):
-  """Base class for RNN cells"""
+  """Base class for RNN cells.
+     TODO: all rnn cells are encouraged to in inherit this class
+  """
   net_name = 'cell_base'
 
   def __init__(
@@ -27,6 +29,13 @@ class CellBase(RNet):
     self._weight_initializer = initializers.get(weight_initializer)
     self._use_bias = checker.check_type(use_bias, bool)
     self._bias_initializer = initializers.get(bias_initializer)
+
+  @property
+  def _output_scale(self): return self._state_size
+
+  # TODO: this property is a compromise to avoid error in Net.
+  @_output_scale.setter
+  def _output_scale(self, val): pass
 
   @property
   def _scale_tail(self): raise NotImplemented
