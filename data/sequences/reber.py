@@ -413,7 +413,7 @@ class ERG(DataAgent):
         data.properties[key] = True
         # Take it down to note for view
         agent.put_down_criterion(name, counter)
-        agent.put_down_criterion('{}({}S)'.format(op_name, name), 100 * op_acc)
+        # agent.put_down_criterion('{}({}S)'.format(op_name, name), 100 * op_acc)
 
     if ALL:
       trainer.th.force_terminate = True
