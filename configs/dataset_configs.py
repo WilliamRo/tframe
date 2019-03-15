@@ -18,3 +18,5 @@ class DataConfigs(object):
   prediction_threshold = Flag.float(
     None, 'The prediction threshold used as an parameter for metric function',
     is_key=None)
+  permuted = Flag.boolean(
+    False, 'Whether to permute data (e.g. pMNIST)', is_key=None)
