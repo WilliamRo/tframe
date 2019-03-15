@@ -210,43 +210,48 @@ class ERG(DataAgent):
 
   @classmethod
   def load(cls, data_dir, train_size=1000, validate_size=0, test_size=200,
-           file_name=None, amu18=False, cheat=True, local_binary=False,
-           multiple=1, pau19=True, **kwargs):
+           file_name=None, cheat=True, local_binary=False, multiple=1,
+           rule=None, **kwargs):
     # Load .tfd data
     num = train_size + validate_size + test_size
     data_set = cls.load_as_tframe_data(
-      data_dir, file_name=file_name, size=num, unique_=True, amu18=True,
-      cheat=cheat, local_binary=local_binary, multiple=multiple)
+      data_dir, file_name=file_name, train_size=train_size, test_size=test_size,
+      unique_=True, cheat=cheat, local_binary=local_binary, multiple=multiple,
+      rule=rule)
 
     return cls._split_and_return(data_set, train_size, validate_size, test_size)
 
 
   @classmethod
-  def load_as_tframe_data(cls, data_dir, file_name=None, size=1200,
-                          unique_=True, amu18=False, cheat=True,
-                          local_binary=True, multiple=1, pau19=True):
+  def load_as_tframe_data(cls, data_dir, train_size=1000, test_size=200,
+                          file_name=None, unique_=True, cheat=True,
+                          local_binary=True, multiple=1, rule=None):
+    assert rule in ('lstm97', 'pau19', None)
+
     # Check file_name
     if file_name is None:
       file_name = cls._get_file_name(
-        size, unique_, amu18, cheat, local_binary, multiple, pau19)
+        train_size, test_size, unique_, cheat, local_binary, multiple, rule)
     data_path = os.path.join(data_dir, file_name)
     if os.path.exists(data_path): return SequenceSet.load(data_path)
     # If data does not exist, create a new one
     console.show_status('Making data ...')
 
-    if pau19:
+    if rule == 'pau19':
       erg_list = ReberGrammar.make_strings(
-        size, True, embedded=True, multiple=multiple, verbose=True)
-    elif amu18:
+        train_size + test_size, True, embedded=True, multiple=multiple,
+        verbose=True)
+    elif rule == 'lstm97':
       train_list = ReberGrammar.make_strings(
-        256, False, embedded=True, verbose=True, multiple=multiple)
+        train_size, False, embedded=True, verbose=True, multiple=multiple)
       test_list = ReberGrammar.make_strings(
-        256, False, embedded=True, exclusive=train_list, verbose=True,
+        test_size, False, embedded=True, exclusive=train_list, verbose=True,
         multiple=multiple)
       erg_list = train_list + test_list
     else:
       erg_list = ReberGrammar.make_strings(
-        size, unique_, embedded=True, verbose=True, multiple=multiple)
+        train_size + test_size, unique_, embedded=True, verbose=True,
+        multiple=multiple)
 
     # Wrap erg into a DataSet
     features = [erg.one_hot for erg in erg_list]
@@ -264,18 +269,18 @@ class ERG(DataAgent):
     return data_set
 
   @classmethod
-  def _get_file_name(cls, num, unique_, amu18, cheat, local_binary, multiple,
-                     pau19):
-    checker.check_positive_integer(num)
+  def _get_file_name(cls, train_size, test_size, unique_, cheat, local_binary,
+                     multiple, rule):
+    checker.check_positive_integer(train_size)
+    checker.check_positive_integer(test_size)
     checker.check_positive_integer(multiple)
     checker.check_type(unique_, bool)
-    if pau19: tail = 'PAU19'
-    elif amu18: tail = 'AMU18'
+    if rule is not None: tail = rule
     elif unique_: tail = 'U'
     else: tail = 'NU'
-    file_name = '{}{}_{}_{}_{}_{}.tfds'.format(
+    file_name = '{}{}_{}+{}_{}_{}_{}.tfds'.format(
       cls.DATA_NAME, '' if multiple == 1 else '(x{})'.format(multiple),
-      num, tail, 'C' if cheat else 'NC',
+      train_size, test_size, tail, 'C' if cheat else 'NC',
       'LB' if local_binary else 'P')
     if multiple > 1: file_name = 'm' + file_name
     return file_name

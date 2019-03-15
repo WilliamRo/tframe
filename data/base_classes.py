@@ -147,7 +147,7 @@ class DataAgent(object):
     raise NotImplementedError
 
   @classmethod
-  def load_as_tframe_data(cls, data_dir):
+  def load_as_tframe_data(cls, data_dir, *args, **kwargs):
     """Load data as TFrame DataSet"""
     raise NotImplementedError
 
