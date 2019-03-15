@@ -22,7 +22,7 @@ class MNIST(ImageDataAgent):
 
   @classmethod
   def load(cls, data_dir, train_size=55000, validate_size=5000, test_size=10000,
-           flatten=False, one_hot=True):
+           flatten=False, one_hot=True, **kwargs):
     return super().load(
       data_dir, train_size, validate_size, test_size, flatten, one_hot)
 
