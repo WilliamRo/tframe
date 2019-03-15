@@ -30,12 +30,16 @@ class CellBase(RNet):
     self._use_bias = checker.check_type(use_bias, bool)
     self._bias_initializer = initializers.get(bias_initializer)
 
+    self._output_scale_ = None
+
   @property
-  def _output_scale(self): return self._state_size
+  def _output_scale(self):
+    if self._output_scale_ is not None: return self._output_scale_
+    return self._state_size
 
   # TODO: this property is a compromise to avoid error in Net.
   @_output_scale.setter
-  def _output_scale(self, val): pass
+  def _output_scale(self, val): self._output_scale_ = val
 
   @property
   def _scale_tail(self): raise NotImplemented
