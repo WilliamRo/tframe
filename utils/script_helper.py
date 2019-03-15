@@ -171,7 +171,7 @@ class Helper(object):
   def _hyper_parameter_dicts(self, keys=None):
     """Provide a generator of hyper-parameters for running"""
     if keys is None: keys = list(self.hyper_parameters.keys())
-    if len(keys) == 0: yield {}
+    if len(keys) == 0: yield OrderedDict()
     else:
       for val in self.hyper_parameters[keys[0]]:
         configs = OrderedDict()
