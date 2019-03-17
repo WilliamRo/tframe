@@ -50,7 +50,8 @@ class ReberGrammar(object):
   # Generate observation table
   OB_TABLE = np.eye(len(Symbol), dtype=np.float32)
 
-  def __init__(self, embedded=False, multiple=1):
+  def __init__(self, embedded=False, multiple=1, specification=None):
+    assert specification in (None, 'T', 'P')
     self._symbol_list = [Symbol.B]
     self._sub_rebers = [[Symbol.B]]
     self._multiple = checker.check_positive_integer(multiple)
@@ -82,7 +83,10 @@ class ReberGrammar(object):
 
     # Embed
     if embedded:
-      second_symbol = random.choice((Symbol.T, Symbol.P))
+      if specification == 'T': second_symbol = Symbol.T
+      elif specification == 'P': second_symbol = Symbol.P
+      else: second_symbol = random.choice((Symbol.T, Symbol.P))
+
       self._symbol_list = ([Symbol.B, second_symbol] + self._symbol_list +
                            [second_symbol, Symbol.E])
       transfer = np.zeros((len(Symbol),), np.float32)
@@ -144,16 +148,19 @@ class ReberGrammar(object):
 
   @classmethod
   def make_strings(cls, num, unique=True, exclusive=None, embedded=False,
-                   multiple=1, verbose=False):
+                   multiple=1, verbose=False, interleave=True):
     # Check input
     if exclusive is None: exclusive = []
     elif not isinstance(exclusive, list):
       raise TypeError('!! exclusive must be a list of Reber strings')
     # Make strings
     reber_list = []
+    long_token = None
     for i in range(num):
+      if interleave: long_token = 'T' if long_token in ('P', None) else 'P'
       while True:
-        string = ReberGrammar(embedded, multiple=multiple)
+        string = ReberGrammar(
+          embedded, multiple=multiple, specification=long_token)
         if unique and string in reber_list: continue
         if string in exclusive: continue
         reber_list.append(string)
