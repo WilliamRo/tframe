@@ -385,9 +385,11 @@ class RNet(Net):
               activity_regularizer=None,
               **kwargs):
     if num is None:
-      multiplier = (1 if not isinstance(num_or_size_splits, int)
-                    else num_or_size_splits)
-      num = multiplier * self._state_size
+      if isinstance(num_or_size_splits, int):
+        num = num_or_size_splits * self._state_size
+      elif isinstance(num_or_size_splits, (list, tuple)):
+        num = sum(num_or_size_splits)
+      else: num = self._state_size
     if activation is None and is_gate:
       activation = tf.sigmoid
     if weight_initializer is None:
