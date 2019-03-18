@@ -569,9 +569,9 @@ class Trainer(object):
     if new_record:
       content += ' <New Record>'
       self._record_count += 1
-    elif self.is_online:
+    else:
       content += ' (Best: {:.3f})'.format(self.metric.record)
-      if self.th.early_stop:
+      if self.is_online and self.th.early_stop:
         content += ' (Patience {}/{})'.format(
           self.metric.get_idle_counts(self.counter), self.th.patience)
     self._inter_cut(content, prompt='[Validate]')
