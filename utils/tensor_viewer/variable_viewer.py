@@ -46,6 +46,7 @@ class VariableViewer(Frame):
     self.show_absolute_value = False  # key_symbol: a
     self.show_value = False           # key_symbol: v
     self.use_clim = False             # key_symbol: c
+    self.log_scale = True             # key_symbol: g
     self.is_on = True
 
   @property
@@ -92,6 +93,7 @@ class VariableViewer(Frame):
             '!! Unknown type {} found in variable dict'.format(type(v)))
       return dst
 
+    # Re-arrange image stack if necessary
     self._variable_dict = recursively_flatten(v_dict)
     self._init_combo_boxes()
     # Refresh
@@ -102,7 +104,6 @@ class VariableViewer(Frame):
 
     # Clear axes (important!! otherwise the memory will not be released)
     self.subplot.cla()
-    plt.setp(self.subplot, xticks=[], yticks=[])
     # Get variable
     target = self._variable_dict
     for combo in self.combo_boxes:
@@ -110,27 +111,14 @@ class VariableViewer(Frame):
       target = target[combo.get()]
     assert isinstance(target, (tuple, list))
 
-    # Show image
+    # Show target
+    # Remove color bar if necessary
+    if self._color_bar is not None: self._color_bar.remove()
+    self._color_bar = None
+
     variable = target[self.index]
-    abs_variable = np.abs(variable)
-    image = abs_variable if self.show_absolute_value else variable
-
-    # Show heat_map
-    cmap = 'Oranges' if self.show_absolute_value else 'bwr'
-    im = self._heat_map(image, cmap=cmap)
-    if self.show_value: self._annotate_heat_map(im, variable)
-
-    # Set color limits
-    pool = np.abs(target) if self.use_clim else abs_variable
-    if self.show_absolute_value:
-      im.set_clim(np.min(pool), np.max(pool))
-    else:
-      lim = np.max(pool)
-      im.set_clim(-lim, lim)
-
-    title = '|T|' if self.show_absolute_value else 'T'
-    title += '({}x{})'.format(variable.shape[0], variable.shape[1])
-    self.subplot.set_title(title)
+    if len(variable.shape) == 1: self._plot_array(variable, target)
+    else: self._show_image(variable, target)
 
     # Tight layout
     self.figure.tight_layout()
@@ -142,14 +130,48 @@ class VariableViewer(Frame):
 
   # region : Private Methods
 
+  def _show_image(self, image, images):
+    plt.setp(self.subplot, xticks=[], yticks=[])
+
+    abs_variable = np.abs(image)
+    image = abs_variable if self.show_absolute_value else image
+
+    # Show heat_map
+    cmap = 'Oranges' if self.show_absolute_value else 'bwr'
+    im = self._heat_map(image, cmap=cmap)
+    if self.show_value: self._annotate_heat_map(im, image)
+
+    # Set color limits
+    pool = np.abs(images) if self.use_clim else abs_variable
+    if self.show_absolute_value:
+      im.set_clim(np.min(pool), np.max(pool))
+    else:
+      lim = np.max(pool)
+      im.set_clim(-lim, lim)
+
+    title = '|T|' if self.show_absolute_value else 'T'
+    title += '({}x{})'.format(image.shape[0], image.shape[1])
+    self.subplot.set_title(title)
+
+  def _plot_array(self, array, arrays):
+    step =  np.arange(len(array)) + 1
+    self.subplot.plot(step, array)
+    self.subplot.set_xlim(min(step), max(step))
+    # TODO: `use_clim` is not appropriate here
+    pool = arrays if self.use_clim else array
+    self.subplot.set_ylim(np.min(pool), np.max(pool))
+    self.subplot.set_aspect('auto')
+
+    self.subplot.grid(True)
+    self.subplot.set_yscale('log' if self.log_scale else 'linear')
+    # self.subplot.set_title('Title')
+
   def _create_layout(self):
     # Create figure canvas
     self.figure = plt.Figure()
     self.figure.set_facecolor('white')
-    self.subplot = self.figure.add_subplot(111)
-    plt.setp(self.subplot, xticks=[], yticks=[])
+    self.subplot = self.figure.add_subplot(111, autoscale_on=True)
     # plt.sca(self.subplot)
-    # plt.xticks([1, 2, 3])
     # ... (modify style)
     self.figure_canvas = FigureCanvasTkAgg(self.figure, self)
     try: self.figure_canvas.show()
@@ -203,7 +225,7 @@ class VariableViewer(Frame):
     else:
       im = self.subplot.imshow(variable, **kwargs)
       # Create color bar
-      if self._color_bar is not None: self._color_bar.remove()
+      # if self._color_bar is not None: self._color_bar.remove()
       self._color_bar = self.figure.colorbar(im, ax=self.subplot)
     return im
 
@@ -243,9 +265,12 @@ class VariableViewer(Frame):
 
   @staticmethod
   def _flatten(tensor_list, name):
+    """Try to re-arrange an image stack, say, of shape (h, w, N) into
+        a single image of shape (H, W)
+    """
     assert isinstance(tensor_list, list)
     tensor = tensor_list[0]
-    if len(tensor.shape) == 2: return tensor_list
+    if len(tensor.shape) in (2, 1): return tensor_list
     elif len(tensor.shape) == 3 and tensor.shape[2] == 3: return tensor_list
     elif len(tensor.shape) == 4 and tensor.shape[2] != 3: return None
     elif len(tensor.shape) not in (3, 4): return None

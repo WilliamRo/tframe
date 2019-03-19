@@ -6,7 +6,7 @@ import tensorflow as tf
 from collections import OrderedDict
 
 from tframe.configs.config_base import Config
-from tframe.monitor import Monitor
+from tframe.deprecated.monitor import Monitor
 import tframe.utils.checker as checker
 
 

@@ -44,8 +44,10 @@ def on_key_press(viewer, event):
     flag = not viewer.variable_viewer.use_clim
     viewer.variable_viewer.use_clim = flag
     viewer.variable_viewer.refresh()
-  elif key_symbol == 't':
-    pass
+  elif key_symbol == 'g':  # g for loG
+    flag = not viewer.variable_viewer.log_scale
+    viewer.variable_viewer.log_scale = flag
+    viewer.variable_viewer.refresh()
 
 
 def load_note(viewer, _):

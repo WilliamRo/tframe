@@ -197,22 +197,28 @@ class Recurrent(Model, RNet):
       self.last_scan_output = y
 
     # 7. Loss related tensors
-    if self.loss_in_loop and hub.export_dl_dx:
-      # Define extraction function
+    if self.loss_in_loop and (hub.export_dl_dx or hub.export_dl_ds_state):
+      # Define extraction function (to extract the 1st tensor in each batch)
+      # During batch_evaluation, recurrent batch_size = None => 1
       f = lambda t: t[:, 0]
       # each dL_t/dS_{t-1} \in R^{num_steps, batch_size, state_size}
       dl_dsp = self._extract_tensors(results.pop(0), f)
       # each dS_t/dS_{t-1} \in R^{num_steps, batch_size, state_size, state_size}
       ds_dsp = self._extract_tensors(results.pop(0), f)
       # Register tensors
-      # TODO: if can be calculated here, {dL(t)/dS(\tau)}_{t, \tau} should be
-      #       added to context.tensors_to_export
       export_dict = context.tensors_to_export
-      od = self._get_dL_dS_dict(dl_dsp, ds_dsp)
-      for _, block_dict in od.items():
-        assert isinstance(block_dict, OrderedDict)
-        for k, v in block_dict.items():
-          export_dict[k] = v
+      # For dL_dS triangle
+      if hub.export_dl_dx:
+        od = self._get_dL_dS_dict(dl_dsp, ds_dsp)
+        for _, block_dict in od.items():
+          assert isinstance(block_dict, OrderedDict)
+          for k, v in block_dict.items():
+            export_dict[k] = v
+      # For dL_dS state
+      # TODO: utilize the intermediate result in the calculation of triangle
+      if hub.export_dl_ds_state:
+        od = self._get_dL_dS_state_dict(dl_dsp, ds_dsp)
+        export_dict.update(od)
 
     # Return
     assert len(results) == 0
@@ -290,6 +296,59 @@ class Recurrent(Model, RNet):
     # each row has a shape [T-1, state_size]
     triangle = rows.stack()
     return tf.transpose(triangle, [2, 0, 1], name='triangle')
+
+  # TODO: merge this method with _get_dL_dS_dict
+  def _get_dL_dS_state_dict(self, dlds_nested, dsds_nested):
+    dlds_flat, _ = ravel_nested_stuff(dlds_nested, with_indices=True)
+    dsds_flat, indices = ravel_nested_stuff(dsds_nested, with_indices=True)
+    od = OrderedDict()
+    # Keys are dL(hub.error_injection_step)/dS'
+    for dlds, dsds, index in zip(dlds_flat, dsds_flat, indices):
+      assert isinstance(index, list)
+      assert isinstance(dlds, tf.Tensor) and isinstance(dsds, tf.Tensor)
+      assert len(dlds.shape) == 2 and len(dsds.shape) == 3
+      # Generate key for dL/dSi
+      if len(dlds_flat) == 1: grad_name = 'S'
+      else: grad_name = 'S{}'.format('-'.join([str(i + 1) for i in index]))
+      assert hub.error_injection_step < 0
+      grad_name = 'dL[{}]/d{}'.format(hub.error_injection_step, grad_name)
+      # dLtdS.shape = [Ts, state_size]
+      dLtdS = self._sandwich_bottom(dlds, dsds)
+      # Batch dimension should be kept (important)
+      dLtdS = tf.stack([dLtdS])
+      # Calculate norm
+      # od[grad_name] = tf.stack([dLtdS])
+      norm = tf.norm(dLtdS, ord=2, axis=2)
+      norm = norm / norm[0, -1]
+      od['||{}||'.format(grad_name)] = norm
+
+    return od
+
+  def _sandwich_bottom(self, dlds, dsds):
+    assert isinstance(dlds, tf.Tensor) and isinstance(dsds, tf.Tensor)
+    assert len(dlds.shape) == 2 and len(dsds.shape) == 3
+    Ts = hub.error_injection_step
+    dlds, dsds = dlds[:Ts], dsds[:Ts]
+    Ts = tf.shape(dlds)[0]
+
+    def body(tau, dLtdS, grad):
+      assert isinstance(dLtdS, tf.TensorArray)
+      grad_to_write = tf.transpose(grad, [1, 0])
+      # Write gradient
+      dLtdS = dLtdS.write(tau, grad_to_write)
+      # Update grad
+      grad = tf.matmul(dsds[tau], grad)
+      return tau - 1, dLtdS, grad
+
+    # dLt/dS will be put into tensor array in while_loop
+    ta = tf.TensorArray(tf.float32, size=Ts-1)
+    grad_src = tf.reshape(dlds[-1], [-1, 1])
+    _, dLtdS, _ = tf.while_loop(lambda tau, *_: tf.greater_equal(tau, 0), body,
+                                (Ts - 2, ta, grad_src), back_prop=False)
+    assert isinstance(dLtdS, tf.TensorArray)
+    # each entry in row has a shape [1, state_size]
+    dLtdS = dLtdS.concat('dLt_dS')
+    return dLtdS
 
   # endregion: Build
 

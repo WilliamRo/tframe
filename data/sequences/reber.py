@@ -478,20 +478,20 @@ class ERG(DataAgent):
     # Generate tensor dict
     for i, array_list in enumerate(results):
       name = list(fetches_dict.keys())[i]
-      short_buffer = np.zeros_like(array_list[0][0][0])
-      long_buffer = np.zeros_like(array_list[0][0][0])
+      # short_buffer = np.zeros_like(array_list[0][0][0])
+      # long_buffer = np.zeros_like(array_list[0][0][0])
       for j, array in enumerate(array_list):
         # The shape of array is (batch, step, *dim)
         if j < num: tensors[exemplar_names[j]][name] = array[0]
         if not hub.calculate_mean: continue
-        short_buffer += np.sum(array[0], axis=0) - array[0][-2]
-        long_buffer += array[0][-2]
+        # short_buffer += np.sum(array[0], axis=0) - array[0][-2]
+        # long_buffer += array[0][-2]
       # Calculate mean of short/long result
       if not hub.calculate_mean: continue
-      short_mean = short_buffer / (sum(data.structure) - 2 * data.size)
-      long_mean = long_buffer / data.size
-      tensors['Mean'][name] = np.concatenate(
-        [short_mean.reshape([1, -1]), long_mean.reshape([1, -1])])
+      # short_mean = short_buffer / (sum(data.structure) - 2 * data.size)
+      # long_mean = long_buffer / data.size
+      # tensors['Mean'][name] = np.concatenate(
+      #   [short_mean.reshape([1, -1]), long_mean.reshape([1, -1])])
 
     # Take down
     scalars = OrderedDict()
