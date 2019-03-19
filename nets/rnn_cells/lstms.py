@@ -76,20 +76,26 @@ class BasicLSTMCell(RNet):
 
   @property
   def init_state(self):
+    """Concatenate H and C together for the convenience to calculate dL/dS
+    """
     if self._init_state is not None: return self._init_state
     assert self._state_size is not None
-    get_placeholder = lambda name: self._get_placeholder(name, self._state_size)
-    self._init_state = (get_placeholder('h'), get_placeholder('c'))
+    self._init_state = self._get_placeholder('h_c', 2 * self._state_size)
     return self._init_state
+    # get_placeholder = lambda name: self._get_placeholder(name, self._state_size)
+    # self._init_state = (get_placeholder('h'), get_placeholder('c'))
+    # return self._init_state
 
   # endregion : Properties
 
   # region : Private Methods
 
   def _link(self, pre_states, input_, **kwargs):
-    """pre_states = (h_{t-1}, c_{t-1})"""
-    self._check_state(pre_states, 2)
-    h, c = pre_states
+    # """pre_states = (h_{t-1}, c_{t-1})"""
+    """pre_states = concat(h_{t-1}, c_{t-1})"""
+    self._check_state(pre_states, (2 * self._state_size,))
+    # h, c = pre_states
+    h, c = tf.split(pre_states, 2, axis=1)
 
     # Link
     if self._with_peepholes:
@@ -101,7 +107,8 @@ class BasicLSTMCell(RNet):
       if g is not None: self._gate_dict[k] = g
 
     # Return a tuple with the same structure as input pre_states
-    return new_h, (new_h, new_c)
+    # return new_h, (new_h, new_c)
+    return new_h, tf.concat([new_h, new_c], axis=1, name='new_h_c')
 
   # endregion : Private Methods
 
