@@ -35,7 +35,7 @@ class NoteConfigs(object):
   calculate_mean = Flag.boolean(False, '...')
 
   export_dl_dx = Flag.boolean(False, '...')
-  export_dl_ds_state = Flag.boolean(False, '...')
+  export_dl_ds_stat = Flag.boolean(False, '...')
   error_injection_step = Flag.integer(-1, '...')
   max_states_per_block = Flag.integer(
     -1, 'Max state size for each state block to export')
@@ -49,7 +49,7 @@ class NoteConfigs(object):
 
     if (self.export_dy_ds or self.export_gates or self.export_states or
         self.export_weights or self.export_bias or self.export_kernel or
-        self.export_dl_dx or self.export_dl_ds_state):
+        self.export_dl_dx or self.export_dl_ds_stat):
       self.export_tensors_to_note = True
 
 

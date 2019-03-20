@@ -197,7 +197,7 @@ class Recurrent(Model, RNet):
       self.last_scan_output = y
 
     # 7. Loss related tensors
-    if self.loss_in_loop and (hub.export_dl_dx or hub.export_dl_ds_state):
+    if self.loss_in_loop and (hub.export_dl_dx or hub.export_dl_ds_stat):
       # Define extraction function (to extract the 1st tensor in each batch)
       # During batch_evaluation, recurrent batch_size = None => 1
       f = lambda t: t[:, 0]
@@ -216,7 +216,7 @@ class Recurrent(Model, RNet):
             export_dict[k] = v
       # For dL_dS state
       # TODO: utilize the intermediate result in the calculation of triangle
-      if hub.export_dl_ds_state:
+      if hub.export_dl_ds_stat:
         od = self._get_dL_dS_state_dict(dl_dsp, ds_dsp)
         export_dict.update(od)
 

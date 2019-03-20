@@ -190,7 +190,7 @@ class RNet(Net):
       # Raw loss does not need to be exported
       loss = context.loss_function(targets, y)
       # result_tuple += loss,
-      if hub.export_dl_dx or hub.export_dl_ds_state:
+      if hub.export_dl_dx or hub.export_dl_ds_stat:
         # (1) dl_t / dx_{t-1} and (2) dx_t/dx_{t-1} must be exported
         # (1)
         result_tuple += self._calc_dL_dS_prev(loss, pre_states),
