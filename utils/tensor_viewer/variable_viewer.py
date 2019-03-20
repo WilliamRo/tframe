@@ -164,6 +164,8 @@ class VariableViewer(Frame):
 
     self.subplot.grid(True)
     self.subplot.set_yscale('log' if self.log_scale else 'linear')
+    if self.log_scale:
+      self.subplot.set_ylim(max(np.min(pool), 1e-17), np.max(pool))
     # self.subplot.set_title('Title')
 
   def _create_layout(self):
