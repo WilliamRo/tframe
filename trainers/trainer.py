@@ -626,7 +626,7 @@ class TrainerHub(Config):
   save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']")
   warm_up_thres = Flag.integer(1, 'Warm up threshold', is_key=None)
-  warm_up = Flag.boolean(True, 'Whether to warm up')
+  warm_up = Flag.boolean(False, 'Whether to warm up')
   at_most_save_once_per_round = Flag.integer(False, '...')
 
   round_name = Flag.string('Epoch', 'Name of outer loop during training')
