@@ -619,7 +619,7 @@ class TrainerHub(Config):
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
   early_stop = Flag.boolean(False, 'Early stop option', is_key=None)
-  record_gap = Flag.float(0.001, 'Minimum improvement')
+  record_gap = Flag.float(0.0, 'Minimum improvement')
   patience = Flag.integer(
     20, 'Tolerance of idle rounds(or iterations) when early stop is on',
     is_key=None)
