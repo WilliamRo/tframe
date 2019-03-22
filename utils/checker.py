@@ -51,8 +51,8 @@ def check_type(inputs, type_tuples):
 
 
 def check_positive_integer(x, allow_zero=False, name=None):
-  if name is None: name = misc.retrieve_name(x)
   if not isinstance(x, int) or x < 0 or not allow_zero and x == 0:
+    if name is None: name = misc.retrieve_name(x)
     raise ValueError('!! {} must be a positive integer'.format(name))
   return x
 
