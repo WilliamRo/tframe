@@ -24,13 +24,14 @@ class pMNIST(DataAgent):
   DATA_NAME = 'pMNIST'
 
   @classmethod
-  def load(cls, data_dir, train_size=60000, test_size=10000, permute=False,
-           permute_mark='alpha', file_name=None, **kwargs):
+  def load(cls, data_dir, train_size=55000, val_size=5000, test_size=10000,
+           permute=False, permute_mark='alpha', file_name=None, **kwargs):
     data_set = cls.load_as_tframe_data(
       data_dir, file_name=file_name, permute=permute, permute_mark=permute_mark)
-    train_set, test_set = data_set.split(
-      train_size, test_size, names=('train_size', 'test_size'))
-    return train_set, test_set
+    train_set, val_set, test_set = data_set.split(
+      train_size, val_size, test_size,
+      names=('train_size', 'val_size', 'test_size'))
+    return train_set, val_set, test_set
 
   @classmethod
   def load_as_tframe_data(cls, data_dir, file_name=None, permute=False,
