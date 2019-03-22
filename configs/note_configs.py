@@ -42,6 +42,7 @@ class NoteConfigs(object):
 
   # Statistics only for note summary
   total_params = Flag.integer(0, 'Parameters #', is_key=None)
+  serial_num = Flag.integer(1, '...', is_key=None)
 
 
   def smooth_out_note_configs(self):
