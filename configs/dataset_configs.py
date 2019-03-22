@@ -20,3 +20,5 @@ class DataConfigs(object):
     is_key=None)
   permute = Flag.boolean(
     False, 'Whether to permute data (e.g. pMNIST)', is_key=None)
+  bits = Flag.integer(
+    2, 'Can be used in k-bit temporal order problem', is_key=None)
