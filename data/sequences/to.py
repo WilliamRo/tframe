@@ -26,7 +26,7 @@ def engine(L, N, fixed_length=True):
     L = np.random.randint(L_min, L_max + 1)
   # Generate features
   # ... 0-X, 1-Y, 2-a, 3-b, 4-c, 5-d, ...
-  sequence = np.random.randint(2, _symbol_kinds, size=[L])
+  sequence = np.random.randint(2, 2 + _noise_symbols_num, size=[L])
   # ... insert N key symbols
   M = int(np.round(L / N))
   alpha, target = 1, 0
@@ -36,6 +36,8 @@ def engine(L, N, fixed_length=True):
     target += symbol * alpha
     sequence[index] = symbol
     alpha *= 2
+  # Set trigger symbols  # not necessary
+  # sequence[0], sequence[-1] = 6, 7
   # Convert sequence and target to one-hot
   onehot_sequence = np.eye(_symbol_kinds)[sequence]
   onehot_target = np.eye(alpha)[target]
