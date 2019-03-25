@@ -16,7 +16,7 @@ class RNNConfigs(object):
   # Basic RNN configs
   rc_dims = Flag.whatever(None, '...')
   notify_when_reset = Flag.whatever(False, '...')
-  truncate_grad = Flag.boolean(None, 'Whether to truncate gradient in RNN',
+  truncate_grad = Flag.boolean(False, 'Whether to truncate gradient in RNN',
                                is_key=None)
   forward_gate = Flag.boolean(
     None, 'Whether to calculate units using gate units from previous time '
