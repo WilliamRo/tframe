@@ -4,25 +4,54 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe.nets.rnn_cells.srn import BasicRNNCell
+from tframe import checker
+from tframe.nets.rnn_cells.cell_base import CellBase
 
 
-class GRU(BasicRNNCell):
-  """Gated Recurrent Unit
-  """
+class GRU(CellBase):
+  """Gated Recurrent Unit"""
   net_name = 'gru'
+
+  def __init__(
+      self,
+      state_size,
+      use_reset_gate=True,
+      activation='tanh',
+      weight_initializer='xavier_normal',
+      use_bias=True,
+      bias_initializer='zeros',
+      **kwargs):
+    # Call parent's constructor
+    CellBase.__init__(self, activation, weight_initializer,
+                      use_bias, bias_initializer, **kwargs)
+
+    # Specific attributes
+    self._state_size = checker.check_positive_integer(state_size)
+    self._use_reset_gate = checker.check_type(use_reset_gate, bool)
+
+
+  @property
+  def _scale_tail(self):
+    return '[{}]({})'.format(
+      '-' if self._use_reset_gate is None else 'r', self._state_size)
+
 
   def _link(self, prev_s, x, **kwargs):
     """s(pre_states) is state_array of size 'state_size'"""
     self._check_state(prev_s)
     # - Calculate r gate and z gate
-    r, z = self.neurons(
-      x, prev_s, num_or_size_splits=2, is_gate=True, scope='gates')
-    self._gate_dict['reset_gate'] = r
+    r = None
+    if self._use_reset_gate:
+      r, z = self.neurons(
+        x, prev_s, num_or_size_splits=2, is_gate=True, scope='gates')
+      self._gate_dict['reset_gate'] = r
+    else: z = self.neurons(x, prev_s, is_gate=True, scope='update_gate')
     self._gate_dict['update_gate'] = z
 
     # - Read
-    with tf.name_scope('read'): s_w = tf.multiply(r, prev_s)
+    s_w = prev_s
+    if self._use_reset_gate:
+      with tf.name_scope('read'): s_w = tf.multiply(r, prev_s)
     # - Calculate candidates to write
     s_bar = self.neurons(x, s_w, activation=self._activation, scope='s_bar')
     with tf.name_scope('write'): new_s = tf.add(

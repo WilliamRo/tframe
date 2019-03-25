@@ -42,7 +42,9 @@ class CellBase(RNet):
   def _output_scale(self, val): self._output_scale_ = val
 
   @property
-  def _scale_tail(self): raise NotImplemented
+  def _scale_tail(self):
+    assert self._state_size is not None
+    return '({})'.format(self._state_size)
 
   def structure_string(self, detail=True, scale=True):
     return self.net_name + self._scale_tail if scale else ''
