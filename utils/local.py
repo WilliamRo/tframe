@@ -131,6 +131,7 @@ def wizard(pattern=None, extension=None, current_dir=None, max_depth=1,
   selected_file = None
   while selected_file is None:
     targets = search(current_dir, max_depth - len(dir_stack))
+    if len(dir_stack) > 1: targets = list(reversed(targets))
     if len(targets) == 0:
       console.show_status('Can not find targets in `{}`'.format(current_dir))
       return None
@@ -140,8 +141,8 @@ def wizard(pattern=None, extension=None, current_dir=None, max_depth=1,
       console.supplement('[{}] {}'.format(i + 1, t))
     selection = input('=> Please input: ')
 
-    int_list = list(range(1, 16))
-    str_list = [str(i) for i in range(1, 10)] + list('abcdef')
+    int_list = list(range(1, 26))
+    str_list = [str(i) for i in range(1, 10)] + list('abcdefghijklmnop')
     def get_str(i): return {i: s for i, s in zip(int_list, str_list)}[i]
     def get_int(s): return {s: i for i, s in zip(int_list, str_list)}[s]
     while True:
