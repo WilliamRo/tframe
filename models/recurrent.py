@@ -246,8 +246,10 @@ class Recurrent(Model, RNet):
       for i, t in enumerate(tf.split(triangle, triangle.shape.as_list()[0])):
         if hub.max_states_per_block > 0 and hub.max_states_per_block == i: break
         block_dict['{}[{}]'.format(grad_name, i + 1)] = t
-      block_dict[grad_name + '[*]'] = tf.reduce_sum(
-        tf.abs(triangle), axis=0, keepdims=True)
+
+      # TODO: we do not care about [*] for now
+      # block_dict[grad_name + '[*]'] = tf.reduce_sum(
+      #   tf.abs(triangle), axis=0, keepdims=True)
 
     return od
 
