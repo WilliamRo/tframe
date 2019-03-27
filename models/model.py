@@ -443,6 +443,7 @@ class Model(object):
   def batch_evaluation(
       self, fetches, data_set, batch_size=None, extractor=None):
     # Sanity check
+    if isinstance(fetches, (list, tuple)) and len(fetches) == 0: return []
     checker.check_type(fetches, tf.Tensor)
     assert isinstance(data_set, TFRData)
     fetches_is_single = not isinstance(fetches, (tuple, list))
