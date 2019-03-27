@@ -42,6 +42,7 @@ class Note(object):
   def tensor_dict(self):
     td = OrderedDict()
     for k, v in self._tensors.items():
+      if isinstance(v, dict) and len(v) == 0: continue
       td[k] = v
     return td
 

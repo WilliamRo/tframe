@@ -84,9 +84,17 @@ class VariableViewer(Frame):
       dst = OrderedDict()
       for k, v in src.items():
         if isinstance(v, dict):
-          dst[k] = recursively_flatten(v)
+          # TODO: a temporal fix for nan situation
+          vd = recursively_flatten(v)
+          if len(vd) > 0: dst[k] = vd
+          else:
+            print(' ! Failed to set `{}` to viewer since its empty.'.format(k))
         elif isinstance(v, list):
           flattened = self._flatten(v, name=k)
+          # Loosely check nan
+          if np.isnan(flattened[0][0]).any():
+            print(' ! Failed to set `{}` to viewer. np.nan detected.'.format(k))
+            continue
           if flattened is not None: dst[k] = flattened
           else: print(' ! Failed to set `{}` to viewer.'.format(k))
         else: raise TypeError(
