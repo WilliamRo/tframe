@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
+
 from tframe import activations
 from tframe import checker
 from tframe import initializers
@@ -48,4 +50,13 @@ class CellBase(RNet):
 
   def structure_string(self, detail=True, scale=True):
     return self.net_name + self._scale_tail if scale else ''
+
+  def _update_gate(self, x, s, num_units, unit_size, reverse=True,
+                   bias_initializer='zeros'):
+    net_z = self.neurons(x, s, scope='net_z', bias_initializer=bias_initializer)
+    z = tf.reshape(tf.nn.softmax(tf.reshape(net_z, [-1, unit_size])),
+                   [-1, num_units*unit_size], name='z')
+    z_opposite = tf.subtract(1., z)
+    if reverse: z, z_opposite = z_opposite, z
+    return z, z_opposite
 
