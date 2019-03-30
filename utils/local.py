@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import os
 import re
@@ -175,4 +177,24 @@ def load_wav_file(file_name, use_librosa=False, sr=None):
     import scipy.io.wavfile as wavfile
     fs, signal_ = wavfile.read(file_name)
   return signal_, fs
+
+
+def re_find_single(pattern, file_name=None):
+  assert isinstance(pattern, str) and len(pattern) > 0
+  if file_name is None:
+    import __main__
+    if not hasattr(__main__, '__file__'):
+      raise AttributeError('!! __main__ does not have attribute `__file__`')
+    file_name = __main__.__file__
+  matched = re.findall(pattern, file_name)
+  if len(matched) == 0: raise ValueError(
+    '!! no substring matched pattern `{}`'.format(pattern))
+  if len(matched) > 1: raise ValueError(
+    '!! found more than 1 match of pattern `{}`'.format(pattern))
+  return matched[0]
+
+
+
+
+
 

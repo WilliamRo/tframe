@@ -7,6 +7,9 @@ from subprocess import call
 from collections import OrderedDict
 
 from tframe import checker
+from tframe import console
+from tframe.utils.local import re_find_single
+from tframe.utils.misc import date_string
 from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
@@ -46,7 +49,7 @@ class Helper(object):
   true = True
   false = False
 
-  def __init__(self, module_name):
+  def __init__(self, module_name=None):
     self.module_name = module_name
     self._check_module()
 
@@ -68,6 +71,11 @@ class Helper(object):
     # Add keys from common-parameters
     keys += list(self.common_parameters.keys())
     return keys
+
+  @property
+  def default_summ_name(self):
+    script_name = re_find_single(r's\d+_\w+(?=.py)')
+    return '{}_{}'.format(date_string(), script_name)
 
   # endregion : Properties
 
@@ -94,6 +102,7 @@ class Helper(object):
     else:
       if isinstance(val, (list, tuple)): val = val[0]
       self.common_parameters[flag_name] = val
+      self._show_flag_if_necessary(flag_name, val)
 
   def run(self, times=1, save=False, mark=''):
     # Set the corresponding flags if save
@@ -121,6 +130,13 @@ class Helper(object):
   # endregion : Public Methods
 
   # region : Private Methods
+
+  @staticmethod
+  def _show_flag_if_necessary(flag_name, value):
+    if flag_name == 'gpu_id':
+      console.show_status('GPU ID set to {}'.format(value))
+    if flag_name == 'gather_summ_name':
+      console.show_status('Notes will be gathered to `{}`'.format(value))
 
   def _apply_constraints(self, configs):
     assert isinstance(configs, dict)
@@ -164,6 +180,13 @@ class Helper(object):
     return all_configs
 
   def _check_module(self):
+    """If module name is not provided, try to find one according to the
+       recommended project organization"""
+    if self.module_name is None:
+      self.module_name = '../t{}.py'.format(
+        re_find_single(r'(?<=s)\d+_\w+(?=.py)'))
+      console.show_status('Module set to `{}`'.format(self.module_name))
+
     if not os.path.exists(self.module_name):
       raise AssertionError(
         '!! module {} does not exist'.format(self.module_name))

@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import numpy as np
 import inspect
+import datetime
 
 import tensorflow as tf
 
@@ -127,4 +128,7 @@ def retrieve_name(var):
              if var_val is var]
     if len(names) > 0: return names[0]
     else: return 'unknown_name'
+
+
+def date_string(): return datetime.datetime.now().strftime('%m%d')
 
