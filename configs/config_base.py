@@ -15,6 +15,8 @@ from .monitor_configs import MonitorConfigs
 from .cloud_configs import CloudConfigs
 from .dataset_configs import DataConfigs
 
+from tframe.optimizers.clip_opt import GradientClipOptimizer
+
 
 class Config(
   ModelConfigs,
@@ -191,6 +193,14 @@ class Config(
     if not isinstance(flag, Flag):
       raise TypeError('!! flag {} not found'.format(name))
     return flag
+
+  def get_optimizer(self):
+    assert isinstance(self.optimizer, tf.train.Optimizer)
+    assert self.learning_rate is not None
+    optimizer = self.optimizer(self.learning_rate)
+    if self.clip_threshold > 0:
+      optimizer = GradientClipOptimizer(optimizer, self.clip_threshold)
+    return optimizer
 
   # endregion : Public Methods
 

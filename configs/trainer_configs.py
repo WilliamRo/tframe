@@ -26,3 +26,6 @@ class TrainerConfigs(object):
 
   sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
                                'tasks')
+
+  clip_threshold = Flag.float(
+    0., 'Threshold for clipping gradients', is_key=None)
