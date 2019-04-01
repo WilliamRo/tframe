@@ -228,10 +228,8 @@ class Predictor(Feedforward, Recurrent):
             console.write_line('{}'.format(info))
           self.reset_part_buffer(batch.reset_batch_indices, batch.reset_values)
 
-      # batch_size == None means is_training == True (not elegant)
-      batch_size = None if is_training else batch.size
       # If is not training, always set a zero state to model
-      feed_dict.update(self._get_rnn_dict(batch_size=batch_size))
+      feed_dict.update(self._get_rnn_dict(is_training, batch.size))
 
     return feed_dict
 

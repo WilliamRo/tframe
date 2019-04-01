@@ -266,22 +266,19 @@ class RNet(Net):
       if len(state) == 1: state = state[0]
       return state
 
-  def _get_rnn_dict(self, batch_size=None):
+  def _get_rnn_dict(self, is_training, batch_size=None):
     """Get state dict together with gradient buffer if necessary
     """
-    assert self.is_root
+    assert self.is_root and isinstance(is_training, bool)
 
     rnn_dict = {}
-    # During training, batch size is not None
-    if batch_size is None:
-      # During training
+    if is_training:
       state = self._state_array
       assert state is not None
       # TODO: BETA
-      if hub.use_rtrl:
-        rnn_dict[self.gradient_buffer_placeholder] = self._gradient_buffer_array
+      # if hub.use_rtrl:
+      #   rnn_dict[self.gradient_buffer_placeholder] = self._gradient_buffer_array
     else:
-      # While is_training == False
       checker.check_positive_integer(batch_size)
       state = self._get_zero_state(batch_size)
 
