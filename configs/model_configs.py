@@ -26,6 +26,7 @@ class ModelConfigs(object):
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   fc_dims = Flag.whatever(None, '...')
   num_blocks = Flag.integer(-1, 'Block number in model', is_key=None)
+  num_layers = Flag.integer(1, 'Layer number', is_key=None)
   input_shape = Flag.list([], 'Input shape of samples')
   output_dim = Flag.integer(0, 'Output dimension of a model')
   num_classes = Flag.integer(-1, 'Class number for classification tasks')
