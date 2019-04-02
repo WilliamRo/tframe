@@ -55,12 +55,21 @@ class CellBase(RNet):
   def _update_gate(self, num_units, unit_size, x=None, s=None, net_z=None,
                    reverse=True, bias_initializer='zeros',
                    saturation_penalty=0.):
+    # Sanity check
+    checker.check_positive_integer(unit_size)
+
+    # Check net_z
     if net_z is None:
       assert x is not None
       net_z = self.neurons(
         x, s, scope='net_z', bias_initializer=bias_initializer)
-    z = tf.reshape(tf.nn.softmax(tf.reshape(net_z, [-1, unit_size])),
-                   [-1, num_units*unit_size], name='z')
+    state_size = num_units * unit_size
+    assert self._get_size(net_z) == state_size
+
+    # If unit size is 1,
+    if unit_size == 1: z = tf.sigmoid(net_z)
+    else: z = tf.reshape(tf.nn.softmax(tf.reshape(net_z, [-1, unit_size])),
+                         [-1, state_size], name='z')
 
     # Calculate opposite
     z_opposite = tf.subtract(1., z)

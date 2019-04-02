@@ -52,7 +52,7 @@ class Noah(RNet):
 
   def _link(self, pre_states, x, **kwargs):
     h, s = pre_states
-    x_size = self._get_external_shape(x)
+    x_size = self._get_size(x)
 
     # Calculate net_{xh}
     Wxh = self._get_variable(
@@ -309,7 +309,7 @@ class Ham(RNet):
     def gate(name, tensor, memory, fc_mem, gate_name=None):
       multiply = linker.get_multiply(self._truncate)
       g = forward(
-        name, memory, fc_mem, output_dim=self._get_external_shape(tensor),
+        name, memory, fc_mem, output_dim=self._get_size(tensor),
         activation=tf.sigmoid)
       if gate_name is not None:
         self._gate_dict[gate_name] = g

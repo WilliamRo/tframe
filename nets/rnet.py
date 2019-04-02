@@ -310,9 +310,9 @@ class RNet(Net):
       else: assert s.shape.as_list()[1] == size
 
   @staticmethod
-  def _get_external_shape(input_):
-    assert isinstance(input_, tf.Tensor)
-    input_shape = input_.shape.as_list()
+  def _get_size(tensor):
+    assert isinstance(tensor, tf.Tensor)
+    input_shape = tensor.shape.as_list()
     assert len(input_shape) == 2
     return input_shape[1]
 

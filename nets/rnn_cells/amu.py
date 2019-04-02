@@ -157,7 +157,7 @@ class PAMU(BasicRNNCell):
     """pre_state = (h, c)"""
     self._check_state(pre_states, 2)
     h, c  = pre_states
-    x_size = self._get_external_shape(x)
+    x_size = self._get_size(x)
 
     # :: Update memory
     fi_inputs = tf.concat([h, x, c], axis=1)
