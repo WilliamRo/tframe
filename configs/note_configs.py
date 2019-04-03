@@ -36,6 +36,7 @@ class NoteConfigs(object):
 
   export_dl_dx = Flag.boolean(False, '...')
   export_dl_ds_stat = Flag.boolean(False, '...')
+  export_jacobian_norm = Flag.boolean(False, '...')
   error_injection_step = Flag.integer(-1, '...')
   max_states_per_block = Flag.integer(
     -1, 'Max state size for each state block to export')

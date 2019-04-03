@@ -197,16 +197,16 @@ class Recurrent(Model, RNet):
       self.last_scan_output = y
 
     # 7. Loss related tensors
+    ds_dsp = None
+    f = lambda t: t[:, 0]
+    export_dict = context.tensors_to_export
     if self.loss_in_loop and (hub.export_dl_dx or hub.export_dl_ds_stat):
       # Define extraction function (to extract the 1st tensor in each batch)
       # During batch_evaluation, recurrent batch_size = None => 1
-      f = lambda t: t[:, 0]
       # each dL_t/dS_{t-1} \in R^{num_steps, batch_size, state_size}
       dl_dsp = self._extract_tensors(results.pop(0), f)
       # each dS_t/dS_{t-1} \in R^{num_steps, batch_size, state_size, state_size}
       ds_dsp = self._extract_tensors(results.pop(0), f)
-      # Register tensors
-      export_dict = context.tensors_to_export
       # For dL_dS triangle
       if hub.export_dl_dx:
         od = self._get_dL_dS_dict(dl_dsp, ds_dsp)
@@ -217,8 +217,14 @@ class Recurrent(Model, RNet):
       # For dL_dS state
       # TODO: utilize the intermediate result in the calculation of triangle
       if hub.export_dl_ds_stat:
-        od = self._get_dL_dS_state_dict(dl_dsp, ds_dsp)
+        od = self._get_dL_dS_stat_dict(dl_dsp, ds_dsp)
         export_dict.update(od)
+
+    # 8. ||Jacobian||
+    if hub.export_jacobian_norm:
+      if ds_dsp is None: ds_dsp = self._extract_tensors(results.pop(0), f)
+      od = self._get_jacobian_stat(ds_dsp)
+      export_dict.update(od)
 
     # Return
     assert len(results) == 0
@@ -300,7 +306,7 @@ class Recurrent(Model, RNet):
     return tf.transpose(triangle, [2, 0, 1], name='triangle')
 
   # TODO: merge this method with _get_dL_dS_dict
-  def _get_dL_dS_state_dict(self, dlds_nested, dsds_nested):
+  def _get_dL_dS_stat_dict(self, dlds_nested, dsds_nested):
     dlds_flat, _ = ravel_nested_stuff(dlds_nested, with_indices=True)
     dsds_flat, indices = ravel_nested_stuff(dsds_nested, with_indices=True)
     od = OrderedDict()
@@ -323,6 +329,24 @@ class Recurrent(Model, RNet):
       norm = tf.norm(dLtdS, ord=2, axis=2)
       norm = norm / norm[0, -1]
       od['||{}||'.format(grad_name)] = norm
+
+    return od
+
+  # TODO: merge this method with _get_dL_dS_dict
+  def _get_jacobian_stat(self, dsds_nested):
+    dsds_flat, indices = ravel_nested_stuff(dsds_nested, with_indices=True)
+    od = OrderedDict()
+    # Keys are ||dS/dS||
+    for dsds, index in zip(dsds_flat, indices):
+      assert isinstance(index, list) and isinstance(dsds, tf.Tensor)
+      assert len(dsds.shape) == 3
+      # Generate key for dSi/dSi
+      if len(dsds_flat) == 1: grad_index = ''
+      else: grad_index = '({})'.format('-'.join([str(i + 1) for i in index]))
+      grad_name = '||dS/dS{}||'.format(grad_index)
+      # Pretend that dsds has batch size 1
+      dsds = tf.stack([dsds])
+      od[grad_name] = tf.norm(dsds, axis=[-2, -1])
 
     return od
 
