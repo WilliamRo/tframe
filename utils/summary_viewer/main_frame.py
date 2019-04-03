@@ -60,6 +60,9 @@ class SummaryViewer(Viewer):
     # Debug option
     self.in_debug_mode = False
 
+    # Plugin for variable viewer
+    self.plugin = kwargs.get('plugin', None)
+
   # region : Properties
 
   @property

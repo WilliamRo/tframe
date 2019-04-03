@@ -43,6 +43,9 @@ class TensorViewer(Viewer):
     self._define_layout(**kwargs)
     self._global_refresh()
 
+    # Set plugin (beta) (This line should be put before set_note)
+    self._plugin = kwargs.get('plugin', None)
+
     # If note or note_path is provided, try to load it
     if note is not None or note_path is not None:
       self.set_note(note, note_path)
@@ -66,7 +69,8 @@ class TensorViewer(Viewer):
     assert isinstance(self.variable_viewer, VariableViewer)
     tensor_dict = self.context.note.tensor_dict
     if len(tensor_dict) > 0:
-      self.variable_viewer.set_variable_dict(self.context.note.tensor_dict)
+      self.variable_viewer.set_variable_dict(
+        self.context.note.tensor_dict, self._plugin)
       self.variable_viewer.is_on = True
     else:
       self.variable_viewer.pack_forget()

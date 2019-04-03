@@ -141,7 +141,7 @@ class HeaderControl(BaseControl):
   def on_label_detail_click(self):
     note = self.selected_note
     if note is not None and note.has_history:
-      viewer = TensorViewer(note=note)
+      viewer = TensorViewer(note=note, plugin=self.main_frame.plugin)
       viewer.show()
 
   def move_cursor(self, offset):

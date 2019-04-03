@@ -16,6 +16,7 @@ from tkinter import ttk
 from tkinter import Frame
 
 from tframe import console
+from tframe.utils.tensor_viewer.plugin import Plugin, VariableWithView
 
 
 class VariableViewer(Frame):
@@ -71,7 +72,7 @@ class VariableViewer(Frame):
     combo_box.set(name_list[i])
     self.refresh()
 
-  def set_variable_dict(self, v_dict):
+  def set_variable_dict(self, v_dict, plugin=None):
     """
     Set variable dict to this widgets
     :param v_dict: a dict whose values are lists of numpy arrays
@@ -103,6 +104,10 @@ class VariableViewer(Frame):
 
     # Re-arrange image stack if necessary
     self._variable_dict = recursively_flatten(v_dict)
+    # Active plugin
+    if isinstance(plugin, Plugin):
+      plugin.modify_variable_dict(self._variable_dict)
+    # Initialize combo_boxes according to self._variable_dict
     self._init_combo_boxes()
     # Refresh
     self.refresh()
@@ -112,21 +117,25 @@ class VariableViewer(Frame):
 
     # Clear axes (important!! otherwise the memory will not be released)
     self.subplot.cla()
+    self.ax2.cla()
+
     # Get variable
     target = self._variable_dict
     for combo in self.combo_boxes:
       assert isinstance(combo, ttk.Combobox)
       target = target[combo.get()]
-    assert isinstance(target, (tuple, list))
+    assert isinstance(target, (tuple, list, VariableWithView))
 
     # Show target
     # Remove color bar if necessary
     if self._color_bar is not None: self._color_bar.remove()
     self._color_bar = None
 
-    variable = target[self.index]
-    if len(variable.shape) == 1: self._plot_array(variable, target)
-    else: self._show_image(variable, target)
+    if isinstance(target, VariableWithView): target.display(self)
+    else:
+      variable = target[self.index]
+      if len(variable.shape) == 1: self._plot_array(variable, target)
+      else: self._show_image(variable, target)
 
     # Tight layout
     self.figure.tight_layout()
@@ -138,7 +147,11 @@ class VariableViewer(Frame):
 
   # region : Private Methods
 
+  def set_ax2_invisible(self):
+    self.ax2.set_axis_off()
+
   def _show_image(self, image, images):
+    self.set_ax2_invisible()
     plt.setp(self.subplot, xticks=[], yticks=[])
 
     abs_variable = np.abs(image)
@@ -159,9 +172,12 @@ class VariableViewer(Frame):
 
     title = '|T|' if self.show_absolute_value else 'T'
     title += '({}x{})'.format(image.shape[0], image.shape[1])
+    title += ', min={:.2f}, max={:.2f}'.format(np.min(image), np.max(image))
     self.subplot.set_title(title)
 
   def _plot_array(self, array, arrays):
+    self.set_ax2_invisible()
+
     step =  np.arange(len(array)) + 1
     self.subplot.plot(step, array)
     self.subplot.set_xlim(min(step), max(step))
@@ -181,6 +197,7 @@ class VariableViewer(Frame):
     self.figure = plt.Figure()
     self.figure.set_facecolor('white')
     self.subplot = self.figure.add_subplot(111, autoscale_on=True)
+    self.ax2 = self.subplot.twinx()
     # plt.sca(self.subplot)
     # ... (modify style)
     self.figure_canvas = FigureCanvasTkAgg(self.figure, self)
