@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from tframe import checker
 from tframe.nets.rnn_cells.cell_base import CellBase
+from tframe import initializers
 
 
 class GRU(CellBase):
@@ -20,6 +21,7 @@ class GRU(CellBase):
       weight_initializer='xavier_normal',
       use_bias=True,
       bias_initializer='zeros',
+      z_bias_initializer='zeros',
       **kwargs):
     # Call parent's constructor
     CellBase.__init__(self, activation, weight_initializer,
@@ -28,6 +30,7 @@ class GRU(CellBase):
     # Specific attributes
     self._state_size = checker.check_positive_integer(state_size)
     self._use_reset_gate = checker.check_type(use_reset_gate, bool)
+    self._z_bias_initializer = initializers.get(z_bias_initializer)
 
 
   @property
@@ -42,10 +45,11 @@ class GRU(CellBase):
     # - Calculate r gate and z gate
     r = None
     if self._use_reset_gate:
-      r, z = self.neurons(
-        x, prev_s, num_or_size_splits=2, is_gate=True, scope='gates')
+      r = self.neurons(x, prev_s, is_gate=True, scope='reset_gate')
       self._gate_dict['reset_gate'] = r
-    else: z = self.neurons(x, prev_s, is_gate=True, scope='update_gate')
+
+    z = self.neurons(x, prev_s, is_gate=True, scope='update_gate',
+                     bias_initializer=self._z_bias_initializer)
     self._gate_dict['update_gate'] = z
 
     # - Read
