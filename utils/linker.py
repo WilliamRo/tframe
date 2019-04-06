@@ -133,3 +133,37 @@ def get_multiply(truncate=False):
   else: return tf.multiply
 
 # endregion : Operations
+
+# region : Activations
+
+def softmax_over_groups(net_input, groups, output_name='sog'):
+  """ Group of size 1 will be activated using sigmoid.
+      Ref: Grouped Distributor Unit (2019)
+  """
+  # Sanity check
+  assert isinstance(net_input, tf.Tensor) and isinstance(groups, (list, tuple))
+  for g in groups:
+    assert isinstance(g, (tuple, list)) and len(g) == 2
+    assert isinstance(g[0], int) and g[0] > 0
+    assert isinstance(g[1], int) and g[1] > 0
+  group_sizes = [g[0]*g[1] for g in groups]
+  assert sum(group_sizes) == get_dimension(net_input)
+
+  # Calculate output
+  splitted = (tf.split(net_input, group_sizes, axis=1) if len(group_sizes) > 0
+              else [net_input])
+  output_list = []
+  # s: group size; n: group number
+  for (s, n), net_s in zip(groups, splitted):
+    activated = net_s
+    if s == 1: activated = tf.sigmoid(activated)
+    else:
+      if n > 1: activated = tf.reshape(activated, [-1, s])
+      activated = tf.nn.softmax(activated)
+      if n > 1: activated = tf.reshape(activated, [-1, s*n])
+    output_list.append(activated)
+
+  return (tf.concat(output_list, axis=1, name=output_name)
+          if len(output_list) > 1 else output_list[0])
+
+# endregion : Activations

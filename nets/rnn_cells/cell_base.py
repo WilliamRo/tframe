@@ -8,6 +8,7 @@ from tframe import activations
 from tframe import checker
 from tframe import context
 from tframe import initializers
+from tframe import linker
 from tframe.nets import RNet
 
 
@@ -63,13 +64,9 @@ class CellBase(RNet):
       assert x is not None
       net_z = self.neurons(
         x, s, scope='net_z', bias_initializer=bias_initializer)
-    state_size = num_units * unit_size
-    assert self._get_size(net_z) == state_size
 
-    # If unit size is 1,
-    if unit_size == 1: z = tf.sigmoid(net_z)
-    else: z = tf.reshape(tf.nn.softmax(tf.reshape(net_z, [-1, unit_size])),
-                         [-1, state_size], name='z')
+    # Calculate z
+    z = linker.softmax_over_groups(net_z, [(unit_size, num_units)], 'z')
 
     # Calculate opposite
     z_opposite = tf.subtract(1., z)
