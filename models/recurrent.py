@@ -326,7 +326,7 @@ class Recurrent(Model, RNet):
       dLtdS = tf.stack([dLtdS])
       # Calculate norm
       # od[grad_name] = tf.stack([dLtdS])
-      norm = tf.norm(dLtdS, ord=2, axis=2)
+      norm = tf.norm(dLtdS, ord=np.inf, axis=2)
       norm = norm / norm[0, -1]
       od['||{}||'.format(grad_name)] = norm
 
