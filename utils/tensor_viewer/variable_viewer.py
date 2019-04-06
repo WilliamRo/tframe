@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import re
 import numpy as np
 from collections import OrderedDict
 
@@ -121,9 +122,11 @@ class VariableViewer(Frame):
 
     # Get variable
     target = self._variable_dict
+    key = None
     for combo in self.combo_boxes:
       assert isinstance(combo, ttk.Combobox)
-      target = target[combo.get()]
+      key = combo.get()
+      target = target[key]
     assert isinstance(target, (tuple, list, VariableWithView))
 
     # Show target
@@ -135,7 +138,7 @@ class VariableViewer(Frame):
     else:
       variable = target[self.index]
       if len(variable.shape) == 1: self._plot_array(variable, target)
-      else: self._show_image(variable, target)
+      else: self._show_image(variable, target, key)
 
     # Tight layout
     self.figure.tight_layout()
@@ -150,21 +153,23 @@ class VariableViewer(Frame):
   def set_ax2_invisible(self):
     self.ax2.set_axis_off()
 
-  def _show_image(self, image, images):
+  def _show_image(self, image, images, key):
     self.set_ax2_invisible()
     plt.setp(self.subplot, xticks=[], yticks=[])
 
     abs_variable = np.abs(image)
     image = abs_variable if self.show_absolute_value else image
 
+    is_gate = re.match(r'\w+_gate', key) is not None or key == 'recurrent_z'
     # Show heat_map
-    cmap = 'Oranges' if self.show_absolute_value else 'bwr'
+    cmap = 'OrRd' if self.show_absolute_value or is_gate else 'bwr'
     im = self._heat_map(image, cmap=cmap)
-    if self.show_value: self._annotate_heat_map(im, image)
-
-    # Set color limits
+    # if self.show_value: self._annotate_heat_map(im, image)
     pool = np.abs(images) if self.use_clim else abs_variable
-    if self.show_absolute_value:
+    # Set color limits
+    if is_gate:
+      im.set_clim(0, 1)
+    elif self.show_absolute_value:
       im.set_clim(np.min(pool), np.max(pool))
     else:
       lim = np.max(pool)
