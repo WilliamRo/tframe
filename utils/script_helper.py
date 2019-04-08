@@ -57,6 +57,8 @@ class Helper(object):
     self.hyper_parameters = OrderedDict()
     self.constraints = OrderedDict()
 
+    self._python_cmd = 'python'
+
   # region : Properties
 
   @property
@@ -104,6 +106,9 @@ class Helper(object):
       self.common_parameters[flag_name] = val
       self._show_flag_if_necessary(flag_name, val)
 
+  def set_python_cmd_suffix(self, suffix='3'):
+    self._python_cmd = 'python{}'.format(suffix)
+
   def run(self, times=1, save=False, mark=''):
     # Set the corresponding flags if save
     if save:
@@ -123,7 +128,7 @@ class Helper(object):
         if params_string in history: continue
         history.append(params_string)
 
-        call(['python', self.module_name] + params_list)
+        call([self._python_cmd, self.module_name] + params_list)
         # call(self.command_head + params_list)
         print()
 
