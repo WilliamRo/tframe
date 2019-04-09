@@ -6,6 +6,7 @@ from .flag import Flag
 
 
 class RNNConfigs(object):
+  val_num_steps = Flag.integer(-1, 'Validation number steps')
   # VIC
   allow_loss_in_loop = Flag.boolean(
     False, 'Set to False to avoid being slow')

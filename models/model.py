@@ -322,13 +322,17 @@ class Model(object):
     # Batch validation: Calculate metric batch by batch
     metric_list = []
     total = 0
-    for batch in self.get_data_batches(data, batch_size, -1, False):
+    # Constrain
+    if hub.val_num_steps != -1: assert batch_size == 1
+    for batch in self.get_data_batches(
+        data, batch_size, hub.val_num_steps, False):
       # Batch validation on irregular data
       if (batch.active_length is not None and
           max(batch.active_length) > min(batch.active_length)):
         # TODO: need a corresponding mechanism to ensure metric_foreach
         #       exists
-        results = self._get_active_tensor(batch, self.metric_foreach)
+        results = self._get_active_tensor(
+          batch, self.metric_foreach, no_partition=hub.val_num_steps==-1)
         for result in results:
           if not batch.n_to_one:
             assert isinstance(result, np.ndarray) and len(result.shape) == 1
@@ -481,7 +485,7 @@ class Model(object):
 
   # region : Private Methods
 
-  def _get_active_tensor(self, batch, fetches):
+  def _get_active_tensor(self, batch, fetches, no_partition=True):
     """
     Returns a list if fetches is a list. Otherwise a tf.Tensor will be returned.
     For common data batches, this method returns a (list of) tf.Tensor
@@ -496,15 +500,29 @@ class Model(object):
     assert isinstance(batch, DataSet)
     fetches_is_single = not isinstance(fetches, (tuple, list))
 
+    if self.input_type is InputTypes.RNN_BATCH:
+      # TODO: need to be refactored
+      assert hasattr(self, 'reset_buffers') and hasattr(self, 'set_buffers')
+      assert hasattr(self, '_state_slot')
+      # Put state into fetches if necessary
+      if not no_partition:
+        if fetches_is_single: fetches = [fetches]
+        fetches.append(self._state_slot._op)
+
     feed_dict = self._get_default_feed_dict(batch, is_training=False)
     values = self.session.run(fetches, feed_dict)
-    checker.check_type(values, np.ndarray)
 
+    # TODO
+    # checker.check_type(values, np.ndarray)
+
+    # Recover
+    if not no_partition: self.set_buffers(values.pop(-1), is_training=False)
     # If values is a single element, wrap it into a list for potential slicing
-    if fetches_is_single: values = [values]
+    elif fetches_is_single: values = [values]
 
     al = batch.active_length
     if self.input_type is InputTypes.RNN_BATCH:
+      # Set back
       if al is not None:
         assert isinstance(al, list) and len(al) == batch.size
         outputs = [[y[:l] for y, l in zip(value, al)] for value in values]

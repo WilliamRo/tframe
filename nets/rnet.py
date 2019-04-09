@@ -32,7 +32,8 @@ class RNet(Net):
 
     # Attributes
     self._inter_type = self.RECURRENT
-    self._state_array = None
+    self._train_state_buffer = None
+    self._eval_state_buffer = None
     self._state_size = None
     self._init_state = None
     self._weights = None
@@ -206,10 +207,17 @@ class RNet(Net):
 
   # region : Public Methods
 
-  def reset_buffers(self, batch_size):
+  def set_buffers(self, state_array, is_training=True):
+    # assert isinstance(state_array, tf.Tensor)
+    if is_training: self._train_state_buffer = state_array
+    else: self._eval_state_buffer = state_array
+
+  def reset_buffers(self, batch_size, is_training=True):
     assert self.is_root
-    self._state_array = self._get_zero_state(batch_size)
+    if is_training: self._train_state_buffer = self._get_zero_state(batch_size)
+    else: self._eval_state_buffer = self._get_zero_state(batch_size)
     # TODO: BETA
+    assert not hub.use_rtrl
     if hub.use_rtrl:
       self._gradient_buffer_array = self._get_zero_gradient_buffer(
         batch_size)
@@ -239,7 +247,7 @@ class RNet(Net):
       else:
         raise TypeError('!! Unknown type of states: {}'.format(type(state)))
 
-    self._state_array = _reset(self._state_array)
+    self._train_state_buffer = _reset(self._train_state_buffer)
     # TODO: BETA
     if hub.use_rtrl:
       self._gradient_buffer_array = _reset(self._gradient_buffer_array)
@@ -276,14 +284,15 @@ class RNet(Net):
 
     rnn_dict = {}
     if is_training:
-      state = self._state_array
+      state = self._train_state_buffer
       assert state is not None
       # TODO: BETA
       # if hub.use_rtrl:
       #   rnn_dict[self.gradient_buffer_placeholder] = self._gradient_buffer_array
     else:
       checker.check_positive_integer(batch_size)
-      state = self._get_zero_state(batch_size)
+      # state = self._get_zero_state(batch_size)
+      state = self._eval_state_buffer
 
     rnn_dict[self.init_state] = state
     return rnn_dict

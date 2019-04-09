@@ -178,8 +178,9 @@ class Predictor(Feedforward, Recurrent):
     # Update recurrent model
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
     results = self._update_group.run(feed_dict)
-    self._state_array = results.pop(self._state_slot)
+    self.set_buffers(results.pop(self._state_slot), is_training=True)
     # TODO: BETA
+    assert not hub.use_rtrl
     if hub.use_rtrl:
       self._gradient_buffer_array = results.pop(self._grad_buffer_slot)
     if hub.test_grad:
@@ -227,6 +228,8 @@ class Predictor(Feedforward, Recurrent):
             else: info = batch.reset_batch_indices
             console.write_line('{}'.format(info))
           self.reset_part_buffer(batch.reset_batch_indices, batch.reset_values)
+      elif batch.should_reset_state:
+        self.reset_buffers(batch.size, is_training=False)
 
       # If is not training, always set a zero state to model
       feed_dict.update(self._get_rnn_dict(is_training, batch.size))
