@@ -4,14 +4,17 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tframe import checker
+from tframe import hub
 
 
 class GradientClipOptimizer(object):
-  def __init__(self, tf_optimizer, threshold):
+  def __init__(self, tf_optimizer, threshold, method='norm'):
     assert isinstance(tf_optimizer, tf.train.Optimizer)
     self._tf_optimizer = tf_optimizer
     self._threshold = checker.check_type(threshold, float)
     assert threshold >= 0
+    self._method = method
+    assert method in ('norm', 'global_norm', 'value', 'avg_norm')
 
   # region : Public Methods
 
@@ -35,9 +38,19 @@ class GradientClipOptimizer(object):
 
     # Clip gradient if necessary
     if self._threshold > 0:
-      grads_and_vars = [
-        (tf.clip_by_value(grad, -self._threshold, self._threshold), var)
-        for grad, var in grads_and_vars]
+      if self._method in ('norm', 'value', 'avg_norm'):
+        if self._method == 'norm': method = tf.clip_by_norm
+        elif self._method == 'value': method = tf.clip_by_value
+        else: method = tf.clip_by_average_norm
+        grads_and_vars = [
+          (method(grad, -self._threshold, self._threshold), var)
+          for grad, var in grads_and_vars]
+      else:
+        assert self._method == 'global_norm'
+        grads = [g for g, _ in grads_and_vars]
+        clipped_grads = tf.clip_by_global_norm(grads, self._threshold)
+        vars_ = [v for _, v in grads_and_vars]
+        grads_and_vars = tuple(zip(clipped_grads, vars_))
 
     return grads_and_vars
 

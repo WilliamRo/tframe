@@ -29,3 +29,4 @@ class TrainerConfigs(object):
 
   clip_threshold = Flag.float(
     0., 'Threshold for clipping gradients', is_key=None)
+  clip_method = Flag.string('norm', 'Gradient clip method', is_key=None)
