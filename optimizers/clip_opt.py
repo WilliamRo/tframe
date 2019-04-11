@@ -50,7 +50,7 @@ class GradientClipOptimizer(object):
         grads = [g for g, _ in grads_and_vars]
         clipped_grads = tf.clip_by_global_norm(grads, self._threshold)
         vars_ = [v for _, v in grads_and_vars]
-        grads_and_vars = tuple(zip(clipped_grads, vars_))
+        grads_and_vars = list(zip(clipped_grads, vars_))
 
     return grads_and_vars
 
