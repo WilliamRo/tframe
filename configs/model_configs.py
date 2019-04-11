@@ -29,6 +29,7 @@ class ModelConfigs(object):
   num_layers = Flag.integer(1, 'Layer number', is_key=None)
   input_shape = Flag.list([], 'Input shape of samples')
   output_dim = Flag.integer(0, 'Output dimension of a model')
+  target_dim = Flag.integer(0, 'User specified target dim of a model')
   num_classes = Flag.integer(-1, 'Class number for classification tasks')
   memory_depth = Flag.integer(1, 'Memory depth for system identification')
   loss_function = Flag.whatever('cross_entropy', 'Loss function')

@@ -149,13 +149,18 @@ class Predictor(Feedforward, Recurrent):
     self._define_train_step(optimizer)
 
   def _plug_target_in(self, shape):
+    dtype = hub.dtype
+    if hub.target_dim != 0: shape[-1] = hub.target_dim
+    # If target is sparse label
+    if hub.target_dim == 1: dtype = tf.int32
+
     # Handle recurrent situation
     if self._targets.tensor is not None:
       # targets placeholder has been plugged in Recurrent._build_while_free
       #   method
       assert self.master == Recurrent
       return
-    target_tensor = tf.placeholder(hub.dtype, shape, name='targets')
+    target_tensor = tf.placeholder(dtype, shape, name='targets')
     self._targets.plug(target_tensor, collection=pedia.default_feed_dict)
 
   def _plug_val_target_in(self, val_targets):
