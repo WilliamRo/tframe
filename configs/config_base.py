@@ -198,7 +198,8 @@ class Config(
     optimizer = self.optimizer(self.learning_rate)
     if self.clip_threshold > 0:
       assert self.clip_method in ('norm', 'value', 'global_norm', 'avg_norm')
-      optimizer = GradientClipOptimizer(optimizer, self.clip_threshold)
+      optimizer = GradientClipOptimizer(
+        optimizer, self.clip_threshold, method=self.clip_method)
     return optimizer
 
   # endregion : Public Methods
