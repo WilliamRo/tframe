@@ -48,7 +48,7 @@ class GradientClipOptimizer(object):
       else:
         assert self._method == 'global_norm'
         grads = [g for g, _ in grads_and_vars]
-        clipped_grads = tf.clip_by_global_norm(grads, self._threshold)
+        clipped_grads, _ = tf.clip_by_global_norm(grads, self._threshold)
         vars_ = [v for _, v in grads_and_vars]
         grads_and_vars = list(zip(clipped_grads, vars_))
 
