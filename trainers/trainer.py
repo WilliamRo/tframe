@@ -44,6 +44,7 @@ class Trainer(object):
       probe=None,
       evaluate=None,
       terminator=None,
+      test_set=None,
   ):
     # Set model for trainer
     if not isinstance(model, tfr.models.Model):
@@ -53,7 +54,8 @@ class Trainer(object):
     # Date set attributes
     self._training_set = None
     self._validation_set = None
-    self.set_data(training_set, validation_set)
+    self._test_set = None
+    self.set_data(training_set, validation_set, test_set)
 
     # Set callable attributes
     self._snapshot_function = checker.check_callable(snapshot)
@@ -90,6 +92,12 @@ class Trainer(object):
     if self._validation_set is not None:
       assert isinstance(self._validation_set, TFRData)
     return self._validation_set
+
+  @property
+  def test_set(self):
+    if self._test_set is not None:
+      assert isinstance(self._test_set, TFRData)
+    return self._test_set
 
   @property
   def is_online(self):
@@ -140,13 +148,16 @@ class Trainer(object):
 
   # region : Public Methods
 
-  def set_data(self, training_set=None, validation_set=None):
+  def set_data(self, training_set=None, validation_set=None, test_set=None):
     if training_set is not None:
       self._check_data(training_set, 'training set')
       self._training_set = training_set
     if validation_set is not None:
       self._check_data(validation_set, 'validation set')
       self._validation_set = validation_set
+    if test_set is not None:
+      self._check_data(test_set, 'test set')
+      self._test_set = test_set
 
   # endregion : Public Methods
 
@@ -278,6 +289,18 @@ class Trainer(object):
         self.model.agent.put_down_criterion('Total Iterations', self.counter)
       else:
         self.model.agent.put_down_criterion('Total Rounds', rnd)
+      # Evaluate if necessary
+      if hub.evaluate_model:
+        for name, data_set in zip(
+            ('Train', 'Val', 'Test'),
+            (self.training_set, self.validation_set, self.test_set)):
+          # TODO
+          value = self.model.evaluate_model(
+            data_set, batch_size=hub.val_batch_size)
+          title = '{} {}'.format(name, self.metric.name)
+          self.model.agent.put_down_criterion(title, value)
+          self.model.agent.take_notes('{}: {:.2f}'.format(title, value))
+
     if self._save_model_at_training_end: self._save_model()
 
     return rnd

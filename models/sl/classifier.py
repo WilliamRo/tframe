@@ -85,6 +85,9 @@ class Classifier(Predictor):
       vr = ImageViewer(false_set)
       vr.show()
 
+    # Return accuracy
+    return accuracy
+
   @with_graph
   def classify(self, data, batch_size=None, extractor=None, return_probs=False):
     probs = self.batch_evaluation(

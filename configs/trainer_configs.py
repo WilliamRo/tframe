@@ -17,6 +17,8 @@ class TrainerConfigs(object):
   summary = Flag.boolean(True, 'Whether to write summary')
   epoch_as_step = Flag.boolean(True, '...')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
+  evaluate_model = Flag.boolean(
+    False, 'Whether to evaluate model after training')
 
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
   val_batch_size = Flag.integer(None, 'Batch size in batch validation')

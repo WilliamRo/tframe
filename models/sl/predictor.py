@@ -211,6 +211,8 @@ class Predictor(Feedforward, Recurrent):
     result = self.validate_model(data, batch_size, allow_sum=False)[self.metric]
     console.supplement('{} = {:.3f}'.format(self.metric.symbol, result))
 
+    return result
+
   # endregion : Public Methods
 
   # region : Private Methods
