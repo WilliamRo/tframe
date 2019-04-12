@@ -51,6 +51,8 @@ class VariableViewer(Frame):
     self.log_scale = True             # key_symbol: g
     self.is_on = True
 
+    self.for_export = False           # key_symbol: e
+
   @property
   def index(self):
     return (0 if self.related_criteria_figure is None else
@@ -146,6 +148,12 @@ class VariableViewer(Frame):
     # Draw update on canvas
     self.figure_canvas.draw()
 
+  def save_as_eps(self, file_name):
+    assert isinstance(file_name, str)
+    # self.figure.savefig(file_name, format='eps', dpi=1000)
+    self.figure.savefig(file_name, format='eps')
+    print('>> Figure saved to `{}`'.format(file_name))
+
   # endregion : Public Methods
 
   # region : Private Methods
@@ -159,6 +167,7 @@ class VariableViewer(Frame):
 
     abs_variable = np.abs(image)
     image = abs_variable if self.show_absolute_value else image
+    if self.for_export: image = np.transpose(image)
 
     is_gate = re.match(r'\w+_gate', key) is not None or key == 'recurrent_z'
     # Show heat_map
@@ -178,7 +187,10 @@ class VariableViewer(Frame):
     title = '|T|' if self.show_absolute_value else 'T'
     title += '({}x{})'.format(image.shape[0], image.shape[1])
     title += ', min={:.2f}, max={:.2f}'.format(np.min(image), np.max(image))
-    self.subplot.set_title(title)
+    if not self.for_export: self.subplot.set_title(title)
+    if self.for_export:
+      self.subplot.set_aspect('auto')
+      self.subplot.set_xlabel('time step')
 
   def _plot_array(self, array, arrays):
     self.set_ax2_invisible()

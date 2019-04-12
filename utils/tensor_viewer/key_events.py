@@ -48,6 +48,18 @@ def on_key_press(viewer, event):
     flag = not viewer.variable_viewer.log_scale
     viewer.variable_viewer.log_scale = flag
     viewer.variable_viewer.refresh()
+  elif key_symbol == 'e':  # e for export
+    flag = not viewer.variable_viewer.for_export
+    viewer.variable_viewer.for_export = flag
+    viewer.variable_viewer.refresh()
+  elif key_symbol == 's':
+    # Take a snapshot
+    file_name = tk.filedialog.asksaveasfilename(
+      filetypes=[('eps file', '.eps')],
+      initialfile = 'untitled',
+      defaultextension='.csv')
+    if file_name is not None:
+      viewer.variable_viewer.save_as_eps(file_name)
 
 
 def load_note(viewer, _):
