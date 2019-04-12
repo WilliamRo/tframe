@@ -19,6 +19,12 @@ class TrainerConfigs(object):
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
   evaluate_model = Flag.boolean(
     False, 'Whether to evaluate model after training')
+  evaluate_train_set = Flag.boolean(
+    False, 'Whether to evaluate train set after training')
+  evaluate_val_set = Flag.boolean(
+    False, 'Whether to evaluate validation set after training')
+  evaluate_test_set = Flag.boolean(
+    False, 'Whether to evaluate test set after training')
 
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
   val_batch_size = Flag.integer(None, 'Batch size in batch validation')

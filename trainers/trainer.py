@@ -290,10 +290,12 @@ class Trainer(object):
       else:
         self.model.agent.put_down_criterion('Total Rounds', rnd)
       # Evaluate if necessary
-      if hub.evaluate_model:
-        for name, data_set in zip(
-            ('Train', 'Val', 'Test'),
-            (self.training_set, self.validation_set, self.test_set)):
+      ds_dict = OrderedDict()
+      if hub.evaluate_train_set: ds_dict['Train'] = self.training_set
+      if hub.evaluate_val_set: ds_dict['Val'] = self.validation_set
+      if hub.evaluate_test_set: ds_dict['Test'] = self.test_set
+      if len(ds_dict) > 0:
+        for name, data_set in ds_dict.items():
           # TODO
           value = self.model.evaluate_model(
             data_set, batch_size=hub.val_batch_size)
