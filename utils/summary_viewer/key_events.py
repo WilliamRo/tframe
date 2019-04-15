@@ -31,6 +31,13 @@ def on_key_press(viewer, event):
     viewer.header.show_selected_note_content()
   elif key_symbol == 'Return':
     viewer.header.on_label_detail_click()
+  elif key_symbol == 's':
+    file_name = tk.filedialog.asksaveasfilename(
+      filetypes=[('Note file', '.note')],
+      initialfile = 'untitled',
+      defaultextension='.note')
+    if file_name is not None:
+      viewer.header.save_selected_note(file_name)
 
 
 def load_notes(viewer, _):

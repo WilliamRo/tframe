@@ -102,6 +102,14 @@ class HeaderControl(BaseControl):
       print(note.content)
       console.split()
 
+  def save_selected_note(self, file_name):
+    from tframe.utils.note import Note
+    assert isinstance(file_name, str)
+    note = self.selected_note
+    assert isinstance(note, Note)
+    note.save(file_name)
+    console.show_status('Note saved to `{}`'.format(file_name))
+
   # region : Public Methods
 
   # region : Private
