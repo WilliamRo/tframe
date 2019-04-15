@@ -38,13 +38,14 @@ class GradientClipOptimizer(object):
 
     # Clip gradient if necessary
     if self._threshold > 0:
+      bound = self._threshold
       if self._method in ('norm', 'value', 'avg_norm'):
-        if self._method == 'norm': method = tf.clip_by_norm
-        elif self._method == 'value': method = tf.clip_by_value
-        else: method = tf.clip_by_average_norm
-        grads_and_vars = [
-          (method(grad, -self._threshold, self._threshold), var)
-          for grad, var in grads_and_vars]
+        if self._method == 'norm':
+          method = lambda g: tf.clip_by_norm(g, bound)
+        elif self._method == 'value':
+          method = lambda g: tf.clip_by_value(g, -bound, bound)
+        else: method = lambda g: tf.clip_by_average_norm(g, bound)
+        grads_and_vars = [(method(grad), var) for grad, var in grads_and_vars]
       else:
         assert self._method == 'global_norm'
         grads = [g for g, _ in grads_and_vars]
