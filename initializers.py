@@ -22,6 +22,7 @@ def identity():
 def get(identifier, **kwargs):
   if identifier is None or isinstance(identifier, init_ops.Initializer):
     return identifier
+  if np.isscalar(identifier) and identifier == 0.: identifier = 'zeros'
 
   # TODO: ...
   if callable(identifier): return identifier
