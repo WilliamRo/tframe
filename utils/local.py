@@ -102,12 +102,13 @@ def wizard(pattern=None, extension=None, current_dir=None, max_depth=1,
   assert isinstance(max_depth, int) and max_depth >= 0
   assert (isinstance(pattern, str) and len(pattern) > 0 or
           isinstance(extension, str) and len(extension) > 0)
-  if extension is not None: pattern = r'[\w-]+\.{}'.format(extension)
+  if extension is not None: pattern = r'[\w \(\),-]+\.{}'.format(extension)
+  # if extension is not None: pattern = r'.+\.{}'.format(extension)
 
   input = lambda msg: console.read(msg, input_with_enter)
 
-  is_file = lambda name: re.fullmatch(r'[\w-]+\.[\w]+', name) is not None
-  is_dir = lambda name: re.fullmatch(r'[\w-]+', name) is not None
+  is_file = lambda name: re.fullmatch(r'[\w \(\),-]+\.[\w]+', name) is not None
+  is_dir = lambda name: re.fullmatch(r'[\w \(\),-]+', name) is not None
   is_target = lambda name: re.fullmatch(pattern, name) is not None
   def contain_target(dir, max_depth):
     full_path = lambda f: os.path.join(dir, f)
