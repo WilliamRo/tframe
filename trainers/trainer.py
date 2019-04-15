@@ -289,12 +289,16 @@ class Trainer(object):
         self.model.agent.put_down_criterion('Total Iterations', self.counter)
       else:
         self.model.agent.put_down_criterion('Total Rounds', rnd)
-      # Evaluate if necessary
+      # Evaluate the best model if necessary
       ds_dict = OrderedDict()
       if hub.evaluate_train_set: ds_dict['Train'] = self.training_set
       if hub.evaluate_val_set: ds_dict['Val'] = self.validation_set
       if hub.evaluate_test_set: ds_dict['Test'] = self.test_set
       if len(ds_dict) > 0:
+        # Load the best model
+        flag, _ = self.model.agent.load()
+        assert flag
+        # Evaluate the specified data sets
         for name, data_set in ds_dict.items():
           # TODO
           value = self.model.evaluate_model(
