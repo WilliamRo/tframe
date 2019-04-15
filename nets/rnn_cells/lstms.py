@@ -13,6 +13,75 @@ from tframe import hub
 from tframe import linker
 
 from tframe.nets import RNet
+from tframe.nets.rnn_cells.cell_base import CellBase
+
+
+class LSTM(CellBase):
+  """The most common variant of LSTMs"""
+
+  net_name = 'lstm'
+
+  def __init__(
+      self,
+      state_size,
+      activation='tanh',
+      weight_initializer='xavier_normal',
+      use_bias=True,
+      cell_bias_initializer='zeros',
+      input_bias_initializer='zeros',
+      output_bias_initializer='zeros',
+      forget_bias_initializer='zeros',
+      **kwargs):
+    # Call parent's constructor
+    CellBase.__init__(self, activation, weight_initializer,
+                      use_bias, cell_bias_initializer, **kwargs)
+
+    # Specific attributes
+    self._state_size = checker.check_positive_integer(state_size)
+    self._input_bias_initializer = initializers.get(input_bias_initializer)
+    self._output_bias_initializer = initializers.get(output_bias_initializer)
+    self._forget_bias_initializer = initializers.get(forget_bias_initializer)
+
+
+  @property
+  def init_state(self):
+    if self._init_state is not None: return self._init_state
+    get_placeholder = lambda name: self._get_placeholder(name, self._state_size)
+    self._init_state = (get_placeholder('h'), get_placeholder('c'))
+    return self._init_state
+
+
+  def _link(self, pre_states, x, **kwargs):
+    self._check_state(pre_states, 2)
+    h, c = pre_states
+
+    # Calculate net inputs
+    net_f, net_i, net_o, net_g = self.neurons(
+      x, h, scope='net_input', num_or_size_splits=4, use_bias=False)
+
+    # Get f, i, o, g
+    f = self._activate(net_f, self._forget_bias_initializer, 'f')
+    i = self._activate(net_i, self._input_bias_initializer, 'i')
+    o = self._activate(net_o, self._output_bias_initializer, 'o')
+    g = self._activate(net_g, self._bias_initializer, 'g')
+
+    # Calculate new_c
+    new_c = tf.add(tf.multiply(f, c), tf.multiply(i, g), 'new_c')
+    # Calculate new_h
+    new_h = tf.multiply(o, tf.tanh(new_c))
+
+    # Register gates and output
+    self._gate_dict['input_gate'] = i
+    self._gate_dict['forget_gate'] = f
+    self._gate_dict['output_gate'] = o
+    return new_h, (new_h, new_c)
+
+
+  def _activate(self, net_input, bias_initializer, name):
+    output = self.add_bias(net_input, bias_initializer, name)
+    if name in ('i', 'f', 'o'): return tf.sigmoid(output)
+    else: assert name == 'g'
+    return self._activation(output)
 
 
 class BasicLSTMCell(RNet):
@@ -78,7 +147,7 @@ class BasicLSTMCell(RNet):
   def init_state(self):
     """Concatenate H and C together for the convenience to calculate dL/dS
     """
-    # if self._init_state is not None: return self._init_state
+    if self._init_state is not None: return self._init_state
     # assert self._state_size is not None
     # self._init_state = self._get_placeholder('h_c', 2 * self._state_size)
     # return self._init_state
