@@ -156,7 +156,9 @@ def softmax_over_groups(net_input, groups, output_name='sog'):
   # s: group size; n: group number
   for (s, n), net_s in zip(groups, splitted):
     activated = net_s
-    if s == 1: activated = tf.sigmoid(activated)
+    if s == 1:
+      activated = tf.zeros_like(activated)
+      # activated = tf.sigmoid(activated)
     else:
       if n > 1: activated = tf.reshape(activated, [-1, s])
       activated = tf.nn.softmax(activated)
