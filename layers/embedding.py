@@ -27,6 +27,8 @@ class Embedding(Layer):
       initializer = tf.random_uniform_initializer(-0.1, 0.1)
     self._initializer = initializers.get(initializer)
 
+    self.neuron_scale = [hidden_size]
+
 
   @single_input
   def _link(self, indices, **kwargs):

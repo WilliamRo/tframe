@@ -187,6 +187,7 @@ class Onehot(Layer):
   def __init__(self, depth):
     assert isinstance(depth, int) and depth > 1
     self._depth = depth
+    self.neuron_scale = [depth]
 
 
   @single_input
