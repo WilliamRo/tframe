@@ -542,6 +542,8 @@ class Trainer(object):
     self.model.agent.take_down_scalars_and_tensors(
       scalars, tensors=tensors)
     self._inter_cut('Notes taken down.', prompt='[Export]')
+    # For quickly note taking
+    if self.th.terminate_on_note: self.th.force_terminate = True
 
   def _run_probe(self):
     if self._probe is None or self.th.probe_cycle == 0: return False

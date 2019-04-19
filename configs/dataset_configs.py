@@ -22,3 +22,5 @@ class DataConfigs(object):
     False, 'Whether to permute data (e.g. pMNIST)', is_key=None)
   bits = Flag.integer(
     2, 'Can be used in k-bit temporal order problem', is_key=None)
+
+  test_directly = Flag.boolean(False, 'Whether to use validation set')
