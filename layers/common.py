@@ -180,6 +180,23 @@ class Rescale(Layer):
     return output
 
 
+class Onehot(Layer):
+  full_name = 'onehot'
+  abbreviation = 'onehot'
+
+  def __init__(self, depth):
+    assert isinstance(depth, int) and depth > 1
+    self._depth = depth
+
+
+  @single_input
+  def _link(self, indices):
+    assert isinstance(indices, tf.Tensor)
+    assert indices.shape.as_list()[-1] == 1
+    return tf.one_hot(indices, self._depth)
+
+
+
 class Reshape(Layer):
 
   def __init__(self, shape=None):
