@@ -29,15 +29,15 @@ class Embedding(Layer):
 
 
   @single_input
-  def _link(self, ids, **kwargs):
-    assert isinstance(ids, tf.Tensor) and len(ids.shape) == 2
-    assert ids.shape.as_list()[1] == 1
-    ids = tf.reshape(ids, [-1])
+  def _link(self, indices, **kwargs):
+    assert isinstance(indices, tf.Tensor) and len(indices.shape) == 2
+    assert indices.shape.as_list()[1] == 1
+    indices = tf.squeeze(indices, squeeze_dims=-1)
     
     with tf.device("/cpu:0"):
       embedding = tf.get_variable(
 				"embedding", [self._vocab_size, self._hidden_size], dtype=tf.float32,
         initializer=self._initializer)
-      inputs = tf.nn.embedding_lookup(embedding, ids)
+      inputs = tf.nn.embedding_lookup(embedding, indices)
     
     return inputs
