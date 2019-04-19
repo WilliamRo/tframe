@@ -192,7 +192,9 @@ class Onehot(Layer):
   @single_input
   def _link(self, indices):
     assert isinstance(indices, tf.Tensor)
-    assert indices.shape.as_list()[-1] == 1
+    shape = indices.shape.as_list()
+    assert shape[-1] == 1
+    indices = tf.reshape(indices, shape[:-1])
     return tf.one_hot(indices, self._depth)
 
 
