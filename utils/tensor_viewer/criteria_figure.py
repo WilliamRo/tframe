@@ -209,7 +209,10 @@ class CriteriaFigure(Frame):
     """ Set slider position according to index
     """
     # Calculate relative index \in [0.0, 1.0]
-    rel_index = 1. * self._cursor / (self.length - 1)
+    if self.length > 1:
+      rel_index = 1. * self._cursor / (self.length - 1)
+    else: rel_index = 0
+
     rel_index *= (1 - self.SLIDER_WIDTH)
 
     lo = max(0.0, rel_index)
