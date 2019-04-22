@@ -86,7 +86,7 @@ class GDU(CellBase):
       assert isinstance(c[2], (int, float)) and 0 < c[2] <= c[0]
       configs[i] = tuple(c)
     self._groups = tuple(configs)
-    self._state_size = sum([np.prod(g[0:2]) for g in self._groups])
+    self._state_size = int(sum([np.prod(g[0:2]) for g in self._groups]))
     # Set config string
     self._config_string = '+'.join(['x'.join(
       [str(n) if i < 2 else '{:.1f}'.format(n) for i, n in enumerate(g)])

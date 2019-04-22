@@ -305,7 +305,7 @@ class RNet(Net):
         (2) a tuple: tuple([get_size(s) for s in `state tuple`])
     """
     # Check num_or_sizes
-    if isinstance(num_or_sizes, int):
+    if isinstance(num_or_sizes, (int, np.int32)):
       assert num_or_sizes > 0 and self._state_size is not None
       sizes = (self._state_size,) * num_or_sizes
     else:
@@ -316,7 +316,7 @@ class RNet(Net):
     # Check state
     assert len(state) == len(sizes)
     for s, size in zip(state, sizes):
-      assert isinstance(s, tf.Tensor) and isinstance(size, int)
+      assert isinstance(s, tf.Tensor) and isinstance(size, (int, np.int32))
       if size == 1:
         assert len(s.shape.as_list()) == 1 or s.shape.as_list()[1] == 1
       else: assert s.shape.as_list()[1] == size
