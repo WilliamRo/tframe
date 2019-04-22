@@ -137,15 +137,15 @@ def get_multiply(truncate=False):
 # region : Activations
 
 def softmax_over_groups(net_input, groups, output_name='sog'):
-  """ Group of size 1 will be activated using sigmoid.
-      Ref: Grouped Distributor Unit (2019)
+  """ Ref: Grouped Distributor Unit (2019)
   """
   # Sanity check
   assert isinstance(net_input, tf.Tensor) and isinstance(groups, (list, tuple))
   for g in groups:
-    assert isinstance(g, (tuple, list)) and len(g) == 2
+    assert isinstance(g, (tuple, list)) and len(g) in (2, 3)
     assert isinstance(g[0], int) and g[0] > 0
     assert isinstance(g[1], int) and g[1] > 0
+    if len(g) == 3: assert 0 < g[2] <= g[0]
   group_sizes = [g[0]*g[1] for g in groups]
   assert sum(group_sizes) == get_dimension(net_input)
 
@@ -154,15 +154,26 @@ def softmax_over_groups(net_input, groups, output_name='sog'):
               else [net_input])
   output_list = []
   # s: group size; n: group number
-  for (s, n), net_s in zip(groups, splitted):
+  # for (s, n), net_s in zip(groups, splitted):
+  for g, net_s in zip(groups, splitted):
+    d = None
+    if len(g) == 2: s, n = g
+    else: s, n, d = g
     activated = net_s
     if s == 1:
-      activated = tf.zeros_like(activated)
-      # activated = tf.sigmoid(activated)
+      activated = tf.ones_like(activated)
     else:
       if n > 1: activated = tf.reshape(activated, [-1, s])
       activated = tf.nn.softmax(activated)
       if n > 1: activated = tf.reshape(activated, [-1, s*n])
+
+    if d is not None:
+      if d <= 1: activated = tf.multiply(d, activated)
+      else:
+        # b for base
+        b = 1.0 * (d - 1) / (s - 1)
+        activated = tf.add(b, tf.multiply(1 - b, activated))
+
     output_list.append(activated)
 
   return (tf.concat(output_list, axis=1, name=output_name)
