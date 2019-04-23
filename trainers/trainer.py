@@ -487,18 +487,25 @@ class Trainer(object):
     if len(fetches_dict) == 0: return tensors
     results = self.model.batch_evaluation(
       list(fetches_dict.values()), self.validation_set[:num])
-    # .. initialize each sub-dict
-    exemplar_names = []
-    for i in range(num):
-      name = 'Exemplar {}'.format(i)
-      tensors[name] = OrderedDict()
-      exemplar_names.append(name)
 
-    # .. fill tensor_dict
-    for i, array_list in enumerate(results):
-      tensor_name = list(fetches_dict.keys())[i]
-      for j, array in enumerate(array_list):
-        if j < num: tensors[exemplar_names[j]][tensor_name] = array[0]
+    # TODO: should be refactored
+    if isinstance(self.validation_set, SequenceSet):
+      # .. initialize each sub-dict
+      exemplar_names = []
+      for i in range(num):
+        name = 'Exemplar {}'.format(i)
+        tensors[name] = OrderedDict()
+        exemplar_names.append(name)
+
+      # .. fill tensor_dict
+      for i, array_list in enumerate(results):
+        tensor_name = list(fetches_dict.keys())[i]
+        for j, array in enumerate(array_list):
+          if j < num: tensors[exemplar_names[j]][tensor_name] = array[0]
+    else:
+      for i, array_list in enumerate(results):
+        tensor_name = list(fetches_dict.keys())[i]
+        tensors[tensor_name] = array_list[0][0]
 
     return tensors
 
