@@ -22,6 +22,7 @@ class GDU(CellBase):
       weight_initializer='xavier_normal',
       use_bias=True,
       bias_initializer='zeros',
+      reverse=False,
       **kwargs):
     """
     :param configs: a list or tuple of tuples with format (size, num, delta)
@@ -32,6 +33,7 @@ class GDU(CellBase):
                       use_bias, bias_initializer, **kwargs)
 
     # Specific attributes
+    self._reverse = checker.check_type(reverse, bool)
     self._config_string = ''
     self._groups = []
     self._set_configs(configs)
@@ -47,6 +49,7 @@ class GDU(CellBase):
     net_u = self.neurons(x, s, scope='net_u')
     u = linker.softmax_over_groups(net_u, self._groups, 'u_gate')
     z = tf.subtract(1., u, name='z_gate')
+    if self._reverse: u, z = z, u
     self._gate_dict['z_gate'] = z
     return u, z
 
