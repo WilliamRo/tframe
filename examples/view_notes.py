@@ -1,7 +1,7 @@
 import sys, os
-absolute_path = os.path.abspath(__file__)
+FILE_PATH = os.path.abspath(__file__)
 DIR_DEPTH = 2
-ROOT = absolute_path
+ROOT = FILE_PATH
 for _ in range(DIR_DEPTH + 1):
   ROOT = os.path.dirname(ROOT)
   sys.path.insert(0, ROOT)
@@ -9,21 +9,58 @@ from tframe.utils.summary_viewer.main_frame import SummaryViewer
 from tframe import local
 
 
-try:
-  notes_path = local.wizard('sum', current_dir=os.path.dirname(__file__),
-                            input_with_enter=False, max_depth=2)
-  print('>> Loading notes, please wait ...')
-except Exception as e:
-  import sys, traceback
-  traceback.print_exc(file=sys.stdout)
-  input('Press any key to quit ...')
-  raise e
+default_inactive_flags = (
+  'patience',
+  'shuffle',
+  'epoch',
+  'early_stop',
+  'warm_up_thres',
+  'mark',
+  'batch_size',
+  'save_mode',
+  'output_size',
+  'total_params',
+  'num_units',
+)
 
-viewer = SummaryViewer(
-  notes_path,
-  default_inactive_flags=(
-    'epoch',
-    'mark',
-  ))
-viewer.show()
+flags_to_ignore = (
+  'patience',
+  'shuffle',
+  'warm_up_thres',
+  'batch_size',
+  'epoch',
+  'early_stop',
+  'num_steps',
+)
 
+default_inactive_criteria = (
+  'Mean Record',
+  'Record',
+)
+
+
+while True:
+  try:
+    summ_path = local.wizard(extension='sum', max_depth=3,
+                             current_dir=os.path.dirname(FILE_PATH),
+                             # input_with_enter=True)
+                             input_with_enter=False)
+
+    if summ_path is None:
+      input()
+      continue
+    print('>> Loading notes, please wait ...')
+    viewer = SummaryViewer(
+      summ_path,
+      default_inactive_flags=default_inactive_flags,
+      default_inactive_criteria=default_inactive_criteria,
+      flags_to_ignore=flags_to_ignore,
+    )
+    viewer.show()
+
+  except Exception as e:
+    import sys, traceback
+    traceback.print_exc(file=sys.stdout)
+    input('Press any key to quit ...')
+    raise e
+  print('-' * 80)
