@@ -135,6 +135,7 @@ class ImageViewer(object):
   def show(self):
     assert isinstance(self.form, tk.Tk)
     self.form.after(20, self._move_to_center)
+    self.form.after(40, self._resize)
     self.form.mainloop()
 
   @staticmethod
