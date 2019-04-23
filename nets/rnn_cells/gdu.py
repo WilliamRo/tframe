@@ -23,6 +23,7 @@ class GDU(CellBase):
       use_bias=True,
       bias_initializer='zeros',
       reverse=False,
+      use_reset_gate=False,
       **kwargs):
     """
     :param configs: a list or tuple of tuples with format (size, num, delta)
@@ -34,6 +35,7 @@ class GDU(CellBase):
 
     # Specific attributes
     self._reverse = checker.check_type(reverse, bool)
+    self._use_reset_gate = checker.check_type(use_reset_gate, bool)
     self._config_string = ''
     self._groups = []
     self._set_configs(configs)
@@ -60,7 +62,12 @@ class GDU(CellBase):
     # - Calculate update gates
     u, z = self._get_gates(x, prev_s)
     # - Calculate s_bar
-    s_bar = self.neurons(x, prev_s, activation=self._activation, scope='s_bar')
+    s = prev_s
+    if self._use_reset_gate:
+      r = self.neurons(x, s, is_gate=True, scope='reset_gate')
+      self._gate_dict['reset_gate'] = r
+      s = tf.multiply(r, s)
+    s_bar = self.neurons(x, s, activation=self._activation, scope='s_bar')
     # - Update state
     with tf.name_scope('transit'):
       new_s = tf.add(tf.multiply(z, prev_s), tf.multiply(u, s_bar))
