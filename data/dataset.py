@@ -200,6 +200,7 @@ class DataSet(TFRData):
   # region : Public Methods
 
   def split(self, *sizes, names=None, over_classes=False, random=False):
+    """If over_classes is True, sizes are for each group"""
     # Sanity check
     if len(sizes) == 0: raise ValueError('!! split sizes not specified')
     elif len(sizes) == 1 and isinstance(sizes[0], (list, tuple)):
