@@ -145,7 +145,7 @@ def softmax_over_groups(net_input, groups, output_name='sog'):
     assert isinstance(g, (tuple, list)) and len(g) in (2, 3)
     assert isinstance(g[0], int) and g[0] > 0
     assert isinstance(g[1], int) and g[1] > 0
-    if len(g) == 3: assert 0 < g[2] <= g[0]
+    if len(g) == 3: assert 0 < g[2] <= g[0] or g[2] == -1
   group_sizes = [g[0]*g[1] for g in groups]
   assert sum(group_sizes) == get_dimension(net_input)
 
@@ -161,18 +161,20 @@ def softmax_over_groups(net_input, groups, output_name='sog'):
     else: s, n, d = g
     activated = net_s
     if s == 1:
-      activated = tf.ones_like(activated)
+      if d == -1: activated = tf.sigmoid(activated)
+      else: activated = tf.ones_like(activated)
     else:
       if n > 1: activated = tf.reshape(activated, [-1, s])
       activated = tf.nn.softmax(activated)
       if n > 1: activated = tf.reshape(activated, [-1, s*n])
 
     if d is not None:
-      if d <= 1: activated = tf.multiply(d, activated)
-      else:
+      if 0 < d <= 1: activated = tf.multiply(d, activated)
+      elif 1 < d <= s :
         # b for base
         b = 1.0 * (d - 1) / (s - 1)
         activated = tf.add(b, tf.multiply(1 - b, activated))
+      else: assert d == -1
 
     output_list.append(activated)
 

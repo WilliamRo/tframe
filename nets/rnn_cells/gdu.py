@@ -93,7 +93,7 @@ class GDU(CellBase):
       assert len(c) == 3
       checker.check_positive_integer(c[0])
       checker.check_positive_integer(c[1])
-      assert isinstance(c[2], (int, float)) and 0 < c[2] <= c[0]
+      assert isinstance(c[2], (int, float)) and (0 < c[2] <= c[0] or c[2] == -1)
       configs[i] = tuple(c)
     self._groups = tuple(configs)
     self._state_size = int(sum([np.prod(g[0:2]) for g in self._groups]))
