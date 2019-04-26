@@ -98,4 +98,4 @@ class RNNConfigs(object):
   test_grad = Flag.boolean(False, '...')
 
   # GDU configs
-  config_string = Flag.string(None, 'Config string', is_key=None)
+  gdu_string = Flag.string(None, 'Config string', is_key=None)
