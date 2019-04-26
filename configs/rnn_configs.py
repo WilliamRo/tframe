@@ -96,3 +96,6 @@ class RNNConfigs(object):
   use_rtrl = Flag.boolean(
     False, 'Whether to use RTRL in training RNN', is_key=None)
   test_grad = Flag.boolean(False, '...')
+
+  # GDU configs
+  config_string = Flag.string(None, 'Config string', is_key=None)
