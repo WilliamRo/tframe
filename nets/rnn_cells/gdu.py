@@ -36,23 +36,25 @@ class GDU(CellBase):
     # Specific attributes
     self._reverse = checker.check_type(reverse, bool)
     self._use_reset_gate = checker.check_type(use_reset_gate, bool)
-    self._config_string = ''
-    self._groups = []
-    self._set_configs(configs)
+
+    self._groups = self._get_groups(configs)
+    self._state_size = self._get_total_size(self._groups)
 
 
   @property
   def _scale_tail(self):
-    return '({})'.format(self._config_string)
+    return '({})'.format(
+      self._get_config_string(self._groups, reverse=self._reverse))
 
 
-  def _get_gates(self, x, s):
+  def _get_coupled_gates(self, x, s, configs, reverse):
+    assert isinstance(configs, (list, tuple)) and len(configs) > 0
     # u for update, z for zone-out
     net_u = self.neurons(x, s, scope='net_u')
-    u = linker.softmax_over_groups(net_u, self._groups, 'u_gate')
+    u = linker.softmax_over_groups(net_u, configs, 'u_gate')
     z = tf.subtract(1., u, name='z_gate')
-    if self._reverse: u, z = z, u
-    self._gate_dict['z_gate'] = z
+    if reverse: u, z = z, u
+    self._gate_dict['beta_gate'] = z
     return u, z
 
 
@@ -60,7 +62,8 @@ class GDU(CellBase):
     self._check_state(prev_s)
 
     # - Calculate update gates
-    u, z = self._get_gates(x, prev_s)
+    u, z = self._get_coupled_gates(
+      x, prev_s, self._groups, reverse=self._reverse)
     # - Calculate s_bar
     s = prev_s
     if self._use_reset_gate:
@@ -79,10 +82,33 @@ class GDU(CellBase):
 
   # region : Private Methods
 
-  def _set_configs(self, configs):
+  @staticmethod
+  def _get_total_size(groups):
+    assert isinstance(groups, (list, tuple))
+    return int(sum([np.prod(g[0:2]) for g in groups]))
+
+  @staticmethod
+  def _get_config_string(groups, reverse):
+    groups = list(groups)
+    for i, g_ in enumerate(groups):
+      g = list(g_)
+      g[:2] = [str(n) for n in g[:2]]
+      # if delta = 1, hide it; if delta = -1, replace it with `s`
+      if g[-1] == 1: g.pop(-1)
+      elif g[-1] == -1: g[-1] = 'S'
+      else: g[-1] = '{:.2f}'.format(g[-1])
+      # Set g back to groups
+      groups[i] = g
+    # Add reverse token if necessary
+    s = '+'.join(['x'.join(g) for g in groups])
+    if reverse: s += '|r'
+    return s
+
+  @staticmethod
+  def _get_groups(configs):
     # Parse config string if necessary
     if isinstance(configs, str):
-      configs = self._parse_config_string(configs)
+      configs = GDU._parse_config_string(configs)
     # Check configs
     assert isinstance(configs, (list, tuple))
     configs = list(configs)
@@ -95,15 +121,10 @@ class GDU(CellBase):
       checker.check_positive_integer(c[1])
       assert isinstance(c[2], (int, float)) and (0 < c[2] <= c[0] or c[2] == -1)
       configs[i] = tuple(c)
-    self._groups = tuple(configs)
-    self._state_size = int(sum([np.prod(g[0:2]) for g in self._groups]))
-    # Set config string
-    self._config_string = '+'.join(['x'.join(
-      [str(n) if i < 2 else '{:.1f}'.format(n) for i, n in enumerate(g)])
-      for g in self._groups])
+    return tuple(configs)
 
-
-  def _parse_config_string(self, config_string):
+  @staticmethod
+  def _parse_config_string(config_string):
     assert isinstance(config_string, str)
     configs = []
     for s in config_string.split('+'):

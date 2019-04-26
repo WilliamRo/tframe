@@ -136,17 +136,17 @@ def get_multiply(truncate=False):
 
 # region : Activations
 
-def softmax_over_groups(net_input, groups, output_name='sog'):
+def softmax_over_groups(net_input, configs, output_name='sog'):
   """ Ref: Grouped Distributor Unit (2019)
   """
   # Sanity check
-  assert isinstance(net_input, tf.Tensor) and isinstance(groups, (list, tuple))
-  for g in groups:
+  assert isinstance(net_input, tf.Tensor) and isinstance(configs, (list, tuple))
+  for g in configs:
     assert isinstance(g, (tuple, list)) and len(g) in (2, 3)
     assert isinstance(g[0], int) and g[0] > 0
     assert isinstance(g[1], int) and g[1] > 0
     if len(g) == 3: assert 0 < g[2] <= g[0] or g[2] == -1
-  group_sizes = [g[0]*g[1] for g in groups]
+  group_sizes = [g[0] * g[1] for g in configs]
   assert sum(group_sizes) == get_dimension(net_input)
 
   # Calculate output
@@ -155,7 +155,7 @@ def softmax_over_groups(net_input, groups, output_name='sog'):
   output_list = []
   # s: group size; n: group number
   # for (s, n), net_s in zip(groups, splitted):
-  for g, net_s in zip(groups, splitted):
+  for g, net_s in zip(configs, splitted):
     d = None
     if len(g) == 2: s, n = g
     else: s, n, d = g
