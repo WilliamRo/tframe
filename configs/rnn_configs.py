@@ -99,3 +99,9 @@ class RNNConfigs(object):
 
   # GDU configs
   gdu_string = Flag.string(None, 'Config string', is_key=None)
+  temporal_reverse = Flag.boolean(
+    False, 'Reverse alpha and beta gate temporally', is_key=None)
+  spatial_reverse = Flag.boolean(
+    False, 'Reverse alpha and beta gate spatially', is_key=None)
+  temporal_configs = Flag.string(None, 'Temporal config string', is_key=None)
+  spatial_configs = Flag.string(None, 'Spatial config string', is_key=None)
