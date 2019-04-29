@@ -2,9 +2,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from collections import OrderedDict
+
 import tensorflow as tf
 
 from tframe.core.function import Function
+from tframe import activations, initializers, checker, linker
 
 
 class Layer(Function):
@@ -36,6 +39,18 @@ class Layer(Function):
       initializer=tf.zeros_initializer() if fixed_zero else initializer,
       regularizer=None if fixed_zero else regularizer)
 
+  @property
+  def structure_tail(self):
+    if self.neuron_scale is not None:
+      ns_str = 'x'.join(['{}'.format(d) for d in self.neuron_scale])
+      return '({})'.format(ns_str)
+    return ''
+
+  def get_layer_string(self, scale, full_name=False):
+    result = self.abbreviation if not full_name else self.full_name
+    if scale: result += self.structure_tail
+    return result
+
 
 def single_input(_link):
 
@@ -56,4 +71,81 @@ def single_input(_link):
 
   return wrapper
 
+
+class LayerWithNeurons(Layer):
+  is_nucleus = True
+
+  def __init__(
+      self,
+      activation=None,
+      weight_initializer='xavier_normal',
+      use_bias=True,
+      bias_initializer='zeros',
+      **kwargs):
+
+    # Common attributes
+    if activation is None: self._activation = None
+    else: self._activation = activations.get(activation, **kwargs)
+    self._weight_initializer = initializers.get(weight_initializer)
+    self._use_bias = checker.check_type(use_bias, bool)
+    self._bias_initializer = initializers.get(bias_initializer)
+
+    self._output_dim = None
+    self.tensors_to_export = OrderedDict()
+
+  @single_input
+  def _link(self, x, **kwargs):
+    return self.forward(x, **kwargs)
+
+  def forward(self, x, **kwargs):
+    raise NotImplemented
+
+  def neurons(self,
+              x,
+              num=None,
+              is_gate=False,
+              activation=None,
+              scope=None,
+              truncate=False,
+              num_or_size_splits=None,
+              weight_initializer=None,
+              use_bias=None,
+              bias_initializer=None,
+              weight_regularizer=None,
+              bias_regularizer=None,
+              activity_regularizer=None,
+              **kwargs):
+    if num is None:
+      if isinstance(num_or_size_splits, int):
+        assert self._output_dim is not None
+        num = num_or_size_splits * self._output_dim
+      elif isinstance(num_or_size_splits, (list, tuple)):
+        num = sum(num_or_size_splits)
+      else:
+        assert self._output_dim is not None
+        num = self._output_dim
+    if activation is None and is_gate:
+      activation = tf.sigmoid
+    if weight_initializer is None:
+      weight_initializer = getattr(self, '_weight_initializer', None)
+    if use_bias is None:
+      use_bias = getattr(self, '_use_bias', None)
+    if bias_initializer is None:
+      bias_initializer = getattr(self, '_bias_initializer')
+    if weight_regularizer is None:
+      weight_regularizer = getattr(self, '_weight_regularizer', None)
+    if bias_regularizer is None:
+      bias_regularizer = getattr(self, '_bias_regularizer', None)
+    if activity_regularizer is None:
+      activity_regularizer = getattr(self, '_activity_regularizer', None)
+    return linker.neurons(
+      num=num, external_input=x, activation=activation, scope=scope,
+      use_bias=use_bias, truncate=truncate,
+      num_or_size_splits=num_or_size_splits,
+      weight_initializer=weight_initializer,
+      bias_initializer=bias_initializer,
+      weight_regularizer=weight_regularizer,
+      bias_regularizer=bias_regularizer,
+      activity_regularizer=activity_regularizer,
+      **kwargs)
 

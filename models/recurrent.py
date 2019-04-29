@@ -6,8 +6,8 @@ from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 
-from tframe import context
-from tframe import hub
+from tframe import context, hub
+from tframe import checker
 
 from tframe.models.model import Model
 from tframe.nets import RNet
@@ -230,6 +230,10 @@ class Recurrent(Model, RNet):
     assert len(results) == 0
     return y, state
 
+  # endregion: Build
+
+  # region : Methods for exporting tensors
+
   def _get_dL_dS_dict(self, dlds_nested, dsds_nested):
     dlds_flat, _ = ravel_nested_stuff(dlds_nested, with_indices=True)
     dsds_flat, indices = ravel_nested_stuff(dsds_nested, with_indices=True)
@@ -376,20 +380,45 @@ class Recurrent(Model, RNet):
     dLtdS = dLtdS.concat('dLt_dS')
     return dLtdS
 
-  # endregion: Build
+  # endregion : Methods for exporting tensors
 
+  # region : Public Methods
 
+  @staticmethod
+  def get_tensor_to_export(trainer):
+    """Used in trainer._take_notes_for_export"""
+    from tframe.trainers.trainer import Trainer
+    from tframe.data.sequences.seq_set import SequenceSet
+    assert isinstance(trainer, Trainer)
 
+    tensors = OrderedDict()
+    num = checker.check_positive_integer(trainer.th.sample_num)
+    # .. fetch tensors
+    fetches_dict = context.tensors_to_export
+    if len(fetches_dict) == 0: return tensors
+    results = trainer.model.batch_evaluation(
+      list(fetches_dict.values()), trainer.validation_set[:num])
 
+    # TODO: should be refactored
+    if isinstance(trainer.validation_set, SequenceSet):
+      # .. initialize each sub-dict
+      exemplar_names = []
+      for i in range(num):
+        name = 'Exemplar {}'.format(i)
+        tensors[name] = OrderedDict()
+        exemplar_names.append(name)
 
+      # .. fill tensor_dict
+      for i, array_list in enumerate(results):
+        tensor_name = list(fetches_dict.keys())[i]
+        for j, array in enumerate(array_list):
+          if j < num: tensors[exemplar_names[j]][tensor_name] = array[0]
+    else:
+      for i, array_list in enumerate(results):
+        tensor_name = list(fetches_dict.keys())[i]
+        tensors[tensor_name] = array_list[0][0]
 
+    return tensors
 
-
-
-
-
-
-
-
-
+  # endregion : Public Methods
 

@@ -477,37 +477,15 @@ class Trainer(object):
 
   def _get_tensors_to_export(self):
     """For now only RNN dynamics are tracked"""
-    tensors = OrderedDict()
-    if (self.model.input_type is not InputTypes.RNN_BATCH or
-        not self.th.validation_on):
-      return tensors
-    num = checker.check_positive_integer(self.th.sample_num)
-    # .. fetch tensors
-    fetches_dict = context.tensors_to_export
-    if len(fetches_dict) == 0: return tensors
-    results = self.model.batch_evaluation(
-      list(fetches_dict.values()), self.validation_set[:num])
+    from tframe.models.recurrent import Recurrent
+    from tframe.models.feedforward import Feedforward
 
-    # TODO: should be refactored
-    if isinstance(self.validation_set, SequenceSet):
-      # .. initialize each sub-dict
-      exemplar_names = []
-      for i in range(num):
-        name = 'Exemplar {}'.format(i)
-        tensors[name] = OrderedDict()
-        exemplar_names.append(name)
+    # This method is based on validation set
+    if not self.th.validation_on: return OrderedDict()
 
-      # .. fill tensor_dict
-      for i, array_list in enumerate(results):
-        tensor_name = list(fetches_dict.keys())[i]
-        for j, array in enumerate(array_list):
-          if j < num: tensors[exemplar_names[j]][tensor_name] = array[0]
-    else:
-      for i, array_list in enumerate(results):
-        tensor_name = list(fetches_dict.keys())[i]
-        tensors[tensor_name] = array_list[0][0]
-
-    return tensors
+    if self.model.input_type is InputTypes.RNN_BATCH:
+      return Recurrent.get_tensor_to_export(self)
+    else: return Feedforward.get_tensor_to_export(self)
 
   def _take_notes_for_export(self):
     if self.th.note_cycle == 0: return
@@ -529,23 +507,6 @@ class Trainer(object):
 
     # - Tensors
     tensors = self._get_tensors_to_export()
-
-    # def f(t, keys):
-    #   assert isinstance(t, tf.Variable)
-    #   last_scope = t.name.split('.')[-1]
-    #   for k in keys:
-    #     if k in last_scope: return True
-    #   return False
-    # if self.th.export_weights:
-    #   variable_dict = self.model.get_trainable_variables(
-    #     f=lambda t: f(t, ('weight', 'W', 'kernel')))
-    #   tensors.update(**variable_dict)
-    # if self.th.export_kernel:
-    #   tensors.update(**self.model.get_trainable_variables(
-    #     f=lambda t: f(t, ('kernel',))))
-    # if self.th.export_bias:
-    #   tensors.update(**self.model.get_trainable_variables(
-    #     f=lambda t: f(t, ('bias',))))
 
     # Take down
     self.model.agent.take_down_scalars_and_tensors(

@@ -13,6 +13,7 @@ from tframe.layers import Activation
 from tframe.layers import Input
 from tframe.utils import shape_string
 import tframe.utils.format_string as fs
+from tframe.utils.string_tools import merger
 
 from tframe import pedia
 from tframe import hub
@@ -53,6 +54,9 @@ class Net(Function):
     # Losses
     self._extra_loss = None
     # self._reg_loss = None
+
+    # Tensor extractor
+    self._tensor_extractors = []
 
   # region : Properties
 
@@ -166,15 +170,7 @@ class Net(Function):
 
   def _get_layer_string(self, f, scale, full_name=False):
     assert isinstance(f, Layer)
-    result = f.abbreviation if not full_name else f.full_name
-    if scale and f.neuron_scale is not None:
-      # self._output_scale = shape_string(
-      #   f.neuron_scale if f.output_scale is None else f.output_scale)
-      ns_str = 'x'.join(['{}'.format(d) for d in f.neuron_scale])
-      result += '({})'.format(ns_str)
-      # result += '({})'.format(f.neuron_scale if len(f.neuron_scale) > 1 else
-      #                         f.neuron_scale[0])
-    return result
+    return f.get_layer_string(scale, full_name)
 
   def structure_string(self, detail=True, scale=True):
     # Get functions to be added to structure string
@@ -197,14 +193,29 @@ class Net(Function):
       result += '('
 
     # Add children
-    for (i, f) in zip(range(len(self.children)), fs):
+    str_list, next_token = [], None
+    for f in fs:
       if isinstance(f, Net):
-        result += next_net if i != 0 else ''
-        result += f.structure_string(detail, scale)
+        if next_token is None: next_token = next_net
+        assert next_token == next_net
+        str_list.append(f.structure_string(detail, scale))
       else:
         assert isinstance(f, Layer)
-        result += next_layer if i != 0 else ''
-        result += self._get_layer_string(f, scale)
+        if next_token is None: next_token = next_layer
+        assert next_token == next_layer
+        str_list.append(self._get_layer_string(f, scale))
+
+    str_list = merger(str_list)
+    result += next_token.join(str_list)
+
+    # for (i, f) in zip(range(len(self.children)), fs):
+    #   if isinstance(f, Net):
+    #     result += next_net if i != 0 else ''
+    #     result += f.structure_string(detail, scale)
+    #   else:
+    #     assert isinstance(f, Layer)
+    #     result += next_layer if i != 0 else ''
+    #     result += self._get_layer_string(f, scale)
 
     # Check is_branch flag
     if self.is_branch:
@@ -228,6 +239,18 @@ class Net(Function):
     """
     if self._extra_loss is None: self._extra_loss = self._get_extra_loss()
     return self._extra_loss
+
+  @property
+  def layers(self):
+    """A customized net is also took as layer"""
+    if len(self.children) == 0: return [self]
+    layers = []
+    for child in self.children:
+      if isinstance(child, Layer): layers.append(child)
+      else:
+        assert isinstance(child, Net)
+        layers += child.layers
+    return layers
 
   # endregion : Properties
 
@@ -287,13 +310,22 @@ class Net(Function):
 
     # This will only happens when Net is empty
     if output is None: output = input_
-
+    # Extract tensors to export
+    for extractor in self._tensor_extractors:
+      assert callable(extractor)
+      extractor(self)
+    # Return
     return output
 
   # endregion : Overrode Methods
 
 
   # region : Public Methods
+
+  def register_extractor(self, extractor):
+    """Extractors will be used to extract tensors to export while linking"""
+    assert callable(extractor)
+    self._tensor_extractors.append(extractor)
 
   def add_to_last_net(self, layer, only_cascade=False):
     from tframe.nets.rnet import RNet
