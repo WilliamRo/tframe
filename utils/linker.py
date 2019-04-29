@@ -169,7 +169,7 @@ def softmax_over_groups(net_input, configs, output_name='sog'):
       if n > 1: activated = tf.reshape(activated, [-1, s*n])
 
     if d is not None:
-      if 0 < d <= 1: activated = tf.multiply(d, activated)
+      if 0 < d <= 1: activated = tf.multiply(float(d), activated)
       elif 1 < d <= s :
         # b for base
         b = 1.0 * (d - 1) / (s - 1)
