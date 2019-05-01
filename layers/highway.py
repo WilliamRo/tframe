@@ -64,7 +64,7 @@ class LinearHighway(LayerWithNeurons, Distributor):
 
     C = tf.subtract(1., T, name='carry_gate')
     if len(configs) > 0 and reverse: T, C = C, T
-    if hub.export_gates: self.tensors_to_export['transform_gate'] = T
+    if hub.export_gates: self.tensors_to_export['carry_gate'] = C
     return T, C
 
   def forward(self, x, **kwargs):
@@ -92,12 +92,12 @@ class LinearHighway(LayerWithNeurons, Distributor):
       if dim != current_dim:
         blocks.append([])
         indices.append([])
-      blocks[-1].append(layer.tensors_to_export['transform_gate'])
+      blocks[-1].append(layer.tensors_to_export['carry_gate'])
       indices[-1].append(i)
       current_dim = dim
     if len(blocks) == 0: return
     for ids, gates in zip(indices, blocks):
-      key = 'transform_gate {}'.format(ids[0])
+      key = 'carry_gate {}'.format(ids[0])
       if len(ids) > 1: key += '-{}'.format(ids[-1])
       # gate.shape = [bs, dim]
       tensor = tf.stack(gates, axis=1)
