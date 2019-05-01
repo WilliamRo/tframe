@@ -54,3 +54,5 @@ class ModelConfigs(object):
            'net.extra_loss')
 
   dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
+
+  use_recurrent_net = Flag.boolean(False, 'Whether to use recurrent net')
