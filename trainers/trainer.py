@@ -296,8 +296,9 @@ class Trainer(object):
       if hub.evaluate_test_set: ds_dict['Test'] = self.test_set
       if len(ds_dict) > 0:
         # Load the best model
-        flag, _ = self.model.agent.load()
-        assert flag
+        if hub.save_model:
+          flag, _ = self.model.agent.load()
+          assert flag
         # Evaluate the specified data sets
         for name, data_set in ds_dict.items():
           if not isinstance(data_set, TFRData):

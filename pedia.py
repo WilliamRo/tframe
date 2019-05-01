@@ -51,6 +51,8 @@ tensors_to_export = 'tensors_to_export'
 test = 'test'
 training = 'training'
 train_step_summaries = 'train_step_summaries '
+top_k_label = 'top_k_label'
+top_k_prob = 'top_k_prob'
 
 validation = 'validation'
 validation_summaries = 'validation_summaries'

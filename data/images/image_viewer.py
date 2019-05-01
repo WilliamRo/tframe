@@ -305,10 +305,20 @@ class ImageViewer(object):
       cursor = self._cursor
       prediction = predictions[cursor]
       if isinstance(prediction, np.ndarray): prediction = prediction[0]
-      info = 'Prediction: {}'.format(self._get_class_string(prediction))
+      # Decide color
       color = 'black'
       if self.labels is not None:
         color = 'green' if self.labels[cursor] == prediction else 'red'
+      if (pedia.top_k_prob in self.data_set.properties.keys() and
+          pedia.top_k_label in self.data_set.properties.keys()):
+        probs = self.data_set[pedia.top_k_prob][cursor]
+        preds = self.data_set[pedia.top_k_label][cursor]
+        assert preds[0] == prediction
+        info = ' '.join(
+          ['{}({:.1f})'.format(self._get_class_string(pred), prob * 100)
+           for pred, prob in zip(preds, probs)])
+      else:
+        info = 'Prediction: {}'.format(self._get_class_string(prediction))
       self.details.config(text=info, fg=color)
     else:
       self.details.config(text='No details', fg='grey')

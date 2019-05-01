@@ -70,16 +70,23 @@ class Classifier(Predictor):
       assert self.input_type is InputTypes.BATCH
       assert isinstance(data, DataSet)
       assert data.features is not None and data.targets is not None
+      top_k = hub.export_top_k if hub.export_top_k > 0 else 3
 
-      preds = self.classify(data, batch_size, extractor)
+      probs = self.classify(data, batch_size, extractor, return_probs=True)
+      probs_sorted = np.fliplr(np.sort(probs, axis=-1))
+      class_sorted = np.fliplr(np.argsort(probs, axis=-1))
+      preds = class_sorted[:, 0]
 
       false_indices = np.argwhere(results == 0).flatten()
-      false_features = data.features[false_indices]
-      false_targets = data.targets[false_indices]
       false_preds = preds[false_indices]
 
-      false_set = DataSet(false_features, false_targets, **data.properties)
+      probs_sorted = probs_sorted[false_indices, :top_k]
+      class_sorted = class_sorted[false_indices, :top_k]
+      false_set = data[false_indices]
+
       false_set.properties[pedia.predictions] = false_preds
+      false_set.properties[pedia.top_k_label] = class_sorted
+      false_set.properties[pedia.top_k_prob] = probs_sorted
 
       from tframe.data.images.image_viewer import ImageViewer
       vr = ImageViewer(false_set)
