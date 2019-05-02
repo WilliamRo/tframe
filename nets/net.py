@@ -208,15 +208,6 @@ class Net(Function):
     str_list = merger(str_list)
     result += next_token.join(str_list)
 
-    # for (i, f) in zip(range(len(self.children)), fs):
-    #   if isinstance(f, Net):
-    #     result += next_net if i != 0 else ''
-    #     result += f.structure_string(detail, scale)
-    #   else:
-    #     assert isinstance(f, Layer)
-    #     result += next_layer if i != 0 else ''
-    #     result += self._get_layer_string(f, scale)
-
     # Check is_branch flag
     if self.is_branch:
       result += ' -> output'
@@ -310,10 +301,15 @@ class Net(Function):
 
     # This will only happens when Net is empty
     if output is None: output = input_
+
     # Extract tensors to export
-    for extractor in self._tensor_extractors:
-      assert callable(extractor)
-      extractor(self)
+    if self.is_root:
+      for extractor in self._tensor_extractors:
+        assert callable(extractor)
+        extractor(self)
+      # Run buildin extractors
+      self.variable_extractor()
+
     # Return
     return output
 
@@ -489,3 +485,15 @@ class Net(Function):
     return self.structure_string()
 
   # endregion : Overrides
+
+  # region : Buildin extractors
+
+  def variable_extractor(self):
+    if hub.export_weights:
+      for v in self.var_list:
+        assert isinstance(v, tf.Variable)
+        if 'weight' in v.name.lower():
+          key = '/'.join(v.name.split('/')[1:])
+          context.variables_to_export[key] = v
+
+  # endregion : Buildin extractors

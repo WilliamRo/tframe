@@ -79,7 +79,8 @@ def neurons(num,
 
 def get_variable(name, shape, initializer='glorot_uniform'):
   initializer = initializers.get(initializer)
-  return tf.get_variable(name, shape, dtype=hub.dtype, initializer=initializer)
+  v = tf.get_variable(name, shape, dtype=hub.dtype, initializer=initializer)
+  return v
 
 def get_bias(name, dim, initializer='zeros'):
   initializer = initializers.get(initializer)

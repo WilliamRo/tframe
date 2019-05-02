@@ -485,8 +485,21 @@ class Trainer(object):
     if not self.th.validation_on: return OrderedDict()
 
     if self.model.input_type is InputTypes.RNN_BATCH:
-      return Recurrent.get_tensor_to_export(self)
-    else: return Feedforward.get_tensor_to_export(self)
+      tensor_dict = Recurrent.get_tensor_to_export(self)
+    else: tensor_dict = Feedforward.get_tensor_to_export(self)
+
+    # Add variables to export
+    v_fetches_dict = context.variables_to_export
+    if len(v_fetches_dict) > 0:
+      results = self.model.agent.session.run(list(v_fetches_dict.values()))
+      base_on_exemplars = len(tensor_dict) > 0
+      for key, value in zip(v_fetches_dict.keys(), results):
+        if base_on_exemplars:
+          for exemplar_dict in tensor_dict.values():
+            exemplar_dict[key] = value
+        else: tensor_dict[key] = value
+
+    return tensor_dict
 
   def _take_notes_for_export(self):
     if self.th.note_cycle == 0: return
@@ -508,7 +521,6 @@ class Trainer(object):
 
     # - Tensors
     tensors = self._get_tensors_to_export()
-
     # Take down
     self.model.agent.take_down_scalars_and_tensors(
       scalars, tensors=tensors)

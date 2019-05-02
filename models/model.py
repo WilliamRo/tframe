@@ -449,7 +449,7 @@ class Model(object):
       self, fetches, data_set, batch_size=None, extractor=None):
     # Sanity check
     if isinstance(fetches, (list, tuple)) and len(fetches) == 0: return []
-    checker.check_type(fetches, tf.Tensor)
+    checker.check_type_v2(fetches, (tf.Tensor, tf.Variable))
     assert isinstance(data_set, TFRData)
     fetches_is_single = not isinstance(fetches, (tuple, list))
     # Wrap fetches into a list if necessary
@@ -497,7 +497,7 @@ class Model(object):
     (1) batch_evaluation: fetches is a list of tensors.
     (2) validate_model: fetches is a single metric.
     """
-    checker.check_type(fetches, tf.Tensor)
+    checker.check_type_v2(fetches, (tf.Tensor, tf.Variable))
     assert isinstance(batch, DataSet)
     fetches_is_single = not isinstance(fetches, (tuple, list))
 

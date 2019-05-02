@@ -15,7 +15,8 @@ import tframe.utils.checker as checker
 class Context(object):
   """The author is too lazy to add a description"""
   _LOSSES_LIST = '_LOSSES_LIST'
-  _EXPORT_DICT = '_EXPORT_DICT'
+  _TENSORS_EXPORT_DICT = '_TENSOES_EXPORT_DICT'
+  _VARIABLE_EXPORT_DICT = '_VARIABLE_EXPORT_DICT'
 
   S_IN_DYDS = 'S_IN_DYDS'
 
@@ -72,7 +73,12 @@ class Context(object):
   @property
   def tensors_to_export(self):
     return self.get_collection_by_key(
-      self._EXPORT_DICT, init_if_necessary=True, val_type=dict)
+      self._TENSORS_EXPORT_DICT, init_if_necessary=True, val_type=dict)
+
+  @property
+  def variables_to_export(self):
+    return self.get_collection_by_key(
+      self._VARIABLE_EXPORT_DICT, init_if_necessary=True, val_type=dict)
 
   # endregion : Properties
 
@@ -134,7 +140,7 @@ class Context(object):
 
   def add_tensor_to_export(self, name, tensor):
     assert isinstance(name, str)
-    self.add_to_dict_collection(self._EXPORT_DICT, name, tensor)
+    self.add_to_dict_collection(self._TENSORS_EXPORT_DICT, name, tensor)
 
   # endregion : Collection short cuts
 

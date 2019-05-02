@@ -16,6 +16,15 @@ def check_tensor_shape(tensor1, tensor2, name1=None, name2=None):
         name1, shape1, name2, shape2))
 
 
+def check_type_v2(inputs, types):
+  objects = inputs if isinstance(inputs, (tuple, list)) else (inputs,)
+  for obj in objects:
+    if not isinstance(obj, types):
+      raise TypeError('!! Object {} must be an instance of {}'.format(
+        obj, types))
+  return inputs
+
+
 def check_type(inputs, type_tuples):
   """
   Check the types of inputs
