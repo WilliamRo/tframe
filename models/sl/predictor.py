@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from astropy.units.tests.test_quantity_decorator import test_kwarg_wrong_unit
 
 from tframe.models.model import Model
 from tframe.models.feedforward import Feedforward
@@ -94,9 +95,11 @@ class Predictor(Feedforward, Recurrent):
     # Initiate targets and add it to collection
     self._plug_target_in(self.outputs.shape_list)
 
-    # Define loss
+    # Define loss TODO:
     use_logits = (kwargs.get('use_logits', False) or
-                  isinstance(loss, str) and 'cross_entropy' in loss)
+                  context.logits_tensor is not None)
+    # use_logits = (kwargs.get('use_logits', False) or
+    #               isinstance(loss, str) and 'cross_entropy' in loss)
     with tf.name_scope('Loss'):
       # if loss == 'cross_entropy':
       if use_logits and self.logits_tensor is not None:

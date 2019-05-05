@@ -171,7 +171,7 @@ class Recurrent(Model, RNet):
     state = results.pop(0)
     # 3. Logits
     if self.logits_tensor is not None:
-      self._logits_tensor = transpose_tensor(results.pop(0), [1, 0])
+      context.logits_tensor = transpose_tensor(results.pop(0), [1, 0])
     # 4. Tensors to export
     if hub.export_tensors_to_note:
       self._set_tensors_to_export(

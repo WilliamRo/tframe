@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
+
 import tensorflow as tf
 import tframe.activations as activations
 import tframe.initializers as initializers
@@ -9,6 +11,7 @@ import tframe.regularizers as regularizers
 
 from tframe import hub
 from tframe import context
+from tframe.utils.maths.periodicals import bit_waves
 
 
 # region : Standard units
@@ -138,7 +141,9 @@ def get_multiply(truncate=False):
 # region : Activations
 
 def softmax_over_groups(net_input, configs, output_name='sog'):
-  """ Ref: Grouped Distributor Unit (2019)
+  """
+  configs = ((size, num, [delta]), ...)
+  Ref: Grouped Distributor Unit (2019)
   """
   # Sanity check
   assert isinstance(net_input, tf.Tensor) and isinstance(configs, (list, tuple))
@@ -183,3 +188,68 @@ def softmax_over_groups(net_input, configs, output_name='sog'):
           if len(output_list) > 1 else output_list[0])
 
 # endregion : Activations
+
+# region : Bit Max
+
+def _get_waves(num_bits):
+  key = 'bit_waves_{}'.format(num_bits)
+  if key in context.reuse_dict.keys(): return context.reuse_dict[key]
+  waves = tf.constant(bit_waves(num_bits, stack=True, axis=-1), dtype=hub.dtype)
+  context.reuse_dict[key] = waves
+  return waves
+
+def bit_max(x, num_classes, heads=1, **kwargs):
+  """Bit max
+  :param x: a tensor of shape (batch_size, dim)
+  :param num_classes: output dimension
+  :param heads: heads #
+  :return: a tensor y with the same shape as x, sum(y[k, :]) == 1 for all k
+  """
+  # Sanity check
+  assert isinstance(num_classes, int) and num_classes > 1
+  assert isinstance(heads, int) and heads > 0
+  # Get bits
+  num_bits = int(np.ceil(np.log2(num_classes)))
+
+  # Calculate activations for bits
+  # a.shape = (bs, num_bits*heads)
+  a = neurons(
+    num_bits*heads, x, activation='sigmoid', scope='bit_activation', **kwargs)
+  if heads > 1:
+    # a.shape => (heads, bs, num_bits)
+    a = tf.reshape(a, [-1, num_bits, heads])
+    a = tf.transpose(a, [2, 0, 1])
+  # a.shape => ([heads, ]bs, 2**num_bits, num_bits)
+  a = tf.stack([a] * (2 ** num_bits), axis=-2)
+
+  # Calculate bit_max
+  # waves.shape = (1, 2**num_bits, num_bits)
+  waves = _get_waves(num_bits)
+  coef = tf.subtract(1., tf.multiply(2., a))
+  wave_stack = tf.add(tf.multiply(waves, coef), a)
+  # bit_max.shape = ([heads, ]bs, 2**num_bits)
+  bit_max = tf.reduce_prod(wave_stack, axis=-1)
+
+  # Trim if necessary
+  scale = 2 ** num_bits
+  if scale > num_classes:
+    delta = (scale - num_classes) // 2
+    # Trim
+    if heads == 1: bit_max = bit_max[:, delta:num_classes+delta]
+    else: bit_max = bit_max[:, :, delta:num_classes+delta]
+    # Normalize
+    sums = tf.reduce_sum(bit_max, axis=-1, keepdims=True) + 1e-6
+    bit_max = tf.divide(bit_max, sums)
+
+  # Add up if necessary
+  if heads > 1: bit_max = tf.reduce_sum(bit_max, axis=0)
+
+  return bit_max
+
+# endregion : Bit Max
+
+
+if __name__ == '__main__':
+  a = 12
+  print(int(np.ceil(np.log2(a))))
+

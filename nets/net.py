@@ -49,8 +49,6 @@ class Net(Function):
     self.branch_outputs = []
     self.kwargs = kwargs
 
-    self._logits_tensor = None
-
     # Losses
     self._extra_loss = None
     # self._reg_loss = None
@@ -93,11 +91,7 @@ class Net(Function):
 
   @property
   def logits_tensor(self):
-    if self._logits_tensor is not None: return self._logits_tensor
-    for child in reversed(self.children):
-      if isinstance(child, Net) and child.logits_tensor is not None:
-        return child.logits_tensor
-    return None
+    return context.logits_tensor
 
   @property
   def is_root(self):
@@ -275,9 +269,6 @@ class Net(Function):
       if isinstance(f, Net) and f.is_branch:
         self.branch_outputs.append(f(pioneer))
         continue
-
-      # Logits are always inputs of activation layers
-      if isinstance(f, Activation): self._logits_tensor = pioneer
 
       # Call each child
       output = f(pioneer)

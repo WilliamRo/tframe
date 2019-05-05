@@ -22,6 +22,7 @@ from tframe import pedia
 class Activation(Layer):
   """"""
   def __init__(self, identifier, **kwargs):
+    self._id = identifier
     self.abbreviation = (identifier if isinstance(identifier, six.string_types)
                          else identifier.__name__)
     self.full_name = self.abbreviation
@@ -31,11 +32,8 @@ class Activation(Layer):
   def _link(self, inputs, **kwargs):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
+    if self._id == 'softmax': tfr.context.set_logits_tensor(inputs)
     outputs = self._activation(inputs)
-    if hub.summary and hub.monitor_preact:
-      tfr.monitor.add_preact_summary(inputs)
-    if hub.summary and hub.monitor_postact:
-      tfr.monitor.add_postact_summary(outputs)
     return outputs
 
   @staticmethod

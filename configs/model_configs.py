@@ -56,3 +56,7 @@ class ModelConfigs(object):
   dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
 
   use_recurrent_net = Flag.boolean(False, 'Whether to use recurrent net')
+
+  use_bit_max = Flag.boolean(False, 'Whether to use bitmax', is_key=None)
+  use_softmax = Flag.boolean(False, 'Whether to use softmax', is_key=None)
+  num_heads = Flag.integer(1, 'Head #', is_key=None)

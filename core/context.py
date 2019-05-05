@@ -40,6 +40,8 @@ class Context(object):
 
     # Global variables
     self.metric_name = 'Metric'
+    self.logits_tensor = None
+    self.reuse_dict = OrderedDict()
 
   # region : Properties
 
@@ -128,6 +130,7 @@ class Context(object):
 
   def clear_all_collections(self):
     self._center_od_.clear()
+    self.logits_tensor = None
 
   # endregion : Public Methods
 
@@ -143,6 +146,14 @@ class Context(object):
     self.add_to_dict_collection(self._TENSORS_EXPORT_DICT, name, tensor)
 
   # endregion : Collection short cuts
+
+  # region : MISC
+
+  def set_logits_tensor(self, tensor):
+    assert self.logits_tensor is None
+    self.logits_tensor = tensor
+
+  # endregion : MISC
 
 
 # Initiate a context
