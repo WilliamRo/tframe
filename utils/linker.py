@@ -198,11 +198,12 @@ def _get_waves(num_bits):
   context.reuse_dict[key] = waves
   return waves
 
-def bit_max(x, num_classes, heads=1, **kwargs):
+def bit_max(x, num_classes, heads=1, sum_heads=False, **kwargs):
   """Bit max
   :param x: a tensor of shape (batch_size, dim)
   :param num_classes: output dimension
   :param heads: heads #
+  :param sum_heads: whether to sum up along head dimension before outputting
   :return: a tensor y with the same shape as x, sum(y[k, :]) == 1 for all k
   """
   # Sanity check
@@ -242,7 +243,8 @@ def bit_max(x, num_classes, heads=1, **kwargs):
     bit_max = tf.divide(bit_max, sums)
 
   # Add up if necessary
-  if heads > 1: bit_max = tf.reduce_sum(bit_max, axis=0)
+  if heads > 1 and sum_heads:
+    bit_max = tf.reduce_sum(bit_max, axis=0)
 
   return bit_max
 
