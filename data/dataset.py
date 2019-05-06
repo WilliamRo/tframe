@@ -103,6 +103,18 @@ class DataSet(TFRData):
     if self.is_rnn_input: return self
     return self._convert_to_rnn_input()
 
+  @property
+  def feature_mean(self):
+    from tframe.data.sequences.seq_set import SequenceSet
+    assert not isinstance(self, SequenceSet)
+    return np.mean(self.features, axis=0)
+
+  @property
+  def feature_std(self):
+    from tframe.data.sequences.seq_set import SequenceSet
+    assert not isinstance(self, SequenceSet)
+    return np.std(self.features, axis=0)
+
   # endregion : Properties
 
   # region : Overriden Methods

@@ -60,3 +60,8 @@ class ModelConfigs(object):
   use_bit_max = Flag.boolean(False, 'Whether to use bitmax', is_key=None)
   use_softmax = Flag.boolean(False, 'Whether to use softmax', is_key=None)
   num_heads = Flag.integer(1, 'Head #', is_key=None)
+
+  centralize_data = Flag.boolean(
+    False, 'Whether to centralize data', is_key=True)
+  data_mean = Flag.float(None, 'Used for normalizing data set')
+  data_std = Flag.float(None, 'Used for normalizing data set')
