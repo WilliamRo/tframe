@@ -44,7 +44,7 @@ def cross_entropy(labels, outputs):
   with tf.name_scope('cross_entropy'):
     # TODO: to be refactored
     if context.logits_tensor is not None:
-      assert outputs is context.logits_tensor
+      # assert outputs is context.logits_tensor
       return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
         labels=labels, logits=outputs))
     else:
