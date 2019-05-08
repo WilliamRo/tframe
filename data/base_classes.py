@@ -164,9 +164,13 @@ class DataAgent(object):
                         over_classes=False):
     from tframe.data.dataset import DataSet
     assert isinstance(data_set, DataSet)
-    data_sets = data_set.split(
-      train_size, validate_size, test_size, over_classes=over_classes,
-      names=('Train set', 'Validation set', 'Test set'))
+    names, sizes = [], []
+    for name, size in zip(['Train Set', 'Validation Set', 'Test Set'],
+                          [train_size, validate_size, test_size]):
+      if size == 0: continue
+      names.append(name)
+      sizes.append(size)
+    data_sets = data_set.split(*sizes, over_classes=over_classes, names=names)
     # Show data info
     cls._show_data_sets_info(data_sets)
     return data_sets

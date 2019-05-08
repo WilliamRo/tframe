@@ -21,7 +21,7 @@ class MNIST(ImageDataAgent):
   PROPERTIES = {pedia.num_classes: 10}
 
   @classmethod
-  def load(cls, data_dir, train_size=55000, validate_size=5000, test_size=10000,
+  def load(cls, data_dir, train_size=-1, validate_size=5000, test_size=10000,
            flatten=False, one_hot=True, **kwargs):
     return super().load(
       data_dir, train_size, validate_size, test_size, flatten, one_hot)

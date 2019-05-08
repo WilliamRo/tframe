@@ -302,7 +302,7 @@ class Trainer(object):
         # Evaluate the specified data sets
         for name, data_set in ds_dict.items():
           if not isinstance(data_set, TFRData):
-            raise TypeError('!! {} is not a TFRData'.format(name))
+            raise TypeError('!! {} set is not a TFRData'.format(name))
           # TODO
           value = self.model.evaluate_model(
             data_set, batch_size=hub.val_batch_size)

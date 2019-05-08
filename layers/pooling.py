@@ -26,11 +26,16 @@ class MaxPool2D(Layer, MaxPool2D_):
     MaxPool2D_.__init__(
       self, pool_size, strides, padding, data_format, name, **kwargs)
 
+  @property
+  def structure_tail(self):
+    size = lambda inputs: 'x'.join([str(n) for n in inputs])
+    return '({}>{})'.format(size(self.pool_size), size(self.strides))
+
   @single_input
   def _link(self, input_=None, **kwargs):
     assert isinstance(input_, tf.Tensor)
     output = MaxPool2D_.__call__(self, input_, scope=self.full_name)
-    self.neuron_scale = get_scale(output)
+    # self.neuron_scale = get_scale(output)
     return output
 
   def __call__(self, *args, **kwargs):

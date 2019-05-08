@@ -11,6 +11,8 @@ class ModelConfigs(object):
   prefix = Flag.string(None, 'Prefix to mark')
   suffix = Flag.string(None, 'Suffix to mark')
   model = Flag.whatever(None, 'A function which returns a built model')
+  identifier = Flag.string(
+    '', 'Model identifier, used in summary viewer', is_key=None)
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
   momentum = Flag.float(0.9, 'Momentum', is_key=None)
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
