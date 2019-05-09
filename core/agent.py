@@ -187,6 +187,10 @@ class Agent(object):
 
     self._model.launched = True
     self.take_notes('Model launched')
+
+    # Handle structure detail here
+    self._model.handle_structure_detail()
+
     return load_flag
 
   def shutdown(self):

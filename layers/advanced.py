@@ -21,7 +21,7 @@ class Dense(LayerWithNeurons):
       use_bias=True,
       weight_initializer='xavier_normal',
       bias_initializer='zeros',
-      allow_prune=False,
+      prune_frac=0,
       **kwargs):
     # Call parent's constructor
     LayerWithNeurons.__init__(
@@ -29,7 +29,7 @@ class Dense(LayerWithNeurons):
       **kwargs)
 
     self.num_neurons = checker.check_positive_integer(num_neurons)
-    self._allow_prune = checker.check_type(allow_prune, bool)
+    self._prune_frac = checker.check_gate(prune_frac)
     self.neuron_scale = [num_neurons]
 
 
@@ -45,4 +45,4 @@ class Dense(LayerWithNeurons):
 
   def forward(self, x, **kwargs):
     return self.neurons(x, self.num_neurons, activation=self._activation,
-                        allow_prune=self._allow_prune)
+                        prune_frac=self._prune_frac)

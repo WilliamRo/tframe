@@ -97,7 +97,7 @@ class Config(
 
   @property
   def config_strings(self):
-    return ['{}: {}'.format(k, v) for k, v in self.key_options.items()]
+    return sorted(['{}: {}'.format(k, v) for k, v in self.key_options.items()])
 
   # endregion : Properties
 

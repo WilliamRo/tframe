@@ -115,7 +115,7 @@ class LayerWithNeurons(Layer):
               weight_regularizer=None,
               bias_regularizer=None,
               activity_regularizer=None,
-              allow_prune=False,
+              prune_frac=0,
               **kwargs):
     if num is None:
       if isinstance(num_or_size_splits, int):
@@ -149,6 +149,6 @@ class LayerWithNeurons(Layer):
       weight_regularizer=weight_regularizer,
       bias_regularizer=bias_regularizer,
       activity_regularizer=activity_regularizer,
-      allow_prune=allow_prune,
+      prune_frac=prune_frac,
       **kwargs)
 

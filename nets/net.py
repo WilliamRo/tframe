@@ -17,6 +17,7 @@ from tframe.utils.string_tools import merger
 
 from tframe import pedia
 from tframe import hub
+from tframe.utils import stark
 from tframe.core.decorators import with_graph_if_has
 
 
@@ -70,7 +71,7 @@ class Net(Function):
 
   @property
   def params_num(self):
-    return sum([np.prod(param.shape) for param in self.var_list])
+    return stark.get_params_num(self.var_list, consider_prune=True)
 
   @property
   def group_name(self):
@@ -105,40 +106,46 @@ class Net(Function):
     Currently only work for sequential model
     """
     from tframe.nets.rnet import RNet
-    widths = [37, 26, 14]
+    widths = [33, 24, 20]
     indent = 3
 
     rows = []
     add_to_rows = lambda cols: rows.append(fs.table_row(cols, widths))
-    total_params = 0
+    # Dense total will be used when model weights are pruned
+    total_params, dense_total = 0, 0
     if self.is_root:
-      # input_info = 'input_{}'.format(shape_string(self.input_.sample_shape))
-      # rows.append(fs.table_row([input_info, ''], widths))
       add_to_rows(['input', shape_string(self.input_.sample_shape), ''])
+
+    def get_num_string(num, dense_num):
+      if num == 0: num_str = ''
+      elif hub.prune_on:
+        num_str = '{} ({:.1f}%)'.format(num, 100.0 * num / dense_num)
+      else: num_str = str(num)
+      return num_str
+
     for child in self.children:
       if isinstance(child, Layer):
         # Try to find variable in child
-        tensors = [v for v in self.var_list if child.group_name in v.name]
-        num = sum([np.prod(t.shape) for t in tensors])
-        num_str = '' if num == 0 else '{}'.format(num)
+        variables = [v for v in self.var_list if child.group_name in v.name]
+        num, dense_num = stark.get_params_num(variables, consider_prune=True)
+        # Generate a row
         cols = [self._get_layer_string(child, True, True),
-                child.output_shape_str, num_str]
+                child.output_shape_str, get_num_string(num, dense_num)]
         add_to_rows(cols)
-        # rows.append(fs.table_row(cols, widths))
-        total_params += num
       elif isinstance(child, RNet):
-        num = child.params_num
+        num, dense_num = child.params_num
         cols = [child.structure_string(), child.output_shape_str,
-                '{}'.format(num)]
+                get_num_string(num, dense_num)]
         add_to_rows(cols)
-        # rows.append(fs.table_row(cols, widths))
-        total_params += num
       elif isinstance(child, Net):
-        _rows, _total_params = child.structure_detail
+        _rows, num, dense_num = child.structure_detail
         rows += _rows
-        total_params += _total_params
       else:
         raise TypeError('!! unknown child type {}'.format(type(child)))
+
+      # Accumulate total_params and dense_total_params
+      total_params += num
+      dense_total += dense_num
 
     if self.is_root:
       # Head
@@ -157,10 +164,11 @@ class Net(Function):
       # Summary
       detail = add_with_indent(detail, '=' * width)
       detail = add_with_indent(
-        detail, 'Total params: {}'.format(total_params))
+        detail, 'Total params: {}'.format(
+          get_num_string(total_params, dense_total)))
       detail += ' ' * indent + '-' * width
-      return detail, total_params
-    else: return rows, total_params
+      return detail, total_params, dense_total
+    else: return rows, total_params, dense_total
 
   def _get_layer_string(self, f, scale, full_name=False):
     assert isinstance(f, Layer)

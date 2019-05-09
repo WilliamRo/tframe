@@ -184,26 +184,16 @@ class Model(object):
     self._built = True
     # Show build info
     console.show_status('Model built successfully:')
+    self.agent.take_notes('Model built successfully')
+    self.agent.take_notes('Structure:', date_time=False)
+    # Description may be a model structure
     description = self.description
-    if not isinstance(description, (tuple, list)):
-      description = [description]
+    if not isinstance(description, (tuple, list)): description = [description]
     for line in description:
       assert isinstance(line, str)
       console.supplement(line)
-    # Get structure detail TODO:
-    detail, total_params = '', 0
-    if hasattr(self, 'structure_detail'):
-      detail, total_params = self.structure_detail
-    # Maybe take some notes
-    self.agent.take_notes('Model built successfully')
-    self.agent.take_notes('Structure:', date_time=False)
-    self.agent.take_notes('Total params: {}'.format(total_params))
-    hub.total_params = int(total_params)
-
-    for line in description:
       self.agent.take_notes(line, date_time=False)
-    if hub.show_structure_detail:
-      print('.. Structure detail:\n{}'.format(detail))
+
 
   def _build(self, optimizer=None, **kwargs):
     """Abstract method, must be implemented in different models
@@ -408,6 +398,21 @@ class Model(object):
 
   # region : Public Methods
 
+  def handle_structure_detail(self):
+    detail, total_params, dense_total = '', 0, 0
+    if hasattr(self, 'structure_detail'):
+      detail, total_params, dense_total = self.structure_detail
+    # Maybe take some notes
+    params_str = 'Total params: {}'.format(total_params)
+    hub.total_params = int(total_params)
+    if hub.prune_on:
+      hub.dense_total_params = dense_total
+      params_str += ' ({:.2f}%)'.format(100.0 * total_params / dense_total)
+    self.agent.take_notes(params_str)
+
+    if hub.show_structure_detail:
+      print('.. Structure detail:\n{}'.format(detail))
+
   def get_trainable_variables(self, f=None):
     if f is None: f = lambda _: True
     variables = [v for v in tf.trainable_variables() if f(v)]
@@ -416,10 +421,6 @@ class Model(object):
     for t, v in zip(variables, values):
       variable_dict[t.name] = v
     return variable_dict
-
-  # def run_for_tensors(self, tensors, data_batch):
-  #   # Sanity check
-  #   checker.check_type(tensors, tf.Tensor) and isinstance(data_batch, TFRData)
 
   def tune_lr(self, new_lr=None, coef=1.0):
     #TODO

@@ -15,6 +15,8 @@ class Normalize(Layer):
   abbreviation = 'norm'
 
   def __init__(self, mu, sigma=None):
+    if not isinstance(mu, np.ndarray):
+      raise TypeError('!! mu should be an ndarray')
     self._mu = mu
     self._sigma = sigma
 

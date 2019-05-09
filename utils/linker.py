@@ -30,7 +30,7 @@ def neurons(num,
             weight_regularizer=None,
             bias_regularizer=None,
             activity_regularizer=None,
-            allow_prune=False,
+            prune_frac=0,
             **kwargs):
   """Analogous to tf.keras.layers.Dense"""
   if activation is not None: activation = activations.get(activation)
@@ -46,8 +46,9 @@ def neurons(num,
     x = (tf.concat([external_input, memory], axis=1, name='x_and_memory')
          if memory is not None and fc_memory else external_input)
 
-    if allow_prune and hub.pruning_rate_fc > 0.0:
-      W = get_weights_to_prune('W', [get_dimension(x), num], weight_initializer)
+    if prune_frac > 0 and hub.pruning_rate_fc > 0.0:
+      W = get_weights_to_prune(
+        'W', [get_dimension(x), num], weight_initializer, prune_frac)
     else: W = get_variable('W', [get_dimension(x), num], weight_initializer)
 
     weight_list.append(W)
@@ -257,14 +258,14 @@ def bit_max(x, num_classes, heads=1, sum_heads=False, **kwargs):
 
 # region : Prune
 
-def get_weights_to_prune(name, shape, initializer):
+def get_weights_to_prune(name, shape, initializer, frac):
   """Get variable and register this variable to context
   """
   # Get variable
   weights = get_variable(name, shape, initializer)
   # Register, context.pruner should be created in early model.build
   assert context.pruner is not None
-  masked_weights = context.pruner.register_to_dense(weights)
+  masked_weights = context.pruner.register_to_dense(weights, frac)
   # Return
   assert isinstance(masked_weights, tf.Tensor)
   return masked_weights

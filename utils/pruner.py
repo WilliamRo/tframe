@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from collections import namedtuple
+from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 
@@ -16,6 +16,7 @@ class Pruner(object):
     self._model = model
     self._dense_weights = []
     self._conv_filters = []
+    self.variable_dict = OrderedDict()
 
     # Plug in fractions
     self._dense_fraction = VariableSlot(self._model)
@@ -24,7 +25,7 @@ class Pruner(object):
         initial_value=-1.0, trainable=False, name='dense_fraction'))
 
     # Show status
-    tfr.console.show_status('Pruner created <-<-<-<-<-<-<-<-<-=')
+    tfr.console.show_status('Pruner created.')
 
   # region : Properties
 
@@ -43,14 +44,26 @@ class Pruner(object):
 
   # region : Public Methods
 
+  def get_variable_sizes(self, variable):
+    assert variable in self.variable_dict.keys()
+    slot = self.variable_dict[variable]
+    assert isinstance(slot, WeightSlot)
+    if slot.value_mask is None: self._fetch_masks()
+    mask = slot.value_mask
+    assert isinstance(mask, np.ndarray)
+    # Return size and total size
+    return int(np.sum(mask)), mask.size
+
   def set_init_val(self):
     # Set dense fraction
     self.dense_fraction = 100.0
     # Set init_vals
     self._model.session.run([ws.assign_init for ws in self._dense_weights])
 
-  def register_to_dense(self, weights):
-    slot = WeightSlot(weights)
+  def register_to_dense(self, weights, frac):
+    if frac == 0: return
+    slot = WeightSlot(weights, frac)
+    self.variable_dict[weights] = slot
     self._dense_weights.append(slot)
     return slot.masked_weights
 
@@ -62,8 +75,9 @@ class Pruner(object):
     if not tfr.hub.prune_on or not tfr.hub.export_masked_weights: return
     pruner = tfr.context.pruner
     for i, slot in enumerate(pruner._dense_weights):
-      key = 'weights_{}'.format(i + 1)
-      tfr.context.variables_to_export[key] = slot.masked_weights
+      def reg(k, v): tfr.context.variables_to_export[k+'_'+str(i+1)] = v
+      reg('weights', slot.masked_weights)
+      reg('mask', slot.mask)
 
   # endregion : Public Methods
 
@@ -78,12 +92,13 @@ class Pruner(object):
     assert self.th.prune_on
     p = tfr.hub.pruning_rate_fc
     assert 0 < p < 1.0
-    # Update fraction
-    self.dense_fraction = self.dense_fraction * (1 - p)
     # Fetch, prune and set
     self._fetch_masked_weights()
     tfr.console.show_status('Masked weights fetched. Pruning ...')
-    self._set_weights_and_masks(self.dense_fraction)
+    self._set_weights_and_masks(self.dense_fraction, p)
+    # Update master fraction. Some layers, e.g. the output layer may have
+    #  a different pruning rate
+    self.dense_fraction = self.dense_fraction * (1 - p)
     # Show status
     tfr.console.show_status(
       'Dense fraction decreased to {:.2f}'.format(self.dense_fraction))
@@ -126,13 +141,22 @@ class Pruner(object):
       assert isinstance(ws, WeightSlot)
       ws.value_masked_weights = vmw
 
-  def _set_weights_and_masks(self, fraction):
+  def _set_weights_and_masks(self, fraction, p):
+    assert 0 < p < 1
     reset_weights_ops = [ws.reset_weights for ws in self._dense_weights]
     set_mask_ops = [
-      ws.get_assign_mask_op(fraction) for ws in self._dense_weights]
+      ws.get_assign_mask_op(fraction, p) for ws in self._dense_weights]
     self._run_op([reset_weights_ops, set_mask_ops])
     # Show status
     tfr.console.show_status('Weights reset and masks updated.')
+
+  def _fetch_masks(self):
+    fetches = [ws.mask for ws in self._dense_weights]
+    val_masks = self._run_op(fetches)
+    # Distribute to weight_slots
+    for slot, val_mask in zip(self._dense_weights, val_masks):
+      assert isinstance(slot, WeightSlot)
+      slot.value_mask = val_mask
 
   # endregion : Private Methods
 
@@ -140,14 +164,16 @@ class Pruner(object):
 class WeightSlot(object):
   """Weight Slot is not a tframe Slot"""
 
-  def __init__(self, weights):
+  def __init__(self, weights, frac):
     assert isinstance(weights, tf.Variable)
+    assert np.isreal(frac) and 0 <= frac <= 1
     self.weights = weights
     self.init_val = tf.Variable(
       tf.zeros_like(weights), trainable=False, name='init_val')
     self.mask = tf.Variable(
       tf.ones_like(weights), trainable=False, name='mask')
     self.masked_weights = tf.multiply(self.weights, self.mask)
+    self.frac = frac
 
     # Define assign ops
     self.assign_init = tf.assign(self.init_val, self.weights)
@@ -155,12 +181,15 @@ class WeightSlot(object):
 
     # Define weights and mask placeholder
     self.value_masked_weights = None
+    self.value_mask = None
 
-  def get_assign_mask_op(self, weight_fraction):
+  def get_assign_mask_op(self, weight_fraction, p):
+    assert 0 < p < 1
+    p = p * self.frac
     w = self.value_masked_weights
     assert isinstance(w, np.ndarray)
     assert 0 < weight_fraction < 100
-    weight_fraction = np.ceil(weight_fraction)
+    weight_fraction = np.ceil(weight_fraction * (1 - p))
     # Get weights magnitude
     w = np.abs(w)
     # Create mask
