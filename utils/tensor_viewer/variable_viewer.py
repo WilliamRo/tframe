@@ -187,10 +187,12 @@ class VariableViewer(Frame):
     title = '|T|' if self.show_absolute_value else 'T'
     title += '({}x{})'.format(image.shape[0], image.shape[1])
     title += ', min={:.2f}, max={:.2f}'.format(np.min(image), np.max(image))
-    if not self.for_export: self.subplot.set_title(title)
+    if not self.for_export:
+      self.subplot.set_title(title)
+      self.subplot.set_aspect('equal', adjustable='box-forced', anchor='C')
     if self.for_export:
       self.subplot.set_aspect('auto')
-      self.subplot.set_xlabel('time step')
+      # self.subplot.set_xlabel('time step')
 
   def _plot_array(self, array, arrays):
     self.set_ax2_invisible()

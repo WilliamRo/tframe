@@ -84,6 +84,7 @@ class LayerWithNeurons(Layer):
       **kwargs):
 
     # Common attributes
+    self._activation_string = activation
     if activation is None: self._activation = None
     else: self._activation = activations.get(activation, **kwargs)
     self._weight_initializer = initializers.get(weight_initializer)
@@ -114,6 +115,7 @@ class LayerWithNeurons(Layer):
               weight_regularizer=None,
               bias_regularizer=None,
               activity_regularizer=None,
+              allow_prune=False,
               **kwargs):
     if num is None:
       if isinstance(num_or_size_splits, int):
@@ -147,5 +149,6 @@ class LayerWithNeurons(Layer):
       weight_regularizer=weight_regularizer,
       bias_regularizer=bias_regularizer,
       activity_regularizer=activity_regularizer,
+      allow_prune=allow_prune,
       **kwargs)
 

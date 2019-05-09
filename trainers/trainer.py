@@ -186,6 +186,9 @@ class Trainer(object):
     self._end_training(rounds)
     self._handle_notes()
 
+    # Prune and save if necessary
+    if self.th.prune_on: context.pruner.prune_and_save()
+
   # region : Before training
 
   def _init_trainer_hub(self, hub, **kwargs):
@@ -382,7 +385,6 @@ class Trainer(object):
     if self.th.validation_on: self.model.take_down_metric(self.is_online)
     # Put down key configurations to note
     self.model.agent.put_down_configs(self.th)
-
     # Show notes
     self.model.agent.show_notes()
     # Export notes if necessary

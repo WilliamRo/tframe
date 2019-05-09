@@ -176,6 +176,8 @@ class SequenceSet(DataSet):
     if batch_size < 0: batch_size = self.size
     L = int(np.ceil(self.size / batch_size))
     counter = 0
+    # Init indices
+    self._init_indices(shuffle)
     for i in range(L):
       # Get sequence list of length `batch_size`
       indices = self._select(i, batch_size, shuffle)

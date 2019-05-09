@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 from tframe.configs.config_base import Config
 from tframe.deprecated.monitor import Monitor
+from tframe.utils.pruner import Pruner
 import tframe.utils.checker as checker
 
 
@@ -42,6 +43,9 @@ class Context(object):
     self.metric_name = 'Metric'
     self.logits_tensor = None
     self.reuse_dict = OrderedDict()
+
+    # pruner will be initiated in the early stage of model building
+    self.pruner = None
 
   # region : Properties
 
@@ -131,6 +135,8 @@ class Context(object):
   def clear_all_collections(self):
     self._center_od_.clear()
     self.logits_tensor = None
+    # Clear pruner
+    if self.pruner is not None: self.pruner.clear()
 
   # endregion : Public Methods
 

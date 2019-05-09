@@ -42,6 +42,9 @@ class DataSet(TFRData):
     self.reset_batch_indices = None
     self.reset_values = None
 
+    # Indices
+    self.indices = None
+
     # Sanity checks
     self._check_data()
 
@@ -158,6 +161,7 @@ class DataSet(TFRData):
     if batch_size == -1: batch_size = self.size
 
     # Generate batches
+    self._init_indices(shuffle)
     for i in range(round_len):
       indices = self._select(i, batch_size, shuffle)
       # Get subset
@@ -324,14 +328,20 @@ class DataSet(TFRData):
     if upper_bound is None: upper_bound = self.size
     assert isinstance(batch_index, int) and batch_index >= 0
     checker.check_positive_integer(batch_size)
-    if shuffle:
-      indices = self._rand_indices(upper_bound=upper_bound, size=batch_size)
-    else:
-      from_index = batch_index * batch_size
-      to_index = min((batch_index + 1) * batch_size, upper_bound)
-      indices = list(range(from_index, to_index))
 
-    return indices
+    # if shuffle:
+    #   indices = self._rand_indices(upper_bound=upper_bound, size=batch_size)
+    # else:
+    #   from_index = batch_index * batch_size
+    #   to_index = min((batch_index + 1) * batch_size, upper_bound)
+    #   indices = list(range(from_index, to_index))
+
+    from_index = batch_index * batch_size
+    to_index = min((batch_index + 1) * batch_size, upper_bound)
+    indices = list(range(from_index, to_index))
+
+    # return indices
+    return self.indices[indices]
 
   def _check_data(self):
     """data_dict should be a non-empty dictionary containing regular numpy
@@ -401,6 +411,11 @@ class DataSet(TFRData):
 
     if len(indices) == 1: return int(indices[0])
     else: return indices
+
+  def _init_indices(self, shuffle):
+    indices = list(range(len(self.features)))
+    if shuffle: np.random.shuffle(indices)
+    self.indices = np.array(indices)
 
   # endregion : Private Methods
 

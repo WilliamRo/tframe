@@ -179,9 +179,12 @@ class Config(
     self.smooth_out_cloud_configs()
     self.smooth_out_monitor_configs()
     self.smooth_out_note_configs()
+    self.smooth_out_model_configs()
 
     if self.export_dl_dx or self.export_dl_ds_stat:
       self.allow_loss_in_loop = True
+    if self.prune_on and self.pruning_iterations > 0:
+      self.overwrite = False
 
   def get_attr(self, name):
     return object.__getattribute__(self, name)

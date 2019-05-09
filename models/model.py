@@ -43,6 +43,10 @@ class Model(object):
     assert mark is not None
     if hub.prefix is not None: self.mark = hub.prefix + self.mark
     if hub.suffix is not None: self.mark += hub.suffix
+    # TODO: set prune iteration number.
+    #       At this time configs conflicts are not smoothed.
+    if hub.prune_on or hub.pruning_rate_fc > 0:
+      self.mark += '_pr{}'.format(hub.pruning_iterations)
     hub.mark = self.mark
 
     # Each model has an agent to deal with some tensorflow stuff
@@ -168,6 +172,10 @@ class Model(object):
       self._update_group.remove(self._metric)
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
+    # Initialize pruner if necessary
+    if hub.prune_on:
+      from tframe.utils.pruner import Pruner
+      tfr.context.pruner = Pruner(self)
     #
     self._build(optimizer=optimizer, **kwargs)
     # Initialize monitor

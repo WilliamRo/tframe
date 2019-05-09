@@ -145,6 +145,7 @@ class Metric(TensorSlot):
   # region : Methods Overrides
 
   def plug(self, op, as_loss=True, symbol='metric'):
+    """Called in the building stage of a model"""
     self._as_loss = as_loss
     self.symbol = symbol
     self.name = symbol

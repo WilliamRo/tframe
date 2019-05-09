@@ -67,3 +67,12 @@ class ModelConfigs(object):
     False, 'Whether to centralize data', is_key=True)
   data_mean = Flag.float(None, 'Used for normalizing data set')
   data_std = Flag.float(None, 'Used for normalizing data set')
+
+  prune_on = Flag.boolean(False, 'Should only be set in smooth_out ...')
+  pruning_rate_fc = Flag.float(
+    0.0, 'Pruning rate for fully connected layers', is_key=None)
+  pruning_iterations = Flag.integer(0, 'Pruning iterations', is_key=None)
+  weights_fraction = Flag.float(None, 'Master weights fraction', is_key=None)
+
+  def smooth_out_model_configs(self):
+    if self.pruning_rate_fc > 0: self.prune_on = True

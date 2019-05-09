@@ -29,6 +29,7 @@ class NoteConfigs(object):
   export_dy_ds = Flag.boolean(False, '...')
   export_gates = Flag.boolean(False, '...')
   export_weights = Flag.boolean(False, '...')
+  export_masked_weights = Flag.boolean(False, '...')
   export_bias = Flag.boolean(False, '...')
   export_kernel = Flag.boolean(False, '...')
   use_default_s_in_dy_ds = Flag.boolean(False, '...')
