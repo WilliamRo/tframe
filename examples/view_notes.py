@@ -20,6 +20,9 @@ default_inactive_flags = (
   'save_mode',
   'output_size',
   'total_params',
+  'dense_total_params',
+  'pruning_rate_fc',
+  'weights_fraction',
   'num_units',
 )
 

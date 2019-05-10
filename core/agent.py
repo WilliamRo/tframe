@@ -169,10 +169,8 @@ class Agent(object):
           '!! Model {} should be initialized'.format(self._model.mark))
       else:
         console.show_status(
-        'Counter: {}, Weight Fraction: {:.2f}'.format(
+        'Counter: {}, Min Weight Fraction: {:.2f}'.format(
           self._model.counter, context.pruner.dense_fraction))
-        # Set weight fraction to hub
-        hub.weights_fraction = context.pruner.dense_fraction
 
     if not load_flag:
       assert self._model.counter == 0

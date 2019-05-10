@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from collections import OrderedDict
 import tensorflow as tf
 
 import tframe as tfr
@@ -86,7 +87,7 @@ class Config(
 
   @property
   def key_options(self):
-    ko = {}
+    ko = OrderedDict()
     for name in self.__dir__():
       if name in ('key_options', 'config_strings'): continue
       attr = self.get_attr(name)

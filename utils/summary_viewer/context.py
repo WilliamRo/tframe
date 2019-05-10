@@ -146,6 +146,10 @@ class Context(object):
           if isinstance(value, list):
             value = tuple(value)
             note.configs[k] = value
+          # For float value
+          if isinstance(value, float):
+            value = '{:.2f}'.format(value)
+            note.configs[k] = value
           # TODO: for values if str(value) is too long
           if not isinstance(value, str) and len(str(value)) > 15:
             m = re.match(r"<class '([\w]+.)+([\w]+)'>", str(type(value)))

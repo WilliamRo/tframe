@@ -34,6 +34,9 @@ class Pruner(object):
 
   @property
   def dense_fraction(self):
+    """Here dense fraction does not necessarily be equal to model weight
+       fraction since pruning rates of different components may vary.
+    """
     return self._dense_fraction.fetch()
 
   @dense_fraction.setter
@@ -52,7 +55,10 @@ class Pruner(object):
     mask = slot.value_mask
     assert isinstance(mask, np.ndarray)
     # Return size and total size
-    return int(np.sum(mask)), mask.size
+    size, total_size = int(np.sum(mask)), mask.size
+    # Assign weights_fraction (IMPORTANT)
+    slot.weights_fraction = 100.0 * size / total_size
+    return size, total_size
 
   def set_init_val(self):
     # Set dense fraction
@@ -95,7 +101,7 @@ class Pruner(object):
     # Fetch, prune and set
     self._fetch_masked_weights()
     tfr.console.show_status('Masked weights fetched. Pruning ...')
-    self._set_weights_and_masks(self.dense_fraction, p)
+    self._set_weights_and_masks(p)
     # Update master fraction. Some layers, e.g. the output layer may have
     #  a different pruning rate
     self.dense_fraction = self.dense_fraction * (1 - p)
@@ -141,11 +147,11 @@ class Pruner(object):
       assert isinstance(ws, WeightSlot)
       ws.value_masked_weights = vmw
 
-  def _set_weights_and_masks(self, fraction, p):
+  def _set_weights_and_masks(self, p):
     assert 0 < p < 1
     reset_weights_ops = [ws.reset_weights for ws in self._dense_weights]
     set_mask_ops = [
-      ws.get_assign_mask_op(fraction, p) for ws in self._dense_weights]
+      ws.get_assign_mask_op(p) for ws in self._dense_weights]
     self._run_op([reset_weights_ops, set_mask_ops])
     # Show status
     tfr.console.show_status('Weights reset and masks updated.')
@@ -182,14 +188,18 @@ class WeightSlot(object):
     # Define weights and mask placeholder
     self.value_masked_weights = None
     self.value_mask = None
+    # weights fraction will be assigned during
+    #  launching session => model.handle_structure_detail
+    #  => net.structure_detail => pruner.get_variable_sizes
+    self.weights_fraction = None
 
-  def get_assign_mask_op(self, weight_fraction, p):
+  def get_assign_mask_op(self, p):
     assert 0 < p < 1
     p = p * self.frac
     w = self.value_masked_weights
-    assert isinstance(w, np.ndarray)
-    assert 0 < weight_fraction < 100
-    weight_fraction = np.ceil(weight_fraction * (1 - p))
+    assert isinstance(w, np.ndarray) and np.isreal(self.weights_fraction)
+    assert 0 < self.weights_fraction <= 100
+    weight_fraction = np.ceil(self.weights_fraction * (1 - p))
     # Get weights magnitude
     w = np.abs(w)
     # Create mask
