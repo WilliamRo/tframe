@@ -82,7 +82,8 @@ class Pruner(object):
     pruner = tfr.context.pruner
     for i, slot in enumerate(pruner._dense_weights):
       def reg(k, v): tfr.context.variables_to_export[k+'_'+str(i+1)] = v
-      reg('weights', slot.masked_weights)
+      assert isinstance(slot, WeightSlot)
+      reg('weights', slot.weights)
       reg('mask', slot.mask)
 
   # endregion : Public Methods

@@ -407,7 +407,7 @@ class Model(object):
     hub.total_params = int(total_params)
     if hub.prune_on:
       hub.dense_total_params = dense_total
-      hub.weights_fraction = float(100.0 * total_params / dense_total)
+      hub.weights_fraction = 100.0 * total_params / dense_total
       params_str += ' ({:.2f}%)'.format(hub.weights_fraction)
     self.agent.take_notes(params_str)
 

@@ -47,7 +47,7 @@ class VariableViewer(Frame):
     # Options
     self.show_absolute_value = False  # key_symbol: a
     self.show_value = False           # key_symbol: v
-    self.use_clim = False             # key_symbol: c
+    self.unify_range = False          # key_symbol: c
     self.log_scale = True             # key_symbol: g
     self.is_on = True
 
@@ -174,7 +174,7 @@ class VariableViewer(Frame):
     cmap = 'OrRd' if self.show_absolute_value or is_gate else 'bwr'
     im = self._heat_map(image, cmap=cmap)
     # if self.show_value: self._annotate_heat_map(im, image)
-    pool = np.abs(images) if self.use_clim else abs_variable
+    pool = np.abs(images) if self.unify_range else abs_variable
     # Set color limits
     if is_gate:
       im.set_clim(0, 1)
@@ -201,7 +201,7 @@ class VariableViewer(Frame):
     self.subplot.plot(step, array)
     self.subplot.set_xlim(min(step), max(step))
     # TODO: `use_clim` is not appropriate here
-    pool = arrays if self.use_clim else array
+    pool = arrays if self.unify_range else array
     self.subplot.set_ylim(np.min(pool), np.max(pool))
     self.subplot.set_aspect('auto')
 

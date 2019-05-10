@@ -7,7 +7,7 @@ for _ in range(DIR_DEPTH + 1):
   sys.path.insert(0, ROOT)
 from tframe.utils.summary_viewer.main_frame import SummaryViewer
 from tframe import local
-from tframe.utils.tensor_viewer.plugins import weights_distribution
+from tframe.utils.tensor_viewer.plugins import lottery
 
 
 default_inactive_flags = (
@@ -57,7 +57,7 @@ while True:
       default_inactive_flags=default_inactive_flags,
       default_inactive_criteria=default_inactive_criteria,
       flags_to_ignore=flags_to_ignore,
-      plugin=weights_distribution.plugin,
+      plugin=lottery.plugin,
     )
     viewer.show()
 

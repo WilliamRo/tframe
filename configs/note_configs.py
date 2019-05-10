@@ -50,6 +50,9 @@ class NoteConfigs(object):
     0, 'Parameter # before pruning', is_key=None)
   serial_num = Flag.integer(1, '...', is_key=None)
 
+  take_note_in_beginning = Flag.boolean(
+    False, 'Whether to take note on 1st iteration')
+
 
   def smooth_out_note_configs(self):
     if self.use_default_s_in_dy_ds: self.export_dy_ds = True

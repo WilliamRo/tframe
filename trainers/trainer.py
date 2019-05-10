@@ -504,9 +504,14 @@ class Trainer(object):
     return tensor_dict
 
   def _take_notes_for_export(self):
+    # Note switch should be turned on
     if self.th.note_cycle == 0: return
-    if np.mod(self.counter, self.th.note_cycle) != 0: return
+    # Note cycle should be met
+    if np.mod(self.counter, self.th.note_cycle) != 0:
+      if not (self.counter == 1 and self.th.take_note_in_beginning): return
+    # Loss history should not be blank
     if not self.loss_history.last_value: return
+    # Validation history should no be blank if validation is on
     if self.th.validation_on:
       if not self.val_metric.last_value: return
       if self.th.validate_train_set and not self.train_metric.last_value: return
@@ -540,7 +545,9 @@ class Trainer(object):
 
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
-    if np.mod(self.counter, self.th.validate_cycle) != 0: return False
+    if np.mod(self.counter, self.th.validate_cycle) != 0:
+      if not (self.counter == 1 and self.th.take_note_in_beginning):
+        return False
 
     # Get metric
     metric_dict = self.model.validate_model(

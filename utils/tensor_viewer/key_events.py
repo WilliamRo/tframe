@@ -41,8 +41,8 @@ def on_key_press(viewer, event):
     viewer.variable_viewer.show_value = flag
     viewer.variable_viewer.refresh()
   elif key_symbol in ['c', 'space']:
-    flag = not viewer.variable_viewer.use_clim
-    viewer.variable_viewer.use_clim = flag
+    flag = not viewer.variable_viewer.unify_range
+    viewer.variable_viewer.unify_range = flag
     viewer.variable_viewer.refresh()
   elif key_symbol == 'g':  # g for loG
     flag = not viewer.variable_viewer.log_scale
