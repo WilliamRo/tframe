@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 from tframe import context, hub
-from tframe import checker
+from tframe import checker, console
 
 from tframe.models.model import Model
 from tframe.nets import RNet
@@ -18,6 +18,8 @@ from tframe.core import NestedTensorSlot
 
 from tframe.utils.misc import transpose_tensor
 from tframe.utils.misc import ravel_nested_stuff
+
+from tframe.data.dataset import DataSet
 
 
 class Recurrent(Model, RNet):
@@ -396,7 +398,7 @@ class Recurrent(Model, RNet):
     # .. fetch tensors
     fetches_dict = context.tensors_to_export
     if len(fetches_dict) == 0: return tensors
-    results = trainer.model.batch_evaluation(
+    results = trainer.model.evaluate(
       list(fetches_dict.values()), trainer.validation_set[:num])
 
     # TODO: should be refactored
@@ -422,3 +424,83 @@ class Recurrent(Model, RNet):
 
   # endregion : Public Methods
 
+  # region : Abstract Implementations
+
+  def _evaluate_batch(self, fetch_list, data_batch, **kwargs):
+    # Sanity check
+    assert isinstance(fetch_list, list)
+    checker.check_fetchable(fetch_list)
+    assert isinstance(data_batch, DataSet)
+
+    # Check val_num_steps
+    partition = hub.val_num_steps != -1
+    # Fetch states if partition
+    if partition: fetch_list.append(self._state_slot.op)
+
+    # Run session
+    assert data_batch.is_rnn_input
+    feed_dict = self._get_default_feed_dict(data_batch, is_training=False)
+    batch_outputs = self.session.run(fetch_list, feed_dict)
+    assert isinstance(batch_outputs, list)
+
+    # checker.check_type_v2(batch_outputs, np.ndarray)  # TODO: crash sometimes
+    # TODO: should be removed after this method has been sufficiently tested
+    for array in batch_outputs:
+      assert isinstance(array, np.ndarray)
+      # make sure array is a sequence stack
+      assert array.shape[0] == data_batch.size
+
+    # Set buffer if necessary
+    if partition: self.set_buffers(batch_outputs.pop(-1), is_training=False)
+
+    # Check active length
+    al = data_batch.active_length
+    if al is None: al = [-1]
+    assert isinstance(al, list) and len(al) == data_batch.size
+    batch_outputs = [[y[:l] for y, l in zip(array, al)]
+                     for array in batch_outputs]
+
+    # To this point, batch_outputs is like
+    # [[aaaaa, aaa, aaaaaaa],    <= fetch_list[0]
+    #  [bbbbb, bbb, bbbbbbb]]    <= fetch_list[1]
+    # active_length = [5, 3, 7]
+
+    # In tasks like sequence classification, only last value should be output
+    # TODO: sometimes last value should not be extracted here
+    # if data_batch.n_to_one:
+    #   batch_outputs = [[s[-1] for s in sequence_list]
+    #                    for sequence_list in batch_outputs]
+
+    return batch_outputs
+
+  # endregion : Abstract Implementations
+
+  # region : Private Methods
+
+  def _get_default_feed_dict(self, batch, is_training):
+    """Reset status if necessary"""
+    feed_dict = super()._get_default_feed_dict(batch, is_training)
+    assert isinstance(batch, DataSet)
+
+    # (1) If a new sequence begin during training or validation, reset state
+    if batch.should_reset_state:
+      self.reset_buffers(batch.size, is_training)
+      if is_training and hub.notify_when_reset: console.write_line('- ' * 40)
+
+    # BETA: for parallel engine logic
+    if batch.should_partially_reset_state:
+      self.reset_part_buffer(batch.reset_batch_indices, batch.reset_values)
+      # TODO: to be deprecated
+      if hub.notify_when_reset and False:
+        if batch.reset_values is not None:
+          info = [(i, v) for i, v in zip(
+            batch.reset_batch_indices, batch.reset_values)]
+        else: info = batch.reset_batch_indices
+        console.write_line('{}'.format(info))
+
+    # (2) Set status buffer to status placeholder
+    feed_dict.update(self._get_rnn_dict(is_training, batch.size))
+
+    return feed_dict
+
+  # endregion : Private Methods

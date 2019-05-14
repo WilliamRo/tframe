@@ -3,26 +3,22 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from astropy.units.tests.test_quantity_decorator import test_kwarg_wrong_unit
 
 from tframe.models.model import Model
 from tframe.models.feedforward import Feedforward
 from tframe.models.recurrent import Recurrent
 
 from tframe import console
+from tframe import checker
 from tframe import context
 from tframe import losses
 from tframe import pedia
 from tframe import metrics
-from tframe import DataSet
 
 from tframe import hub
 from tframe import InputTypes
 from tframe.core import with_graph
 from tframe.core import TensorSlot
-
-from tframe.trainers import TrainerHub
-from tframe.data.base_classes import TFRData
 
 
 class Predictor(Feedforward, Recurrent):
@@ -61,33 +57,28 @@ class Predictor(Feedforward, Recurrent):
 
   @with_graph
   def build_as_regressor(
-      self, optimizer=None, loss='euclid',
-      metric='rms_ratio', metric_is_like_loss=True, metric_name='Err %'):
+      self, optimizer=None, loss='euclid', metric='rms_ratio',
+      metric_name='Err %'):
     self.build(
-      optimizer=optimizer, loss=loss, metric=metric, metric_name=metric_name,
-      metric_is_like_loss=metric_is_like_loss)
+      optimizer=optimizer, loss=loss, metric=metric, metric_name=metric_name)
 
   @with_graph
-  def build(self, optimizer=None, loss='euclid', metric=None,
-            metric_is_like_loss=True, metric_name='Metric', **kwargs):
-    context.metric_name = metric_name
-    Model.build(
-      self, optimizer=optimizer, loss=loss, metric=metric,
-      metric_name=metric_name, metric_is_like_loss=metric_is_like_loss,
-      **kwargs)
+  def build(self, optimizer=None, loss='euclid', metric=None, **kwargs):
+    context.metric_name = 'unknown' # TODO: to be deprecated
+    Model.build(self, optimizer=optimizer, loss=loss, metric=metric, **kwargs)
 
-  def _build(self, optimizer=None, loss='euclid', metric=None,
-             metric_is_like_loss=True, metric_name='Metric',
-             **kwargs):
+  def _build(self, optimizer=None, loss='euclid', metric=None, **kwargs):
     # For some RNN predictors, their last step is counted as the only output
+    #   e.g. RNNs for sequence classification tasks
     last_only = False
     if 'last_only' in kwargs.keys(): last_only = kwargs.pop('last_only')
 
-    # Get loss function before build
-    loss_function = losses.get(loss, last_only)
-    context.loss_function = loss_function
+    # Get loss quantity before building
+    self.loss_quantity = losses.get(loss, last_only)
+    # This is for calculating loss inside a while-loop
+    context.loss_function = self.loss_quantity.function
 
-    # Call parent's build method
+    # Call parent's build method to link network
     # Usually output tensor has been plugged into Model._outputs slot
     self.master._build(self)
     assert self.outputs.activated
@@ -95,27 +86,20 @@ class Predictor(Feedforward, Recurrent):
     # Initiate targets and add it to collection
     self._plug_target_in(self.outputs.shape_list)
 
-    # Define loss TODO:
-    use_logits = (kwargs.get('use_logits', False) or
-                  context.logits_tensor is not None)
-    # use_logits = (kwargs.get('use_logits', False) or
-    #               isinstance(loss, str) and 'cross_entropy' in loss)
+    # Define loss. Some tensorflow apis only support calculating logits
+    output_tensor = self.outputs.tensor
     with tf.name_scope('Loss'):
-      # if loss == 'cross_entropy':
-      if use_logits and self.logits_tensor is not None:
-        output_tensor = self.logits_tensor
-        # TODO: PTB assertion failure
-        # KEY: softmax activation should be added manually
-        assert output_tensor is not None
-        console.show_status('Logits are used for calculating loss')
-      else:
-        if use_logits:
+      if self.loss_quantity.use_logits:
+        if self.logits_tensor is None:
           console.warning_with_pause(
             'Logits are supposed to be used for loss calculation but'
-            ' somehow can not be found. It is recommended to add an'
-            ' activation layer to this model at last.')
-        output_tensor = self.outputs.tensor
-      loss_tensor = loss_function(self._targets.tensor, output_tensor)
+            ' somehow can not be found. Press any key to ignore this'
+            ' warning ...')
+        else:
+          output_tensor = self.logits_tensor
+          console.show_status('Logits are used for calculating loss')
+
+      loss_tensor = self.loss_quantity(self._targets.tensor, output_tensor)
 
       # TODO: with or without regularization loss?
       if hub.summary:
@@ -124,26 +108,39 @@ class Predictor(Feedforward, Recurrent):
       # Try to add extra loss which is calculated by the corresponding net
       # .. regularization loss is included
       if self.extra_loss is not None:
-        loss_tensor += self.extra_loss
+        loss_tensor = tf.add(loss_tensor, self.extra_loss)
       # Plug in
-      self.loss.plug(loss_tensor)
+      self.loss.plug(loss_tensor, quantity_def=self.loss_quantity)
 
-    # Define metric
+    # Initialize metric
     if metric is not None:
+      checker.check_type(metric, str)
       # Create placeholder for val_targets if necessary
       # Common targets will be plugged into val_target slot by default
       self._plug_val_target_in(kwargs.get('val_targets', None))
 
-      metric_function = metrics.get(metric, last_only, **kwargs)
       with tf.name_scope('Metric'):
-        metric_tensor = metric_function(
-          self._val_targets.tensor, self._outputs.tensor)
-        self._metric.plug(metric_tensor, as_loss=metric_is_like_loss,
-                          symbol=metric_name)
-        if hub.summary:
-          tf.add_to_collection(
-            pedia.validation_summaries,
-            tf.summary.scalar('metric_sum', self._metric.tensor))
+        self._metrics_manager.initialize(
+          metric, last_only, self._val_targets.tensor,
+          self._outputs.tensor, **kwargs)
+
+    # TODO ===================================================================
+    # # Define metric TODO: multi-metrics should be supported
+    # if metric is not None:
+    #   # Create placeholder for val_targets if necessary
+    #   # Common targets will be plugged into val_target slot by default
+    #   self._plug_val_target_in(kwargs.get('val_targets', None))
+    #
+    #   self._metric_quantity = metrics.get(metric, last_only, **kwargs)
+    #   with tf.name_scope('Metric'):
+    #     metric_tensor = self._metric_quantity(
+    #       self._val_targets.tensor, self._outputs.tensor)
+    #     self._metric.plug(metric_tensor, symbol=metric_name,
+    #                       quantity_def=self._metric_quantity)
+    #     if hub.summary:
+    #       tf.add_to_collection(
+    #         pedia.validation_summaries,
+    #         tf.summary.scalar('metric_sum', self._metric.tensor))
 
     # Merge summaries
     self._merge_summaries()
@@ -187,6 +184,7 @@ class Predictor(Feedforward, Recurrent):
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
     results = self._update_group.run(feed_dict)
     self.set_buffers(results.pop(self._state_slot), is_training=True)
+
     # TODO: BETA
     assert not hub.use_rtrl
     if hub.use_rtrl:
@@ -202,17 +200,17 @@ class Predictor(Feedforward, Recurrent):
 
   @with_graph
   def predict(self, data, batch_size=None, extractor=None, **kwargs):
-    return self.batch_evaluation(
+    return self.evaluate(
       self._outputs.tensor, data, batch_size, extractor)
 
   @with_graph
   def evaluate_model(self, data, batch_size=None, **kwargs):
     # Check metric
-    if not self.metric.activated: raise AssertionError('!! Metric not defined')
+    if not self.key_metric.activated: raise AssertionError('!! Metric not defined')
     # Show status
     console.show_status('Evaluating {} ...'.format(data.name))
-    result = self.validate_model(data, batch_size, allow_sum=False)[self.metric]
-    console.supplement('{} = {:.3f}'.format(self.metric.symbol, result))
+    result = self.validate_model(data, batch_size, allow_sum=False)[self.key_metric]
+    console.supplement('{} = {:.3f}'.format(self.key_metric.symbol, result))
 
     return result
 
@@ -220,31 +218,11 @@ class Predictor(Feedforward, Recurrent):
 
   # region : Private Methods
 
+  def _evaluate_batch(self, fetch_list, data_batch, **kwargs):
+    return self.master._evaluate_batch(self, fetch_list, data_batch, **kwargs)
+
   def _get_default_feed_dict(self, batch, is_training):
-    feed_dict = Feedforward._get_default_feed_dict(self, batch, is_training)
-    if self.master is Recurrent:
-      assert isinstance(batch, DataSet)
-
-      # If a new sequence begin while training, reset state
-      if is_training:
-        if batch.should_reset_state:
-          if hub.notify_when_reset: console.write_line('- ' * 40)
-          self.reset_buffers(batch.size)
-        if batch.should_partially_reset_state:
-          if hub.notify_when_reset and False:
-            if batch.reset_values is not None:
-              info = [(i, v) for i, v in zip(
-                batch.reset_batch_indices, batch.reset_values)]
-            else: info = batch.reset_batch_indices
-            console.write_line('{}'.format(info))
-          self.reset_part_buffer(batch.reset_batch_indices, batch.reset_values)
-      elif batch.should_reset_state:
-        self.reset_buffers(batch.size, is_training=False)
-
-      # If is not training, always set a zero state to model
-      feed_dict.update(self._get_rnn_dict(is_training, batch.size))
-
-    return feed_dict
+    return self.master._get_default_feed_dict(self, batch, is_training)
 
   # endregion : Private Methods
 

@@ -21,7 +21,8 @@ from tframe.core import with_graph
 from tframe.configs.config_base import Config, Flag
 from tframe.utils.maths.stat_tools import Statistic
 
-from tframe.trainers.metric import Metric
+from tframe.trainers.metric_slot import MetricSlot
+from tframe.trainers.metrics_manager import MetricsManager
 
 
 class Trainer(object):
@@ -50,6 +51,7 @@ class Trainer(object):
     if not isinstance(model, tfr.models.Model):
       raise TypeError('!! model must be an instance of tframe Model')
     self.model = model
+    self.model.metrics_manager.trainer = self
 
     # Date set attributes
     self._training_set = None
@@ -68,18 +70,25 @@ class Trainer(object):
     # Private Attributes
     self._record_count = 0
     self._warm_up = True
-    self.loss_history = Statistic(max_length=self.th.hist_buffer_len)
-    self.val_metric = Statistic(max_length=2)
-    self.train_metric = Statistic(max_length=2)
+    self.batch_loss_stat = Statistic(max_length=self.th.hist_buffer_len)
+
+    # TODO ====================================================================
+    # self.val_metric = Statistic(max_length=2)
+    # self.train_metric = Statistic(max_length=2)
 
     self.HubClass = TrainerHub
     if terminator is not None: assert callable(terminator)
     self._terminator = terminator
 
     # TODO
+    # temporary solution to give agent the access to trainer
     context.trainer = self
 
   # region : Properties
+
+  @property
+  def key_metric(self):
+    return self.metrics_manager.early_stop_slot
 
   @property
   def training_set(self):
@@ -118,8 +127,9 @@ class Trainer(object):
     self.model.counter = value
 
   @property
-  def metric(self):
-    return self.model.metric
+  def metrics_manager(self):
+    assert isinstance(self.model.metrics_manager, MetricsManager)
+    return self.model.metrics_manager
 
   @property
   def total_rounds(self):
@@ -158,6 +168,14 @@ class Trainer(object):
     if test_set is not None:
       self._check_data(test_set, 'test set')
       self._test_set = test_set
+
+  def recover_progress(self):
+    # Print progress bar
+    if self.th.progress_bar and self.th.round_length is not None:
+      assert isinstance(self._training_set, TFRData)
+      progress = self.th.round_progress
+      assert progress is not None
+      console.print_progress(progress=progress)
 
   # endregion : Public Methods
 
@@ -272,7 +290,7 @@ class Trainer(object):
       # Maybe give a report on metric
       if not self.is_online and hub.validation_on:
         self.model.end_round(rnd)
-        if self.metric.get_idle_rounds(rnd) > self.th.patience:
+        if self.key_metric.get_idle_rounds(rnd) > self.th.patience:
           self.th.raise_stop_flag()
 
       # Advanced strategy
@@ -309,7 +327,7 @@ class Trainer(object):
           # TODO
           value = self.model.evaluate_model(
             data_set, batch_size=hub.val_batch_size)
-          title = '{} {}'.format(name, self.metric.name)
+          title = '{} {}'.format(name, self.key_metric.name)
           self.model.agent.put_down_criterion(title, value)
           self.model.agent.take_notes('{}: {:.2f}'.format(title, value))
 
@@ -348,7 +366,7 @@ class Trainer(object):
           if i + 1 >= self.th.max_iterations:
             self.th.force_terminate = True
         if self.th.early_stop:
-          if self.metric.get_idle_counts(self.counter) > self.th.patience:
+          if self.key_metric.get_idle_counts(self.counter) > self.th.patience:
             self.th.force_terminate = True
       # After probing, training process may be terminated
       if self.th.force_terminate: break
@@ -364,7 +382,7 @@ class Trainer(object):
     # If this is a hp-tuning task, write record summary
     if self.th.hp_tuning:
       assert not self.th.summary
-      self.metric.write_record_summary()
+      self.key_metric.write_record_summary()
     # Flush summary
     if self.th.summary or self.th.hp_tuning:
       self.model.agent.summary_writer.flush()
@@ -404,7 +422,7 @@ class Trainer(object):
     loss_dict = self.model.update_model(data_batch=data_batch)
     loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
     assert len(loss_slots) > 0
-    self.loss_history.record(loss_dict[loss_slots[0]])
+    self.batch_loss_stat.record(loss_dict[loss_slots[0]])
     return loss_dict
 
   def _check_data(self, data_set=None, name='dataset'):
@@ -452,11 +470,7 @@ class Trainer(object):
     # Show content
     console.show_status(content, symbol=prompt)
     # Print progress bar
-    if self.th.progress_bar and self.th.round_length is not None:
-      assert isinstance(self._training_set, TFRData)
-      progress = self.th.round_progress
-      assert progress is not None
-      console.print_progress(progress=progress, start_time=start_time)
+    self.recover_progress()
 
   @staticmethod
   def _dict_to_string(dict_):
@@ -510,21 +524,15 @@ class Trainer(object):
     if np.mod(self.counter, self.th.note_cycle) != 0:
       if not (self.counter == 1 and self.th.take_note_in_beginning): return
     # Loss history should not be blank
-    if not self.loss_history.last_value: return
+    if not self.batch_loss_stat.last_value: return
     # Validation history should no be blank if validation is on
     if self.th.validation_on:
-      if not self.val_metric.last_value: return
-      if self.th.validate_train_set and not self.train_metric.last_value: return
+      if not self.metrics_manager.ready_for_note_taking: return
 
     # - Scalars
     scalars = OrderedDict()
-    scalars['Loss'] = self.loss_history.running_average
-    if self.train_metric.last_value:
-      scalars['Train {}'.format(
-        context.metric_name)] = self.train_metric.last_value
-    if self.val_metric.last_value:
-      scalars['Val {}'.format(
-        context.metric_name)] = self.val_metric.last_value
+    scalars['Loss'] = self.batch_loss_stat.running_average
+    self.metrics_manager.update_scalar_dict(scalars)
 
     # - Tensors
     tensors = self._get_tensors_to_export()
@@ -545,63 +553,83 @@ class Trainer(object):
 
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
+    # Validate cycle should be met
     if np.mod(self.counter, self.th.validate_cycle) != 0:
       if not (self.counter == 1 and self.th.take_note_in_beginning):
         return False
 
-    # Get metric
-    metric_dict = self.model.validate_model(
-      self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary)
-
-    new_record = None
-    content_dict = OrderedDict()
-    attachments = []
+    # Validate training set if necessary
     if self.th.validate_train_set:
       train_dict = self.model.validate_model(
         self.training_set, self.th.val_batch_size, allow_sum=False)
-      assert len(train_dict) == 1
-      for slot, val in train_dict.items():
-        assert isinstance(slot, Metric)
-        key = 'Train {}'.format(slot.name[:3])
-        content_dict[key] = val
-        self.train_metric.record(val)
-    # TODO: The code block below should be refactored
-    for metric_slot, val in metric_dict.items():
-      assert isinstance(metric_slot, Metric)
-      self.val_metric.record(val)
-      if new_record is None:
-        new_record = self.metric.take_down(
-          val, rnd, self.counter, gap=self.th.record_gap)
-        # Terminator will check `val` if new_record appears
-        if callable(self._terminator) and self._terminator(val):
-          self.th.force_terminate = True
+      # Record
+      self.metrics_manager.record_stats_on_dataset(
+        self.training_set, train_dict)
 
-        key = ('Val {}'.format(metric_slot.name[:3])
-               if self.th.validate_train_set else metric_slot.name)
-        content_dict[key] = val
-        # content = self._dict_to_string({metric_slot: val})
-      else:
-        # TODO: what's this for ??
-        metric_slot.take_down(val, rnd, self.counter, gap=self.th.record_gap)
-        attachments.append('{:.3f}'.format(val))
-      if self.th.keep_trainer_log: self.th.logs[metric_slot.name] = val
+    # Validate val_set and record
+    val_dict = self.model.validate_model(
+      self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary)
+    new_record = self.metrics_manager.record_stats_on_dataset(
+      self.validation_set, val_dict, True, rnd)
+    # Terminator will check early_stop_criterion if new_record appears
+    if new_record and callable(self._terminator):
+      if self._terminator(self.metrics_manager.early_stop_criterion):
+        self.th.force_terminate = True
 
-    content = self._dict_to_string(content_dict)
-    if len(attachments) > 0:
-      content = '{} ({})'.format(content, ', '.join(attachments))
-    if new_record:
-      content += ' <New Record>'
-      self._record_count += 1
-    else:
-      content += ' (Best: {:.3f})'.format(self.metric.record)
-      if self.th.early_stop:
-        idle = (self.metric.get_idle_counts(self.counter) if self.is_online
-                else self.metric.get_idle_rounds(rnd))
-        content = content[:-1] + ', Patience {}/{})'.format(
-          idle, self.th.patience)
-    self._inter_cut(content, prompt='[Validate]')
-
+    # Print stats and return new_record flag
+    self.metrics_manager.print_latest_stats('[Validate]')
     return new_record
+
+    # new_record = None
+    # content_dict = OrderedDict()
+    # attachments = []
+    # if self.th.validate_train_set:
+    #   train_dict = self.model.validate_model(
+    #     self.training_set, self.th.val_batch_size, allow_sum=False)
+    #   assert len(train_dict) == 1
+    #   for slot, val in train_dict.items():
+    #     assert isinstance(slot, MetricSlot)
+    #     key = 'Train {}'.format(slot.name[:3])
+    #     content_dict[key] = val
+    #     self.train_metric.record(val)
+    #
+    # # TODO: The code block below should be refactored
+    # for metric_slot, val in val_dict.items():
+    #   assert isinstance(metric_slot, MetricSlot)
+    #   self.val_metric.record(val)
+    #   if new_record is None:
+    #     new_record = self.metric.take_down(
+    #       val, rnd, self.counter, gap=self.th.record_gap)
+    #     # Terminator will check `val` if new_record appears
+    #     if callable(self._terminator) and self._terminator(val):
+    #       self.th.force_terminate = True
+    #
+    #     key = ('Val {}'.format(metric_slot.name[:3])
+    #            if self.th.validate_train_set else metric_slot.name)
+    #     content_dict[key] = val
+    #     # content = self._dict_to_string({metric_slot: val})
+    #   else:
+    #     # TODO: what's this for ??
+    #     metric_slot.take_down(val, rnd, self.counter, gap=self.th.record_gap)
+    #     attachments.append('{:.3f}'.format(val))
+    #   if self.th.keep_trainer_log: self.th.logs[metric_slot.name] = val
+    #
+    # content = self._dict_to_string(content_dict)
+    # if len(attachments) > 0:
+    #   content = '{} ({})'.format(content, ', '.join(attachments))
+    # if new_record:
+    #   content += ' <New Record>'
+    #   self._record_count += 1
+    # else:
+    #   content += ' (Best: {:.3f})'.format(self.metric.record)
+    #   if self.th.early_stop:
+    #     idle = (self.metric.get_idle_counts(self.counter) if self.is_online
+    #             else self.metric.get_idle_rounds(rnd))
+    #     content = content[:-1] + ', Patience {}/{})'.format(
+    #       idle, self.th.patience)
+    # self._inter_cut(content, prompt='[Validate]')
+    #
+    # return new_record
 
   def _snapshot(self):
     if not self.th.snapshot: return
@@ -659,7 +687,8 @@ class TrainerHub(Config):
                           ' when outer loop is not called epochs', is_key=None)
   hist_buffer_len = Flag.integer(
     20, 'Max length of historical statistics buffer length')
-  validate_train_set = Flag.boolean(False, 'Whether to validate train set')
+  validate_train_set = Flag.boolean(
+    False, 'Whether to validate train set in trainer._validate_model')
   terminal_threshold = Flag.float(0., 'Terminal threshold')
 
   # endregion : Class Attributes
@@ -698,9 +727,9 @@ class TrainerHub(Config):
 
   @property
   def validation_on(self):
-    metric = self.trainer.metric
-    assert isinstance(metric, Metric)
-    if not metric.activated: return False
+    mm = self.trainer.metrics_manager
+    assert isinstance(mm, MetricsManager)
+    if not mm.has_metric: return False
     val_data = self.trainer.validation_set
     return val_data is not None and self.validate_cycle > 0
 

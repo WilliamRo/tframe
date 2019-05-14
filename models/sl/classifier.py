@@ -19,22 +19,25 @@ from tframe.data.base_classes import TFRData
 import tframe.utils.misc as misc
 
 from tframe.models.feedforward import Feedforward
+from tframe.trainers.metric_slot import MetricSlot
 
 
 class Classifier(Predictor):
+  model_name = 'classifier'
+
   def __init__(self, mark=None, net_type=Feedforward):
     Predictor.__init__(self, mark, net_type)
     # Private attributes
     self._probabilities = TensorSlot(self, 'Probability')
-    self._evaluation_group = Group(self, self._metric, self._probabilities,
-                                   name='evaluation group')
+    # TODO: to be deprecated
+    # self._evaluation_group = Group(self, self._metric, self._probabilities,
+    #                                name='evaluation group')
 
   @with_graph
-  def build(
-      self, optimizer=None, metric='accuracy',  loss='cross_entropy', **kwargs):
-    Predictor.build(self, optimizer=optimizer, loss=loss,
-                    metric=metric, metric_is_like_loss=False,
-                    metric_name='Accuracy', **kwargs)
+  def build(self, optimizer=None, metric='accuracy', loss='cross_entropy',
+            **kwargs):
+    Predictor.build(self, optimizer=optimizer, loss=loss, metric=metric,
+                    **kwargs)
 
   def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise
@@ -55,9 +58,12 @@ class Classifier(Predictor):
   @with_graph
   def evaluate_model(self, data, batch_size=None, extractor=None,
                      export_false=False, **kwargs):
-    console.show_status('Evaluating classifier ...')
-    results = self.batch_evaluation(
-      self.metric_foreach, data, batch_size, extractor)
+    console.show_status('Evaluating classifier on {} ...'.format(data.name))
+
+    acc_slot = self.metrics_manager.get_slot_by_name('accuracy')
+    assert isinstance(acc_slot, MetricSlot)
+    acc_foreach = acc_slot.quantity_definition.quantities
+    results = self.evaluate(acc_foreach, data, batch_size, extractor)
     if self.input_type is InputTypes.RNN_BATCH:
       results = np.concatenate([y.flatten() for y in results])
     accuracy = np.mean(results) * 100
@@ -97,7 +103,7 @@ class Classifier(Predictor):
 
   @with_graph
   def classify(self, data, batch_size=None, extractor=None, return_probs=False):
-    probs = self.batch_evaluation(
+    probs = self.evaluate(
       self._probabilities.tensor, data, batch_size, extractor)
     if return_probs: return probs
 

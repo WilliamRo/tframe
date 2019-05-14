@@ -59,7 +59,7 @@ class Bamboo(Predictor):
       with tf.name_scope('Metric'):
         for output in self._output_list:
           self._metrics.append(metric_function(self._targets.tensor, output))
-        self.metric.plug(
+        self.key_metric.plug(
           self._metrics[-1], as_loss=metric_is_like_loss, symbol=metric_name)
 
     # Define train step
@@ -132,7 +132,7 @@ class Bamboo(Predictor):
     self.outputs.substitute(self._output_list[index])
     self.loss.substitute(self._losses[index])
     self.train_step.substitute(self._train_ops[index])
-    self.metric.substitute(self._metrics[index])
+    self.key_metric.substitute(self._metrics[index])
 
   def predict(self, data, **kwargs):
     index = kwargs.get('branch_index', 0)

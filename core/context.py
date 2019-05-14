@@ -40,7 +40,7 @@ class Context(object):
     self.loss_function = None
 
     # Global variables
-    self.metric_name = 'Metric'
+    self.metric_name = 'Metric'  # TODO: who will use it?
     self.logits_tensor = None
     self.reuse_dict = OrderedDict()
 

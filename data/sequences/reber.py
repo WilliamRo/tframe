@@ -358,7 +358,7 @@ class ERG(DataAgent):
     # TODO: ++export_tensors
     if hub.export_tensors_to_note:
       ERG.export_tensors(RC_acc, ERC_acc, model, data,
-                         trainer.loss_history.running_average)
+                         trainer.batch_loss_stat.running_average)
 
     msg = 'RC = {:.1f}%, ERC = {:.1f}%'.format(100 * RC_acc, 100 * ERC_acc)
     return msg
@@ -379,8 +379,8 @@ class ERG(DataAgent):
     assert isinstance(trainer, Trainer)
     # There is no need to check RC or ERC when validation accuracy is low
     # .. otherwise a lot of time will be wasted
-    if len(trainer.th.logs) == 0 or trainer.th.logs['Accuracy'] < acc_thres:
-      return None
+    # if len(trainer.th.logs) == 0 or trainer.th.logs['Accuracy'] < acc_thres:
+    #   return None # TODO
     model = trainer.model
     agent = model.agent
     assert isinstance(model, Classifier)
@@ -438,7 +438,7 @@ class ERG(DataAgent):
 
     if hub.export_tensors_to_note:
       ERG.export_tensors(
-        SHORT_acc, LONG_acc, model, data, trainer.loss_history.running_average,
+        SHORT_acc, LONG_acc, model, data, trainer.batch_loss_stat.running_average,
         'SC', 'LC')
 
     return 'S = {:.1f}%, L = {:.1f}%, A = {:.1f}%'.format(
@@ -462,7 +462,7 @@ class ERG(DataAgent):
     fetches_dict = context.tensors_to_export
     fetches = list(fetches_dict.values())
     if not hub.calculate_mean: data = data[:num]
-    results = model.batch_evaluation(fetches, data)
+    results = model.evaluate(fetches, data)
 
     # Get average dy/dS for short and long trigger
     tensors = OrderedDict()

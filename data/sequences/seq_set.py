@@ -11,6 +11,17 @@ from tframe.data.sequences.paral_engine import ParallelEngine
 
 
 class SequenceSet(DataSet):
+  """A SequenceSet stores lists of sequences in data_dict. Each sequence must
+     be a numpy array and its length may vary. Each sequence list shares
+     a same `structure` defined as [len(s) for s in sequence_list], which
+     is a property of the SequenceSet class.
+
+     In seq2seq tasks, the targets should be stored in data_dict so that
+     target list will be forced to share structure with feature list.
+     While in sequence classification tasks, `n_to_one` attribute should be
+     set to True and targets will be stored in `summ_dict` in which each
+     list shares a same length.
+  """
 
   EXTENSION = 'tfds'
 
@@ -26,8 +37,10 @@ class SequenceSet(DataSet):
     """
     # Attributes
     self.summ_dict = {} if summ_dict is None else summ_dict
-    assert isinstance(n_to_one, bool)
-    kwargs['n_to_one'] = n_to_one
+    kwargs['n_to_one'] = checker.check_type(n_to_one, bool)
+    if n_to_one and targets is not None:
+      self.summ_dict['targets'] = targets
+      targets = None
 
     # Call parent's constructor
     super().__init__(features, targets, data_dict, name, **kwargs)
@@ -60,7 +73,13 @@ class SequenceSet(DataSet):
   def is_regular_array(self): return False
 
   @property
+  def equal_length(self):
+    s = self.structure
+    return all(np.array(s) == s[0])
+
+  @property
   def merged_data_dict(self):
+    """Merge summ_dict to data_dict by duplicating summaries"""
     merged_dict = self.data_dict.copy()
     for name, summ_list in self.summ_dict.items():
       full_data = []
@@ -162,6 +181,15 @@ class SequenceSet(DataSet):
       If parallel option is on, batches will be yielded from a BETA method
       Otherwise for training, batch_size should be set to 1.
 
+      (batch_size, num_steps) combination can be:
+      (1) batch_size = 1
+
+      (2) batch_size > 1, if batch_size is -1, it will be set to self.size
+          (a) num_steps is forced to be -1,
+             i.e. sequence partition is forbidden.
+
+       Here batch pre-processor is not considered
+
     :param batch_size: integer. When is not training, this value can be set
                         to -1 or any positive integer.
     :param num_steps:  a non-negative integer.
@@ -172,24 +200,34 @@ class SequenceSet(DataSet):
       yield from self._gen_parallel_batches(batch_size, num_steps, shuffle)
       return
 
+    # Get round length
     round_len = self.get_round_length(batch_size, num_steps)
+    # If batch_size < 0, set it to self.size
     if batch_size < 0: batch_size = self.size
-    L = int(np.ceil(self.size / batch_size))
+    # Calculate # batches in one epoch
+    num_batches = int(np.ceil(self.size / batch_size))
+    # counter helps to enforce the total iterations in one epoch matches the
+    #  round length
     counter = 0
-    # Init indices
+    # Initialize indices, shuffle if necessary
     self._init_indices(shuffle)
-    for i in range(L):
+    for i in range(num_batches):
       # Get sequence list of length `batch_size`
       indices = self._select(i, batch_size, shuffle)
       seq_batch = self[indices]
       active_length = None
+      # Pre-proceed this batch if necessary
+      # preprocessor should be used very carefully
       if self.batch_preprocessor is not None:
         seq_batch = self.batch_preprocessor(seq_batch, is_training)
         seq_batch.remove_batch_preprocessor()
 
       if isinstance(seq_batch, SequenceSet):
+        # If batch_size > 1, calculate active_length in case sequences in this
+        #   batch have various lengths
         if seq_batch.size > 1:
           active_length = seq_batch.structure
+          # forbid sequence partition
           assert num_steps < 0
         # padded_stack is_rnn_input, and is a DataSet, not SeqSet any more
         seq_batch = seq_batch.padded_stack
@@ -198,6 +236,8 @@ class SequenceSet(DataSet):
 
       # seq_batch.shape = (batches, steps, *shape)
       # Use DataSet's gen_rnn_batches method to yield batches
+      # Note that here `batch_size` parameter will not be used in
+      #  seq_batch.gen_rnn_batches method
       for batch in seq_batch.gen_rnn_batches(
           1, num_steps, is_training=is_training):
         batch.active_length = active_length

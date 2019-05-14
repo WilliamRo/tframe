@@ -26,7 +26,17 @@ def check_gate(inputs):
   return inputs
 
 
+def check_fetchable(inputs):
+  return check_type_v2(inputs, (tf.Tensor, tf.Variable))
+
+
 def check_type_v2(inputs, types):
+  """
+  SYNTAX:
+  (1) check(value, (int, float))
+  (2) check([v1, v2, ..., vN], (int, float))
+  (2) check([v1, v2, ..., vN], tf.Tensor)
+  """
   objects = inputs if isinstance(inputs, (tuple, list)) else (inputs,)
   for obj in objects:
     if not isinstance(obj, types):

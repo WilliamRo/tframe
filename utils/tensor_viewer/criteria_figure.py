@@ -32,6 +32,7 @@ class CriteriaFigure(Frame):
     self._ax1_text = 'Unknown'
     self._step = None
     self._criteria = OrderedDict()
+    self._losses = OrderedDict()
     self._cursor = None
     self.related_variable_viewer = None
 
@@ -63,7 +64,7 @@ class CriteriaFigure(Frame):
   def min_and_max(self):
     v_min, v_max = None, None
     for n, c in self._criteria.items():
-      if n == 'Loss': continue
+      if 'Loss' in n: continue
       _min, _max = np.min(c), np.max(c)
       if v_max is None or _max > v_max: v_max = _max
       if v_min is None or _min < v_min: v_min = _min
@@ -85,7 +86,13 @@ class CriteriaFigure(Frame):
     # Set step and loss
     self._ax1_text = ax1_text
     self._step = step
-    self._criteria = criteria
+
+    assert isinstance(criteria, dict)
+    for key, value in criteria.items():
+      if 'Loss' in key: self._losses[key] = value
+      else: self._criteria[key] = value
+
+    # self._criteria = criteria
     self._cursor = 0
 
     # Refresh figure
@@ -113,26 +120,31 @@ class CriteriaFigure(Frame):
     if v_min is not None:
       self.ax1.plot([step, step], [v_min, v_max], '--', color='silver')
 
-    criterion_strings = []
-    ax1_mark_list = []
+    # Set ax2 if loss_dict is not empty
+    if len(self._losses) > 0:
+      self.ax2.set_ylabel('Loss')
+      self.ax2.tick_params('y')
+
+    get_label = lambda name, val: '{} ({:.3f})'.format(name, val)
+    # Plot losses
+    for name, loss in self._losses.items():
+      val = loss[self._cursor]
+      if name == 'Loss': name = 'Batch Loss'
+      # Plot loss
+      self.ax2.plot(self._step, loss, ':')
+      self.ax2.plot(step, val, 'rs')
+      # Make a shadow
+      self.ax1.plot(np.nan, ':', label=get_label(name, val))
+
+    # Plot criteria
     for name, criterion in self._criteria.items():
       val = criterion[self._cursor]
-      criterion_strings.append('{} = {:.3f}'.format(name, val))
       # Plot curve
-      if name == 'Loss':
-        self.ax2.plot(self._step, criterion, 'r-', label=name)
-        self.ax2.set_ylabel('Loss', color='r')
-        self.ax2.tick_params('y', colors='r')
-        self.ax2.plot(step, val, 'rs')
-      else:
-        self.ax1.plot(self._step, criterion, label=name)
-        ax1_mark_list += [step, val, 'rs']
+      self.ax1.plot(self._step, criterion, label=get_label(name, val))
+      self.ax1.plot(step, val, 'rs')
 
-    # Set title and plot markers
-    self.ax1.set_title(', '.join(criterion_strings))
-    if len(ax1_mark_list) > 0:
-      self.ax1.legend(loc='best')
-      self.ax1.plot(*ax1_mark_list)
+    # Show legend
+    self.ax1.legend(loc='best')
 
     # Draw update on canvas
     self.figure_canvas.draw()

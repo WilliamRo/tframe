@@ -8,7 +8,13 @@ import tensorflow as tf
 import tframe as tfr
 
 
+"""Stark knows everything about tframe logic and helps to mitigate the chaos 
+   in this framework.
+"""
+# region : Pruner-related
+
 def get_params_num(variables, consider_prune=False):
+  """Used in Net.structure_detail"""
   if len(variables) == 0:
     if consider_prune: return 0, 0
     else: return 0
@@ -21,7 +27,6 @@ def get_params_num(variables, consider_prune=False):
   # Return according to consider_prune
   if consider_prune: return num, dense_num
   else: return num
-
 
 def _get_params_num_single(variable, consider_prune=False):
   assert isinstance(variable, tf.Variable)
@@ -36,3 +41,5 @@ def _get_params_num_single(variable, consider_prune=False):
   # Return according to consider_prune
   if consider_prune: return size, size
   else: return size
+
+# endregion : Pruner-related

@@ -60,9 +60,9 @@ class SmartTrainer(Trainer):
   def _advanced_strategy(self, rnd):
     """This method will be called after Metric.end_round method"""
     if not self.th.smart_train: return
-    if self.metric.trend_is_promising and self.th.bad_apples > 0:
+    if self.key_metric.trend_is_promising and self.th.bad_apples > 0:
       self.th.bad_apples -= 1
-    if self.metric.get_idle_rounds(rnd) > 0:
+    if self.key_metric.get_idle_rounds(rnd) > 0:
       self.th.bad_apples += 1
       if self.th.bad_apples > self.th.max_bad_apples:
         # Decay learning rate and reset bad apples

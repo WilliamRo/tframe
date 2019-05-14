@@ -6,9 +6,9 @@ from .flag import Flag
 
 
 class DataConfigs(object):
-  train_size = Flag.integer(0, 'Training size')
-  val_size = Flag.integer(0, 'Validation size')
-  test_size = Flag.integer(0, 'Test size')
+  train_size = Flag.integer(0, 'Size of training set')
+  val_size = Flag.integer(0, 'Size of validation set')
+  test_size = Flag.integer(0, 'Size of test set')
   sequence_length = Flag.integer(0, 'Sequence length', is_key=None)
   fixed_length = Flag.boolean(True, 'Whether to fix sequence length.'
                                     'used in AP, etc', is_key=None)

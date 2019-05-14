@@ -115,8 +115,7 @@ class Pruner(object):
     model = self._model
     assert isinstance(model, Model)
     # Reset metrics
-    model.metric.record = -1
-    model.metric.mean_record = -1
+    model.metrics_manager.reset_records()
     # Reset counter
     model.counter = 0
     # Update mark

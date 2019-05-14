@@ -23,6 +23,10 @@ class Group(object):
     assert isinstance(self._slots[0], Slot)
 
   # region : Properties
+
+  def tensor_slots(self):
+    return [s for s in self._slots if isinstance(s, TensorSlot)]
+
   # endregion : Properties
 
   # region : Public Methods

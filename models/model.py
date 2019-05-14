@@ -19,11 +19,13 @@ from tframe.core import TensorSlot, NestedTensorSlot
 from tframe.core import SummarySlot, OperationSlot, IndependentSummarySlot
 from tframe.core import Group
 from tframe.core.agent import Agent
+from tframe.core.quantity import Quantity
 
-from tframe.trainers.metric import Metric
+from tframe.trainers.metric_slot import MetricSlot
 from tframe.trainers.scheme import TrainScheme
 from tframe.trainers.trainer import Trainer, TrainerHub
 from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
+from tframe.trainers.metrics_manager import MetricsManager
 
 from tframe.data.base_classes import TFRData
 from tframe.data.sequences.seq_set import SequenceSet
@@ -55,21 +57,28 @@ class Model(object):
     # Define slots
     self._outputs = TensorSlot(self)
 
-    self._metric = Metric(self, 'metric')
+    self._metrics_manager = MetricsManager(self)
+
     self._validation_summary = SummarySlot(self)
     self._batch_val_summ = IndependentSummarySlot(self, 'batch_metric_summ')
-    self._validate_group = Group(
-      self, self._metric, self._validation_summary, name='Validate-group')
 
     self._loss = TensorSlot(self, 'Loss')
     self._train_step = OperationSlot(self)
     self._train_step_summary = SummarySlot(self)
+
+    self.validate_group = Group(
+      self, self._validation_summary, name='Validate-group')
+
     self._update_group = Group(
-      self, self._loss, self._metric, self._train_step,
-      self._train_step_summary, name='Update-group')
+      self, self._loss, self._train_step, self._train_step_summary,
+      name='Update-group')
+    # TODO: mark ==========================
+    # self._update_group = Group(
+    #   self, self._loss, self._metric, self._train_step,
+    #   self._train_step_summary, name='Update-group')
 
     # Private attributes
-    self._default_net = None
+    self._default_net = None  # TODO to be removed
     self._optimizer = None
     self._built = False
     self._scheme = None
@@ -77,6 +86,9 @@ class Model(object):
     # Public attributes
     self.counter = None
     self.launched = False
+
+    # Quantities
+    self.loss_quantity = None
 
   # region : Properties
 
@@ -91,10 +103,16 @@ class Model(object):
     return self.agent.session
 
   @property
-  def metric(self):
-    if self._metric is not None:
-      assert isinstance(self._metric, Metric)
-    return self._metric
+  def metrics_manager(self):
+    return self._metrics_manager
+
+  @property
+  def key_metric(self):
+    if not self.metrics_manager.has_metric: return None
+    return self.metrics_manager.early_stop_slot
+    # if self._metric is not None:
+    #   assert isinstance(self._metric, MetricSlot)
+    # return self._metric
 
   @property
   def outputs(self):
@@ -118,8 +136,8 @@ class Model(object):
 
   @property
   def record(self):
-    if not self.metric.activated: return None
-    else: return self.metric.record
+    if not self.key_metric.activated: return None
+    else: return self.key_metric.record
 
   @property
   def variable_to_save(self):
@@ -166,14 +184,19 @@ class Model(object):
 
   @with_graph
   def build(self, optimizer=None, **kwargs):
+    # TODO: model.build should support multi-metrics
+
     # Remove metric from update group if necessary
     # .. (e.g. when loss == metric == mse)
-    if kwargs.get('remove_metric_from_update_group', False):
-      self._update_group.remove(self._metric)
+    # TODO ====================================================================
+    # if kwargs.get('remove_metric_from_update_group', False):
+    #   self._update_group.remove(self._metric)
+
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
     # Initialize pruner if necessary
     if hub.prune_on:
+      # import here to prevent circular import (temporarily)
       from tframe.utils.pruner import Pruner
       tfr.context.pruner = Pruner(self)
     #
@@ -265,7 +288,26 @@ class Model(object):
 
   def get_data_batches(self, data_set, batch_size, num_steps=None,
                        shuffle=False, is_training=False):
-    """ Get batch generator.
+    """ Get batch generator. This method is used both in training and
+        evaluation/validation.
+
+        It's trivial for FNN models. However, for RNN models, data_set may be
+        (1) a SequenceSet in which the feature is a list of numpy arrays.
+            each represents a sequence and the lengths may vary.
+            e.g.
+            data_set.feature = [
+               xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+               xxxxxxxxxxxxxxxxxxx,
+               xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+               xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+            ], in which x represents a data point.
+            In this case, batch size can be
+            (a) 1 (by default)
+            (b) larger than 1, active_len mechanism will be used,
+                val_num_steps will be forced to -1
+        (2) a DataSet consists of a single sequence, shape = [seq_len, *dim]
+            In this case, batch size can be any integer
+
     :param data_set: an instance of DataSet or BigData from which data batches
                       will be extracted
     :param batch_size: if is None, default value will be assigned according to
@@ -276,113 +318,208 @@ class Model(object):
     """
     # Data set must be an instance of DataSet or BigData
     assert isinstance(data_set, (DataSet, BigData, PerpetualMachine))
+
     if self.input_type is InputTypes.BATCH:
-      # If model's input type is normal batch, num_steps will be ignored
+      # 1. For FNN, `num_steps` will be ignored, default batch_size is -1 (all)
+
       # If batch size is not specified and data is a DataSet, feed it all at
       #  once into model
       if batch_size is None and isinstance(data_set, DataSet):
         return [data_set.stack]
+
+      # Otherwise batch_size must be an positive integer
       checker.check_positive_integer(batch_size)
       data_batches = data_set.gen_batches(
         batch_size, shuffle=shuffle, is_training=is_training)
 
     elif self.input_type is InputTypes.RNN_BATCH:
+      # 2. For RNN, default batch_size is 1, default num_steps is -1 (all)
+      #
       if num_steps is None: num_steps = -1
       if batch_size is None: batch_size = 1
       if batch_size < 0: batch_size = data_set.size
 
-      # if batch_size > 1: assert num_steps < 0
+      # Cases:
+      # (1) data_set is a DataSet but not a SequenceSet
+      #     each data entry in data_dict will be considered as a consecutive
+      #     sequence. batch_size and num_steps can be any integer
+      # (2) data_set is a SequenceSet
+      #     ---------------+------------------------+--------------------------
+      #                    | num_steps = -1         | num_steps != -1
+      #     ---------------+------------------------+--------------------------
+      #                    |                        |
+      #     batch_size = 1 | legal for all          | legal for all *
+      #                    |                        |
+      #     ---------------+------------------------+--------------------------
+      #                    | train: legal for equal-length sequences since
+      #                    |        act_len logic has not been implemented
+      #     batch_size > 1 |        for training *
+      #                    +------------------------+--------------------------
+      #                    | val: legal for all     | TODO: not supported
+      #     ---------------+------------------------+--------------------------
+      #                                             | * n_to_one must be False
+
+      # Check batch_size
       # it's legal for common DataSet to have num_steps > 0 while batch_size > 1
+      checker.check_positive_integer(batch_size)
       if batch_size > 1 and isinstance(data_set, SequenceSet):
         assert num_steps < 0
+        if is_training: assert data_set.equal_length
 
-      checker.check_positive_integer(batch_size)
+      # Check num_steps
       checker.check_type(num_steps, int)
+      if num_steps != -1:
+        # partition logic for n_to_one task has not been implemented yet
+        assert not data_set.n_to_one
+
+      # Generate batches
       data_batches = data_set.gen_rnn_batches(
         batch_size, num_steps, shuffle, is_training=is_training)
     else: raise ValueError('!! Can not resolve input type of this model')
 
     return data_batches
 
-  def validate_model(self, data, batch_size=None, allow_sum=False):
-    """Validate model. If data provided is not regular, batch validation will
-       be used. For RNN model, batch validation requires batch size to be 1."""
-    # If data items are not regular arrays, it will be forced to carry out
-    # .. batch validation
-    assert isinstance(data, TFRData)
-    if not data.is_regular_array and batch_size is None: batch_size = 1
+  def validate_model(self, data_set, batch_size=None, allow_sum=False):
+    """Evaluate quantities in validate group of this model
+    :param data_set: a tframe DataSet
+    :param batch_size: if is None or -1, batch_size will be data_set.size
+    :param allow_sum: whether to add tensorflow summaries TODO: to be deprecated
+    :return: a dictionary in which keys are slots (may include loss and metric)
+             and values are scalars corresponding to these slots
+    """
+    assert isinstance(data_set, DataSet)
+    num_steps = hub.val_num_steps
 
-    # Normal validation
-    if batch_size is None:
-      data = self._sanity_check_before_use(data)
-      feed_dict = self._get_default_feed_dict(data, is_training=False)
-      return self._validate_group.run(feed_dict, allow_sum=allow_sum)
-
-    # Batch validation: Calculate metric batch by batch
-    metric_list = []
-    total = 0
-    # Constrain
-    if hub.val_num_steps != -1: assert batch_size == 1
-    for batch in self.get_data_batches(
-        data, batch_size, hub.val_num_steps, False):
-      # Batch validation on irregular data
-      if (batch.active_length is not None and
-          max(batch.active_length) > min(batch.active_length)):
-        # TODO: need a corresponding mechanism to ensure metric_foreach
-        #       exists
-        results = self._get_active_tensor(
-          batch, self.metric_foreach, no_partition=hub.val_num_steps==-1)
-        for result in results:
-          if not batch.n_to_one:
-            assert isinstance(result, np.ndarray) and len(result.shape) == 1
-            metric_list.append(sum(result))
-            total += len(result)
-          else:
-            if isinstance(result, np.ndarray):
-              assert len(result) == 1
-              result = result[0]
-            assert np.isscalar(result)
-            metric_list.append(result)
-            total += 1
-        continue
-
-      # Calculate weight TODO: the code block below should be merged
-      if self.input_type is InputTypes.RNN_BATCH:
-        # shape of RNN batch targets is (batch_size, num_steps, *target_dim)
-        weight = batch.targets.shape[0] * batch.targets.shape[1]
+    # - One-shot validation
+    one_shot = False
+    batch_is_all = batch_size in (-1, None) or batch_size == data_set.size
+    # .. check one-shot qualification
+    # .. .. the code below should be encapsulated
+    if self.input_type is InputTypes.BATCH:
+      # (1) e.g. small model on MNIST, CIFAR-10
+      if batch_is_all: one_shot = True
+    elif self.input_type is InputTypes.RNN_BATCH:
+      # (2)
+      if isinstance(data_set, SequenceSet):
+        # (2-a)
+        if batch_is_all and num_steps == -1 and data_set.equal_length:
+          # e.g. AP, TO
+          one_shot = True
       else:
-        # weight = batch.targets.shape[0]
-        weight = np.prod(batch.targets.shape)
-      assert weight > 0
-      total += weight
+        # (2-b)
+        assert isinstance(data_set, DataSet)
+        assert batch_size in (1, -1, None)
+        # e.g. small model on WHB
+        if num_steps == -1: one_shot = True
+    # .. do one-shot validation if is qualified
+    if one_shot:
+      data_set = self._sanity_check_before_use(data_set)
+      feed_dict = self._get_default_feed_dict(data_set, is_training=False)
+      return self.validate_group.run(feed_dict, allow_sum=allow_sum)
 
-      # Validate batch
-      batch = self._sanity_check_before_use(batch)
-      feed_dict = self._get_default_feed_dict(batch, is_training=False)
-      metric_list.append(self._metric.run(feed_dict) * weight)
+    # - Otherwise do batch validation
+    tensor_slots = self.validate_group.tensor_slots()
+    quantity_defs = [s.quantity_definition for s in tensor_slots]
+    fetches = [q.quantities for q in quantity_defs]
+    values = self.evaluate(fetches, data_set, batch_size)
+    result_dict = OrderedDict()
 
-    # Return metric mean
-    metric_mean = np.sum(metric_list) / total
-    if allow_sum: self._batch_val_summ.write(metric_mean)
-    return {self._metric: metric_mean}
+    for val, qd, slot in zip(values, quantity_defs, tensor_slots):
+      # Sanity check
+      assert isinstance(qd, Quantity)
+      if self.input_type is InputTypes.BATCH:
+        assert isinstance(val, np.ndarray) and len(val) > 0
+      else:
+        assert isinstance(val, list)
+        checker.check_type(val, np.ndarray)
+      # Apply np_summ_method on val
+      scalar = qd.apply_np_summ_method(val)
+      # Add summ to results
+      result_dict[slot] = scalar
+
+    return result_dict
+
+  # TODO: to be removed
+  # def validate_model_(self, data, batch_size=None, allow_sum=False):
+  #   """Validate model. If data provided is not regular, batch validation will
+  #      be used. For RNN model, batch validation requires batch size to be 1."""
+  #   # If data items are not regular arrays, it will be forced to carry out
+  #   # .. batch validation
+  #   assert isinstance(data, TFRData)
+  #   if not data.is_regular_array and batch_size is None: batch_size = 1
+  #
+  #   # Normal validation
+  #   if batch_size is None:
+  #     data = self._sanity_check_before_use(data)
+  #     feed_dict = self._get_default_feed_dict(data, is_training=False)
+  #     return self.validate_group.run(feed_dict, allow_sum=allow_sum)
+  #
+  #   # Batch validation: Calculate metric batch by batch
+  #   metric_list = []
+  #   total = 0
+  #   # Constrain
+  #   if hub.val_num_steps != -1: assert batch_size == 1
+  #   # data batch(es) will be generated according to model type
+  #   for batch in self.get_data_batches(
+  #       data, batch_size, hub.val_num_steps, False):
+  #     # Batch validation on irregular data
+  #     if (batch.active_length is not None and
+  #         max(batch.active_length) > min(batch.active_length)):
+  #       # TODO: need a corresponding mechanism to ensure metric_foreach
+  #       #       exists
+  #       results = self._get_active_tensor(
+  #         batch, self.metric_foreach, no_partition=hub.val_num_steps==-1)
+  #       for result in results:
+  #         if not batch.n_to_one:
+  #           assert isinstance(result, np.ndarray) and len(result.shape) == 1
+  #           metric_list.append(sum(result))
+  #           total += len(result)
+  #         else:
+  #           if isinstance(result, np.ndarray):
+  #             assert len(result) == 1
+  #             result = result[0]
+  #           assert np.isscalar(result)
+  #           metric_list.append(result)
+  #           total += 1
+  #       continue
+  #
+  #     # Calculate weight TODO: the code block below should be merged
+  #     if self.input_type is InputTypes.RNN_BATCH:
+  #       # shape of RNN batch targets is (batch_size, num_steps, *target_dim)
+  #       weight = batch.targets.shape[0] * batch.targets.shape[1]
+  #     else:
+  #       # weight = batch.targets.shape[0]
+  #       weight = np.prod(batch.targets.shape)
+  #     assert weight > 0
+  #     total += weight
+  #
+  #     # Validate batch
+  #     batch = self._sanity_check_before_use(batch)
+  #     feed_dict = self._get_default_feed_dict(batch, is_training=False)
+  #     metric_list.append(self._metric.run(feed_dict) * weight)
+  #
+  #   # Return metric mean
+  #   metric_mean = np.sum(metric_list) / total
+  #   if allow_sum: self._batch_val_summ.write(metric_mean)
+  #   return {self._metric: metric_mean}
 
   def take_down_metric(self, is_online):
-    if not self.metric.activated: return
-    notes = 'Record: {:.3f}'.format(self.metric.record)
+    if not self.key_metric.activated: return
+    notes = 'Record: {:.3f}'.format(self.key_metric.record)
     if not is_online:
-      notes += ', Mean Record: {:.3f}'.format(self.metric.mean_record)
+      notes += ', Mean Record: {:.3f}'.format(self.key_metric.mean_record)
     self.agent.take_notes(notes, date_time=False)
     # Add history into notes if necessary
     if hub.show_record_history_in_note:
       self.agent.take_notes(
-        self.metric.metric_mean_history_str, date_time=False)
+        self.key_metric.metric_mean_history_str, date_time=False)
     # Add record and mean record to notes
-    self.agent.put_down_criterion('Record', self.metric.record)
+    self.agent.put_down_criterion('Record', self.key_metric.record)
     if not is_online:
-      self.agent.put_down_criterion('Mean Record', self.metric.mean_record)
+      self.agent.put_down_criterion('Mean Record', self.key_metric.mean_record)
 
   def end_round(self, rnd):
-    self.metric.end_round(rnd)
+    self.key_metric.end_round(rnd)
 
   def bust(self, rnd):
     if self._scheme is not None:
@@ -455,98 +592,130 @@ class Model(object):
   def launch_model(self, overwrite=False):
     return self.agent.launch_model(overwrite)
 
-  def batch_evaluation(
-      self, fetches, data_set, batch_size=None, extractor=None):
-    # Sanity check
-    if isinstance(fetches, (list, tuple)) and len(fetches) == 0: return []
-    checker.check_type_v2(fetches, (tf.Tensor, tf.Variable))
-    assert isinstance(data_set, TFRData)
-    fetches_is_single = not isinstance(fetches, (tuple, list))
+  def evaluate(
+      self, fetches, data, batch_size=None, postprocessor=None):
+    """
+    Evaluate tensors based on data
+    TODO: note that if num_steps != -1, outputs from a same sequence may be
+          partitioned. e.g., if single_fetch, outputs will be
+          [array_1_1, ..., array_1_k1, array_2_1, ..., array_2_k2, ...]
+         |-------- input_1 ----------|------------ input_2 ----------|
+         it's OK for seq2seq validation, but need to be post-proceeded in
+         tasks like sequence classification (currently forbidden)
+
+    :param fetches: a (tuple/list of) tf.Tensor(s) to be evaluated
+    :param data: data used for evaluation
+    :param batch_size: if not specified (None by default), batch_size will be
+                       assigned accordingly. If assigned with a positive
+                       integer, evaluation will be performed batch by batch.
+    :param postprocessor: post-processor for outputs
+    :return: commonly a (list of) tf.Tensor(s), each of which has the
+             same batch size with the provided data
+    """
+    # Sanity check for fetches
+    checker.check_fetchable(fetches)
+    single_fetch = not isinstance(fetches, (tuple, list))
     # Wrap fetches into a list if necessary
-    if fetches_is_single: fetches = [fetches]
+    if single_fetch: fetches = [fetches]
 
-    # Define outputs as list of arrays/list of arrays
+    # Get outputs
     outputs = [[] for _ in fetches]
-    for data_batch in self.get_data_batches(data_set, batch_size):
-      # Calculate output
+    for data_batch in self.get_data_batches(
+        data, batch_size, hub.val_num_steps):
       data_batch = self._sanity_check_before_use(data_batch)
-      # TODO: consider n_to_one cases (happens to act correctly in
-      #       Predictor.predict)
-      # `_get_active_tensor` returns a list if fetches is a list
-      batch_outputs = self._get_active_tensor(data_batch, fetches)
-      assert isinstance(batch_outputs, (tuple, list))
-      # Extract if necessary
-      if extractor is not None:
-        assert callable(extractor)
-        batch_outputs = [extractor(bo) for bo in batch_outputs]
-      # Add output to outputs accordingly
-      for output, batch_output in zip(outputs, batch_outputs):
-        assert isinstance(output, list)
-        if self.input_type is InputTypes.RNN_BATCH: output += batch_output
-        else: output.append(batch_output)
+      # Get batch outputs          fetches[0]  fetches[1]
+      #  for FNN, batch_outputs = [np_array_1, np_array_2, ...]
+      #           each np_array_k have a same batch_size
+      #  for RNN, batch_outputs = [[s1_1, s1_2, ..., s1_N],       <= fetches[0]
+      #                            [s2_1, s2_2, ..., s2_N], ...]  <= fetches[1]
+      #           N is the batch_size, and each sk_i is a numpy array
+      batch_outputs = self._evaluate_batch(fetches, data_batch)
+      assert isinstance(batch_outputs, list)
+      assert len(batch_outputs) == len(outputs)
 
-    # Concatenate if possible
+      # Add batch_outputs to outputs accordingly
+      for i, batch_output in enumerate(batch_outputs):
+        assert isinstance(outputs[i], list)
+        if self.input_type is InputTypes.RNN_BATCH:
+          # batch_output is [s1_1, s1_2, ..., s1_N]
+          assert isinstance(batch_output, list)
+          outputs[i] = outputs[i] + batch_output
+        else:
+          # batch_output is a numpy array of length batch_size
+          outputs[i].append(batch_output)
+
+    # Merge outputs if necessary
     if self.input_type is InputTypes.BATCH:
-      outputs = [np.concatenate(o) for o in outputs]
-    # Return
-    if fetches_is_single: outputs = outputs[0]
+      outputs = [np.concatenate(array_list, axis=0) for array_list in outputs]
+
+    # Post-proceed and return
+    if postprocessor is not None:
+      assert callable(postprocessor)
+      outputs = postprocessor(outputs)
+
+    assert isinstance(outputs, list)
+    if single_fetch: outputs = outputs[0]
     return outputs
 
   # endregion : Public Methods
 
   # region : Private Methods
 
-  def _get_active_tensor(self, batch, fetches, no_partition=True):
-    """
-    Returns a list if fetches is a list. Otherwise a tf.Tensor will be returned.
-    For common data batches, this method returns a (list of) tf.Tensor
-    For RNN batches (with batch_size N) which is probably pad-stacked,
-      this method returns a list if tf.Tensor for each fetcher.
+  def _evaluate_batch(self, fetch_list, data_set, **kwargs):
+    raise NotImplementedError
 
-    This method is used in
-    (1) batch_evaluation: fetches is a list of tensors.
-    (2) validate_model: fetches is a single metric.
-    """
-    checker.check_type_v2(fetches, (tf.Tensor, tf.Variable))
-    assert isinstance(batch, DataSet)
-    fetches_is_single = not isinstance(fetches, (tuple, list))
-
-    if self.input_type is InputTypes.RNN_BATCH:
-      # TODO: need to be refactored
-      assert hasattr(self, 'reset_buffers') and hasattr(self, 'set_buffers')
-      assert hasattr(self, '_state_slot')
-      # Put state into fetches if necessary
-      if not no_partition:
-        if fetches_is_single: fetches = [fetches]
-        fetches.append(self._state_slot._op)
-
-    feed_dict = self._get_default_feed_dict(batch, is_training=False)
-    values = self.session.run(fetches, feed_dict)
-
-    # TODO
-    # checker.check_type(values, np.ndarray)
-
-    # Recover
-    if not no_partition: self.set_buffers(values.pop(-1), is_training=False)
-    # If values is a single element, wrap it into a list for potential slicing
-    elif fetches_is_single: values = [values]
-
-    al = batch.active_length
-    if self.input_type is InputTypes.RNN_BATCH:
-      # Set back
-      if al is not None:
-        assert isinstance(al, list) and len(al) == batch.size
-        outputs = [[y[:l] for y, l in zip(value, al)] for value in values]
-        # If this model is for classifying a whole sequence
-        if batch.n_to_one:
-          outputs = [[y[-1] for y in output] for output in outputs]
-      else:
-        # al is None indicates batch_size is 1
-        outputs = [[value] for value in values]
-    else: outputs = values
-
-    if fetches_is_single: outputs = outputs[0]
-    return outputs
+  # TODO: to be removed
+  # def _get_active_tensor(self, batch, fetches, no_partition=True):
+  #   """
+  #   Returns a list if fetches is a list. Otherwise a tf.Tensor will be returned.
+  #   For common data batches, this method returns a (list of) tf.Tensor
+  #   For RNN batches (with batch_size N) which is probably pad-stacked,
+  #     this method returns a list if tf.Tensor for each fetcher.
+  #
+  #   This method is used in
+  #   (1) batch_evaluation: fetches is a list of tensors.
+  #   (2) validate_model: fetches is a single metric.
+  #   """
+  #   checker.check_type_v2(fetches, (tf.Tensor, tf.Variable))
+  #   assert isinstance(batch, DataSet)
+  #   fetches_is_single = not isinstance(fetches, (tuple, list))
+  #
+  #   if self.input_type is InputTypes.RNN_BATCH:
+  #     # TODO: need to be refactored
+  #     assert hasattr(self, 'reset_buffers') and hasattr(self, 'set_buffers')
+  #     assert hasattr(self, '_state_slot')
+  #     # Put state into fetches if necessary
+  #     if not no_partition:
+  #       if fetches_is_single: fetches = [fetches]
+  #       fetches.append(self._state_slot._op)
+  #
+  #   feed_dict = self._get_default_feed_dict(batch, is_training=False)
+  #   values = self.session.run(fetches, feed_dict)
+  #
+  #   # TODO
+  #   # checker.check_type(values, np.ndarray)
+  #
+  #   # Recover
+  #   if not no_partition: self.set_buffers(values.pop(-1), is_training=False)
+  #   # If values is a single element, wrap it into a list for potential slicing
+  #   elif fetches_is_single: values = [values]
+  #
+  #   al = batch.active_length
+  #   if self.input_type is InputTypes.RNN_BATCH:
+  #     # Set back
+  #     if al is not None:
+  #       assert isinstance(al, list) and len(al) == batch.size
+  #       outputs = [[y[:l] for y, l in zip(value, al)] for value in values]
+  #       # If this model is for classifying a whole sequence
+  #       if batch.n_to_one:
+  #         outputs = [[y[-1] for y in output] for output in outputs]
+  #     else:
+  #       # al is None indicates batch_size is 1
+  #       outputs = [[value] for value in values]
+  #   else: outputs = values
+  #
+  #   if fetches_is_single: outputs = outputs[0]
+  #   return outputs
 
   @with_graph
   def _get_default_feed_dict(self, batch, is_training):
@@ -568,10 +737,14 @@ class Model(object):
     return feed_dict
 
   def _sanity_check_before_use(self, data):
+    # Make sure data is legal
     if not isinstance(data, DataSet):
       raise TypeError('!! Input data must be an instance of DataSet')
+    # Make sure model has been built
     if not self.built: raise ValueError('!! Model not built yet')
+    # Make sure model has been launched
     if not self.launched: self.launch_model(overwrite=False)
+    # Make sure data type matches model input type
     if self.input_type is InputTypes.RNN_BATCH: data = data.as_rnn_batch
     else: assert not data.is_rnn_input
     return data

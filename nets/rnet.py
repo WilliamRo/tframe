@@ -291,7 +291,6 @@ class RNet(Net):
       #   rnn_dict[self.gradient_buffer_placeholder] = self._gradient_buffer_array
     else:
       checker.check_positive_integer(batch_size)
-      # state = self._get_zero_state(batch_size)
       state = self._eval_state_buffer
 
     rnn_dict[self.init_state] = state

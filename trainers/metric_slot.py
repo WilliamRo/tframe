@@ -9,13 +9,12 @@ from tframe import console
 from tframe.core import TensorSlot, VariableSlot, SummarySlot
 
 
-class Metric(TensorSlot):
+class MetricSlot(TensorSlot):
 
   def __init__(self, model, name='metric'):
     # Call parent's constructor
     super().__init__(model, name)
     #
-    self._as_loss = None
     self.symbol = None
     self._record_round = 0
     self._record_counter = 0
@@ -32,8 +31,8 @@ class Metric(TensorSlot):
   # region : Properties
 
   @property
-  def like_loss(self):
-    return self._as_loss
+  def lower_is_better(self):
+    return self.quantity_definition.lower_is_better
 
   @property
   def record(self):
@@ -54,7 +53,7 @@ class Metric(TensorSlot):
   @property
   def trend_is_promising(self):
     if len(self._trend) == 0: return None
-    if self._as_loss: return all(np.array(self._trend) < 0)
+    if self.lower_is_better: return all(np.array(self._trend) < 0)
     else: return all(np.array(self._trend) > 0)
 
   @property
@@ -76,8 +75,8 @@ class Metric(TensorSlot):
     return counter - self._record_counter
 
   def is_better_than(self, metric1, metric2, gap=0):
-    assert self._as_loss is not None
-    if self._as_loss: return metric1 < metric2 - gap
+    assert self.quantity_definition is not None
+    if self.lower_is_better: return metric1 < metric2 - gap
     else: return metric1 > metric2 + gap
 
   def end_round(self, rnd):
@@ -107,9 +106,9 @@ class Metric(TensorSlot):
 
     # Show metric mean status
     # TODO: console access should be somehow controlled
-    token = 'min' if self._as_loss else 'max'
-    console.supplement('E[metric] = {:.3f}, {}(E[metric]) = {:.3f}'.format(
-      metric_mean, token, mean_record))
+    token = 'min' if self.lower_is_better else 'max'
+    console.supplement('E[{}] = {:.3f}, {}(E[{}]) = {:.3f}'.format(
+      self.symbol, metric_mean, token, self.symbol, mean_record))
     self._show_trend()
 
     # Show record
@@ -144,12 +143,10 @@ class Metric(TensorSlot):
 
   # region : Methods Overrides
 
-  def plug(self, op, as_loss=True, symbol='metric'):
-    """Called in the building stage of a model"""
-    self._as_loss = as_loss
+  def plug(self, op, symbol='metric', quantity_def=None):
+    """Called in the building methods of a model"""
     self.symbol = symbol
-    self.name = symbol
-    super().plug(op)
+    super().plug(op, quantity_def=quantity_def)
     self._init_tensors()
 
   # endregion : Methods Overrides
@@ -159,11 +156,13 @@ class Metric(TensorSlot):
   def _init_tensors(self):
     with self._model.graph.as_default():
       self._record.plug(tf.Variable(
-        initial_value=-1.0, trainable=False, name='metric_record'))
+        initial_value=-1.0, trainable=False,
+        name='{}_record'.format(self.name)))
       self._mean_record.plug(tf.Variable(
-        initial_value=-1.0, trainable=False, name='metric_mean_record'))
+        initial_value=-1.0, trainable=False,
+        name='{}_mean_record'.format(self.name)))
       self._record_summary.plug(tf.summary.scalar(
-        'metric_record_sum', self._record.tensor))
+        '{}_record_sum'.format(self.name), self._record.tensor))
 
   def _show_trend(self):
     tendency = ''

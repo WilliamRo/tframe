@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 import tframe as tfr
+from .quantity import Quantity
 
 
 class Slot(object):
@@ -88,6 +89,7 @@ class TensorSlot(Slot):
   op_classes = [tf.Tensor]
   def __init__(self, model, name='tensor'):
     super().__init__(model, name)
+    self._quantity_definition = None
 
   # region : Properties
 
@@ -109,13 +111,23 @@ class TensorSlot(Slot):
     assert isinstance(self._op, tf.Tensor)
     return self._op.dtype
 
+  @property
+  def quantity_definition(self):
+    if self._quantity_definition is None:
+      raise ValueError('!! {} does not have quantity definition.'.format(
+        self.name))
+    assert isinstance(self._quantity_definition, Quantity)
+    return self._quantity_definition
+
   # endregion : Properties
 
-  def plug(self, op, collection=None):
+  def plug(self, op, collection=None, quantity_def=None):
     super().plug(op)
     # Add to tensorflow collection
     if collection is not None:
       tf.add_to_collection(collection, self._op)
+    if quantity_def is not None: assert isinstance(quantity_def, Quantity)
+    self._quantity_definition = quantity_def
 
 
 class NestedTensorSlot(Slot):

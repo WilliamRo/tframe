@@ -180,6 +180,9 @@ class DataSet(TFRData):
        partitioned into batches of sequences with corresponding steps.
 
       :param batch_size: Batch size, positive integer
+                         used for converting self to RNN input,
+                         if self is already an RNN input, this parameter
+                         will not be used
       :param num_steps: steps of each RNN data batch
       :param shuffle: Whether to shuffle the partitioned sequences
      """
@@ -195,6 +198,7 @@ class DataSet(TFRData):
       # .. truncated
       rnn_data = data_set._convert_to_rnn_input(batch_size)
 
+    # here each entry in data_dict has shape [batch_size, steps, *dim]
     round_len = self.get_round_length(batch_size, num_steps)
     if num_steps < 0: num_steps = rnn_data.total_steps
 

@@ -14,7 +14,7 @@ from tframe import hub
 from tframe.core import with_graph
 from tframe.core import OperationSlot, TensorSlot, SummarySlot
 from tframe.core import Group
-from tframe.trainers import Metric
+from tframe.trainers import MetricSlot
 from tframe.models import Feedforward
 from tframe.nets.net import Net
 
@@ -47,7 +47,7 @@ class BResNet(Predictor):
     if len(self._metrics) == 0: return None
     else:
       records = [metric.record for metric in self._metrics]
-      if self._metrics[0].like_loss: return min(records)
+      if self._metrics[0].lower_is_better: return min(records)
       else: return max(records)
 
   # endregion : Properties
@@ -95,7 +95,7 @@ class BResNet(Predictor):
         for i, output in enumerate(self._boutputs):
           assert isinstance(output, TensorSlot)
           metric_tensor = metric_function(self._targets.tensor, output.tensor)
-          slot = Metric(self, name='metric_{}'.format(i + 1))
+          slot = MetricSlot(self, name='metric_{}'.format(i + 1))
           slot.plug(metric_tensor, as_loss=metric_is_like_loss,
                     symbol='{}{}'.format(metric_name, i + 1))
           self._metrics.append(slot)
@@ -183,7 +183,7 @@ class BResNet(Predictor):
     self._master += 1
     # Set master metric
     master_metric = self._metrics[self._master]
-    assert isinstance(master_metric, Metric)
+    assert isinstance(master_metric, MetricSlot)
     self._metric = master_metric
     # TODO
     self._metric._record_round = rnd
@@ -192,14 +192,14 @@ class BResNet(Predictor):
 
   def take_down_metric(self):
     for i, metric in enumerate(self._metrics):
-      assert isinstance(metric, Metric) and metric.activated
+      assert isinstance(metric, MetricSlot) and metric.activated
       notes = 'Branch {}: Record: {:.3f}, Mean Record: {:.3f}'.format(
         i + 1, metric.record, metric.mean_record)
       self.agent.take_notes(notes, date_time=False)
 
   def end_round(self, rnd):
     for i, metric in enumerate(self._metrics):
-      assert isinstance(metric, Metric) and metric.activated
+      assert isinstance(metric, MetricSlot) and metric.activated
       if metric.sleep: continue
       console.write_line('Branch {}  {}'.format(i + 1, '- ' * 35))
       metric.end_round(rnd)
