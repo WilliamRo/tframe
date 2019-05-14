@@ -144,7 +144,7 @@ class CriteriaFigure(Frame):
       self.ax1.plot(step, val, 'rs')
 
     # Show legend
-    self.ax1.legend(loc='best')
+    self.ax1.legend(loc='best', fontsize=12)
 
     # Draw update on canvas
     self.figure_canvas.draw()
