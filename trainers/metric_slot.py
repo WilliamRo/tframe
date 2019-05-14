@@ -178,3 +178,9 @@ class MetricSlot(TensorSlot):
     log_for_current_round.append(metric)
 
   # endregion : Private Methods
+
+  # region : Overriding
+
+  def __str__(self): return self.symbol
+
+  # endregion : Overriding

@@ -72,10 +72,6 @@ class Trainer(object):
     self._warm_up = True
     self.batch_loss_stat = Statistic(max_length=self.th.hist_buffer_len)
 
-    # TODO ====================================================================
-    # self.val_metric = Statistic(max_length=2)
-    # self.train_metric = Statistic(max_length=2)
-
     self.HubClass = TrainerHub
     if terminator is not None: assert callable(terminator)
     self._terminator = terminator
@@ -579,57 +575,6 @@ class Trainer(object):
     # Print stats and return new_record flag
     self.metrics_manager.print_latest_stats('[Validate]')
     return new_record
-
-    # new_record = None
-    # content_dict = OrderedDict()
-    # attachments = []
-    # if self.th.validate_train_set:
-    #   train_dict = self.model.validate_model(
-    #     self.training_set, self.th.val_batch_size, allow_sum=False)
-    #   assert len(train_dict) == 1
-    #   for slot, val in train_dict.items():
-    #     assert isinstance(slot, MetricSlot)
-    #     key = 'Train {}'.format(slot.name[:3])
-    #     content_dict[key] = val
-    #     self.train_metric.record(val)
-    #
-    # # TODO: The code block below should be refactored
-    # for metric_slot, val in val_dict.items():
-    #   assert isinstance(metric_slot, MetricSlot)
-    #   self.val_metric.record(val)
-    #   if new_record is None:
-    #     new_record = self.metric.take_down(
-    #       val, rnd, self.counter, gap=self.th.record_gap)
-    #     # Terminator will check `val` if new_record appears
-    #     if callable(self._terminator) and self._terminator(val):
-    #       self.th.force_terminate = True
-    #
-    #     key = ('Val {}'.format(metric_slot.name[:3])
-    #            if self.th.validate_train_set else metric_slot.name)
-    #     content_dict[key] = val
-    #     # content = self._dict_to_string({metric_slot: val})
-    #   else:
-    #     # TODO: what's this for ??
-    #     metric_slot.take_down(val, rnd, self.counter, gap=self.th.record_gap)
-    #     attachments.append('{:.3f}'.format(val))
-    #   if self.th.keep_trainer_log: self.th.logs[metric_slot.name] = val
-    #
-    # content = self._dict_to_string(content_dict)
-    # if len(attachments) > 0:
-    #   content = '{} ({})'.format(content, ', '.join(attachments))
-    # if new_record:
-    #   content += ' <New Record>'
-    #   self._record_count += 1
-    # else:
-    #   content += ' (Best: {:.3f})'.format(self.metric.record)
-    #   if self.th.early_stop:
-    #     idle = (self.metric.get_idle_counts(self.counter) if self.is_online
-    #             else self.metric.get_idle_rounds(rnd))
-    #     content = content[:-1] + ', Patience {}/{})'.format(
-    #       idle, self.th.patience)
-    # self._inter_cut(content, prompt='[Validate]')
-    #
-    # return new_record
 
   def _snapshot(self):
     if not self.th.snapshot: return
