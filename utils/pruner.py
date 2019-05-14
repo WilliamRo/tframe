@@ -67,24 +67,32 @@ class Pruner(object):
     self._model.session.run([ws.assign_init for ws in self._dense_weights])
 
   def register_to_dense(self, weights, frac):
-    if frac == 0: return
+    """This method will be called only by linker.get_weights_to_prune."""
+    assert frac > 0
+    if weights in self.variable_dict.keys():
+      slot = self.variable_dict[weights]
+      assert isinstance(slot, WeightSlot)
+      return slot.masked_weights
+
     slot = WeightSlot(weights, frac)
     self.variable_dict[weights] = slot
     self._dense_weights.append(slot)
     return slot.masked_weights
 
   def clear(self):
-    raise NotImplementedError
+    # self._dense_weights = []
+    # self._conv_filters = []
+    # self.variable_dict = OrderedDict()
+    pass
 
   @staticmethod
   def extractor(*args):
     if not tfr.hub.prune_on or not tfr.hub.export_masked_weights: return
     pruner = tfr.context.pruner
-    for i, slot in enumerate(pruner._dense_weights):
-      def reg(k, v): tfr.context.variables_to_export[k+'_'+str(i+1)] = v
+    for slot in pruner._dense_weights:
       assert isinstance(slot, WeightSlot)
-      reg('weights', slot.weights)
-      reg('mask', slot.mask)
+      tfr.context.variables_to_export[slot.weight_key] = slot.weights
+      tfr.context.variables_to_export[slot.mask_key] = slot.mask
 
   # endregion : Public Methods
 
@@ -92,6 +100,9 @@ class Pruner(object):
 
   def prune_and_save(self):
     self.prune()
+    # This will force agent.ckpt_dir property to create path even if
+    # .. current running model is not saved
+    tfr.hub.save_model = True
     self.save_next_model()
 
   def prune(self):
@@ -192,6 +203,21 @@ class WeightSlot(object):
     #  launching session => model.handle_structure_detail
     #  => net.structure_detail => pruner.get_variable_sizes
     self.weights_fraction = None
+
+  @property
+  def scope_abbr(self):
+    """In tframe, RNN model, weight's name may be ../gdu/net_u/W"""
+    scopes = self.weights.name.split('/')
+    return '/'.join(scopes[-3:-1])
+
+  @property
+  def weight_key(self):
+    """Used in Pruner.extractor"""
+    return self.scope_abbr + '/W'
+
+  @property
+  def mask_key(self):
+    return self.scope_abbr + '/M'
 
   def get_assign_mask_op(self, p):
     assert 0 < p < 1

@@ -165,13 +165,13 @@ class Trainer(object):
       self._check_data(test_set, 'test set')
       self._test_set = test_set
 
-  def recover_progress(self):
+  def recover_progress(self, start_time=None):
     # Print progress bar
     if self.th.progress_bar and self.th.round_length is not None:
       assert isinstance(self._training_set, TFRData)
       progress = self.th.round_progress
       assert progress is not None
-      console.print_progress(progress=progress)
+      console.print_progress(progress=progress, start_time=start_time)
 
   # endregion : Public Methods
 
@@ -466,7 +466,7 @@ class Trainer(object):
     # Show content
     console.show_status(content, symbol=prompt)
     # Print progress bar
-    self.recover_progress()
+    self.recover_progress(start_time)
 
   @staticmethod
   def _dict_to_string(dict_):
@@ -500,6 +500,14 @@ class Trainer(object):
       tensor_dict = Recurrent.get_tensor_to_export(self)
     else: tensor_dict = Feedforward.get_tensor_to_export(self)
 
+    # Add variables to export
+    self._get_variables_to_export(tensor_dict)
+
+    return tensor_dict
+
+  def _get_variables_to_export(self, tensor_dict):
+    if tensor_dict is None: tensor_dict = OrderedDict()
+    assert isinstance(tensor_dict, dict)
     # Add variables to export
     v_fetches_dict = context.variables_to_export
     if len(v_fetches_dict) > 0:
@@ -593,6 +601,13 @@ class Trainer(object):
     print_method('Model saved')
 
   # endregion : Private Methods
+
+  # region : Public Methods
+
+  def get_variables_to_export(self, export_dict=None):
+    return self._get_variables_to_export(export_dict)
+
+  # endregion : Public Methods
 
 
 class TrainerHub(Config):

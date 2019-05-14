@@ -179,7 +179,7 @@ class RNet(Net):
     if extra_loss is not None:
       result_tuple += extra_loss,
 
-    # 6. TODO: BETA
+    # 6. TODO: BETA to be deprecated
     if hub.use_rtrl:
       result_tuple += self._get_grad_tensor_tuple(outputs),
 
@@ -200,6 +200,9 @@ class RNet(Net):
     if (hub.export_dl_dx or hub.export_dl_ds_stat or
         hub.export_jacobian_norm):
       result_tuple += self._calc_dS_dS_prev(states, pre_states),
+
+    # Run build-in extractors
+    self.variable_extractor()
 
     return result_tuple
 
@@ -391,6 +394,7 @@ class RNet(Net):
               weight_regularizer=None,
               bias_regularizer=None,
               activity_regularizer=None,
+              prune_frac=0,
               **kwargs):
     if num is None:
       if isinstance(num_or_size_splits, int):
@@ -422,6 +426,7 @@ class RNet(Net):
       weight_regularizer=weight_regularizer,
       bias_regularizer=bias_regularizer,
       activity_regularizer=activity_regularizer,
+      prune_frac=prune_frac,
       **kwargs)
 
   # region : To be superceded
@@ -563,6 +568,8 @@ class RNet(Net):
 
   @staticmethod
   def _get_tensors_to_export(y):
+    """In RNN, tensors, not variables, should be set to context outside
+       while_loop"""
     tensors = []
     # For tensors already registered
     tensors_to_export = context.tensors_to_export

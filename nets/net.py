@@ -306,7 +306,7 @@ class Net(Function):
       for extractor in self._tensor_extractors:
         assert callable(extractor)
         extractor(self)
-      # Run buildin extractors
+      # Run build-in extractors
       self.variable_extractor()
 
     # Return
@@ -485,7 +485,7 @@ class Net(Function):
 
   # endregion : Overrides
 
-  # region : Buildin extractors
+  # region : Build-in extractors
 
   def variable_extractor(self):
     if hub.export_weights:
@@ -494,5 +494,9 @@ class Net(Function):
         if 'weight' in v.name.lower():
           key = '/'.join(v.name.split('/')[1:])
           context.variables_to_export[key] = v
+
+    if hub.export_masked_weights and hub.pruning_rate_fc > 0:
+      from tframe.utils.pruner import Pruner
+      Pruner.extractor()
 
   # endregion : Buildin extractors
