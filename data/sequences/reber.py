@@ -438,8 +438,8 @@ class ERG(DataAgent):
 
     if hub.export_tensors_to_note:
       ERG.export_tensors(
-        SHORT_acc, LONG_acc, model, data, trainer.batch_loss_stat.running_average,
-        'SC', 'LC')
+        SHORT_acc, LONG_acc, trainer, data,
+        trainer.batch_loss_stat.running_average, 'SC', 'LC')
 
     return 'S = {:.1f}%, L = {:.1f}%, A = {:.1f}%'.format(
       100 * SHORT_acc, 100 * LONG_acc, 100 * ALL_acc)
@@ -451,7 +451,12 @@ class ERG(DataAgent):
   # region : Export tensor
 
   @staticmethod
-  def export_tensors(CR1, CR2, model, data, loss, CR1_STR='RC', CR2_STR='ERC'):
+  def export_tensors(
+      CR1, CR2, trainer, data, loss, CR1_STR='RC', CR2_STR='ERC'):
+    """TODO: this method can be replaced by the build-in methods in
+             trainer.py
+    """
+    model = trainer.model
     agent = model.agent
     # Randomly select several samples
     num = hub.sample_num
@@ -492,6 +497,10 @@ class ERG(DataAgent):
       # long_mean = long_buffer / data.size
       # tensors['Mean'][name] = np.concatenate(
       #   [short_mean.reshape([1, -1]), long_mean.reshape([1, -1])])
+
+    if len(results) == 0: tensors = OrderedDict()
+    # Add variables to export
+    tensors = trainer.get_variables_to_export(tensors)
 
     # Take down
     scalars = OrderedDict()
