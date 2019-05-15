@@ -56,7 +56,7 @@ class CellBase(RNet):
   def prune_is_on(self):
     """This property is decided in linker.neuron"""
     sum = 0
-    for k in ('prune_frac', 'prune_frac_s', 'prune_frac_x'):
+    for k in ('prune_frac', 's_prune_frac', 'x_prune_frac'):
       sum += self._kwargs.get(k, 0)
     return hub.pruning_rate_fc > 0 and sum > 0
 
