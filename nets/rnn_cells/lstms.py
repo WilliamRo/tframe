@@ -3,14 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-import numpy as np
 
-from tframe import context
 from tframe import checker
 from tframe import activations
 from tframe import initializers
 from tframe import hub
-from tframe import linker
 
 from tframe.nets import RNet
 from tframe.nets.rnn_cells.cell_base import CellBase
@@ -42,8 +39,6 @@ class LSTM(CellBase):
     self._output_bias_initializer = initializers.get(output_bias_initializer)
     self._forget_bias_initializer = initializers.get(forget_bias_initializer)
 
-    self._kwargs = kwargs
-
 
   @property
   def init_state(self):
@@ -57,27 +52,46 @@ class LSTM(CellBase):
     self._check_state(pre_states, 2)
     h, c = pre_states
 
-    # Calculate net inputs
-    net_f, net_i, net_o, net_g = self.neurons(
-      x, h, scope='net_input', num_or_size_splits=4, use_bias=False,
-      **self._kwargs)
-
     # Get f, i, o, g
-    f = self._activate(net_f, self._forget_bias_initializer, 'f')
-    i = self._activate(net_i, self._input_bias_initializer, 'i')
-    o = self._activate(net_o, self._output_bias_initializer, 'o')
-    g = self._activate(net_g, self._bias_initializer, 'g')
+    if 'prune_frac' not in self._kwargs.keys():
+      f, i, o, g = self._get_fiog_fast(x, h)
+    else: f, i, o, g = self._get_fiog(x, h)
 
     # Calculate new_c
     new_c = tf.add(tf.multiply(f, c), tf.multiply(i, g), 'new_c')
     # Calculate new_h
     new_h = tf.multiply(o, tf.tanh(new_c))
 
-    # Register gates and output
+    # Register gates and return
     self._gate_dict['input_gate'] = i
     self._gate_dict['forget_gate'] = f
     self._gate_dict['output_gate'] = o
     return new_h, (new_h, new_c)
+
+
+  def _get_fiog(self, x, h):
+    f = self.neurons(x, h, is_gate=True, scope='f',
+                     bias_initializer=self._forget_bias_initializer)
+    i = self.neurons(x, h, is_gate=True, scope='i',
+                     bias_initializer=self._input_bias_initializer)
+    o = self.neurons(x, h, is_gate=True, scope='o',
+                     bias_initializer=self._output_bias_initializer)
+    g = self.neurons(x, h, scope='g', activation=self._activation,
+                     bias_initializer=self._bias_initializer)
+    return f, i, o, g
+
+
+  def _get_fiog_fast(self, x, h):
+    # Calculate net inputs
+    net_f, net_i, net_o, net_g = self.neurons(
+      x, h, scope='net_inputs', num_or_size_splits=4, use_bias=False)
+
+    # Get f, i, o, g
+    f = self._activate(net_f, self._forget_bias_initializer, 'f')
+    i = self._activate(net_i, self._input_bias_initializer, 'i')
+    o = self._activate(net_o, self._output_bias_initializer, 'o')
+    g = self._activate(net_g, self._bias_initializer, 'g')
+    return f, i, o, g
 
 
   def _activate(self, net_input, bias_initializer, name):

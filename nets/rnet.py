@@ -394,7 +394,6 @@ class RNet(Net):
               weight_regularizer=None,
               bias_regularizer=None,
               activity_regularizer=None,
-              prune_frac=0,
               **kwargs):
     if num is None:
       if isinstance(num_or_size_splits, int):
@@ -416,6 +415,7 @@ class RNet(Net):
       bias_regularizer = getattr(self, '_bias_regularizer', None)
     if activity_regularizer is None:
       activity_regularizer = getattr(self, '_activity_regularizer', None)
+    _kwargs = getattr(self, '_kwargs', {})
     return linker.neurons(
       num=num, external_input=x, activation=activation,
       memory=s, fc_memory=fc_memory, scope=scope,
@@ -426,8 +426,7 @@ class RNet(Net):
       weight_regularizer=weight_regularizer,
       bias_regularizer=bias_regularizer,
       activity_regularizer=activity_regularizer,
-      prune_frac=prune_frac,
-      **kwargs)
+      **_kwargs, **kwargs)
 
   # region : To be superceded
 

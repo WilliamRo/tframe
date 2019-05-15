@@ -32,8 +32,6 @@ class GRU(CellBase):
     self._use_reset_gate = checker.check_type(use_reset_gate, bool)
     self._z_bias_initializer = initializers.get(z_bias_initializer)
 
-    self._kwargs = kwargs
-
 
   @property
   def _scale_tail(self):
@@ -48,11 +46,11 @@ class GRU(CellBase):
     r = None
     if self._use_reset_gate:
       r = self.neurons(
-        x, prev_s, is_gate=True, scope='reset_gate', **self._kwargs)
+        x, prev_s, is_gate=True, scope='reset_gate')
       self._gate_dict['reset_gate'] = r
 
     z = self.neurons(x, prev_s, is_gate=True, scope='update_gate',
-                     bias_initializer=self._z_bias_initializer, **self._kwargs)
+                     bias_initializer=self._z_bias_initializer)
     self._gate_dict['update_gate'] = z
 
     # - Read
@@ -60,8 +58,7 @@ class GRU(CellBase):
     if self._use_reset_gate:
       with tf.name_scope('read'): s_w = tf.multiply(r, prev_s)
     # - Calculate candidates to write
-    s_bar = self.neurons(x, s_w, activation=self._activation, scope='s_bar',
-                         **self._kwargs)
+    s_bar = self.neurons(x, s_w, activation=self._activation, scope='s_bar')
     with tf.name_scope('write'): new_s = tf.add(
       tf.multiply(z, prev_s), tf.multiply(tf.subtract(1., z), s_bar))
 

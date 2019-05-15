@@ -36,6 +36,11 @@ def softmax(input_):
   return tf.nn.softmax(input_, name='softmax')
 
 
+def cumax(x):
+  assert isinstance(x, tf.Tensor) and len(x.shape) == 2
+  return tf.cumsum(tf.nn.softmax(x), axis=1, name='cumax')
+
+
 def sigmoid(input_, **kwargs):
   sig = tf.sigmoid(input_, name='sigmoid')
   rng = kwargs.get('range', None)
@@ -50,14 +55,12 @@ def get(identifier, **kwargs):
     return identifier
   elif isinstance(identifier, six.string_types):
     identifier = identifier.lower()
-    if identifier in ['relu']:
-      return relu
+    if identifier in ['relu']: return relu
     elif identifier in ['lrelu', 'leakyrelu', 'leaky-relu']:
       return lambda x: leaky_relu(x, **kwargs)
-    elif identifier in ['softmax']:
-      return softmax
-    elif identifier in ['sigmoid']:
-      return lambda x: sigmoid(x, **kwargs)
+    elif identifier in ['softmax']: return softmax
+    elif identifier in ['cumax']: return cumax
+    elif identifier in ['sigmoid']: return lambda x: sigmoid(x, **kwargs)
     else:
       # Try to find activation in tf.nn
       activation = tf.nn.__dict__.get(identifier, None)

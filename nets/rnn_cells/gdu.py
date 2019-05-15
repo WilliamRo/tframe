@@ -41,8 +41,6 @@ class GDU(CellBase, Distributor):
     self._groups = self._get_groups(configs)
     self._state_size = self._get_total_size(self._groups)
 
-    self._kwargs = kwargs
-
 
   @property
   def _scale_tail(self):
@@ -53,7 +51,7 @@ class GDU(CellBase, Distributor):
   def _get_coupled_gates(self, x, s, configs, reverse):
     assert isinstance(configs, (list, tuple)) and len(configs) > 0
     # u for update, z for zone-out
-    net_u = self.neurons(x, s, scope='net_u', **self._kwargs)
+    net_u = self.neurons(x, s, scope='net_u')
     u = linker.softmax_over_groups(net_u, configs, 'u_gate')
     z = tf.subtract(1., u, name='z_gate')
     if reverse: u, z = z, u
@@ -70,11 +68,10 @@ class GDU(CellBase, Distributor):
     # - Calculate s_bar
     s = prev_s
     if self._use_reset_gate:
-      r = self.neurons(x, s, is_gate=True, scope='reset_gate', **self._kwargs)
+      r = self.neurons(x, s, is_gate=True, scope='reset_gate')
       self._gate_dict['reset_gate'] = r
       s = tf.multiply(r, s)
-    s_bar = self.neurons(x, s, activation=self._activation, scope='s_bar',
-                         **self._kwargs)
+    s_bar = self.neurons(x, s, activation=self._activation, scope='s_bar')
     # - Update state
     with tf.name_scope('transit'):
       new_s = tf.add(tf.multiply(z, prev_s), tf.multiply(u, s_bar))

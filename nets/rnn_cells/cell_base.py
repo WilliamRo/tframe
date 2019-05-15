@@ -35,6 +35,7 @@ class CellBase(RNet):
     self._bias_initializer = initializers.get(bias_initializer)
 
     self._output_scale_ = None
+    self._kwargs = kwargs
 
   @property
   def _output_scale(self):
