@@ -213,11 +213,14 @@ class WeightSlot(object):
   @property
   def weight_key(self):
     """Used in Pruner.extractor"""
-    return self.scope_abbr + '/W'
+    scopes = self.weights.name.split('/')
+    key = '/'.join(scopes[-3:])
+    key = key.split(':')[0]
+    return key
 
   @property
   def mask_key(self):
-    return self.scope_abbr + '/M'
+    return self.weight_key + '_mask'
 
   def get_assign_mask_op(self, p):
     assert 0 < p < 1

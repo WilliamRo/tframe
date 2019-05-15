@@ -19,20 +19,20 @@ def _recursive_modify(v_dict, level=0):
   #  (weights_k, mask_k)_k pairs
   pairs = []
   for key in list(v_dict.keys()):
-    scopes = re.findall(r'\w+/\w+/(?=W)', key)
+    scopes = re.findall(r'\w+/\w+/W\w*', key)
     if not scopes: continue
     assert len(scopes) == 1
     scope = scopes[0]
     # Find mask key
-    mask_key = scope + 'M'
+    mask_key = scope + '_mask'
     if not mask_key in v_dict.keys(): continue
     # Now pair is found
     pairs.append((scope, v_dict.pop(key), v_dict.pop(mask_key)))
   # Update v_dict
   for scope, weights, mask in pairs:
     assert isinstance(weights, list) and isinstance(mask, list)
-    hist_key = scope + 'histogram'
-    v_dict[scope + 'masked_weights'] = [w * m for w, m in zip(weights, mask)]
+    hist_key = scope + '_histogram'
+    v_dict[scope + '_masked'] = [w * m for w, m in zip(weights, mask)]
     v_dict[hist_key] = VariableWithView((weights, mask), view=view)
     # Show status
     suffix = '..' * level if level > 0 else '>>'

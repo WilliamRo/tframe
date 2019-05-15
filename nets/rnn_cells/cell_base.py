@@ -9,6 +9,7 @@ from tframe import checker
 from tframe import context
 from tframe import initializers
 from tframe import linker
+from tframe import hub
 from tframe.nets import RNet
 
 
@@ -51,36 +52,44 @@ class CellBase(RNet):
     assert self._state_size is not None
     return '({})'.format(self._state_size)
 
+  @property
+  def prune_is_on(self):
+    """This property is decided in linker.neuron"""
+    sum = 0
+    for k in ('prune_frac', 'prune_frac_s', 'prune_frac_x'):
+      sum += self._kwargs.get(k, 0)
+    return hub.pruning_rate_fc > 0 and sum > 0
+
   def structure_string(self, detail=True, scale=True):
     return self.net_name + self._scale_tail if scale else ''
 
-  def _update_gate(self, num_units, unit_size, x=None, s=None, net_z=None,
-                   reverse=True, bias_initializer='zeros',
-                   saturation_penalty=0.):
-    # Sanity check
-    checker.check_positive_integer(unit_size)
-
-    # Check net_z
-    if net_z is None:
-      assert x is not None
-      net_z = self.neurons(
-        x, s, scope='net_z', bias_initializer=bias_initializer)
-
-    # Calculate z
-    z = linker.softmax_over_groups(net_z, [(unit_size, num_units)], 'z')
-
-    # Calculate opposite
-    z_opposite = tf.subtract(1., z)
-    if reverse: z, z_opposite = z_opposite, z
-
-    # Add saturation loss to context if necessary
-    if saturation_penalty > 0:
-      context.add_loss_tensor(
-        saturation_penalty * tf.reduce_mean(tf.abs(z - 0.5)))
-    elif saturation_penalty < 0:
-      context.add_loss_tensor(
-        -saturation_penalty * tf.reduce_mean(tf.minimum(z, z_opposite)))
-
-    return z, z_opposite
+  # def _update_gate(self, num_units, unit_size, x=None, s=None, net_z=None,
+  #                  reverse=True, bias_initializer='zeros',
+  #                  saturation_penalty=0.):
+  #   # Sanity check
+  #   checker.check_positive_integer(unit_size)
+  #
+  #   # Check net_z
+  #   if net_z is None:
+  #     assert x is not None
+  #     net_z = self.neurons(
+  #       x, s, scope='net_z', bias_initializer=bias_initializer)
+  #
+  #   # Calculate z
+  #   z = linker.softmax_over_groups(net_z, [(unit_size, num_units)], 'z')
+  #
+  #   # Calculate opposite
+  #   z_opposite = tf.subtract(1., z)
+  #   if reverse: z, z_opposite = z_opposite, z
+  #
+  #   # Add saturation loss to context if necessary
+  #   if saturation_penalty > 0:
+  #     context.add_loss_tensor(
+  #       saturation_penalty * tf.reduce_mean(tf.abs(z - 0.5)))
+  #   elif saturation_penalty < 0:
+  #     context.add_loss_tensor(
+  #       -saturation_penalty * tf.reduce_mean(tf.minimum(z, z_opposite)))
+  #
+  #   return z, z_opposite
 
 

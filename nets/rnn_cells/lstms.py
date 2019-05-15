@@ -53,9 +53,8 @@ class LSTM(CellBase):
     h, c = pre_states
 
     # Get f, i, o, g
-    if 'prune_frac' not in self._kwargs.keys():
-      f, i, o, g = self._get_fiog_fast(x, h)
-    else: f, i, o, g = self._get_fiog(x, h)
+    if self.prune_is_on: f, i, o, g = self._get_fiog(x, h)
+    else: f, i, o, g = self._get_fiog_fast(x, h)
 
     # Calculate new_c
     new_c = tf.add(tf.multiply(f, c), tf.multiply(i, g), 'new_c')

@@ -30,9 +30,9 @@ def neurons(num,
             weight_regularizer=None,
             bias_regularizer=None,
             activity_regularizer=None,
-            prune_frac=0,
             **kwargs):
   """Analogous to tf.keras.layers.Dense"""
+  # Get activation, initializers and regularizers
   if activation is not None: activation = activations.get(activation)
   weight_initializer = initializers.get(weight_initializer)
   bias_initializer = initializers.get(bias_initializer)
@@ -40,31 +40,68 @@ def neurons(num,
   bias_regularizer = regularizers.get(bias_regularizer)
   activity_regularizer = regularizers.get(activity_regularizer)
 
+  # Check prune configs
+  if 'prune_frac' in kwargs.keys():
+    x_prune_frac, s_prune_frac = (kwargs['prune_frac'],) * 2
+  else:
+    x_prune_frac = kwargs.get('x_prune_frac', 0)
+    s_prune_frac = kwargs.get('s_prune_frac', 0)
+  prune_is_on = hub.pruning_rate_fc > 0.0 and x_prune_frac + s_prune_frac > 0
+
+  # Decide to concatenate or not
+  if memory is None: should_concate = False
+  elif prune_is_on: should_concate = x_prune_frac == s_prune_frac
+  else: should_concate = fc_memory
+  separate_memory_neurons = memory is not None and not should_concate
+
+  def get_weights(name, tensor, p_frac):
+    shape = [get_dimension(tensor), num]
+    if prune_is_on and p_frac > 0:
+      return get_weights_to_prune(name, shape, weight_initializer, p_frac)
+    else: return get_variable(name, shape, weight_initializer)
+
   def forward():
     # Prepare a weight list for potential regularizer calculation
     weight_list = []
-    x = (tf.concat([external_input, memory], axis=1, name='x_and_memory')
-         if memory is not None and fc_memory else external_input)
 
-    if prune_frac > 0 and hub.pruning_rate_fc > 0.0:
-      W = get_weights_to_prune(
-        'W', [get_dimension(x), num], weight_initializer, prune_frac)
-    else: W = get_variable('W', [get_dimension(x), num], weight_initializer)
+    # Get x
+    x = (tf.concat([external_input, memory], axis=1, name='x_concat_s')
+         if should_concate else external_input)
 
-    weight_list.append(W)
-    y = get_matmul(truncate)(x, W)
-    if memory is not None and not fc_memory:
-      memory_dim = get_dimension(memory)
-      assert memory_dim == num
-      Ws = get_variable('Ws', [1, num], weight_initializer)
+    # - Calculate net input for x
+    # .. get weights
+    name = 'Wx' if separate_memory_neurons else 'W'
+    Wx = get_weights(name, x, x_prune_frac)
+    weight_list.append(Wx)
+    # .. do matrix multiplication
+    net_y = get_matmul(truncate)(x, Wx)
+
+    # - Calculate net input for memory and add to net_y if necessary
+    if separate_memory_neurons:
+      if not fc_memory:
+        assert not (prune_is_on and s_prune_frac > 0)
+        memory_dim = get_dimension(memory)
+        assert memory_dim == num
+        Ws = get_variable('Ws', [1, num], weight_initializer)
+        net_s = get_multiply(truncate)(memory, Ws)
+      else:
+        assert prune_is_on
+        Ws = get_weights('Ws', memory, s_prune_frac)
+        net_s = get_matmul(truncate)(memory, Ws)
+
+      # Append Ws to weight list and add net_s to net_y
       weight_list.append(Ws)
-      y = tf.add(y, get_multiply(truncate)(memory, Ws))
+      net_y = tf.add(net_y, net_s)
+
+    # - Add bias if necessary
     b = None
     if use_bias:
       b = get_bias('bias', num, bias_initializer)
-      y = tf.nn.bias_add(y, b)
-    if callable(activation): y = activation(y)
-    return y, weight_list, b
+      net_y = tf.nn.bias_add(net_y, b)
+
+    # - Activate and return
+    if callable(activation): net_y = activation(net_y)
+    return net_y, weight_list, b
 
   if scope is not None:
     with tf.variable_scope(scope): y, W_list, b = forward()
@@ -78,6 +115,7 @@ def neurons(num,
   if callable(activity_regularizer):
     context.add_loss_tensor(activity_regularizer(y))
 
+  # Split if necessary
   if num_or_size_splits is not None:
     return tf.split(y, num_or_size_splits=num_or_size_splits, axis=1)
   return y
