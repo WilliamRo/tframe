@@ -8,6 +8,8 @@ import tensorflow as tf
 import tframe as tfr
 from tframe.core.quantity import Quantity
 
+from . import losses
+
 
 def _truncate(truth, output):
   # TODO: only supported for some metrics
@@ -131,6 +133,11 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       kernel, tf_summ_method = generalized_accuracy, tf.reduce_mean
       lower_is_better = False
       name = 'Accuracy'
+    elif identifier in ['ppl', 'perplexity']:
+      kernel = losses.cross_entropy
+      tf_summ_method = lambda x: tf.exp(tf.reduce_mean(x))
+      np_summ_method = lambda x: np.exp(np.mean(x))
+      name = 'Perplexity'
     elif identifier in ['mse']:
       kernel = lambda t1, t2: tf.square(tf.subtract(t1, t2))
       tf_summ_method = tf.reduce_mean
