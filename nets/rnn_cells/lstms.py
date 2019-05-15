@@ -42,6 +42,8 @@ class LSTM(CellBase):
     self._output_bias_initializer = initializers.get(output_bias_initializer)
     self._forget_bias_initializer = initializers.get(forget_bias_initializer)
 
+    self._kwargs = kwargs
+
 
   @property
   def init_state(self):
@@ -57,7 +59,8 @@ class LSTM(CellBase):
 
     # Calculate net inputs
     net_f, net_i, net_o, net_g = self.neurons(
-      x, h, scope='net_input', num_or_size_splits=4, use_bias=False)
+      x, h, scope='net_input', num_or_size_splits=4, use_bias=False,
+      **self._kwargs)
 
     # Get f, i, o, g
     f = self._activate(net_f, self._forget_bias_initializer, 'f')
