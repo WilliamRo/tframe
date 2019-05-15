@@ -97,7 +97,7 @@ class MNIST(ImageDataAgent):
 
 if __name__ == '__main__':
   from tframe.data.images.image_viewer import ImageViewer
-  data_dir = '../../examples/mnist/data'
+  data_dir = '../../examples/00-MNIST/data'
   data_set = MNIST.load_as_tframe_data(data_dir)
   viewer = ImageViewer(data_set)
   viewer.show()
