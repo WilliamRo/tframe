@@ -457,9 +457,9 @@ class Recurrent(Model, RNet):
 
     # Check active length
     al = data_batch.active_length
-    if al is None: al = [-1]
+    if al is None: al = [None] * data_batch.size
     assert isinstance(al, list) and len(al) == data_batch.size
-    batch_outputs = [[y[:l] for y, l in zip(array, al)]
+    batch_outputs = [[y[:l] if l is not None else y for y, l in zip(array, al)]
                      for array in batch_outputs]
 
     # To this point, batch_outputs is like

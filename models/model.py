@@ -405,7 +405,7 @@ class Model(object):
       else:
         # (2-b)
         assert isinstance(data_set, DataSet)
-        assert batch_size in (1, -1, None)
+        # assert batch_size in (1, -1, None)  # TODO
         # e.g. small model on WHB
         if num_steps == -1: one_shot = True
     # .. do one-shot validation if is qualified

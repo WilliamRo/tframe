@@ -181,7 +181,7 @@ class MetricsManager(object):
 
     return flag
 
-  def print_latest_stats(self, prompt='[Validate]'):
+  def print_latest_stats(self, prompt='[Validate]', decimals=3):
     assert isinstance(prompt, str)
     stats_dict = self.latest_stats_dict
     assert isinstance(stats_dict, OrderedDict)
@@ -190,7 +190,7 @@ class MetricsManager(object):
       assert isinstance(scalar_dict, OrderedDict)
       console.show_status('On {}'.format(data_set.name), prompt)
       for slot, value in scalar_dict.items():
-        info = '{} = {:.3f}'.format(slot.symbol, value)
+        info = ('{} = {:.' + str(decimals) + 'f}').format(slot.symbol, value)
         # Look up for suffix in note
         note_key = (data_set, slot)
         if note_key in self.note.keys():
