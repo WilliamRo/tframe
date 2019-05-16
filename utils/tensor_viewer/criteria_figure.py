@@ -146,6 +146,9 @@ class CriteriaFigure(Frame):
     # Show legend
     self.ax1.legend(loc='best', fontsize=12)
 
+    # Show title
+    self.ax1.set_title('Step = {:.2f}'.format(step))
+
     # Draw update on canvas
     self.figure_canvas.draw()
     # Tight layout
