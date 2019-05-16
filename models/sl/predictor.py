@@ -87,19 +87,9 @@ class Predictor(Feedforward, Recurrent):
     self._plug_target_in(self.outputs.shape_list)
 
     # Define loss. Some tensorflow apis only support calculating logits
-    output_tensor = self.outputs.tensor
     with tf.name_scope('Loss'):
-      if self.loss_quantity.use_logits:
-        if self.logits_tensor is None:
-          console.warning_with_pause(
-            'Logits are supposed to be used for loss calculation but'
-            ' somehow can not be found. Press any key to ignore this'
-            ' warning ...')
-        else:
-          output_tensor = self.logits_tensor
-          console.show_status('Logits are used for calculating loss')
-
-      loss_tensor = self.loss_quantity(self._targets.tensor, output_tensor)
+      loss_tensor = self.loss_quantity(
+        self._targets.tensor, self.outputs.tensor)
 
       # TODO: with or without regularization loss?
       if hub.summary:
@@ -125,7 +115,7 @@ class Predictor(Feedforward, Recurrent):
           self._outputs.tensor, **kwargs)
 
     # TODO ===================================================================
-    # # Define metric TODO: multi-metrics should be supported
+    # # Define metric
     # if metric is not None:
     #   # Create placeholder for val_targets if necessary
     #   # Common targets will be plugged into val_target slot by default

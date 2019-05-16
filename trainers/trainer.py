@@ -565,14 +565,16 @@ class Trainer(object):
     # Validate training set if necessary
     if self.th.validate_train_set:
       train_dict = self.model.validate_model(
-        self.training_set, self.th.val_batch_size, allow_sum=False)
+        self.training_set, self.th.val_batch_size, allow_sum=False,
+        verbose=self.th.val_progress_bar)
       # Record
       self.metrics_manager.record_stats_on_dataset(
         self.training_set, train_dict)
 
     # Validate val_set and record
     val_dict = self.model.validate_model(
-      self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary)
+      self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary,
+      verbose=self.th.val_progress_bar)
     new_record = self.metrics_manager.record_stats_on_dataset(
       self.validation_set, val_dict, True, rnd)
     # Terminator will check early_stop_criterion if new_record appears

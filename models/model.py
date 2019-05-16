@@ -13,6 +13,7 @@ from tframe import checker
 from tframe import console
 from tframe import pedia
 
+from tframe.utils.display.progress_bar import ProgressBar
 from tframe.enums import InputTypes
 from tframe.core import with_graph
 from tframe.core import TensorSlot, NestedTensorSlot
@@ -204,10 +205,10 @@ class Model(object):
       self.agent.take_notes(line, date_time=False)
 
     # Add metric slot to update group
-    metric_on_batch = kwargs.get('metric_on_batch', [])
-    if not isinstance(metric_on_batch, (tuple, list)):
-      metric_on_batch = [metric_on_batch]
-    for metric_str in metric_on_batch:
+    batch_metric = kwargs.get('batch_metric', [])
+    if not isinstance(batch_metric, (tuple, list)):
+      batch_metric = [batch_metric]
+    for metric_str in batch_metric:
       assert isinstance(metric_str, str)
       metric_slot = self.metrics_manager.get_slot_by_name(metric_str)
       self._update_group.add(metric_slot)
@@ -374,7 +375,8 @@ class Model(object):
 
     return data_batches
 
-  def validate_model(self, data_set, batch_size=None, allow_sum=False):
+  def validate_model(self, data_set, batch_size=None, allow_sum=False,
+                     verbose=False):
     """Evaluate quantities in validate group of this model
     :param data_set: a tframe DataSet
     :param batch_size: if is None or -1, batch_size will be data_set.size
@@ -416,7 +418,7 @@ class Model(object):
     tensor_slots = self.validate_group.tensor_slots()
     quantity_defs = [s.quantity_definition for s in tensor_slots]
     fetches = [q.quantities for q in quantity_defs]
-    values = self.evaluate(fetches, data_set, batch_size)
+    values = self.evaluate(fetches, data_set, batch_size, verbose=verbose)
     result_dict = OrderedDict()
 
     for val, qd, slot in zip(values, quantity_defs, tensor_slots):
@@ -524,7 +526,7 @@ class Model(object):
     return self.agent.launch_model(overwrite)
 
   def evaluate(
-      self, fetches, data, batch_size=None, postprocessor=None):
+      self, fetches, data, batch_size=None, postprocessor=None, verbose=False):
     """
     Evaluate tensors based on data
     TODO: note that if num_steps != -1, outputs from a same sequence may be
@@ -551,8 +553,13 @@ class Model(object):
 
     # Get outputs
     outputs = [[] for _ in fetches]
-    for data_batch in self.get_data_batches(
-        data, batch_size, hub.val_num_steps):
+
+    if verbose:
+      bar = ProgressBar(data.get_round_length(batch_size, hub.val_num_steps))
+      console.show_status('Evaluating {} ...'.format(data.name))
+
+    for cursor, data_batch in enumerate(self.get_data_batches(
+        data, batch_size, hub.val_num_steps)):
       data_batch = self._sanity_check_before_use(data_batch)
       # Get batch outputs          fetches[0]  fetches[1]
       #  for FNN, batch_outputs = [np_array_1, np_array_2, ...]
@@ -574,6 +581,9 @@ class Model(object):
         else:
           # batch_output is a numpy array of length batch_size
           outputs[i].append(batch_output)
+
+      # Show progress bar if necessary
+      if verbose: bar.show(cursor + 1)
 
     # Merge outputs if necessary
     if self.input_type is InputTypes.BATCH:

@@ -41,3 +41,6 @@ class TrainerConfigs(object):
 
   terminate_on_note = Flag.boolean(
     False, 'This option is for the convenience of taking notes')
+
+  val_progress_bar = Flag.boolean(
+    False, 'Whether to show progress bar during validation')

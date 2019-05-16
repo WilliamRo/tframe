@@ -3,9 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 import six
+import numpy as np
 import tensorflow as tf
 
-from tframe import checker, context
+from tframe import checker, context, linker
 from tframe.core.quantity import Quantity
 
 
@@ -18,6 +19,27 @@ def _flatten(tensor):
   return tensor
 
 
+def _aligned(labels, outputs):
+  assert isinstance(labels, tf.Tensor) and isinstance(outputs, tf.Tensor)
+  return labels.shape.as_list()[-1] == outputs.shape.as_list()[-1]
+
+
+def _reshape_labels(labels, num_classes=None):
+  """Reshape labels for classification
+  :param labels: a tensor of shape (d1, d2, ..., dn, 1)
+  :param num_classes: if is None, the last dimension of labels will be removed
+                      other wise labels will be reshaped to
+                      (d1, ..., dn, num_classes)
+  :return: the reshaped label
+  """
+  # currently tframe requires data points in data_dict of a DataSet keeps their
+  #  dimension even if it is 1
+  assert isinstance(labels, tf.Tensor) and labels.shape.as_list()[-1] == 1
+  labels = tf.squeeze(labels, squeeze_dims=-1)
+  if num_classes is not None: labels = tf.one_hot(labels, num_classes)
+  return labels
+
+
 def sigmoid_cross_entropy(labels, outputs):
   # Calculate average cross-entropy
   with tf.name_scope('binary_cross_entropy'):
@@ -26,21 +48,35 @@ def sigmoid_cross_entropy(labels, outputs):
       return tf.nn.sigmoid_cross_entropy_with_logits(
         labels=labels, logits=outputs)
     else:
-      xent = -tf.reduce_sum(labels * tf.log(outputs + 1e-6), 1)
+      xent = -tf.reduce_sum(labels * tf.log(outputs + 1e-6), axis=-1)
       return xent
 
 
 def cross_entropy(labels, outputs):
+  use_logits = context.logits_tensor is not None
   # Calculate average cross-entropy
   with tf.name_scope('cross_entropy'):
     # TODO: to be refactored
-    if context.logits_tensor is not None:
+    if use_logits:
+      # TODO: not apply for RNN (due to while_loop)
       # assert outputs is context.logits_tensor
-      return tf.nn.softmax_cross_entropy_with_logits_v2(
-        labels=labels, logits=outputs)
+      if _aligned(labels, outputs):
+        return tf.nn.softmax_cross_entropy_with_logits_v2(
+          labels=labels, logits=outputs)
+      else:
+        labels = _reshape_labels(labels, None)
+        return tf.nn.sparse_softmax_cross_entropy_with_logits(
+          labels=labels, logits=outputs)
     else:
-      xent = -tf.reduce_sum(labels * tf.log(outputs + 1e-6), 1)
+      if not _aligned(labels, outputs):
+        labels = _reshape_labels(labels, linker.get_dimension(outputs))
+      xent = -tf.reduce_sum(labels * tf.log(outputs + 1e-6), axis=-1)
       return xent
+
+
+def cross_entropy_base2(labels, outputs):
+  xent = cross_entropy(labels, outputs)
+  return tf.divide(xent, tf.log(2.))
 
 
 def mean_squared_error(y_true, y_predict):
@@ -52,7 +88,22 @@ def euclidean(y_true, y_predict):
   return distances
 
 
-def get(identifier, last_only=False, use_logits=None, **kwargs):
+def tf_seq_loss_summ(x):
+  # x.shape = [batch_size, num_steps]
+  assert isinstance(x, tf.Tensor)
+  shape = x.shape.as_list()
+  assert len(shape) == 2
+  return tf.reduce_mean(tf.reduce_sum(x, 1))
+
+
+def np_seq_loss_summ(x):
+  assert len(x.shape) == 2
+  return np.mean(np.sum(x, axis=1))
+
+
+def get(identifier, last_only=False, **kwargs):
+  # TODO: use_logits parameter has not been used yet
+
   if isinstance(identifier, Quantity): return identifier
   elif callable(identifier):
     # Metrics got in this way do not support batch validation
@@ -62,14 +113,19 @@ def get(identifier, last_only=False, use_logits=None, **kwargs):
     identifier = identifier.lower()
     # tr_summ_method is set to tf.reduce_mean by default
     kernel, tf_summ_method, np_summ_method = None, tf.reduce_mean, None
+    use_logits = False
 
     if identifier in ['mean_squared', 'mean_squared_error', 'mse']:
       kernel = mean_squared_error
     elif identifier in ['cross_entropy', 'softmax_cross_entropy']:
-      if use_logits is None: use_logits = True
+      use_logits = True
       kernel = cross_entropy
+    elif identifier in ['nlp_cross_entropy', 'nlp_softmax_cross_entropy']:
+      use_logits = True
+      kernel = cross_entropy
+      tf_summ_method, np_summ_method = tf_seq_loss_summ, np_seq_loss_summ
     elif identifier in ['sigmoid_cross_entropy', 'binary_cross_entropy']:
-      if use_logits is None: use_logits = True
+      use_logits = True
       kernel = sigmoid_cross_entropy
     elif identifier in ['euclid', 'euclidean']: kernel = euclidean
     else: raise ValueError('Can not resolve `{}`'.format(identifier))

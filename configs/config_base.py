@@ -40,7 +40,7 @@ class Config(
 
   dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=None)
   tb_port = Flag.integer(6006, 'Tensorboard port number')
-  show_structure_detail = Flag.boolean(False, '...')
+  show_structure_detail = Flag.boolean(True, '...')
 
   # logging will be suppressed if this flag is set to True when agent
   #   is launching a model

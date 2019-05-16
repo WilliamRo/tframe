@@ -19,7 +19,7 @@ class Quantity(object):
   }
 
   def __init__(self, kernel, tf_summ_method=None, np_summ_method=None,
-               last_only=False, name='Unknown', **kwargs):
+               last_only=False, name='Unknown', use_logits=False, **kwargs):
     self._kernel = tfr.checker.check_callable(kernel)
     self._tf_summ_method = tf_summ_method
     if tf_summ_method is not None: tfr.checker.check_callable(tf_summ_method)
@@ -30,13 +30,11 @@ class Quantity(object):
     self._quantities = None
     self._quantity = None
 
+    self._use_logits = tfr.checker.check_type(use_logits, bool)
     self._kwargs = kwargs
 
     self.name = name
     self.lower_is_better = kwargs.get('lower_is_better', True)
-
-  @property
-  def use_logits(self): return self._kwargs.get('use_logits', False)
 
   @property
   def support_batch_eval(self):
@@ -68,6 +66,18 @@ class Quantity(object):
 
   def __call__(self, truth, output, **kwargs):
     assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+    # Replace output with logits if necessary
+    # logits will be registered when softmax layer is being linked
+    logits = tfr.context.logits_tensor
+    if self._use_logits and output is not logits:
+      if logits is None: tfr.console.warning(
+        'Logits are supposed to be used in calculating {} '
+        'but not found.'.format(self.name))
+      else:
+        tfr.console.show_status(
+          'Logits are used in calculating {}'.format(self.name))
+        output = logits
+
     q = self._kernel(truth, output, **kwargs)
     assert isinstance(q, tf.Tensor)
     # If q is a scalar

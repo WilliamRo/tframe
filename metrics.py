@@ -122,6 +122,7 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
     identifier = identifier.lower()
     kernel, tf_summ_method, np_summ_method = None, None, None
     lower_is_better = True
+    use_logits = False
 
     if identifier in ['accuracy', 'acc', 'seq_acc', 'seq_accuracy']:
       kernel = lambda t1, t2: accuracy(t1, t2, pred_thres)
@@ -138,6 +139,12 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       tf_summ_method = lambda x: tf.exp(tf.reduce_mean(x))
       np_summ_method = lambda x: np.exp(np.mean(x))
       name = 'Perplexity'
+      use_logits = True
+    elif identifier in ['bpc', 'bit_per_character']:
+      kernel = losses.cross_entropy_base2
+      tf_summ_method = tf.reduce_mean
+      name = 'BPC'
+      use_logits = True
     elif identifier in ['mse']:
       kernel = lambda t1, t2: tf.square(tf.subtract(t1, t2))
       tf_summ_method = tf.reduce_mean
@@ -160,7 +167,8 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
     else: raise ValueError('Can not resolve `{}`'.format(identifier))
 
     return Quantity(kernel, tf_summ_method, np_summ_method, last_only,
-                    name=name, lower_is_better=lower_is_better, **kwargs)
+                    name=name, lower_is_better=lower_is_better,
+                    use_logits=use_logits, **kwargs)
   else:
     raise TypeError('identifier must be a Quantity, function or a string')
 

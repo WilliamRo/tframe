@@ -141,8 +141,8 @@ def get_tensor_shape(tensor):
 def get_dimension(tensor):
   assert isinstance(tensor, tf.Tensor)
   shape_list = tensor.shape.as_list()
-  assert len(shape_list) == 2
-  return shape_list[1]
+  # assert len(shape_list) == 2
+  return shape_list[-1]
 
 # endregion : Misc
 

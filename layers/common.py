@@ -196,7 +196,6 @@ class Onehot(Layer):
     return tf.one_hot(tf.squeeze(indices, squeeze_dims=-1), self._depth)
 
 
-
 class Reshape(Layer):
 
   def __init__(self, shape=None):

@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 from tframe import checker
-from tframe import console
+from tframe import console, context
 from tframe import hub
 from tframe import metrics
 from tframe.core.quantity import Quantity
@@ -86,6 +86,7 @@ class MetricsManager(object):
         quantity = self.model.loss_quantity
         tensor = quantity.quantity
       else:
+        # Initiate a new Quantity
         quantity = metrics.get(metric_str, last_only=last_only, **kwargs)
         tensor = quantity(target_tensor, output_tensor)
 

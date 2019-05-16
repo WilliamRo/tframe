@@ -435,7 +435,9 @@ class Recurrent(Model, RNet):
     # Check val_num_steps
     partition = hub.val_num_steps != -1
     # Fetch states if partition
-    if partition: fetch_list.append(self._state_slot.op)
+    if partition:
+      # fetch_list is mutable, do not append!
+      fetch_list = fetch_list + [self._state_slot.op]
 
     # Run session
     assert data_batch.is_rnn_input
@@ -443,15 +445,15 @@ class Recurrent(Model, RNet):
     batch_outputs = self.session.run(fetch_list, feed_dict)
     assert isinstance(batch_outputs, list)
 
+    # Set buffer if necessary
+    if partition: self.set_buffers(batch_outputs.pop(-1), is_training=False)
+
     # checker.check_type_v2(batch_outputs, np.ndarray)  # TODO: crash sometimes
     # TODO: should be removed after this method has been sufficiently tested
     for array in batch_outputs:
       assert isinstance(array, np.ndarray)
       # make sure array is a sequence stack
       assert array.shape[0] == data_batch.size
-
-    # Set buffer if necessary
-    if partition: self.set_buffers(batch_outputs.pop(-1), is_training=False)
 
     # Check active length
     al = data_batch.active_length
