@@ -66,7 +66,7 @@ class Text8(TextDataAgent):
     if not os.path.exists(file_path):
       # Check zip file, download if necessary
       zip_file_path = cls._check_raw_data(data_dir)
-      # Extract file to data_dir if necessary
+      # Extract file to data_dir
       zip_file_name = os.path.basename(zip_file_path)
       console.show_status('Extracting {} ...'.format(zip_file_name))
       zipfile.ZipFile(zip_file_path, 'r').extractall(data_dir)
