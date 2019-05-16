@@ -108,22 +108,23 @@ def wizard(pattern=None, extension=None, current_dir=None, max_depth=1,
   input = lambda msg: console.read(msg, input_with_enter)
 
   is_file = lambda name: re.fullmatch(r'[\w \(\),-]+\.[\w]+', name) is not None
-  is_dir = lambda name: re.fullmatch(r'[\w \(\),-]+', name) is not None
+  may_be_dir = lambda name: re.fullmatch(r'[\w \(\),-]+', name) is not None
   is_target = lambda name: re.fullmatch(pattern, name) is not None
   def contain_target(dir, max_depth):
     full_path = lambda f: os.path.join(dir, f)
     for file in os.listdir(dir):
       if is_file(file):
         if is_target(file): return True
-      elif is_dir(file) and max_depth > 0 and contain_target(
-          full_path(file), max_depth - 1):
+      elif (may_be_dir(file) and os.path.isdir(full_path(file)) and
+            max_depth > 0 and contain_target(full_path(file), max_depth - 1)):
         return True
     return False
   def search(dir, max_depth):
     targets = []
     full_path = lambda f: os.path.join(dir, f)
     for file in os.listdir(dir):
-      if is_dir(file):
+      # if is_dir(file):
+      if may_be_dir(file) and os.path.isdir(full_path(file)):
         if max_depth > 0 and contain_target(full_path(file), max_depth - 1):
           targets.append(file)
       elif is_target(file): targets.append(file)
