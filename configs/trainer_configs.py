@@ -14,7 +14,7 @@ class TrainerConfigs(object):
   save_model = Flag.boolean(True, 'Whether to save model during training')
   save_model_at_the_end = Flag.boolean(False, '...')
   overwrite = Flag.boolean(False, 'Whether to overwrite records')
-  summary = Flag.boolean(True, 'Whether to write summary')
+  summary = Flag.boolean(False, 'Whether to write summary')
   epoch_as_step = Flag.boolean(True, '...')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
   evaluate_model = Flag.boolean(
