@@ -44,3 +44,4 @@ class TrainerConfigs(object):
 
   val_progress_bar = Flag.boolean(
     False, 'Whether to show progress bar during validation')
+  val_decimals = Flag.integer(3, 'Decimals displayed in validation reports')

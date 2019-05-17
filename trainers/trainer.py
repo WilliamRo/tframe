@@ -583,7 +583,8 @@ class Trainer(object):
         self.th.force_terminate = True
 
     # Print stats and return new_record flag
-    self.metrics_manager.print_latest_stats('[Validate]', decimals=4)
+    self.metrics_manager.print_latest_stats(
+      '[Validate]', decimals=self.th.val_decimals)
     return new_record
 
   def _snapshot(self):
