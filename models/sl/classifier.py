@@ -37,7 +37,7 @@ class Classifier(Predictor):
   def build(self, optimizer=None, metric='accuracy', loss='cross_entropy',
             **kwargs):
     Predictor.build(self, optimizer=optimizer, loss=loss, metric=metric,
-                    **kwargs)
+                    batch_metric=metric, **kwargs)
 
   def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise

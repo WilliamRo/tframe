@@ -408,9 +408,13 @@ class Model(object):
         # assert batch_size in (1, -1, None)  # TODO
         # e.g. small model on WHB
         if num_steps == -1: one_shot = True
+
     # .. do one-shot validation if is qualified
+    # .. for RNN models, reset_batch flag of data_set should be set
     if one_shot:
       data_set = self._sanity_check_before_use(data_set)
+      if self.input_type is InputTypes.RNN_BATCH:
+        data_set.should_reset_state = True
       feed_dict = self._get_default_feed_dict(data_set, is_training=False)
       return self.validate_group.run(feed_dict, allow_sum=allow_sum)
 

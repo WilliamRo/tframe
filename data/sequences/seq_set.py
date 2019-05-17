@@ -120,6 +120,11 @@ class SequenceSet(DataSet):
     return self.padded_stack
 
   @property
+  def as_rnn_batch(self):
+    """Used in one-shot validation"""
+    return self.padded_stack
+
+  @property
   def parallel_on(self):
     return self.properties.get(self.PARALLEL_ON, False)
 
