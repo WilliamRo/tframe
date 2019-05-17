@@ -414,7 +414,8 @@ class Recurrent(Model, RNet):
       for i, array_list in enumerate(results):
         tensor_name = list(fetches_dict.keys())[i]
         for j, array in enumerate(array_list):
-          if j < num: tensors[exemplar_names[j]][tensor_name] = array[0]
+          # if j < num: tensors[exemplar_names[j]][tensor_name] = array[0]
+          if j < num: tensors[exemplar_names[j]][tensor_name] = array
     else:
       for i, array_list in enumerate(results):
         tensor_name = list(fetches_dict.keys())[i]
