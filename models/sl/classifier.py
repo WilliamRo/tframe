@@ -34,10 +34,11 @@ class Classifier(Predictor):
     #                                name='evaluation group')
 
   @with_graph
-  def build(self, optimizer=None, metric='accuracy', loss='cross_entropy',
-            **kwargs):
-    Predictor.build(self, optimizer=optimizer, loss=loss, metric=metric,
-                    batch_metric=metric, **kwargs)
+  def build(self, optimizer=None, loss='cross_entropy', metric='accuracy',
+            batch_metric=None, eval_metric=None, **kwargs):
+    Predictor.build(
+      self, optimizer=optimizer, loss=loss, metric=metric,
+      batch_metric=batch_metric, eval_metric=eval_metric, **kwargs)
 
   def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise
@@ -58,18 +59,23 @@ class Classifier(Predictor):
   @with_graph
   def evaluate_model(self, data, batch_size=None, extractor=None,
                      export_false=False, **kwargs):
+    # If not necessary, use Predictor's evaluate_model method
+    if not export_false or self.eval_metric.name.lower() != 'accuracy':
+      return super().evaluate_model(data, batch_size)
+
     console.show_status('Evaluating classifier on {} ...'.format(data.name))
 
     acc_slot = self.metrics_manager.get_slot_by_name('accuracy')
     assert isinstance(acc_slot, MetricSlot)
     acc_foreach = acc_slot.quantity_definition.quantities
-    results = self.evaluate(acc_foreach, data, batch_size, extractor)
+    results = self.evaluate(acc_foreach, data, batch_size, extractor,
+                            verbose=hub.val_progress_bar)
     if self.input_type is InputTypes.RNN_BATCH:
       results = np.concatenate([y.flatten() for y in results])
     accuracy = np.mean(results) * 100
 
     # Show accuracy
-    console.supplement('Accuracy on {} is {:.2f}%'.format(data.name, accuracy))
+    console.supplement('Accuracy on {} is {:.3f}%'.format(data.name, accuracy))
 
     # export_false option is valid for images only
     if export_false and accuracy < 100.0:

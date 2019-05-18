@@ -306,28 +306,32 @@ class Trainer(object):
         self.model.agent.put_down_criterion('Total Iterations', self.counter)
       else:
         self.model.agent.put_down_criterion('Total Rounds', rnd)
-      # Evaluate the best model if necessary
-      ds_dict = OrderedDict()
-      if hub.evaluate_train_set: ds_dict['Train'] = self.training_set
-      if hub.evaluate_val_set: ds_dict['Val'] = self.validation_set
-      if hub.evaluate_test_set: ds_dict['Test'] = self.test_set
-      if len(ds_dict) > 0:
-        # Load the best model
-        if hub.save_model:
-          flag, _ = self.model.agent.load()
-          assert flag
-        # Evaluate the specified data sets
-        for name, data_set in ds_dict.items():
-          if not isinstance(data_set, TFRData):
-            raise TypeError('!! {} set is not a TFRData'.format(name))
-          # TODO
-          value = self.model.evaluate_model(
-            data_set, batch_size=hub.val_batch_size)
-          title = '{} {}'.format(name, self.key_metric.name)
-          self.model.agent.put_down_criterion(title, value)
-          self.model.agent.take_notes('{}: {:.2f}'.format(title, value))
 
-    if self._save_model_at_training_end: self._save_model()
+    # Evaluate the best model if necessary
+    ds_dict = OrderedDict()
+    if hub.evaluate_train_set: ds_dict['Train'] = self.training_set
+    if hub.evaluate_val_set: ds_dict['Val'] = self.validation_set
+    if hub.evaluate_test_set: ds_dict['Test'] = self.test_set
+    if len(ds_dict) > 0:
+      # Load the best model
+      if hub.save_model:
+        flag, _ = self.model.agent.load()
+        assert flag
+      # Evaluate the specified data sets
+      for name, data_set in ds_dict.items():
+        if not isinstance(data_set, TFRData):
+          raise TypeError('!! {} set is not a TFRData'.format(name))
+        # TODO
+        value = self.model.evaluate_model(
+          data_set, batch_size=hub.eval_batch_size)
+        title = '{} {}'.format(name, self.metrics_manager.eval_slot.name)
+        self.model.agent.put_down_criterion(title, value)
+        self.model.agent.take_notes('{}: {:.3f}'.format(title, value))
+
+    # Save model here if necessary
+    if self._save_model_at_training_end:
+      assert len(ds_dict) == 0
+      self._save_model()
 
     return rnd
 

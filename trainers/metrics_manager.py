@@ -29,6 +29,8 @@ class MetricsManager(object):
 
     self.note = OrderedDict()
 
+    self._eval_metric_slot = None
+
   # region : Properties
 
   @property
@@ -40,6 +42,11 @@ class MetricsManager(object):
   @property
   def early_stop_criterion(self):
     return self.early_stop_slot.record
+
+  @property
+  def eval_slot(self):
+    if self._eval_metric_slot is None: return self.early_stop_slot
+    else: return self._eval_metric_slot
 
   @property
   def has_metric(self):
@@ -120,6 +127,13 @@ class MetricsManager(object):
     if len(result) == 0:
       raise ValueError('!! metrics_manager can not find `{}`'.format(name))
     return result[0]
+
+  def register_eval_slot(self, key):
+    """Slot used for evaluating model may be different from early stop
+       criterion. For example in image classification tasks where the early
+       stop criterion is loss but the evaluation metric is accuracy. """
+    assert isinstance(key, str)
+    self._eval_metric_slot = self.get_slot_by_name(key)
 
   # endregion : Public Methods
 

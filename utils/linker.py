@@ -290,6 +290,7 @@ def bit_max(x, num_classes, heads=1, sum_heads=False, **kwargs):
   if heads > 1 and sum_heads:
     bit_max = tf.reduce_sum(bit_max, axis=0)
 
+  # output shape is ([heads, ]bs, num_classes)
   return bit_max
 
 # endregion : Bit Max
@@ -310,8 +311,66 @@ def get_weights_to_prune(name, shape, initializer, frac):
 
 # endregion : Prune
 
+# region : Hyper affine
 
-if __name__ == '__main__':
-  a = 12
-  print(int(np.ceil(np.log2(a))))
+def hyper_affine(x, dim, heads=1, use_bit_max=True):
+  """Hyper affine transformation.
+
+  :param x: input tensor, must be of shape (batch_size, dim)
+  :param dim: output dimension
+  :param heads: head # for each output neuron
+  :param use_bit_max: whether to use bix_max to calculate transformation matrix
+  """
+  # Sanity check, x.shape = (batch_size, x_dim)
+  assert isinstance(x, tf.Tensor) and len(x.shape) == 2
+
+  # Generate transformation matrix
+  if use_bit_max:
+    pass
+  else: raise NotImplementedError
+
+  # Do matrix multiplication
+  y = None
+
+  return y
+
+# endregion : Hyper affine
+
+# region : Sparse affine
+
+def sparse_affine(x, y_dim, heads=1, logits_initializer='random_normal',
+                  coef_initializer='random_normal', use_bias=True,
+                  bias_initializer='zeros'):
+  """This method should be used inside a variable scope"""
+  logits_initializer = initializers.get(logits_initializer)
+  coef_initializer = initializers.get(coef_initializer)
+  bias_initializer = initializers.get(bias_initializer)
+
+  # Sanity check
+  assert isinstance(x, tf.Tensor) and len(x.shape) == 2
+  x_dim = get_dimension(x)
+
+  # Get 3-D variable of shape (x_dim, y_dim, heads)
+  logits = tf.get_variable(
+    'brick', shape=[x_dim, y_dim, heads], dtype=hub.dtype,
+    initializer=logits_initializer)
+
+  # Get coef variable of shape (y_dim, heads)
+  coef = tf.get_variable('coef', shape=[y_dim, heads], dtype=hub.dtype,
+                         initializer=coef_initializer)
+
+  # Calculate weight matrix
+  activation = tf.nn.softmax(logits, axis=0)
+  weights = tf.reduce_sum(tf.multiply(coef, activation), axis=-1)
+  assert weights.shape.as_list() == [x_dim, y_dim]
+
+  # Calculate y
+  y = tf.matmul(x, weights)
+  bias = get_bias('bias', y_dim, bias_initializer) if use_bias else None
+  y = tf.nn.bias_add(y, bias)
+
+  return y
+
+# endregion : Sparse affine
+
 

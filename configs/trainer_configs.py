@@ -28,6 +28,7 @@ class TrainerConfigs(object):
 
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
   val_batch_size = Flag.integer(None, 'Batch size in batch validation')
+  eval_batch_size = Flag.integer(None, 'Batch size in batch evaluation')
 
   block_validation = Flag.whatever(False, '???')
   rand_over_classes = Flag.boolean(False, '...', is_key=None)

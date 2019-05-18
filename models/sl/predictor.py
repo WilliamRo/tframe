@@ -63,9 +63,11 @@ class Predictor(Feedforward, Recurrent):
       optimizer=optimizer, loss=loss, metric=metric, metric_name=metric_name)
 
   @with_graph
-  def build(self, optimizer=None, loss='euclid', metric=None, **kwargs):
+  def build(self, optimizer=None, loss='euclid', metric=None,
+            batch_metric=None, eval_metric=None, **kwargs):
     context.metric_name = 'unknown' # TODO: to be deprecated
-    Model.build(self, optimizer=optimizer, loss=loss, metric=metric, **kwargs)
+    Model.build(self, optimizer=optimizer, loss=loss, metric=metric,
+                batch_metric=batch_metric, eval_metric=eval_metric, **kwargs)
 
   def _build(self, optimizer=None, loss='euclid', metric=None, **kwargs):
     # For some RNN predictors, their last step is counted as the only output
@@ -195,12 +197,21 @@ class Predictor(Feedforward, Recurrent):
 
   @with_graph
   def evaluate_model(self, data, batch_size=None, **kwargs):
+    """The word `evaluate` in this method name is different from that in
+       `self.evaluate` method. Here only eval_metric willl be evaluated and
+       the result will be printed on terminal."""
     # Check metric
-    if not self.key_metric.activated: raise AssertionError('!! Metric not defined')
-    # Show status
-    console.show_status('Evaluating {} ...'.format(data.name))
-    result = self.validate_model(data, batch_size, allow_sum=False)[self.key_metric]
-    console.supplement('{} = {:.3f}'.format(self.key_metric.symbol, result))
+    if not self.eval_metric.activated:
+      raise AssertionError('!! Metric not defined')
+    # If hub.val_progress_bar is True, this message will be showed in
+    #   model.evaluate method
+    if not hub.val_progress_bar:
+      console.show_status('Evaluating on {} ...'.format(data.name))
+    # use val_progress_bar option here temporarily
+    result = self.validate_model(
+      data, batch_size, allow_sum=False,
+      verbose=hub.val_progress_bar)[self.eval_metric]
+    console.supplement('{} = {:.3f}'.format(self.eval_metric.symbol, result))
 
     return result
 

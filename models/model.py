@@ -109,6 +109,11 @@ class Model(object):
     return self.metrics_manager.early_stop_slot
 
   @property
+  def eval_metric(self):
+    if not self.metrics_manager.has_metric: return None
+    return self.metrics_manager.eval_slot
+
+  @property
   def outputs(self):
     assert isinstance(self._outputs, TensorSlot)
     return self._outputs
@@ -177,7 +182,7 @@ class Model(object):
   # region : Building
 
   @with_graph
-  def build(self, optimizer=None, **kwargs):
+  def build(self, **kwargs):
 
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
@@ -186,8 +191,11 @@ class Model(object):
       # import here to prevent circular import (temporarily)
       from tframe.utils.pruner import Pruner
       tfr.context.pruner = Pruner(self)
-    #
-    self._build(optimizer=optimizer, **kwargs)
+    # If optimizer if not provided here, try hub.get_optimizer()
+    #   this requires that th.optimizer and th.learning_rate have been provided
+    if 'optimizer' not in kwargs: kwargs['optimizer'] = hub.get_optimizer()
+    # Call successor's _build method
+    self._build(**kwargs)
     # Initialize monitor
     self._init_monitor()
     # Set built flag
@@ -213,6 +221,11 @@ class Model(object):
       metric_slot = self.metrics_manager.get_slot_by_name(metric_str)
       self._update_group.add(metric_slot)
 
+    # Register eval_metric if provided
+    eval_metric = kwargs.get('eval_metric', None)
+    if eval_metric is not None:
+      assert isinstance(eval_metric, str)
+      self.metrics_manager.register_eval_slot(eval_metric)
 
   def _build(self, optimizer=None, **kwargs):
     """Abstract method, must be implemented in different models
@@ -560,7 +573,7 @@ class Model(object):
 
     if verbose:
       bar = ProgressBar(data.get_round_length(batch_size, hub.val_num_steps))
-      console.show_status('Evaluating {} ...'.format(data.name))
+      console.show_status('Evaluating on {} ...'.format(data.name))
 
     for cursor, data_batch in enumerate(self.get_data_batches(
         data, batch_size, hub.val_num_steps)):
