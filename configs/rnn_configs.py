@@ -107,3 +107,5 @@ class RNNConfigs(object):
   temporal_activation = Flag.string('tanh', 'Temporal activation', is_key=None)
   spatial_configs = Flag.string(None, 'Spatial config string', is_key=None)
   spatial_activation = Flag.string('relu', 'Spatial activation', is_key=None)
+  use_reset_gate = Flag.boolean(False, 'Whether to use reset gate in model',
+                                is_key=None)
