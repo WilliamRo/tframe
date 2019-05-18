@@ -139,10 +139,11 @@ class MetricsManager(object):
 
   # region : Statistics
 
-  def idle_counter(self, rnd):
+  def idle_counter(self, slot, rnd):
+    assert isinstance(slot, MetricSlot)
     if self.trainer.is_online:
-      return self.early_stop_slot.get_idle_counts(self.trainer.counter)
-    else: return self.early_stop_slot.get_idle_rounds(rnd)
+      return slot.get_idle_counts(self.trainer.counter)
+    else: return slot.get_idle_rounds(rnd)
 
   def record_stats_on_dataset(
       self, data_set, slot_scalar_dict, take_down_on_slot=False, rnd=None):
@@ -186,10 +187,10 @@ class MetricsManager(object):
           self.note[note_key] = '<New Record>'
           if slot is self.early_stop_slot: flag = True
         else:
+          idle = self.idle_counter(slot, rnd)
           if hub.early_stop and slot is self.early_stop_slot:
-            idle_info = 'Patience {}/{}'.format(
-              self.idle_counter(rnd), self.th.patience)
-          else: idle_info = 'Idle: {}'.format(self.idle_counter(rnd))
+            idle_info = 'Patience {}/{}'.format(idle, self.th.patience)
+          else: idle_info = 'Idle: {}'.format(idle)
           suffix = '(Best: {:.3f}, {})'.format(slot.record, idle_info)
           self.note[note_key] = suffix
 
