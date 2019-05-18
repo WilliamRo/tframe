@@ -340,7 +340,7 @@ def hyper_affine(x, dim, heads=1, use_bit_max=True):
 
 def sparse_affine(x, y_dim, heads=1, logits_initializer='random_normal',
                   coef_initializer='random_normal', use_bias=True,
-                  bias_initializer='zeros'):
+                  bias_initializer='zeros', return_weights=False):
   """This method should be used inside a variable scope"""
   logits_initializer = initializers.get(logits_initializer)
   coef_initializer = initializers.get(coef_initializer)
@@ -369,7 +369,9 @@ def sparse_affine(x, y_dim, heads=1, logits_initializer='random_normal',
   bias = get_bias('bias', y_dim, bias_initializer) if use_bias else None
   y = tf.nn.bias_add(y, bias)
 
-  return y
+  # Return
+  if return_weights: return y, weights
+  else: return y
 
 # endregion : Sparse affine
 

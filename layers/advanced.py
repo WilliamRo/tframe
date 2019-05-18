@@ -49,8 +49,9 @@ class Dense(LayerWithNeurons):
 
 
 class SparseAffine(Layer):
+  is_nucleus = True
 
-  full_name = 'sparse'
+  full_name = 'sparse_affine'
   abbreviation = 'sparse'
 
   def __init__(
@@ -79,6 +80,13 @@ class SparseAffine(Layer):
 
   @single_input
   def _link(self, x, **kwargs):
-    return linker.sparse_affine(
+    y, weights = linker.sparse_affine(
       x, self.num_neurons, self.heads, self._logits_initializer,
-      self._coef_initializer, self._use_bias, self._bias_initializer)
+      self._coef_initializer, self._use_bias, self._bias_initializer,
+      return_weights=True)
+
+    if hub.export_sparse_weights:
+      key = '/'.join(tf.get_variable_scope().name.split('/')[1:] + ['weights'])
+      context.variables_to_export[key] = weights
+
+    return y

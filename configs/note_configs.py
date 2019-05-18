@@ -35,6 +35,8 @@ class NoteConfigs(object):
   use_default_s_in_dy_ds = Flag.boolean(False, '...')
   calculate_mean = Flag.boolean(False, '...')
 
+  export_sparse_weights = Flag.boolean(False, '...')
+
   export_dl_dx = Flag.boolean(False, '...')
   export_dl_ds_stat = Flag.boolean(False, '...')
   export_jacobian_norm = Flag.boolean(False, '...')
@@ -59,7 +61,8 @@ class NoteConfigs(object):
 
     if (self.export_dy_ds or self.export_gates or self.export_states or
         self.export_weights or self.export_bias or self.export_kernel or
-        self.export_dl_dx or self.export_dl_ds_stat):
+        self.export_dl_dx or self.export_dl_ds_stat or
+        self.export_sparse_weights):
       self.export_tensors_to_note = True
 
 
