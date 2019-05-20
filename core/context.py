@@ -47,6 +47,9 @@ class Context(object):
     # pruner will be initiated in the early stage of model building
     self.pruner = None
 
+    # Sparse tensor list
+    self.sparse_weights_list = []
+
   # region : Properties
 
   @property
@@ -133,6 +136,9 @@ class Context(object):
     return self.has_collection(key)
 
   def clear_all_collections(self):
+    """This method will only be called inside Recurrent._build_while_free
+       to ensure tensors inside while_loop are correctly handle.
+    """
     self._center_od_.clear()
     self.logits_tensor = None
     # Clear pruner

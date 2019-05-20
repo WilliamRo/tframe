@@ -64,7 +64,7 @@ class ModelConfigs(object):
   num_heads = Flag.integer(1, 'Head #', is_key=None)
 
   centralize_data = Flag.boolean(
-    False, 'Whether to centralize data', is_key=True)
+    False, 'Whether to centralize data', is_key=None)
   data_mean = Flag.float(None, 'Used for normalizing data set')
   data_std = Flag.float(None, 'Used for normalizing data set')
 
@@ -73,6 +73,13 @@ class ModelConfigs(object):
     0.0, 'Pruning rate for fully connected layers', is_key=None)
   pruning_iterations = Flag.integer(0, 'Pruning iterations', is_key=None)
   weights_fraction = Flag.float(None, 'Master weights fraction', is_key=None)
+
+  head_nums = Flag.whatever(None, 'Head numbers for sparse layers')
+  sigmoid_coef = Flag.float(
+    1.0, 'Used in narrow the effective domain of sigmoid function', is_key=None)
+  full_weight = Flag.boolean(
+    False, 'Whether to use full weight matrix in sparse method', is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True

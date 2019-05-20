@@ -303,6 +303,7 @@ class Net(Function):
 
     # Extract tensors to export
     if self.is_root:
+      # Run customized extractor
       for extractor in self._tensor_extractors:
         assert callable(extractor)
         extractor(self)
@@ -488,15 +489,27 @@ class Net(Function):
   # region : Build-in extractors
 
   def variable_extractor(self):
+    get_key = lambda v: '/'.join(v.name.split('/')[1:])
+    def add_to_dict(v): context.variables_to_export[get_key(v)] = v
+
     if hub.export_weights:
+      # weights created by linker.neurons will not be included since their
+      # .. name are like 'W', 'Wx' or 'Ws'
       for v in self.var_list:
         assert isinstance(v, tf.Variable)
-        if 'weight' in v.name.lower():
-          key = '/'.join(v.name.split('/')[1:])
-          context.variables_to_export[key] = v
+        # if 'weight' in v.name.lower():
+        name = v.name.split('/')[-1]
+        if 'w' == name.lower()[0]: add_to_dict(v)
 
     if hub.export_masked_weights and hub.pruning_rate_fc > 0:
       from tframe.utils.pruner import Pruner
       Pruner.extractor()
 
-  # endregion : Buildin extractors
+    if hub.export_sparse_weights:
+      for v in context.sparse_weights_list:
+        assert isinstance(v, (tf.Tensor, tf.Variable))
+        # TODO: temporal solution to circumvent conflicts
+        if 'scan' in v.name.lower(): continue
+        add_to_dict(v)
+
+  # endregion : Build-in extractors

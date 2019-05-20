@@ -10,6 +10,7 @@ import tframe.initializers as initializers
 import tframe.regularizers as regularizers
 
 from tframe import hub
+from tframe import checker
 from tframe import context
 from tframe.utils.maths.periodicals import bit_waves
 
@@ -40,7 +41,7 @@ def neurons(num,
   bias_regularizer = regularizers.get(bias_regularizer)
   activity_regularizer = regularizers.get(activity_regularizer)
 
-  # Check prune configs
+  # a. Check prune configs
   if 'prune_frac' in kwargs.keys():
     x_prune_frac, s_prune_frac = (kwargs['prune_frac'],) * 2
   else:
@@ -48,16 +49,29 @@ def neurons(num,
     s_prune_frac = kwargs.get('s_prune_frac', 0)
   prune_is_on = hub.pruning_rate_fc > 0.0 and x_prune_frac + s_prune_frac > 0
 
-  # Decide to concatenate or not
+  # b. Check sparse configs
+  x_heads = kwargs.get('x_heads', 0)
+  s_heads = kwargs.get('s_heads', 0)
+  sparse_is_on = x_heads + s_heads > 0
+
+  # :: Decide to concatenate or not considering a and b
+  # .. a
   if memory is None: should_concate = False
   elif prune_is_on: should_concate = x_prune_frac == s_prune_frac
   else: should_concate = fc_memory
+  # .. b
+  should_concate = should_concate and not sparse_is_on
+  #
   separate_memory_neurons = memory is not None and not should_concate
 
-  def get_weights(name, tensor, p_frac):
+  def get_weights(name, tensor, p_frac, heads):
     shape = [get_dimension(tensor), num]
     if prune_is_on and p_frac > 0:
+      assert heads == 0
       return get_weights_to_prune(name, shape, weight_initializer, p_frac)
+    elif heads > 0:
+      return _get_sparse_weights(shape[0], shape[1], heads, use_bit_max=True,
+                                 coef_initializer=weight_initializer)
     else: return get_variable(name, shape, weight_initializer)
 
   def forward():
@@ -71,7 +85,7 @@ def neurons(num,
     # - Calculate net input for x
     # .. get weights
     name = 'Wx' if separate_memory_neurons else 'W'
-    Wx = get_weights(name, x, x_prune_frac)
+    Wx = get_weights(name, x, x_prune_frac, x_heads)
     weight_list.append(Wx)
     # .. do matrix multiplication
     net_y = get_matmul(truncate)(x, Wx)
@@ -85,8 +99,8 @@ def neurons(num,
         Ws = get_variable('Ws', [1, num], weight_initializer)
         net_s = get_multiply(truncate)(memory, Ws)
       else:
-        assert prune_is_on
-        Ws = get_weights('Ws', memory, s_prune_frac)
+        assert prune_is_on or sparse_is_on
+        Ws = get_weights('Ws', memory, s_prune_frac, s_heads)
         net_s = get_matmul(truncate)(memory, Ws)
 
       # Append Ws to weight list and add net_s to net_y
@@ -135,7 +149,7 @@ def get_bias(name, dim, initializer='zeros'):
     name, shape=[dim], dtype=hub.dtype, initializer=initializer)
 
 def get_tensor_shape(tensor):
-  assert isinstance(tensor, tf.Tensor)
+  assert isinstance(tensor, (tf.Tensor, tf.Variable))
   return tensor.shape.as_list()
 
 def get_dimension(tensor):
@@ -238,7 +252,8 @@ def softmax_over_groups(net_input, configs, output_name='sog'):
 def _get_waves(num_bits):
   key = 'bit_waves_{}'.format(num_bits)
   if key in context.reuse_dict.keys(): return context.reuse_dict[key]
-  waves = tf.constant(bit_waves(num_bits, stack=True, axis=-1), dtype=hub.dtype)
+  waves = tf.constant(bit_waves(
+    num_bits, stack=True, stack_axis=-1), dtype=hub.dtype)
   context.reuse_dict[key] = waves
   return waves
 
@@ -293,6 +308,59 @@ def bit_max(x, num_classes, heads=1, sum_heads=False, **kwargs):
   # output shape is ([heads, ]bs, num_classes)
   return bit_max
 
+def expand_bit(tensor, axis, activate=True):
+  """Given axis k, expand a tensor x of shape [d0, d1, ..., dk, ..., dn] to
+     y of shape [d0, d1, ..., 2^dk, ..., dn] which satisfies
+     all(reduce_sum(y, axis=k) == 1) is True
+  """
+  # Sanity check
+  assert isinstance(tensor, (tf.Tensor, tf.Variable))
+  assert isinstance(axis, int) and axis < len(tensor.shape)
+  shape = get_tensor_shape(tensor)
+  n = shape[axis]
+
+  # Activate tensor if necessary
+  # TODO: temporally borrow hub.multiple as the multiplier
+  if activate: tensor = tf.sigmoid(tensor * hub.sigmoid_coef)
+  # Expand tensor to shape [d0, ..., dk-1,   1, n, ..., dn]
+  a = tf.expand_dims(tensor, axis=axis)
+
+  # Get waves of shape (2^n, n)
+  waves = _get_waves(n)
+  # Reshape waves to       [ 1, ...,    1, 2^n, n, ...,  1]
+  new_shape = [1] * (len(shape) + 1)
+  new_shape[axis:axis+2] = (2**n, n)
+  waves = tf.reshape(waves, new_shape)
+
+  # Calculate bit max
+  coef = tf.subtract(1., tf.multiply(2., a))
+  y = tf.add(tf.multiply(coef, waves), a)
+  y = tf.reduce_prod(y, axis=axis+1)
+  return y
+
+def _trim_and_normalize(tensor, axis, dim, normalize=False):
+  # Sanity check
+  assert isinstance(tensor, (tf.Tensor, tf.Variable))
+  shape = tensor.shape.as_list()
+  assert isinstance(axis, int) and axis < len(shape)
+  scale = shape[axis]
+  assert scale > dim
+
+  # Trim
+  begin, size = [0] * len(shape), shape
+  delta = (scale - dim) // 2
+  begin[axis], size[axis] = delta, dim
+  output = tf.slice(tensor, begin, size)
+  assert isinstance(output, (tf.Tensor, tf.Variable))
+  assert output.shape.as_list()[axis] == dim
+
+  # Normalize if necessary
+  if normalize:
+    sums = tf.reduce_sum(output, axis=axis, keepdims=True) + 1e-6
+    output = tf.divide(output, sums)
+
+  return output
+
 # endregion : Bit Max
 
 # region : Prune
@@ -338,30 +406,67 @@ def hyper_affine(x, dim, heads=1, use_bit_max=True):
 
 # region : Sparse affine
 
-def sparse_affine(x, y_dim, heads=1, logits_initializer='random_normal',
-                  coef_initializer='random_normal', use_bias=True,
-                  bias_initializer='zeros', return_weights=False):
-  """This method should be used inside a variable scope"""
+def _get_sparse_weights(x_dim, y_dim, heads=1, use_bit_max=False,
+                        logits_initializer='random_normal',
+                        coef_initializer='random_normal',
+                        return_package=False):
+
   logits_initializer = initializers.get(logits_initializer)
   coef_initializer = initializers.get(coef_initializer)
+
+  # Get 3-D variable of shape (x_dim, y_dim, heads)
+  if use_bit_max:
+    num_bits = int(np.ceil(np.log2(x_dim)))
+    logits = tf.get_variable(
+      'brick', shape=[num_bits, y_dim, heads], dtype=hub.dtype,
+      initializer=logits_initializer, trainable=True)
+    activation = expand_bit(logits, axis=0)
+    # Trim if necessary
+    if 2**num_bits > x_dim:
+      activation = _trim_and_normalize(
+        activation, axis=0, dim=x_dim, normalize=True)
+  else:
+    logits = tf.get_variable(
+      'logits', shape=[x_dim, y_dim, heads], dtype=hub.dtype,
+      initializer=logits_initializer, trainable=True)
+    activation = tf.nn.softmax(logits, axis=0)
+
+  # Get coef variable of shape (y_dim, heads)
+  coef_shape = [x_dim, y_dim, 1] if hub.full_weight else [1, y_dim, heads]
+  coef = tf.get_variable('coef', shape=coef_shape, dtype=hub.dtype,
+                         initializer=coef_initializer, trainable=True)
+
+  # Calculate weight matrix
+  weights = tf.reduce_sum(tf.multiply(coef, activation), axis=-1)
+  assert weights.shape.as_list() == [x_dim, y_dim]
+  context.sparse_weights_list.append(weights)
+
+  # Return
+  if return_package:
+    package = {
+      'logits': logits,
+      'activation': activation,
+      'coef': coef,
+    }
+    return weights, package
+  else: return weights
+
+def sparse_affine(x, y_dim, heads=1, use_bit_max=False,
+                  logits_initializer='random_normal',
+                  coef_initializer='random_normal', use_bias=True,
+                  bias_initializer='zeros', return_package=False):
+
+  """This method should be used inside a variable scope"""
   bias_initializer = initializers.get(bias_initializer)
 
   # Sanity check
   assert isinstance(x, tf.Tensor) and len(x.shape) == 2
   x_dim = get_dimension(x)
 
-  # Get 3-D variable of shape (x_dim, y_dim, heads)
-  logits = tf.get_variable(
-    'brick', shape=[x_dim, y_dim, heads], dtype=hub.dtype,
-    initializer=logits_initializer)
-
-  # Get coef variable of shape (y_dim, heads)
-  coef = tf.get_variable('coef', shape=[y_dim, heads], dtype=hub.dtype,
-                         initializer=coef_initializer)
-
-  # Calculate weight matrix
-  activation = tf.nn.softmax(logits, axis=0)
-  weights = tf.reduce_sum(tf.multiply(coef, activation), axis=-1)
+  # Get sparse weights
+  weights, package = _get_sparse_weights(
+    x_dim, y_dim, heads, use_bit_max,
+    logits_initializer, coef_initializer, True)
   assert weights.shape.as_list() == [x_dim, y_dim]
 
   # Calculate y
@@ -370,7 +475,9 @@ def sparse_affine(x, y_dim, heads=1, logits_initializer='random_normal',
   y = tf.nn.bias_add(y, bias)
 
   # Return
-  if return_weights: return y, weights
+  if return_package:
+    package['weights'] = weights
+    return y, package
   else: return y
 
 # endregion : Sparse affine

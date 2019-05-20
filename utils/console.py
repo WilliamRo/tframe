@@ -182,6 +182,7 @@ def eval_show(tensor, name=None, feed_dict=None):
     show_status('{} = '.format(name))
     pprint(val)
   else: show_status('{} = {}'.format(name, val))
+  return val
 
 
 def warning_with_pause(msg):
