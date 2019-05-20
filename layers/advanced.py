@@ -102,5 +102,6 @@ class SparseAffine(Layer):
       scope = '/'.join(tf.get_variable_scope().name.split('/')[1:])
       # context.variables_to_export[scope + '/weights'] = pkg['weights']
       # context.variables_to_export[scope + '/coef'] = pkg['coef']
+      context.weights_list.append(pkg['weights'])
 
     return y
