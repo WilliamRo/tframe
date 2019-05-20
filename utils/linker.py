@@ -87,6 +87,8 @@ def neurons(num,
     name = 'Wx' if separate_memory_neurons else 'W'
     Wx = get_weights(name, x, x_prune_frac, x_heads)
     weight_list.append(Wx)
+    # .. append weights to context, currently only some extractors will use it
+    context.weights_list.append(Wx)
     # .. do matrix multiplication
     net_y = get_matmul(truncate)(x, Wx)
 

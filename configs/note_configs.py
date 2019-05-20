@@ -55,6 +55,9 @@ class NoteConfigs(object):
   take_note_in_beginning = Flag.boolean(
     False, 'Whether to take note on 1st iteration')
 
+  export_input_connection = Flag.boolean(
+    False, 'Whether to export input connection stats like a heat map')
+
 
   def smooth_out_note_configs(self):
     if self.use_default_s_in_dy_ds: self.export_dy_ds = True

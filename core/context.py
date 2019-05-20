@@ -48,6 +48,7 @@ class Context(object):
     self.pruner = None
 
     # Sparse tensor list
+    self.weights_list = []
     self.sparse_weights_list = []
 
   # region : Properties

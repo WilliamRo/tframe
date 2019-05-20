@@ -6,7 +6,9 @@ import os
 import gzip
 import numpy as np
 
-from tframe import console
+import tensorflow as tf
+
+from tframe import console, context, hub
 from tframe import pedia
 from tframe.data.base_classes import ImageDataAgent
 
@@ -91,6 +93,16 @@ class MNIST(ImageDataAgent):
         buf = bytestream.read(num_items)
         labels = np.frombuffer(buf, dtype=np.uint8)
         return labels
+
+  @staticmethod
+  def connection_heat_map_extractor(_):
+    if not hub.export_input_connection: return
+    weights = context.weights_list[0]
+    assert isinstance(weights, (tf.Variable, tf.Tensor))
+    assert weights.shape.as_list()[0] == 784
+    weights = tf.abs(weights)
+    heat_map = tf.reshape(tf.reduce_sum(weights, axis=1), [28, 28])
+    context.variables_to_export['connection_heat_map'] = heat_map
 
   # endregion : Private Methods
 
