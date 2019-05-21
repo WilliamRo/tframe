@@ -51,7 +51,7 @@ class Classifier(Predictor):
 
     # Call parent's method to build using the default loss function
     #  -- cross entropy
-    Predictor._build(self, optimize=optimizer, metric=metric, **kwargs)
+    Predictor._build(self, optimizer=optimizer, metric=metric, **kwargs)
     assert self.outputs.activated
     # Plug tensor into probabilities slot
     self._probabilities.plug(self.outputs.tensor)
