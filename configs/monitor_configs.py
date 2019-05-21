@@ -6,17 +6,21 @@ from .flag import Flag
 
 
 class MonitorConfigs(object):
-  monitor = Flag.boolean(None, 'Whether to monitor or not (of highest '
-                               'priority)')
-  monitor_grad = Flag.boolean(False, 'Whether to monitor gradients or not')
-  monitor_weight = Flag.boolean(False, 'Whether to monitor weights or not')
-  monitor_preact = Flag.boolean(False, 'Whether to enable pre-act summary')
-  monitor_postact = Flag.boolean(False, 'Whether to enable post-act summary')
+
+  # monitor = Flag.boolean(None, 'Whether to monitor or not (of highest '
+  #                              'priority)')
+  # monitor_grad = Flag.boolean(False, 'Whether to monitor gradients or not')
+  # monitor_weight = Flag.boolean(False, 'Whether to monitor weights or not')
+  # monitor_preact = Flag.boolean(False, 'Whether to enable pre-act summary')
+  # monitor_postact = Flag.boolean(False, 'Whether to enable post-act summary')
+  monitor_weights_grad = Flag.boolean(False, 'Whether to monitor weights grad')
 
   def smooth_out_monitor_configs(self):
-    if self.monitor in (True, False):
-      self.monitor_grad = self.monitor
-      self.monitor_weight = self.monitor
-      self.monitor_preact = self.monitor
-      self.monitor_postact = self.monitor
+    pass
+
+    # if self.monitor in (True, False):
+    #   self.monitor_grad = self.monitor
+    #   self.monitor_weight = self.monitor
+      # self.monitor_preact = self.monitor
+      # self.monitor_postact = self.monitor
 

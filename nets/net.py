@@ -66,6 +66,15 @@ class Net(Function):
             if '{}'.format(self.name) == var.name.split('/')[self._level]]
 
   @property
+  def weight_vars(self):
+    vars = []
+    for v in self.var_list:
+      assert isinstance(v, tf.Variable)
+      name = v.name.split('/')[-1]
+      if 'w' == name.lower()[0]: vars.append(v)
+    return vars
+
+  @property
   def weight_list(self):
     return [var for var in self.var_list if 'weights' in var.name]
 
@@ -493,13 +502,7 @@ class Net(Function):
     def add_to_dict(v): context.variables_to_export[get_key(v)] = v
 
     if hub.export_weights:
-      # weights created by linker.neurons will not be included since their
-      # .. name are like 'W', 'Wx' or 'Ws'
-      for v in self.var_list:
-        assert isinstance(v, tf.Variable)
-        # if 'weight' in v.name.lower():
-        name = v.name.split('/')[-1]
-        if 'w' == name.lower()[0]: add_to_dict(v)
+      for v in self.weight_vars: add_to_dict(v)
 
     if hub.export_masked_weights and hub.pruning_rate_fc > 0:
       from tframe.utils.pruner import Pruner
@@ -511,5 +514,18 @@ class Net(Function):
         # TODO: temporal solution to circumvent conflicts
         if 'scan' in v.name.lower(): continue
         add_to_dict(v)
+
+    # Register weights
+    self._register_weights_to_monitor()
+
+  def _register_weights_to_monitor(self):
+    """<monitor_grad_step_01: register to monitor>"""
+    if not hub.monitor_weights_grad: return
+    monitor = context.monitor
+
+    # weights of type tf.Variable
+    monitor.register_weights(self.weight_vars)
+
+    # TODO: register masked_weights and sparse weights
 
   # endregion : Build-in extractors

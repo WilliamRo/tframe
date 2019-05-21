@@ -421,8 +421,17 @@ class Trainer(object):
   def _update_model(self, data_batch):
     loss_dict = self.model.update_model(data_batch=data_batch)
     loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
-    assert len(loss_slots) > 0
-    self.batch_loss_stat.record(loss_dict[loss_slots[0]])
+    # assert len(loss_slots) > 0
+    assert len(loss_slots) == 1
+    loss_slot = loss_slots[0]
+    self.batch_loss_stat.record(loss_dict[loss_slot])
+
+    # Record grads if necessary
+    # <monitor_grad_step_03: fetch and record>
+    if self.th.monitor_weights_grad:
+      grads = loss_dict.pop(self.model.grads_slot)
+      context.monitor.record(grads)
+
     return loss_dict
 
   def _check_data(self, data_set=None, name='dataset'):
@@ -512,16 +521,24 @@ class Trainer(object):
   def _get_variables_to_export(self, tensor_dict):
     if tensor_dict is None: tensor_dict = OrderedDict()
     assert isinstance(tensor_dict, dict)
+
+    base_on_exemplars = len(tensor_dict) > 0
+    def _add_to_dict(key, value):
+      if base_on_exemplars:
+        for exemplar_dict in tensor_dict.values():
+          exemplar_dict[key] = value
+      else: tensor_dict[key] = value
+
     # Add variables to export
     v_fetches_dict = context.variables_to_export
     if len(v_fetches_dict) > 0:
       results = self.model.agent.session.run(list(v_fetches_dict.values()))
-      base_on_exemplars = len(tensor_dict) > 0
       for key, value in zip(v_fetches_dict.keys(), results):
-        if base_on_exemplars:
-          for exemplar_dict in tensor_dict.values():
-            exemplar_dict[key] = value
-        else: tensor_dict[key] = value
+        _add_to_dict(key, value)
+
+    # Add grads stats if necessary
+    if self.th.export_weights_grad:
+      context.monitor.update_dict(tensor_dict)
 
     return tensor_dict
 

@@ -31,6 +31,7 @@ class NoteConfigs(object):
   export_weights = Flag.boolean(False, '...')
   export_masked_weights = Flag.boolean(False, '...')
   export_bias = Flag.boolean(False, '...')
+  export_weights_grad = Flag.boolean(False, '...')
   export_kernel = Flag.boolean(False, '...')
   use_default_s_in_dy_ds = Flag.boolean(False, '...')
   calculate_mean = Flag.boolean(False, '...')

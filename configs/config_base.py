@@ -186,6 +186,8 @@ class Config(
       self.allow_loss_in_loop = True
     if self.prune_on and self.pruning_iterations > 0:
       self.overwrite = False
+    if self.export_weights_grad:
+      self.monitor_weights_grad = True
 
   def get_attr(self, name):
     return object.__getattribute__(self, name)

@@ -74,6 +74,8 @@ class Model(object):
       self, self._loss, self._train_step, self._train_step_summary,
       name='Update-group')
 
+    self.grads_slot = NestedTensorSlot(self, 'Gradients')
+
     # Private attributes
     self._default_net = None  # TODO to be removed
     self._optimizer = None
@@ -234,7 +236,9 @@ class Model(object):
     raise  NotImplementedError('!! build method not implemented')
 
   def _init_monitor(self):
-    if tfr.monitor.activated: tfr.monitor.init_monitor(self)
+    pass
+    # TODO
+    # if tfr.monitor.activated: tfr.monitor.init_monitor(self)
 
   @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):
@@ -244,7 +248,10 @@ class Model(object):
     if not self._loss.activated:
       raise AssertionError('!! loss has not been activated yet')
     with tf.name_scope('Optimizer'):
-      if optimizer is None: optimizer = tf.train.AdamOptimizer(1e-4)
+      if optimizer is None:
+        optimizer = hub.get_optimizer()
+        console.show_status(
+          'Optimizer defined in trainer hub initialized.', '++')
 
       # TODO: BETA
       if hub.use_rtrl:
