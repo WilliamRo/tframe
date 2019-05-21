@@ -110,8 +110,9 @@ class Quantity(object):
 
     # Extract result in last time step for RNN output
     if self._last_only:
-      assert len(q.shape) > 1
-      q = q[:, -1]
+      # In single step calculation, q does not have num_step dimension
+      assert len(q.shape) > 0
+      q = q[-1]
     if self._tf_summ_method is None:
       raise TypeError('!! summ_method should be provided')
     q = self._tf_summ_method(q)
@@ -126,13 +127,16 @@ class Quantity(object):
 
   def apply_np_summ_method(self, quantities):
     """Used only in model.validate_model method"""
-    tfr.checker.check_type(quantities, np.ndarray)
+    if not self._last_only:
+      tfr.checker.check_type(quantities, np.ndarray)
 
     # Concatenate if necessary
     if isinstance(quantities, list):
       # Extract data in last step if necessary
-      if self._last_only: quantities = [s[:, -1] for s in quantities]
-      quantities = np.concatenate(quantities, axis=0)
+      # TODO: this has been done in __call__, check again
+      # if self._last_only: quantities = [s[:, -1] for s in quantities]
+      if isinstance(quantities[0], np.ndarray):
+        quantities = np.concatenate(quantities, axis=0)
 
     return self.np_summ_method(quantities)
 

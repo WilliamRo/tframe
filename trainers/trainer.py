@@ -230,15 +230,20 @@ class Trainer(object):
 
     # Check validation cycle
     if self.th.validation_per_round > 0 and self.validation_set is not None:
-      set_cycle('validate_cycle', self.th.validation_per_round)
+      # give validate_cycle the highest priority
+      if self.th.validate_cycle == 0:
+        set_cycle('validate_cycle', self.th.validation_per_round)
 
     # Check probe cycle
     if self.th.probe_per_round > 0 and self._probe is not None:
-      set_cycle('probe_cycle', self.th.probe_per_round)
+      if self.th.probe_cycle == 0:
+        set_cycle('probe_cycle', self.th.probe_per_round)
 
     # Check note cycle
     if self.th.note_per_round > 0:
-      set_cycle('note_cycle', self.th.note_per_round)
+      if self.th.note_cycle == 0:
+        set_cycle('note_cycle', self.th.note_per_round)
+
     if self.th.note_cycle == 0 and self.th.export_tensors_upon_validation:
       self.th.note_cycle = self.th.validate_cycle
 

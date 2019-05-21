@@ -216,12 +216,13 @@ class Model(object):
 
     # Add metric slot to update group
     batch_metric = kwargs.get('batch_metric', [])
-    if not isinstance(batch_metric, (tuple, list)):
-      batch_metric = [batch_metric]
-    for metric_str in batch_metric:
-      assert isinstance(metric_str, str)
-      metric_slot = self.metrics_manager.get_slot_by_name(metric_str)
-      self._update_group.add(metric_slot)
+    if batch_metric:
+      if not isinstance(batch_metric, (tuple, list)):
+        batch_metric = [batch_metric]
+      for metric_str in batch_metric:
+        assert isinstance(metric_str, str)
+        metric_slot = self.metrics_manager.get_slot_by_name(metric_str)
+        self._update_group.add(metric_slot)
 
     # Register eval_metric if provided
     eval_metric = kwargs.get('eval_metric', None)
@@ -452,7 +453,8 @@ class Model(object):
         assert isinstance(val, np.ndarray) and len(val) > 0
       else:
         assert isinstance(val, list)
-        checker.check_type(val, np.ndarray)
+        if not data_set.n_to_one:
+          checker.check_type(val, np.ndarray)
       # Apply np_summ_method on val
       scalar = qd.apply_np_summ_method(val)
       # Add summ to results

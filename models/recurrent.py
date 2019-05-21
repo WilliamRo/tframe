@@ -458,7 +458,9 @@ class Recurrent(Model, RNet):
 
     # Check active length
     al = data_batch.active_length
-    if al is None: al = [None] * data_batch.size
+    # In tasks like sequence classification, outputs in last time step are
+    #  already been extracted, thus al makes no sense here.
+    if al is None or data_batch.n_to_one: al = [None] * data_batch.size
     assert isinstance(al, list) and len(al) == data_batch.size
     batch_outputs = [[y[:l] if l is not None else y for y, l in zip(array, al)]
                      for array in batch_outputs]
