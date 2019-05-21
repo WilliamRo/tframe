@@ -145,8 +145,8 @@ class Linear(Layer):
       output += self.biases
 
     # Monitor
-    if hub.monitor_weight or hub.monitor_grad:
-      tfr.monitor.add_weight(self.weights)
+    # if hub.monitor_weight or hub.monitor_grad:
+    #   tfr.monitor.add_weight(self.weights)
 
     self.output_tensor = output
     return output

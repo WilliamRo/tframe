@@ -637,7 +637,7 @@ class Model(object):
         feed_dict[tensor] = batch[pedia.features]
       elif tensor.name.lower() in ('target', 'targets'):
       # elif 'target' in tensor.name:
-        # TODO: when predict without outputing loss ...
+        # TODO: when predict without outputting loss ...
         if batch.targets is not None: feed_dict[tensor] = batch.targets
       else:
         name = tensor.name.split('/')[-1].split(':')[0]

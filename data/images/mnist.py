@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import gzip
 import numpy as np
+from collections import OrderedDict
 
 import tensorflow as tf
 
@@ -96,6 +97,9 @@ class MNIST(ImageDataAgent):
 
   @staticmethod
   def connection_heat_map_extractor(_):
+    """This method will be called in net.variable_extractor during linking
+       if has been registered to model(a Net)
+    """
     if not hub.export_input_connection: return
     weights = context.weights_list[0]
     assert isinstance(weights, (tf.Variable, tf.Tensor))
@@ -103,6 +107,19 @@ class MNIST(ImageDataAgent):
     weights = tf.abs(weights)
     heat_map = tf.reshape(tf.reduce_sum(weights, axis=1), [28, 28])
     context.variables_to_export['connection_heat_map'] = heat_map
+
+  @staticmethod
+  def flatten_researcher(grads):
+    """This method will be used in Monitor.grad_dict property when trainer is
+       taking down tensors to export if has been registered to monitor
+    """
+    assert isinstance(grads, OrderedDict)
+    key = list(grads.keys())[0]
+    if grads[key].shape[0] != 784: return
+    grad = grads.pop(key)
+    assert isinstance(grad, np.ndarray)
+    grad = np.sum(grad, axis=1).reshape([28, 28])
+    grads['|grad(inputs)|'] = grad
 
   # endregion : Private Methods
 

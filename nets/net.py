@@ -520,7 +520,7 @@ class Net(Function):
 
   def _register_weights_to_monitor(self):
     """<monitor_grad_step_01: register to monitor>"""
-    if not hub.monitor_weights_grad: return
+    if not hub.monitor_weight_grads: return
     monitor = context.monitor
 
     # weights of type tf.Variable

@@ -428,7 +428,7 @@ class Trainer(object):
 
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
-    if self.th.monitor_weights_grad:
+    if self.th.monitor_weight_grads:
       grads = loss_dict.pop(self.model.grads_slot)
       context.monitor.record(grads)
 
@@ -537,8 +537,9 @@ class Trainer(object):
         _add_to_dict(key, value)
 
     # Add grads stats if necessary
-    if self.th.export_weights_grad:
-      context.monitor.update_dict(tensor_dict)
+    if self.th.export_weight_grads:
+      for key, value in context.monitor.grad_dict.items():
+        _add_to_dict(key, value)
 
     return tensor_dict
 

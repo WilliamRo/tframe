@@ -487,7 +487,9 @@ class ERG(DataAgent):
       # long_buffer = np.zeros_like(array_list[0][0][0])
       for j, array in enumerate(array_list):
         # The shape of array is (batch, step, *dim)
-        if j < num: tensors[exemplar_names[j]][name] = array[0]
+        # why array[0] previously?
+        # if j < num: tensors[exemplar_names[j]][name] = array[0]
+        if j < num: tensors[exemplar_names[j]][name] = array
         if not hub.calculate_mean: continue
         # short_buffer += np.sum(array[0], axis=0) - array[0][-2]
         # long_buffer += array[0][-2]

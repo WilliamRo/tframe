@@ -105,7 +105,7 @@ class Predictor(Feedforward, Recurrent):
       self.loss.plug(loss_tensor, quantity_def=self.loss_quantity)
 
     # <monitor_grad_step_02: register loss and plug grad_ops in>
-    if hub.monitor_weights_grad:
+    if hub.monitor_weight_grads:
       context.monitor.register_loss(loss_tensor)
       self.grads_slot.plug(context.monitor.grad_ops_list)
       self._update_group.add(self.grads_slot)

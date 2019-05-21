@@ -20,8 +20,29 @@ class Monitor(object):
     self._weights_list = []
     self._grad_ops = []
 
+    self._researchers = []
+
   @property
   def grad_ops_list(self): return self._grad_ops
+
+  @property
+  def grad_dict(self):
+    """This property will only be used by trainer._get_variable_to_export"""
+    if not tfr.hub.export_weight_grads: return
+
+    grads = collections.OrderedDict()
+    for w in self._weights_list:
+      assert isinstance(w, (tf.Tensor, tf.Variable))
+      key = '/'.join(w.name.split('/')[1:])
+      key = '|grad({})|'.format(key)
+      s = self._ind_val_dict[w]
+      assert isinstance(s, Statistic)
+      # grads[key] = s.running_abs_average
+      grads[key] = s.abs_average
+    # Let researchers do their job
+    for r in self._researchers: r(grads)
+
+    return grads
 
   # region : Public Methods
 
@@ -31,7 +52,7 @@ class Monitor(object):
     for w in weights:
       assert w not in self._weights_list
       self._weights_list.append(w)
-      self._ind_val_dict[w] = Statistic(max_length=10, keep_acc=False)
+      self._ind_val_dict[w] = Statistic(max_length=10, keep_abs_acc=True)
 
   def register_loss(self, loss):
     """Currently tensors inside while_loop are not considered"""
@@ -45,16 +66,10 @@ class Monitor(object):
       assert isinstance(s, Statistic)
       s.record(g)
 
-  def update_dict(self, tensor_dict):
-    """This method will only be called by trainer._get_variable_to_export"""
-    assert isinstance(tensor_dict, dict)
-    for w in self._weights_list:
-      assert isinstance(w, (tf.Tensor, tf.Variable))
-      key = '/'.join(w.name.split('/')[1:])
-      key = 'grad({})'.format(key)
-      s = self._ind_val_dict[w]
-      assert isinstance(s, Statistic)
-      tensor_dict[key] = s.running_abs_average
+  def register_researcher(self, researcher):
+    """A research takes a tensor_dict to export as """
+    assert callable(researcher)
+    self._researchers.append(researcher)
 
   # endregion : Public Methods
 

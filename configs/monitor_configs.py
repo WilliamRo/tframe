@@ -13,7 +13,7 @@ class MonitorConfigs(object):
   # monitor_weight = Flag.boolean(False, 'Whether to monitor weights or not')
   # monitor_preact = Flag.boolean(False, 'Whether to enable pre-act summary')
   # monitor_postact = Flag.boolean(False, 'Whether to enable post-act summary')
-  monitor_weights_grad = Flag.boolean(False, 'Whether to monitor weights grad')
+  monitor_weight_grads = Flag.boolean(False, 'Whether to monitor weights grad')
 
   def smooth_out_monitor_configs(self):
     pass
