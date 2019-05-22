@@ -11,6 +11,7 @@ import tframe.utils.maths.dsp as dsp
 
 from tframe import checker
 from tframe import console
+from tframe import context
 from tframe import local
 from tframe import pedia
 from tframe.utils import misc
@@ -189,10 +190,10 @@ class TIMIT25(DataAgent):
     assert isinstance(trainer, Trainer)
     assert isinstance(data_set, SequenceSet)
     console.show_status('Evaluating on test set ...')
-    metric_dict = trainer.model.validate_model(data_set, 5)
-    accuracy = 100 * list(metric_dict.values())[0]
+    metric_dict = trainer.model.validate_model(data_set)
+    accuracy = 100 * metric_dict[trainer.model.metrics_manager.eval_slot]
     err = 100 - accuracy
-    msg = 'Error % on test set is {:.1f}'.format(err)
+    msg = 'Error % on test set is {:.2f}%'.format(err)
     console.show_status(msg)
     trainer.model.agent.put_down_criterion('Error %', err)
     trainer.model.agent.take_notes(msg)
