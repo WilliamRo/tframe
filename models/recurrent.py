@@ -456,11 +456,9 @@ class Recurrent(Model, RNet):
       # make sure array is a sequence stack
       assert array.shape[0] == data_batch.size
 
-    # Check active length
+    # Check active length. e.g. in TIMIT25 and mERG tasks
     al = data_batch.active_length
-    # In tasks like sequence classification, outputs in last time step are
-    #  already been extracted, thus al makes no sense here.
-    if al is None or data_batch.n_to_one: al = [None] * data_batch.size
+    if al is None: al = [None] * data_batch.size
     assert isinstance(al, list) and len(al) == data_batch.size
     batch_outputs = [[y[:l] if l is not None else y for y, l in zip(array, al)]
                      for array in batch_outputs]
@@ -471,10 +469,9 @@ class Recurrent(Model, RNet):
     # active_length = [5, 3, 7]
 
     # In tasks like sequence classification, only last value should be output
-    # TODO: sometimes last value should not be extracted here
-    # if data_batch.n_to_one:
-    #   batch_outputs = [[s[-1] for s in sequence_list]
-    #                    for sequence_list in batch_outputs]
+    if data_batch.n_to_one:
+      batch_outputs = [[s[-1] for s in sequence_list]
+                       for sequence_list in batch_outputs]
 
     return batch_outputs
 

@@ -10,8 +10,29 @@ import tframe as tfr
 class Quantity(object):
   """Quantities mainly includes loss and metric defined for a model.
      Quantities are usually calculated as statistical results over
-     a batch or the whole data set.
-     Quantities are bound with TensorSlots"""
+     a batch or the whole data set. Quantities are bound with TensorSlots
+
+     Regardless of deep learning frames, a quantity (e.g. loss) is calculated
+     as: input_batch -> model -> output_batch -> [loss(y) for y in output_batch]
+         -> average function -> batch_loss (a scalar, or a quantity)
+
+     In tframe, a batch validation, differ from one-shot validation which is
+     done given some conditions are satisfied, works as:
+
+                              input_batch_generator -> input_batch -> feed_dict
+     -- GPU (or other tensorflow device) -----------------------------------│-
+             denoted as                                                     ↓
+     quantities <- [quantity(y) for y in output_batch] <- output_batch <- model
+        ├-> last_only_checker -> tf_summ_method -> batch_quantity (1)
+     - -↓- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      np_arrays -> active_length_checker -> last_only_checker -> output_list
+                   np_summ_method <- after all results are gathered <-┘
+                        └-> data_set_quantity (2)
+     -- CPU -------------------------------------------------------------------
+
+     (1) a node in tensorflow graph, will be fetched in every training step
+     (2) will be returned by model.validate_model method
+ """
 
   tf2np = {
     tf.reduce_mean: np.mean,
@@ -87,14 +108,17 @@ class Quantity(object):
         raise AssertionError('!! tf_summ_method is not provided but not used')
       return q
 
+    self._quantities = q
     # Extract result in last time step for RNN output
+    # For SequenceSet containing non-equal-length sequences, q.shape[0] must
+    #  be 1, i.e. batch_size must be 1
     if self._last_only:
+      # q.shape must be [batch_size, steps]
       assert len(q.shape) > 1
       q = q[:, -1]
-    self._quantities = q
     if self._tf_summ_method is None:
       raise TypeError('!! summ_method should be provided')
-    self._quantity = self._tf_summ_method(self._quantities)
+    self._quantity = self._tf_summ_method(q)
     assert isinstance(self._quantity, tf.Tensor)
     assert len(self._quantity.shape) == 0
     return self._quantity
