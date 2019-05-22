@@ -189,6 +189,13 @@ class TIMIT25(DataAgent):
     from tframe.trainers.trainer import Trainer
     assert isinstance(trainer, Trainer)
     assert isinstance(data_set, SequenceSet)
+
+    # Load best model
+    if trainer.th.save_model:
+      flag, _ = trainer.model.agent.load()
+      assert flag
+    else: console.warning('Save model option should be turned on.')
+
     console.show_status('Evaluating on test set ...')
     metric_dict = trainer.model.validate_model(data_set)
     accuracy = 100 * metric_dict[trainer.model.metrics_manager.eval_slot]
