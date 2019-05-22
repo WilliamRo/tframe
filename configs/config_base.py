@@ -198,10 +198,11 @@ class Config(
       raise TypeError('!! flag {} not found'.format(name))
     return flag
 
-  def get_optimizer(self):
+  def get_optimizer(self, optimizer=None):
     from tframe.optimizers.clip_opt import GradientClipOptimizer
-    assert self.optimizer is not None and self.learning_rate is not None
-    optimizer = self.optimizer(self.learning_rate)
+    if optimizer is None:
+      assert self.optimizer is not None and self.learning_rate is not None
+      optimizer = self.optimizer(self.learning_rate)
     if self.clip_threshold > 0:
       assert self.clip_method in ('norm', 'value', 'global_norm', 'avg_norm')
       optimizer = GradientClipOptimizer(
