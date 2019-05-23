@@ -10,6 +10,8 @@ from tframe import checker, context, linker
 from tframe.core.quantity import Quantity
 
 
+_epsilon = tf.constant(1e-10)
+
 def _flatten(tensor):
   assert isinstance(tensor, tf.Tensor)
   shape = tensor.shape.as_list()
@@ -46,9 +48,9 @@ def sigmoid_cross_entropy(labels, outputs):
     if context.logits_tensor is not None:
       # assert outputs is context.logits_tensor
       return tf.nn.sigmoid_cross_entropy_with_logits(
-        labels=labels, logits=outputs)
+        labels=labels, logits=outputs + _epsilon)
     else:
-      xent = -tf.reduce_sum(labels * tf.log(outputs + 1e-6), axis=-1)
+      xent = -tf.reduce_sum(labels * tf.log(outputs + _epsilon), axis=-1)
       return xent
 
 
@@ -62,15 +64,15 @@ def cross_entropy(labels, outputs):
       # assert outputs is context.logits_tensor
       if _aligned(labels, outputs):
         return tf.nn.softmax_cross_entropy_with_logits_v2(
-          labels=labels, logits=outputs)
+          labels=labels, logits=outputs + _epsilon)
       else:
         labels = _reshape_labels(labels, None)
         return tf.nn.sparse_softmax_cross_entropy_with_logits(
-          labels=labels, logits=outputs)
+          labels=labels, logits=outputs + _epsilon)
     else:
       if not _aligned(labels, outputs):
         labels = _reshape_labels(labels, linker.get_dimension(outputs))
-      xent = -tf.reduce_sum(labels * tf.log(outputs + 1e-6), axis=-1)
+      xent = -tf.reduce_sum(labels * tf.log(outputs + _epsilon), axis=-1)
       return xent
 
 
