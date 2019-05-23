@@ -31,12 +31,11 @@ class pMNIST(DataAgent):
     if val_size > 0:
       train_set, val_set, test_set = data_set.split(
         train_size, val_size, test_size,
-        names=('train_size', 'val_size', 'test_size'))
+        names=('train_set', 'val_set', 'test_set'))
       return train_set, val_set, test_set
     else:
       train_set, test_set = data_set.split(
-        train_size, test_size,
-        names=('train_size', 'test_size'))
+        train_size, test_size, names=('train_set', 'test_set'))
       return train_set, test_set
 
   @classmethod
