@@ -463,19 +463,23 @@ class Model(object):
     return result_dict
 
   def take_down_metric(self, is_online):
-    if not self.key_metric.activated: return
-    notes = 'Record: {:.3f}'.format(self.key_metric.record)
-    if not is_online:
-      notes += ', Mean Record: {:.3f}'.format(self.key_metric.mean_record)
-    self.agent.take_notes(notes, date_time=False)
-    # Add history into notes if necessary
-    if hub.show_record_history_in_note:
-      self.agent.take_notes(
-        self.key_metric.metric_mean_history_str, date_time=False)
-    # Add record and mean record to notes
-    self.agent.put_down_criterion('Record', self.key_metric.record)
-    if not is_online:
-      self.agent.put_down_criterion('Mean Record', self.key_metric.mean_record)
+    for metric in self.metrics_manager.metrics:
+      assert isinstance(metric, MetricSlot)
+      if not metric.activated: continue
+      notes = 'Best {}: {:.3f}'.format(metric.symbol, metric.record)
+      # if not is_online:
+      #   notes += ', Best {} = {:.3f}'.format(metric.symbol, metric.mean_record)
+      self.agent.take_notes(notes, date_time=False)
+
+      # Add history into notes if necessary
+      if hub.show_record_history_in_note:
+        self.agent.take_notes(
+          metric.metric_mean_history_str, date_time=False)
+      # Add record and mean record to notes
+      self.agent.put_down_criterion(
+        'Best {}'.format(metric.symbol), metric.record)
+      # if not is_online:
+      #   self.agent.put_down_criterion('Best E({})', metric.mean_record)
 
   def end_round(self, rnd):
     self.key_metric.end_round(rnd)
