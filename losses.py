@@ -10,7 +10,7 @@ from tframe import checker, context, linker
 from tframe.core.quantity import Quantity
 
 
-_epsilon = tf.constant(1e-10)
+_epsilon = 1e-10
 
 def _flatten(tensor):
   assert isinstance(tensor, tf.Tensor)
