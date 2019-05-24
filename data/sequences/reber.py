@@ -103,6 +103,16 @@ class ReberGrammar(object):
   # region : Properties
 
   @property
+  def lc_indices(self):
+    indices = [i for i, s in enumerate(self._symbol_list) if s is Symbol.E]
+    return indices[:-1]
+
+  @property
+  def sc_indices(self):
+    indices = set(range(len(self) - 1)) - set(self.lc_indices)
+    return list(indices)
+
+  @property
   def abbreviation(self):
     reber = str(self)
     max_len = 25
@@ -186,7 +196,7 @@ class ReberGrammar(object):
     ERC = [_check_token(p, q) for q, p in zip(probs, self.transfer_prob)]
     return ERC[:-2], ERC
 
-  def check_grammar(self, probs):
+  def check_grammar_gdu19(self, probs):
     """Check short and long criteria"""
     assert isinstance(probs, np.ndarray)
     assert len(probs) == self.value.size - 1
@@ -199,6 +209,21 @@ class ReberGrammar(object):
     ACC = [_check_token(p, q) for q, p in zip(probs, self.transfer_prob)]
     # SC, LC, ALL
     return ACC[:-2] + [ACC[-1]], [ACC[-2]], ACC
+
+  def check_grammar(self, probs):
+    """Check short and long criteria"""
+    assert isinstance(probs, np.ndarray)
+    assert len(probs) == self.value.size - 1
+
+    def _check_token(p, q):
+      assert isinstance(p, np.ndarray) and len(p.shape) == 1
+      assert isinstance(q, np.ndarray) and len(q.shape) == 1
+      return np.sum(p * q) == np.sum(np.sort(p) * np.sort(q))
+
+    ACC = [_check_token(p, q) for q, p in zip(probs, self.transfer_prob)]
+    ACC = np.array(ACC)
+    # SC, LC, ALL
+    return ACC[self.sc_indices], ACC[self.lc_indices], ACC
 
   # endregion : Public Methods
 

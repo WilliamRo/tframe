@@ -216,7 +216,7 @@ def softmax_over_groups(net_input, configs, output_name='sog'):
   assert sum(group_sizes) == get_dimension(net_input)
 
   # Calculate output
-  splitted = (tf.split(net_input, group_sizes, axis=1) if len(group_sizes) > 0
+  splitted = (tf.split(net_input, group_sizes, axis=1) if len(group_sizes) > 1
               else [net_input])
   output_list = []
   # s: group size; n: group number

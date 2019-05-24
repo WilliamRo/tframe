@@ -25,6 +25,8 @@ class GDU(CellBase, Distributor):
       bias_initializer='zeros',
       reverse=False,
       use_reset_gate=False,
+      shunt_output=False,
+      gate_output=False,
       **kwargs):
     """
     :param configs: a list or tuple of tuples with format (size, num, delta)
@@ -37,6 +39,8 @@ class GDU(CellBase, Distributor):
     # Specific attributes
     self._reverse = checker.check_type(reverse, bool)
     self._use_reset_gate = checker.check_type(use_reset_gate, bool)
+    self._shunt_output = checker.check_type(shunt_output, bool)
+    self._gate_output = checker.check_type(gate_output, bool)
 
     self._groups = self._get_groups(configs)
     self._state_size = self._get_total_size(self._groups)
@@ -44,16 +48,26 @@ class GDU(CellBase, Distributor):
 
   @property
   def _scale_tail(self):
-    return '({})'.format(
-      self._get_config_string(self._groups, reverse=self._reverse))
+    config_str = self._get_config_string(self._groups, reverse=self._reverse)
+    if self._use_reset_gate: config_str += '|r'
+    tail = '({})'.format(config_str)
+    if self._shunt_output: tail += '[{}]'.format(self._state_size)
+    return tail
+
+
+  def _get_sog_activation(self, x, s, configs, scope, name):
+    assert isinstance(configs, (list, tuple)) and len(configs) > 0
+    net_u = self.neurons(x, s, scope=scope)
+    u = linker.softmax_over_groups(net_u, configs, name)
+    return u
 
 
   def _get_coupled_gates(self, x, s, configs, reverse):
     assert isinstance(configs, (list, tuple)) and len(configs) > 0
     # u for update, z for zone-out
-    net_u = self.neurons(x, s, scope='net_u')
-    u = linker.softmax_over_groups(net_u, configs, 'u_gate')
-    z = tf.subtract(1., u, name='z_gate')
+    u = self._get_sog_activation(
+      x, s, configs, scope='net_u', name='z_gate' if reverse else 'u_gate')
+    z = tf.subtract(1., u, name='u_gate' if reverse else 'z_gate')
     if reverse: u, z = z, u
     self._gate_dict['beta_gate'] = z
     return u, z
@@ -76,7 +90,17 @@ class GDU(CellBase, Distributor):
     with tf.name_scope('transit'):
       new_s = tf.add(tf.multiply(z, prev_s), tf.multiply(u, s_bar))
 
-    # - Return new states
+    # - Calculate output and return
     y = new_s
+    if self._shunt_output:
+      r = self.neurons(x, prev_s, is_gate=True, scope='y_reset_gate')
+      self._gate_dict['y_reset_gate'] = r
+      s = tf.multiply(r, prev_s)
+      y = self.neurons(x, s, activation=self._activation, scope='output')
+    elif self._gate_output:
+      og = self.neurons(x, prev_s, is_gate=True, scope='output_gate')
+      self._gate_dict['output_gate'] = og
+      y = tf.multiply(og, y)
+
     return y, new_s
 
