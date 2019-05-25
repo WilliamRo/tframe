@@ -66,10 +66,29 @@ class Pruner(object):
     # Set init_vals
     self._model.session.run([ws.assign_init for ws in self._dense_weights])
 
+  def register_with_mask(self, weights, mask):
+    """This method will be called only by linker.get_masked_weights."""
+    assert isinstance(weights, tf.Variable)
+    # mask can be a variable (can be updated during training) or
+    # .. can be a tensor (used as a constant mask)
+    assert isinstance(mask, (tf.Variable, tf.Tensor))
+
+    if weights in self.variable_dict:
+      slot = self.variable_dict[weights]
+      assert isinstance(slot, WeightSlot)
+      return slot.masked_weights
+
+    slot = WeightSlot(weights, mask=mask)
+    self.variable_dict[weights] = slot
+    self._dense_weights.append(slot)
+    return slot.masked_weights
+
   def register_to_dense(self, weights, frac):
     """This method will be called only by linker.get_weights_to_prune."""
     assert frac > 0
-    if weights in self.variable_dict.keys():
+    # In some case such as building in RNN, a same weights may be called twice
+    # .. e.g. build_while_free -> _link
+    if weights in self.variable_dict:
       slot = self.variable_dict[weights]
       assert isinstance(slot, WeightSlot)
       return slot.masked_weights
@@ -87,12 +106,16 @@ class Pruner(object):
 
   @staticmethod
   def extractor(*args):
-    if not tfr.hub.prune_on or not tfr.hub.export_masked_weights: return
+    if not any([tfr.hub.prune_on, tfr.hub.weights_mask_on,
+                tfr.hub.export_weights]): return
     pruner = tfr.context.pruner
     for slot in pruner._dense_weights:
       assert isinstance(slot, WeightSlot)
-      tfr.context.variables_to_export[slot.weight_key] = slot.weights
-      tfr.context.variables_to_export[slot.mask_key] = slot.mask
+      if tfr.hub.prune_on:
+        tfr.context.variables_to_export[slot.weight_key] = slot.weights
+        tfr.context.variables_to_export[slot.mask_key] = slot.mask
+      elif tfr.hub.weights_mask_on:
+        tfr.context.variables_to_export[slot.weight_key] = slot.masked_weights
 
   # endregion : Public Methods
 
@@ -181,14 +204,20 @@ class Pruner(object):
 class WeightSlot(object):
   """Weight Slot is not a tframe Slot"""
 
-  def __init__(self, weights, frac):
+  def __init__(self, weights, frac=None, mask=None):
+    # Sanity check
     assert isinstance(weights, tf.Variable)
-    assert np.isreal(frac) and 0 <= frac <= 1
+    if frac is not None: assert np.isreal(frac) and 0 <= frac <= 1
+    if mask is not None: assert isinstance(mask, (tf.Variable, tf.Tensor))
+
     self.weights = weights
     self.init_val = tf.Variable(
       tf.zeros_like(weights), trainable=False, name='init_val')
-    self.mask = tf.Variable(
+
+    if mask is not None: self.mask = mask
+    else: self.mask = tf.Variable(
       tf.ones_like(weights), trainable=False, name='mask')
+
     self.masked_weights = tf.multiply(self.weights, self.mask)
     self.frac = frac
 

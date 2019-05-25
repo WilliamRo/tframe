@@ -138,6 +138,58 @@ def neurons(num,
 
 # endregion : Standard units
 
+# region : Unit with mask
+
+def masked_neurons(x,
+                   num,
+                   scope,
+                   activation=None,
+                   s=None,
+                   x_mask=None,
+                   s_mask=None,
+                   use_bias=True,
+                   weight_initializer='glorot_normal',
+                   bias_initializer='zeros',
+                   **kwargs):
+  # Sanity check
+  assert isinstance(x, tf.Tensor)
+
+  # Get activation and initializers
+  if activation is not None: activation = activations.get(activation)
+  weight_initializer = initializers.get(weight_initializer)
+  bias_initializer = initializers.get(bias_initializer)
+
+  def get_weights(tensor, name, mask=None):
+    shape = [get_dimension(tensor), num]
+    if mask is None: return get_variable(name, shape, weight_initializer)
+    else: return get_masked_weights(name, shape, weight_initializer, mask)
+
+  def forward():
+    # x -> y
+    Wx = get_weights(x, 'Wx', x_mask)
+    # .. do matrix multiplication
+    net_y = tf.matmul(x, Wx)
+    # s -> y if s exists
+    if s is not None:
+      assert isinstance(s, tf.Tensor)
+      Ws = get_weights(s, 'Ws', s_mask)
+      # .. add s * Ws to net_y
+      net_y = tf.add(net_y, tf.matmul(s, Ws))
+    # Add bias if necessary
+    if use_bias:
+      b = get_bias('bias', num, bias_initializer)
+      net_y = tf.nn.bias_add(net_y, b)
+    # Activate if necessary
+    if activation is not None: return activation(net_y)
+    else: return net_y
+
+  with tf.variable_scope(scope): y = forward()
+
+  # Return
+  return y
+
+# endregion : Unit with mask
+
 # region : Misc
 
 def get_variable(name, shape, initializer='glorot_uniform'):
@@ -375,6 +427,16 @@ def get_weights_to_prune(name, shape, initializer, frac):
   # Register, context.pruner should be created in early model.build
   assert context.pruner is not None
   masked_weights = context.pruner.register_to_dense(weights, frac)
+  # Return
+  assert isinstance(masked_weights, tf.Tensor)
+  return masked_weights
+
+def get_masked_weights(name, shape, initializer, mask):
+  # Get variable
+  weights = get_variable(name, shape, initializer)
+  # Register weights with mask
+  assert context.pruner is not None
+  masked_weights = context.pruner.register_with_mask(weights, mask)
   # Return
   assert isinstance(masked_weights, tf.Tensor)
   return masked_weights

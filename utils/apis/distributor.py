@@ -48,7 +48,7 @@ class Distributor(object):
       checker.check_positive_integer(c[1])
       assert isinstance(c[2], (int, float)) and (0 < c[2] <= c[0] or c[2] == -1)
       configs[i] = tuple(c)
-    return tuple(configs)
+    return tuple(sorted(configs, key=lambda g: g[0]))
 
   @staticmethod
   def _parse_config_string(config_string):

@@ -73,6 +73,7 @@ class ModelConfigs(object):
     0.0, 'Pruning rate for fully connected layers', is_key=None)
   pruning_iterations = Flag.integer(0, 'Pruning iterations', is_key=None)
   weights_fraction = Flag.float(None, 'Master weights fraction', is_key=None)
+  weights_mask_on = Flag.boolean(False, 'Whether to use pruner')
 
   head_nums = Flag.whatever(None, 'Head numbers for sparse layers')
   sigmoid_coef = Flag.float(

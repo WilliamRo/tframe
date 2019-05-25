@@ -504,7 +504,8 @@ class Net(Function):
     if hub.export_weights:
       for v in self.weight_vars: add_to_dict(v)
 
-    if hub.export_masked_weights and hub.pruning_rate_fc > 0:
+    # if hub.export_masked_weights and hub.pruning_rate_fc > 0:
+    if hub.export_masked_weights:
       from tframe.utils.pruner import Pruner
       Pruner.extractor()
 
