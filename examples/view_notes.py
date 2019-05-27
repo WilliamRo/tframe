@@ -58,7 +58,7 @@ while True:
       default_inactive_criteria=default_inactive_criteria,
       flags_to_ignore=flags_to_ignore,
     )
-    viewer.register_plugin(lottery.Plugin)
+    viewer.register_plugin(lottery.plugin)
     viewer.show()
 
   except Exception as e:
