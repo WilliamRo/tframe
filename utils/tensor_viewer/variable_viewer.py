@@ -75,7 +75,7 @@ class VariableViewer(Frame):
     combo_box.set(name_list[i])
     self.refresh()
 
-  def set_variable_dict(self, v_dict, plugin=None):
+  def set_variable_dict(self, v_dict, plugins=None):
     """
     Set variable dict to this widgets
     :param v_dict: a dict whose values are lists of numpy arrays
@@ -108,8 +108,11 @@ class VariableViewer(Frame):
     # Re-arrange image stack if necessary
     self._variable_dict = recursively_flatten(v_dict)
     # Active plugin
-    if isinstance(plugin, Plugin):
-      plugin.modify_variable_dict(self._variable_dict)
+    if plugins:
+      assert isinstance(plugins, list)
+      for p in plugins:
+        assert isinstance(p, Plugin)
+        p.modify_variable_dict(self._variable_dict)
     # Initialize combo_boxes according to self._variable_dict
     self._init_combo_boxes()
     # Refresh

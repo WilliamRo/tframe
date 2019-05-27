@@ -44,7 +44,7 @@ class TensorViewer(Viewer):
     self._global_refresh()
 
     # Set plugin (beta) (This line should be put before set_note)
-    self._plugin = kwargs.get('plugin', None)
+    self._plugins = kwargs.get('plugins', [])
 
     # If note or note_path is provided, try to load it
     if note is not None or note_path is not None:
@@ -70,7 +70,7 @@ class TensorViewer(Viewer):
     tensor_dict = self.context.note.tensor_dict
     if len(tensor_dict) > 0:
       self.variable_viewer.set_variable_dict(
-        self.context.note.tensor_dict, self._plugin)
+        self.context.note.tensor_dict, self._plugins)
       self.variable_viewer.is_on = True
     else:
       self.variable_viewer.pack_forget()
@@ -116,6 +116,9 @@ class TensorViewer(Viewer):
     title = 'Tensor Viewer'
     if self.context.note_file_name is not None:
       title += ' - {}'.format(self.context.note_file_name)
+    else:
+      note = self.context.note
+      if note: title += ' - {}'.format(note.configs['mark'])
     self.form.title(title)
 
   # endregion : Private Methods

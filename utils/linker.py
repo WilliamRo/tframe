@@ -159,6 +159,14 @@ def masked_neurons(x,
   weight_initializer = initializers.get(weight_initializer)
   bias_initializer = initializers.get(bias_initializer)
 
+  def matmul(x, y):
+    batch_matmul = len(x.shape) == len(y.shape) - 1
+    if batch_matmul: x = tf.expand_dims(x, axis=1)
+    assert len(x.shape) == len(y.shape)
+    output = tf.matmul(x, y)
+    if batch_matmul: output = tf.squeeze(output, axis=1)
+    return output
+
   def get_weights(tensor, name, mask=None):
     shape = [get_dimension(tensor), num]
     if mask is None: return get_variable(name, shape, weight_initializer)
@@ -168,13 +176,13 @@ def masked_neurons(x,
     # x -> y
     Wx = get_weights(x, 'Wx', x_mask)
     # .. do matrix multiplication
-    net_y = tf.matmul(x, Wx)
+    net_y = matmul(x, Wx)
     # s -> y if s exists
     if s is not None:
       assert isinstance(s, tf.Tensor)
       Ws = get_weights(s, 'Ws', s_mask)
       # .. add s * Ws to net_y
-      net_y = tf.add(net_y, tf.matmul(s, Ws))
+      net_y = tf.add(net_y, matmul(s, Ws))
     # Add bias if necessary
     if use_bias:
       b = get_bias('bias', num, bias_initializer)
@@ -432,11 +440,16 @@ def get_weights_to_prune(name, shape, initializer, frac):
   return masked_weights
 
 def get_masked_weights(name, shape, initializer, mask):
+  """Dynamic weights are not to be registered into pruner"""
   # Get variable
   weights = get_variable(name, shape, initializer)
-  # Register weights with mask
-  assert context.pruner is not None
-  masked_weights = context.pruner.register_with_mask(weights, mask)
+  # Register weights with mask if mask is static
+  is_static = len(mask.shape) == 2
+  if is_static:
+    assert context.pruner is not None
+    masked_weights = context.pruner.register_with_mask(weights, mask)
+  else:
+    masked_weights = weights * mask
   # Return
   assert isinstance(masked_weights, tf.Tensor)
   return masked_weights

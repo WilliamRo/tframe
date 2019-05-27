@@ -80,6 +80,9 @@ class ModelConfigs(object):
     1.0, 'Used in narrow the effective domain of sigmoid function', is_key=None)
   full_weight = Flag.boolean(
     False, 'Whether to use full weight matrix in sparse method', is_key=None)
+  mask_option = Flag.string(None, 'Mask option', is_key=None)
+  factoring_dim = Flag.integer(
+    0, 'Factoring dimention, ref: fcrbm09', is_key=None)
 
 
   def smooth_out_model_configs(self):

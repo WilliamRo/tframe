@@ -7,6 +7,7 @@ try:
   import tkinter.ttk as ttk
 
   from tframe.utils.note import Note
+  from tframe.utils.tensor_viewer.plugin import Plugin
   from tframe.utils.viewer_base.main_frame import Viewer
 
   from tframe.utils.summary_viewer import key_events
@@ -61,7 +62,9 @@ class SummaryViewer(Viewer):
     self.in_debug_mode = False
 
     # Plugin for variable viewer
-    self.plugin = kwargs.get('plugin', None)
+    self.plugins = []
+    plugin = kwargs.get('plugin', None)
+    if plugin: self.plugins.append(plugin)
 
   # region : Properties
 
@@ -78,6 +81,10 @@ class SummaryViewer(Viewer):
   # endregion : Properties
 
   # region : Public Methods
+
+  def register_plugin(self, plugin):
+    assert isinstance(plugin, Plugin)
+    self.plugins.append(plugin)
 
   def set_notes_by_path(self, summary_path):
     # Set context

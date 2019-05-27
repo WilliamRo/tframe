@@ -32,8 +32,8 @@ def _get_params_num_single(variable, consider_prune=False):
   assert isinstance(variable, tf.Variable)
 
   pruner = tfr.context.pruner
-  if (consider_prune and pruner is not None
-      and variable in pruner.variable_dict.keys()):
+  if all([consider_prune, pruner is not None,
+          variable in pruner.variable_dict]):
     return pruner.get_variable_sizes(variable)
 
   # Compute variable size by default method
