@@ -7,9 +7,10 @@ import tensorflow as tf
 from tframe import checker
 from tframe.nets.rnn_cells.cell_base import CellBase
 from tframe import initializers
+from tframe.utils.apis.dynamic_weights import DynamicWeights
 
 
-class GRU(CellBase):
+class GRU(CellBase, DynamicWeights):
   """Gated Recurrent Unit"""
   net_name = 'gru'
 
@@ -22,7 +23,16 @@ class GRU(CellBase):
       use_bias=True,
       bias_initializer='zeros',
       z_bias_initializer='zeros',
+      reset_who='s',
       **kwargs):
+    """
+    :param reset_who: in ('x', 'y')
+           'x': a_h = W_h * (h_{t-1} \odot r_t)
+           'y': a_h = r_t \odot (W_h * h_{t-1})
+           \hat{h}_t = \varphi(Wx*x + a_h + b)
+           in which r_t is the reset gate at time step t,
+           \odot is the Hadamard product, W_h is the hidden-to-hidden matrix
+    """
     # Call parent's constructor
     CellBase.__init__(self, activation, weight_initializer,
                       use_bias, bias_initializer, **kwargs)
@@ -32,34 +42,34 @@ class GRU(CellBase):
     self._use_reset_gate = checker.check_type(use_reset_gate, bool)
     self._z_bias_initializer = initializers.get(z_bias_initializer)
 
+    assert reset_who in ('s', 'a')
+    self._reset_who = reset_who
+
 
   @property
   def _scale_tail(self):
     return '[{}]({})'.format(
-      '-' if self._use_reset_gate is None else 'r', self._state_size)
+      '-' if self._use_reset_gate is None else 'r' + self._reset_who,
+      self._state_size)
 
 
   def _link(self, prev_s, x, **kwargs):
     """s(pre_states) is state_array of size 'state_size'"""
     self._check_state(prev_s)
-    # - Calculate r gate and z gate
-    r = None
-    if self._use_reset_gate:
-      r = self.neurons(
-        x, prev_s, is_gate=True, scope='reset_gate')
-      self._gate_dict['reset_gate'] = r
-
+    # - Calculate z gate
     z = self.neurons(x, prev_s, is_gate=True, scope='update_gate',
                      bias_initializer=self._z_bias_initializer)
     self._gate_dict['update_gate'] = z
 
-    # - Read
-    s_w = prev_s
+    # - Calculate s_bar
     if self._use_reset_gate:
-      with tf.name_scope('read'): s_w = tf.multiply(r, prev_s)
-    # - Calculate candidates to write
-    s_bar = self.neurons(x, s_w, activation=self._activation, scope='s_bar')
-    with tf.name_scope('write'): new_s = tf.add(
+      s_bar = self.neurons_with_reset_gate(x, prev_s, self._reset_who)
+    else:
+      s_bar = self.neurons(
+        x, prev_s, activation=self._activation, scope='s_bar')
+
+    # - Update state
+    with tf.name_scope('update_state'): new_s = tf.add(
       tf.multiply(z, prev_s), tf.multiply(tf.subtract(1., z), s_bar))
 
     return new_s, new_s

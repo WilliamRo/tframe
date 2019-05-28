@@ -9,9 +9,10 @@ from tframe import linker
 from tframe.nets.rnn_cells.cell_base import CellBase
 
 from tframe.utils.apis.distributor import Distributor
+from tframe.utils.apis.dynamic_weights import DynamicWeights
 
 
-class GDU(CellBase, Distributor):
+class GDU(CellBase, Distributor, DynamicWeights):
   """Grouped Distributor Unit
      Reference: gdu2019"""
   net_name = 'gdu'
@@ -25,6 +26,7 @@ class GDU(CellBase, Distributor):
       bias_initializer='zeros',
       reverse=False,
       use_reset_gate=False,
+      reset_who='s',
       shunt_output=False,
       gate_output=False,
       **kwargs):
@@ -45,11 +47,14 @@ class GDU(CellBase, Distributor):
     self._groups = self._get_groups(configs)
     self._state_size = self._get_total_size(self._groups)
 
+    assert reset_who in ('a', 's')
+    self._reset_who = reset_who
+
 
   @property
   def _scale_tail(self):
     config_str = self._get_config_string(self._groups, reverse=self._reverse)
-    if self._use_reset_gate: config_str += '|r'
+    if self._use_reset_gate: config_str += '|r' + self._reset_who
     tail = '({})'.format(config_str)
     if self._shunt_output: tail += '[{}]'.format(self._state_size)
     return tail
@@ -80,12 +85,11 @@ class GDU(CellBase, Distributor):
     u, z = self._get_coupled_gates(
       x, prev_s, self._groups, reverse=self._reverse)
     # - Calculate s_bar
-    s = prev_s
     if self._use_reset_gate:
-      r = self.neurons(x, s, is_gate=True, scope='reset_gate')
-      self._gate_dict['reset_gate'] = r
-      s = tf.multiply(r, s)
-    s_bar = self.neurons(x, s, activation=self._activation, scope='s_bar')
+      s_bar = self.neurons_with_reset_gate(x, prev_s, self._reset_who)
+    else: s_bar = self.neurons(
+      x, prev_s, activation=self._activation, scope='s_bar')
+
     # - Update state
     with tf.name_scope('transit'):
       new_s = tf.add(tf.multiply(z, prev_s), tf.multiply(u, s_bar))

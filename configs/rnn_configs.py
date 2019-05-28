@@ -109,6 +109,8 @@ class RNNConfigs(object):
   spatial_activation = Flag.string('relu', 'Spatial activation', is_key=None)
   use_reset_gate = Flag.boolean(False, 'Whether to use reset gate in model',
                                 is_key=None)
+  reset_gate_style = Flag.string(
+    's', '`s` or `a`, corresponding to 2 variants of GRU', is_key=None)
 
   shunt_output = Flag.boolean(False, 'Whether to shunt output', is_key=None)
   gate_output = Flag.boolean(False, 'Whether to gate output', is_key=None)
