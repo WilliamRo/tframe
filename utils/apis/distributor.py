@@ -5,6 +5,7 @@ from __future__ import print_function
 import numpy as np
 
 from tframe import checker
+from tframe.utils import linker
 
 
 class Distributor(object):
@@ -59,3 +60,8 @@ class Distributor(object):
       c = [int(n) if i < 2 else float(n) for i, n in enumerate(s.split('x'))]
       configs.append(c)
     return configs
+
+  @staticmethod
+  def _softmax_over_groups(a, configs, output_name='sog'):
+    return linker.softmax_over_groups(a, configs, output_name)
+
