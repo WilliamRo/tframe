@@ -38,7 +38,7 @@ def multiplicative(yd, x, seed, fd, weight_initializer):
     in which bs is batch size, Dx is input dimension, Dy is output dimension,
      s is seed and Df is factorization dimension.
 
-    Ref: Sutskever, etc. Gernerating text with recurrent neural networks, 2011
+    Ref: Sutskever, etc. Generating text with recurrent neural networks, 2011
   """
   xd, sd = linker.get_dimension(x), linker.get_dimension(seed)
   weight_initializer = initializers.get(weight_initializer)
