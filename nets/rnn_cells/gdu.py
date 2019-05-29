@@ -8,8 +8,8 @@ from tframe import checker
 from tframe import linker
 from tframe.nets.rnn_cells.cell_base import CellBase
 
-from tframe.utils.apis.distributor import Distributor
-from tframe.utils.apis.dynamic_weights import DynamicWeights
+from tframe.operators.apis.distributor import Distributor
+from tframe.operators.apis.dynamic_weights import DynamicWeights
 
 
 class GDU(CellBase, Distributor, DynamicWeights):
@@ -67,23 +67,14 @@ class GDU(CellBase, Distributor, DynamicWeights):
     return u
 
 
-  def _get_coupled_gates(self, x, s, configs, reverse):
-    assert isinstance(configs, (list, tuple)) and len(configs) > 0
-    # u for update, z for zone-out
-    u = self._get_sog_activation(
-      x, s, configs, scope='net_u', name='z_gate' if reverse else 'u_gate')
-    z = tf.subtract(1., u, name='u_gate' if reverse else 'z_gate')
-    if reverse: u, z = z, u
-    self._gate_dict['beta_gate'] = z
-    return u, z
-
-
   def _link(self, prev_s, x, **kwargs):
     self._check_state(prev_s)
 
     # - Calculate update gates
     u, z = self._get_coupled_gates(
       x, prev_s, self._groups, reverse=self._reverse)
+    self._gate_dict['beta_gate'] = z
+
     # - Calculate s_bar
     if self._use_reset_gate:
       s_bar = self.neurons_with_reset_gate(x, prev_s, self._reset_who)

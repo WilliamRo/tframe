@@ -4,8 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe import checker
-from tframe.utils.apis.generic_neurons import GenericNeurons as gn
+from tframe.operators.apis.generic_neurons import GenericNeurons as gn
 
 import tframe.nets.rnn_cells.cell_base as cell_base
 

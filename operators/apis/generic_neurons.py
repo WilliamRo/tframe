@@ -4,11 +4,9 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe import checker
 from tframe import hub
 from tframe import linker
 from tframe import activations
-import tframe.nets.rnn_cells.cell_base as cell_base
 
 
 class GenericNeurons(object):
@@ -49,6 +47,11 @@ class GenericNeurons(object):
     return a
 
   @staticmethod
+  def psi_k(num, *tensors, weight_initializer='glorot_normal', suffix=''):
+    return psi(num, *tensors, weight_initializer=weight_initializer,
+               use_bias=False, suffix=suffix)
+
+  @staticmethod
   def add_bias(a, bias_initializer):
     num = linker.get_dimension(a)
     bias = tf.get_variable('bias', shape=[num], dtype=hub.dtype,
@@ -58,4 +61,5 @@ class GenericNeurons(object):
 
 eta = GenericNeurons.eta
 psi = GenericNeurons.psi
+psi_k = GenericNeurons.psi_k
 add_bias = GenericNeurons.add_bias

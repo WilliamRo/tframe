@@ -7,7 +7,7 @@ import tensorflow as tf
 from tframe import checker
 from tframe.nets.rnn_cells.cell_base import CellBase
 from tframe import initializers
-from tframe.utils.apis.dynamic_weights import DynamicWeights
+from tframe.operators.apis.dynamic_weights import DynamicWeights
 
 
 class GRU(CellBase, DynamicWeights):
@@ -73,3 +73,4 @@ class GRU(CellBase, DynamicWeights):
       tf.multiply(z, prev_s), tf.multiply(tf.subtract(1., z), s_bar))
 
     return new_s, new_s
+

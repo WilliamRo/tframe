@@ -3,12 +3,14 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import tensorflow as tf
 
 from tframe import checker
 from tframe.utils import linker
+from .neurobase import NeuroBase
 
 
-class Distributor(object):
+class Distributor(NeuroBase):
 
   @staticmethod
   def _get_total_size(groups):
@@ -64,4 +66,16 @@ class Distributor(object):
   @staticmethod
   def _softmax_over_groups(a, configs, output_name='sog'):
     return linker.softmax_over_groups(a, configs, output_name)
+
+  def _get_sog_activation(self, x, s, configs, scope, name):
+    raise NotImplementedError
+
+  def _get_coupled_gates(self, x, s, configs, reverse):
+    assert isinstance(configs, (list, tuple)) and len(configs) > 0
+    # u for update, z for zone-out
+    u = self._get_sog_activation(
+      x, s, configs, scope='net_u', name='z_gate' if reverse else 'u_gate')
+    z = tf.subtract(1., u, name='u_gate' if reverse else 'z_gate')
+    if reverse: u, z = z, u
+    return u, z
 

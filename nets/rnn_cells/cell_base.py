@@ -11,9 +11,11 @@ from tframe import initializers
 from tframe import linker
 from tframe import hub
 from tframe.nets import RNet
+from tframe.operators.apis.neurobase import NeuroBase
+from tframe.operators.neurons import NeuronArray
 
 
-class CellBase(RNet):
+class CellBase(RNet, NeuroBase):
   """Base class for RNN cells.
      TODO: all rnn cells are encouraged to in inherit this class
   """
@@ -28,12 +30,8 @@ class CellBase(RNet):
       **kwargs):
     # Call parent's constructor
     RNet.__init__(self, self.net_name)
-
-    # Common attributes
-    self._activation = activations.get(activation, **kwargs)
-    self._weight_initializer = initializers.get(weight_initializer)
-    self._use_bias = checker.check_type(use_bias, bool)
-    self._bias_initializer = initializers.get(bias_initializer)
+    NeuroBase.__init__(
+      self, activation, weight_initializer, use_bias, bias_initializer)
 
     self._output_scale_ = None
     self._kwargs = kwargs
@@ -62,6 +60,10 @@ class CellBase(RNet):
 
   def structure_string(self, detail=True, scale=True):
     return self.net_name + self._scale_tail if scale else ''
+
+  def create_dynamic_neurons(
+      self, scope, activation=None, is_gate=False, **kwargs):
+    return NeuronArray.inherit(self, scope, activation, is_gate, **kwargs)
 
   # def _update_gate(self, num_units, unit_size, x=None, s=None, net_z=None,
   #                  reverse=True, bias_initializer='zeros',
