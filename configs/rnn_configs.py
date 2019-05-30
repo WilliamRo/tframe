@@ -114,3 +114,5 @@ class RNNConfigs(object):
 
   shunt_output = Flag.boolean(False, 'Whether to shunt output', is_key=None)
   gate_output = Flag.boolean(False, 'Whether to gate output', is_key=None)
+
+  psi_string = Flag.string(None, 'Config string for psi', is_key=None)

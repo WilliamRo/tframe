@@ -83,6 +83,11 @@ class ModelConfigs(object):
   mask_option = Flag.string(None, 'Mask option', is_key=None)
   factoring_dim = Flag.integer(
     0, 'Factoring dimention, ref: fcrbm09', is_key=None)
+  layer_normalization = Flag.boolean(False, 'Whether to use LN', is_key=None)
+  normalize_each_psi = Flag.boolean(
+    False, 'Wheter to normalize each psi during LN', is_key=None)
+  variance_epsilon = Flag.float(
+    1e-6, 'A small float number to avoid dividing by 0')
 
 
   def smooth_out_model_configs(self):

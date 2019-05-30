@@ -27,14 +27,14 @@ class CellBase(RNet, NeuroBase):
       weight_initializer='xavier_normal',
       use_bias=True,
       bias_initializer='zeros',
+      layer_normalization=False,
       **kwargs):
     # Call parent's constructor
     RNet.__init__(self, self.net_name)
-    NeuroBase.__init__(
-      self, activation, weight_initializer, use_bias, bias_initializer)
+    NeuroBase.__init__(self, activation, weight_initializer, use_bias,
+                       bias_initializer, layer_normalization, **kwargs)
 
     self._output_scale_ = None
-    self._kwargs = kwargs
 
   @property
   def _output_scale(self):
@@ -60,10 +60,6 @@ class CellBase(RNet, NeuroBase):
 
   def structure_string(self, detail=True, scale=True):
     return self.net_name + self._scale_tail if scale else ''
-
-  def create_dynamic_neurons(
-      self, scope, activation=None, is_gate=False, **kwargs):
-    return NeuronArray.inherit(self, scope, activation, is_gate, **kwargs)
 
   # def _update_gate(self, num_units, unit_size, x=None, s=None, net_z=None,
   #                  reverse=True, bias_initializer='zeros',
