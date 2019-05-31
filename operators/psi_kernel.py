@@ -2,17 +2,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import inspect
 import tensorflow as tf
 
-from tframe import context
 from tframe import checker
 from tframe import hub
 from tframe import linker
 from tframe import initializers
 
+from .kernel_base import KernelBase
 
-class PsyKernel(object):
+
+class PsyKernel(KernelBase):
 
   def __init__(self,
                kernel_key,
@@ -25,29 +25,17 @@ class PsyKernel(object):
                gain_initializer='ones',
                **kwargs):
 
-    self.kernel_key = checker.check_type(kernel_key, str)
-    self.kernel = self._get_kernel(kernel_key)
-    self.num_neurons = checker.check_positive_integer(num_neurons)
-    self.input_ = input_
-    self.suffix = suffix
+    # Call parent's initializer
+    super().__init__(kernel_key, num_neurons, weight_initializer, prune_frac,
+                     **kwargs)
 
-    self.weight_initializer = initializers.get(weight_initializer)
-    assert 0 <= prune_frac <= 1
-    self.prune_frac = prune_frac
-    self.LN = LN
+    self.input_ = checker.check_type(input_, tf.Tensor)
+    self.suffix = checker.check_type(suffix, str)
+    self.LN = checker.check_type(LN, bool)
     self.gain_initializer = initializers.get(gain_initializer)
-
-    self.kwargs = kwargs
-
-    self._check_arguments()
 
   # region : Properties
 
-  @property
-  def prune_is_on(self):
-    assert 0 <= self.prune_frac <= 1
-    return self.prune_frac > 0 and hub.prune_on
-  
   @property
   def input_dim(self):
     return linker.get_dimension(self.input_)
@@ -71,39 +59,11 @@ class PsyKernel(object):
     identifier = identifier.lower()
     if identifier in ('dense', 'fc'): return self.dense
     elif identifier in ('mul', 'multiplicative'): return self.multiplicative
+    elif identifier in ('row_mask', 'hyper16'): return self.row_mask
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
-
-  def _get_weights(self, name, shape, dtype=None):
-    # Set default dtype if not specified
-    if dtype is None: dtype = hub.dtype
-    # Get weights
-    weights = tf.get_variable(
-      name, shape, dtype=dtype, initializer=self.weight_initializer)
-    if not self.prune_is_on: return weights
-    # Register, context.pruner should be created in early model.build
-    assert context.pruner is not None
-    masked_weights = context.pruner.register_to_dense(weights, self.prune_frac)
-    # Return
-    assert isinstance(masked_weights, tf.Tensor)
-    return masked_weights
 
   def _layer_normalization(self, a):
     return self.layer_normalization(a, self.gain_initializer, False)
-
-  def _check_arguments(self):
-    # The 1st argument is self
-    arg_names = inspect.getfullargspec(self.kernel).args[1:]
-    for arg_name in arg_names:
-      if not arg_name in self.kwargs: raise AssertionError(
-        '!! kernel ({}) argument `{}` should be provided.'.format(
-          self.kernel_key, arg_name))
-
-    # Make sure provided arguments matches kernel argument specification
-    # .. exactly
-    if len(self.kwargs) != len(arg_names):
-      raise AssertionError(
-        '!! kernel `{}` requires {} additional arguments but {} are '
-        'provided.'.format(self.kernel_key, len(arg_names), len(self.kwargs)))
 
   # endregion : Private Methods
 
@@ -163,4 +123,23 @@ class PsyKernel(object):
     a = ((x @ Wxf) * (seed @ Wsf)) @ Wfy
     return a
 
-# endregion : Kernels
+  def row_mask(self, seed, seed_weight_initializer):
+    """Generate weights with rows being masked.
+       y = (diag(row_mask) @ W) @ x
+       Note that during implementation, this is actually called column mask.
+       Used in (1) Ha, etc. Hyper Networks. 2016.
+               (2) a GRU variant: reset_gate \odot (Ws @ s_{t-1})
+    """
+    xd, sd, yd = self.input_dim, linker.get_dimension(seed), self.num_neurons
+
+    # Get weights
+    Wsy = self._get_weights(
+      'Wsy', [sd, yd], initializer=seed_weight_initializer)
+    Wxy = self._get_weights('Wxy', shape=[xd, yd])
+
+    # Calculate output
+    x = self.input_
+    a = (seed @ Wsy) * (x @ Wxy)
+    return a
+
+  # endregion : Kernels

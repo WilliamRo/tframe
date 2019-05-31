@@ -6,16 +6,13 @@ import tensorflow as tf
 
 from tframe import checker
 from tframe import hub
-from tframe import linker
 
 from .psi_kernel import PsyKernel
+from .bias_kernel import BiasKernel
 from .apis.neurobase import NeuroBase
 
 
 class NeuronArray(NeuroBase):
-
-  # class Keys: TODO
-  #   weight_initializer = 'weight_initializer'
 
   def __init__(
       self,
@@ -35,6 +32,7 @@ class NeuronArray(NeuroBase):
     self.num_neurons = checker.check_positive_integer(num_neurons)
     self.scope = checker.check_type(scope, str)
     self.psi_kernels = []
+    self.bias_kernel = None
 
   # region : Properties
 
@@ -75,7 +73,12 @@ class NeuronArray(NeuroBase):
         self._use_bias = True
 
       # Add bias if necessary
-      if self._use_bias: a = self._add_bias(a)
+      if self._use_bias:
+        if self.bias_kernel is None: self.register_bias_kernel()
+        bias = self.bias_kernel()
+        # Some kernels may generate bias of shape [batch_size, num_neurons]
+        if len(bias.shape) == 1: a = tf.nn.bias_add(a, self.bias_kernel())
+        else: a = a + bias
 
       # Activate if necessary
       if self._activation: a = self._activation(a)
@@ -83,15 +86,6 @@ class NeuronArray(NeuroBase):
     return a
 
   # endregion : Link
-
-  # region : Private Methods
-
-  def _add_bias(self, a):
-    bias = tf.get_variable('bias', shape=[self.num_neurons], dtype=hub.dtype,
-                           initializer=self._bias_initializer)
-    return tf.nn.bias_add(a, bias)
-
-  # endregion : Private Methods
 
   # region : Public Methods
 
@@ -125,79 +119,10 @@ class NeuronArray(NeuroBase):
 
     self.psi_kernels.append(psi_kernel)
 
-  def differentiate(self, num_neurons, name, activation=None, is_gate=False,
-                    **kwargs):
-    """Neuron layers or cells can differentiate to produce a sub neuron
-       group which shares part of attributes in NeuroBase"""
-    if activation is None and is_gate: activation = tf.sigmoid
-    return NeuronArray(
-      num_neurons, name, activation=activation,
-      weight_initializer=self._weight_initializer,
-      use_bias=self._use_bias, bias_initializer=self._bias_initializer,
-      layer_normalization=self._layer_normalization,
-      normalize_each_psi=self._normalize_each_psi, **kwargs)
+  def register_bias_kernel(self, kernel_key='common', prune_frac=0., **kwargs):
+    self.bias_kernel = BiasKernel(
+      kernel_key, self.num_neurons, self._bias_initializer,
+      prune_frac, **kwargs)
 
   # endregion : Public Methods
-
-  # region : Static Methods
-
-  # endregion : Static Methods
-
-  # region : Library
-
-  def dense(self, output_dim, x, scope, activation=None):
-    """Dense neuron"""
-    na = self.differentiate(output_dim, scope, activation)
-    if self._prune_frac == 0: return na(x)
-    else:
-      na.add_kernel(x, suffix='x', prune_frac=self._prune_frac)
-      return na()
-
-
-  def dense_rn(self, x, s, scope, activation=None, num=None, is_gate=False):
-    """Dense recurrent neuron"""
-    if num is None: num = linker.get_dimension(s)
-    na = self.differentiate(num, scope, activation, is_gate)
-    # If don't need to prune
-    if self._s_prune_frac == self._x_prune_frac == 0 or not hub.prune_on:
-      return na(x, s)
-    # Add x
-    na.add_kernel(x, suffix='x', prune_frac=self._x_prune_frac)
-    # Add s
-    na.add_kernel(s, suffix='s', prune_frac=self._s_prune_frac)
-    return na()
-
-
-  def mul_neuro_11(self, x, s, fd, scope, activation=None, seed=None,
-                   hyper_initializer=None):
-    state_size = linker.get_dimension(s)
-    if seed is None: seed = x
-    na = self.differentiate(state_size, scope, activation)
-    na.add_kernel(x, suffix='x')
-    if hyper_initializer is None: hyper_initializer = self._weight_initializer
-    na.add_kernel(s, kernel_key='mul', suffix='s', seed=seed, fd=fd,
-                  weight_initializer=hyper_initializer)
-    return na()
-
-
-  def reset_14(self, x, s, scope, activation, output_dim=None, reset_s=True):
-    """Force reset_s option to be True for now. reset_s=False corresponds to
-       .. another variants
-    """
-    if output_dim is None: output_dim = linker.get_dimension(s)
-    state_size = linker.get_dimension(s)
-    # Calculate the reset gate
-    gate_dim = state_size if reset_s else output_dim
-    reset_gate = self.dense_rn(x, s, 'reset_gate', num=gate_dim, is_gate=True)
-
-    # Add reset gate to dict if necessary
-    from tframe.nets.rnn_cells.cell_base import CellBase
-    if isinstance(self, CellBase): self._gate_dict['reset_gate'] = reset_gate
-
-    # Calculate s_bar
-    if reset_s: return self.dense_rn(x, reset_gate * s, scope, activation,
-                                     output_dim)
-    else: raise NotImplementedError
-
-  # endregion : Library
 

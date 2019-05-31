@@ -69,7 +69,9 @@ class GDU(CellBase, Distributor, NeuronArray):
 
     # - Calculate s_bar
     if self._use_reset_gate:
-      s_bar = self.reset_14(x, prev_s, 's_bar', self._activation, reset_s=True)
+      s_bar, r = self.reset_14(
+        x, prev_s, 's_bar', self._activation, reset_s=True, return_gate=True)
+      self._gate_dict['reset_gate'] = r
     else:
       s_bar = self.dense_rn(x, prev_s, 's_bar', self._activation)
 
