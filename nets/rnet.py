@@ -266,19 +266,16 @@ class RNet(Net):
         state_array.append(rnn_cell._get_zero_state(batch_size))
       return tuple(state_array)
     else:
-      # Get zero state according to self.init_state
-      tf_states = self.init_state
-      if not isinstance(tf_states, tuple): tf_states = (tf_states,)
-      state = []
-      for tf_state in tf_states:
-        assert isinstance(tf_state, tf.Tensor)
-        shape_list = tf_state.shape.as_list()
-        shape_list[0] = batch_size
-        state.append(np.zeros(shape=shape_list))
+      def zeros_like(state):
+        if isinstance(state, tf.Tensor):
+          shape_list = state.shape.as_list()
+          shape_list[0] = batch_size
+          return np.zeros(shape=shape_list)
+        assert isinstance(state, (list, tuple))
+        return tuple([zeros_like(s) for s in state])
 
-      state = tuple(state)
-      if len(state) == 1: state = state[0]
-      return state
+      # Get zero state according to self.init_state
+      return zeros_like(self.init_state)
 
   def _get_rnn_dict(self, is_training, batch_size=None):
     """Get state dict together with gradient buffer if necessary
