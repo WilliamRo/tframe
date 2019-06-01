@@ -143,7 +143,7 @@ class RNeuroBase(NeuroBase):
                is_gate=False, num_or_size_splits=None):
     """Dense recurrent neuron"""
     if output_dim is None: output_dim = self.get_state_size(s)
-    na = self.differentiate(output_dim, scope, activation, is_gate)
+    na = self.differentiate(output_dim, scope, activation, is_gate=is_gate)
     # If don't need to prune
     if not self.prune_is_on: output = na(x, s)
     else:
@@ -176,15 +176,15 @@ class RNeuroBase(NeuroBase):
     state_size = linker.get_dimension(s)
     # Calculate the reset gate
     gate_dim = state_size if reset_s else output_dim
-    reset_gate = self.dense_rn(x, s, 'reset_gate', output_dim=gate_dim, is_gate=True)
+    r = self.dense_rn(x, s, 'reset_gate', output_dim=gate_dim, is_gate=True)
 
     # Calculate s_bar
     if reset_s:
-      y = self.dense_rn(x, reset_gate * s, scope, activation, output_dim)
+      y = self.dense_rn(x, r * s, scope, activation, output_dim)
     else: raise NotImplementedError
 
     # Return
-    if return_gate: return y, reset_gate
+    if return_gate: return y, r
     else: return y
 
   # endregion : Library
