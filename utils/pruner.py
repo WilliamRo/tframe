@@ -109,6 +109,10 @@ class Pruner(object):
     if not any([tfr.hub.prune_on, tfr.hub.weights_mask_on,
                 tfr.hub.export_weights]): return
     pruner = tfr.context.pruner
+    if pruner is None:
+      tfr.console.warning_with_pause(
+        'Pruner.extractor has been called yet prune is not on')
+      return
     for slot in pruner._dense_weights:
       assert isinstance(slot, WeightSlot)
       if tfr.hub.prune_on:
@@ -122,10 +126,19 @@ class Pruner(object):
   # region : Prune and save
 
   def prune_and_save(self):
+    """This method should be called only in the end of trainer.train"""
+    # pruning should start from best model
+    assert tfr.hub.save_model
+
+    tfr.console.show_status('Loading best model to prune ...')
+    self._model.agent.load()
+
     self.prune()
+
     # This will force agent.ckpt_dir property to create path even if
     # .. current running model is not saved
-    tfr.hub.save_model = True
+    # tfr.hub.save_model = True
+
     self.save_next_model()
 
   def prune(self):
