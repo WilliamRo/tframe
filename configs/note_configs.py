@@ -57,7 +57,10 @@ class NoteConfigs(object):
     False, 'Whether to take note on 1st iteration')
 
   export_input_connection = Flag.boolean(
-    False, 'Whether to export input connection stats like a heat map')
+    False, 'Whether to export input connection stats like a heat map.'
+           ' Usually when this option is set to True, a dataset related'
+           ' extractor will be registered to net.variable extractor, '
+           'as it does in MNIST tasks.')
 
 
   def smooth_out_note_configs(self):
