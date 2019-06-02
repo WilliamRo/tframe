@@ -635,6 +635,7 @@ class Trainer(object):
   # region : Public Methods
 
   def get_variables_to_export(self, export_dict=None):
+    """This api is for customized probe method"""
     return self._get_variables_to_export(export_dict)
 
   # endregion : Public Methods

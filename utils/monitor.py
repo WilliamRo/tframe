@@ -47,6 +47,11 @@ class Monitor(object):
   # region : Public Methods
 
   def register_weights(self, weights):
+    """This method will only be used in Net.variable_extractor which will
+       is called at the end of Net/RNet's _link method.
+       Weight vars (with `w` in their name) in Net's var_list will be registered
+       to monitor using this api.
+    """
     if not isinstance(weights, (tuple, list)): weights = [weights]
     tfr.checker.check_fetchable(weights)
     for w in weights:
