@@ -7,7 +7,7 @@ import tensorflow as tf
 from tframe import checker, linker
 from tframe import hub, context
 from tframe.layers.layer import LayerWithNeurons
-from tframe.operators.apis import Distributor
+from tframe.operators.apis.distributor import Distributor
 
 
 class LinearHighway(LayerWithNeurons, Distributor):
