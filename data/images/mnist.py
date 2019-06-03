@@ -116,7 +116,7 @@ class MNIST(ImageDataAgent):
     assert isinstance(grads, OrderedDict)
     key = list(grads.keys())[0]
     if grads[key].shape[0] != 784: return
-    grad = grads.pop(key)
+    grad = grads.get(key)
     assert isinstance(grad, np.ndarray)
     grad = np.sum(grad, axis=1).reshape([28, 28])
     grads['|grad(inputs)|'] = grad
