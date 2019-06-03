@@ -37,6 +37,11 @@ class NeuroBase(object):
   def _prune_frac(self):
     return self._nb_kwargs.get('prune_frac', 0)
 
+  @property
+  def prune_is_on(self):
+    """This property is decided in linker.neuron"""
+    return hub.prune_on and self._prune_frac > 0
+
   # region : Public Methods
 
   def differentiate(
@@ -57,12 +62,16 @@ class NeuroBase(object):
       layer_normalization = self._layer_normalization
     if normalize_each_psi is None: normalize_each_psi = self._normalize_each_psi
 
+    merged_dict = {}
+    merged_dict.update(self._nb_kwargs)
+    merged_dict.update(kwargs)
+
     return NeuronArray(
       num_neurons, name, activation=activation,
       weight_initializer=weight_initializer,
       use_bias=use_bias, bias_initializer=bias_initializer,
       layer_normalization=layer_normalization,
-      normalize_each_psi=normalize_each_psi, **kwargs)
+      normalize_each_psi=normalize_each_psi, **merged_dict)
 
   @staticmethod
   def get_dimension(x):
@@ -88,8 +97,10 @@ class NeuroBase(object):
     :return: a tensor of shape [batch_size, output_dim] if split option if off
     """
     na = self.differentiate(output_dim, scope, activation)
-    if self._prune_frac == 0: output = na(x)
-    else: output = na.add_kernel(x, suffix='x', prune_frac=self._prune_frac)
+    if not self.prune_is_on: output = na(x)
+    else:
+      na.add_kernel(x, suffix='x', prune_frac=self._prune_frac)
+      output = na()
     # Split if necessary
     if num_or_size_splits is not None:
       return tf.split(output, num_or_size_splits, axis=1)
