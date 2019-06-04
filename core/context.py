@@ -8,7 +8,6 @@ from collections import OrderedDict
 from tframe.configs.config_base import Config
 from tframe.utils.monitor import Monitor
 # from tframe.deprecated.monitor import Monitor
-from tframe.utils.pruner import Pruner
 import tframe.utils.checker as checker
 
 

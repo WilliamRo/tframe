@@ -201,7 +201,7 @@ class Trainer(object):
     self._handle_notes()
 
     # Prune and save if necessary
-    if self.th.prune_on: context.pruner.prune_and_save()
+    if self.th.prune_on: context.pruner.prune_and_save_lottery18()
 
   # region : Before training
 
@@ -243,6 +243,11 @@ class Trainer(object):
     if self.th.note_per_round > 0:
       if self.th.note_cycle == 0:
         set_cycle('note_cycle', self.th.note_per_round)
+
+    # Check etch cycle
+    if self.th.etch_per_round > 0:
+      if self.th.etch_cycle == 0:
+        set_cycle('etch_cycle', self.th.etch_per_round)
 
     if self.th.note_cycle == 0 and self.th.export_tensors_upon_validation:
       self.th.note_cycle = self.th.validate_cycle
@@ -312,6 +317,12 @@ class Trainer(object):
       else:
         self.model.agent.put_down_criterion('Total Rounds', rnd)
 
+    # Put down final weight fraction if etch is on
+    if self.th.etch_on:
+      frac = context.pruner.weights_fraction
+      self.model.agent.take_notes('Final weight fraction: {:.2f}%'.format(frac))
+      self.model.agent.put_down_criterion('Weight Fraction', frac)
+
     # Evaluate the best model if necessary
     ds_dict = OrderedDict()
     if hub.evaluate_train_set: ds_dict['Train'] = self.training_set
@@ -357,6 +368,8 @@ class Trainer(object):
       # Validation
       if self._validate_model(rnd) and self._save_model_when_record_appears:
         self._save_model(inter_cut=True)
+      # Etch
+      self._etch()
       # Probe
       self._run_probe()
       # Take notes
@@ -582,6 +595,13 @@ class Trainer(object):
     if content is None or content == '': return
     self._inter_cut(content, prompt='[Probe]', start_time=self.th.start_time)
 
+  def _etch(self):
+    if not self.th.etch_on: return
+    if np.mod(self.counter, self.th.etch_cycle) != 0: return
+    pruner = context.pruner
+    assert pruner is not None
+    pruner.etch_all()
+
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
     # Validate cycle should be met
@@ -661,6 +681,9 @@ class TrainerHub(Config):
   probe_cycle = Flag.integer(0, 'Probe cycle')
   probe_per_round = Flag.integer(0, 'Probe per round')
   match_cycle = Flag.integer(0, 'Match cycle for RL')
+
+  etch_per_round = Flag.integer(0, 'Etch per round')
+  etch_cycle = Flag.integer(0, 'Etch cycle')
 
   early_stop = Flag.boolean(False, 'Early stop option', is_key=None)
   record_gap = Flag.float(0.0, 'Minimum improvement')

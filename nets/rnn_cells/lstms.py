@@ -53,7 +53,7 @@ class LSTM(CellBase):
     h, c = pre_states
 
     # Get f, i, o, g
-    if self.prune_is_on: f, i, o, g = self._get_fiog(x, h)
+    if self.lottery_activated:f, i, o, g = self._get_fiog(x, h)
     else: f, i, o, g = self._get_fiog_fast(x, h)
 
     # Calculate new_c

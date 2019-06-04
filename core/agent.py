@@ -159,7 +159,8 @@ class Agent(object):
     self._session.run(tf.global_variables_initializer())
     # Set init_val for pruner if necessary
     # .. if existed model is loaded, variables will be overwritten
-    if hub.prune_on: context.pruner.set_init_val()
+    if hub.prune_on: context.pruner.set_init_val_lottery18()
+
     # Try to load exist model
     load_flag, self._model.counter = self.load()
     # Sanity check
@@ -167,10 +168,10 @@ class Agent(object):
       if not load_flag:
         raise AssertionError(
           '!! Model {} should be initialized'.format(self._model.mark))
-      else:
-        console.show_status(
-        'Counter: {}, Min Weight Fraction: {:.2f}'.format(
-          self._model.counter, context.pruner.dense_fraction))
+      # else:
+      #   console.show_status(
+      #   'Counter: {}, Min Weight Fraction: {:.2f}'.format(
+      #     self._model.counter, context.pruner.weights_fraction))
 
     if not load_flag:
       assert self._model.counter == 0

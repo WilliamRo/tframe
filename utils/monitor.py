@@ -34,11 +34,12 @@ class Monitor(object):
     for w in self._weights_list:
       assert isinstance(w, (tf.Tensor, tf.Variable))
       key = '/'.join(w.name.split('/')[1:])
-      key = '|grad({})|'.format(key)
+      key = 'grad({})'.format(key)
       s = self._ind_val_dict[w]
       assert isinstance(s, Statistic)
-      # grads[key] = s.running_abs_average
-      grads[key] = s.abs_average
+      grads['|{}|'.format(key)] = s.running_abs_average
+      grads[key] = s.running_average
+      # grads['|{}|'.format(key)] = s.abs_average
     # Let researchers do their job
     for r in self._researchers: r(grads)
 
@@ -57,14 +58,19 @@ class Monitor(object):
     for w in weights:
       assert w not in self._weights_list
       self._weights_list.append(w)
-      self._ind_val_dict[w] = Statistic(max_length=10, keep_abs_acc=True)
+      self._ind_val_dict[w] = Statistic(max_length=20, keep_abs_acc=True)
 
   def register_loss(self, loss):
-    """Currently tensors inside while_loop are not considered"""
+    """Currently tensors inside while_loop are not considered.
+       Called during predictor._building
+    """
     assert isinstance(loss, tf.Tensor)
     self._grad_ops = tf.gradients(loss, self._weights_list)
 
   def record(self, grads):
+    """This method will be only called in train.update_model.
+       Gradient statistics will be recorded.
+    """
     assert isinstance(grads, list) and len(grads) == len(self._weights_list)
     for w, g in zip(self._weights_list, grads):
       s = self._ind_val_dict[w]
@@ -72,9 +78,12 @@ class Monitor(object):
       s.record(g)
 
   def register_researcher(self, researcher):
-    """A research takes a tensor_dict to export as """
+    """A researcher takes a tensor_dict to export as input"""
     assert callable(researcher)
     self._researchers.append(researcher)
+
+  def get_weight_stats(self, weights):
+    return self._ind_val_dict[weights]
 
   # endregion : Public Methods
 

@@ -10,6 +10,8 @@ from tframe import checker
 from tframe import hub
 from tframe import initializers
 
+from tframe.operators.prune.etches import get_etch_kernel
+
 
 class KernelBase(object):
 
@@ -18,6 +20,7 @@ class KernelBase(object):
                num_neurons,
                initializer,
                prune_frac=0,
+               etch=None,
                **kwargs):
 
     self.kernel_key = checker.check_type(kernel_key, str)
@@ -26,16 +29,21 @@ class KernelBase(object):
 
     self.initializer = initializers.get(initializer)
     assert 0 <= prune_frac <= 1
-    self.prune_frac = prune_frac
+    # IMPORTANT
+    self.prune_frac = prune_frac * hub.pruning_rate_fc
+    self.etch = etch
 
     self.kwargs = kwargs
     self._check_arguments()
-
 
   @property
   def prune_is_on(self):
     assert 0 <= self.prune_frac <= 1
     return self.prune_frac > 0 and hub.prune_on
+
+  @property
+  def being_etched(self):
+    return self.etch is not None and hub.etch_on
 
 
   def __call__(self): raise NotImplementedError
@@ -67,11 +75,39 @@ class KernelBase(object):
     if dtype is None: dtype = hub.dtype
     # Get weights
     weights = tf.get_variable(name, shape, dtype=dtype, initializer=initializer)
-    if not self.prune_is_on: return weights
+    # If no mask is needed to be created, return weight variable directly
+    if not any([self.prune_is_on, self.being_etched]): return weights
     # Register, context.pruner should be created in early model.build
     assert context.pruner is not None
-    masked_weights = context.pruner.register_to_dense(weights, self.prune_frac)
+    # Merged lottery logic into etch logic
+    if self.prune_is_on:
+      assert not self.being_etched
+      self.etch = 'lottery:prune_frac={}'.format(self.prune_frac)
+
+    # Register etch kernel to pruner
+    masked_weights = context.pruner.register_to_dense(weights, self.etch)
+
+    # if self.prune_is_on:
+    #   masked_weights = context.pruner.register_to_dense(
+    #     weights, self.prune_frac)
+    # else:
+    #   # TODO
+    #   assert self.being_etched
+    #   mask = self._get_etched_surface(weights)
+    #   masked_weights = context.pruner.register_with_mask(weights, mask)
+
     # Return
     assert isinstance(masked_weights, tf.Tensor)
     return masked_weights
 
+
+  # def _get_etched_surface(self, weights):
+  #   assert isinstance(self.etch, str) and isinstance(weights, tf.Variable)
+  #   mask = tf.get_variable(
+  #     'etched_surface', shape=weights.shape, dtype=hub.dtype,
+  #     initializer=tf.initializers.ones)
+  #   # Get etch kernel and register to pruner
+  #   kernel = get_etch_kernel(self.etch)
+  #   etch_kernel = kernel(weights, mask)
+  #   context.pruner.register_etch_kernel(etch_kernel)
+  #   return mask

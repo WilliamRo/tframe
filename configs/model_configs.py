@@ -68,7 +68,9 @@ class ModelConfigs(object):
   data_mean = Flag.float(None, 'Used for normalizing data set')
   data_std = Flag.float(None, 'Used for normalizing data set')
 
-  prune_on = Flag.boolean(False, 'Should only be set in smooth_out ...')
+  etch_on = Flag.boolean(False, 'Whether to activate weights etching')
+  prune_on = Flag.boolean(False, 'Whether lottery option is activated. '
+                                 'Should only be set in smooth_out ...')
   pruning_rate_fc = Flag.float(
     0.0, 'Pruning rate for fully connected layers', is_key=None)
   pruning_iterations = Flag.integer(0, 'Pruning iterations', is_key=None)
@@ -94,6 +96,10 @@ class ModelConfigs(object):
   hyper_dim = Flag.integer(None, 'Dimension of hyper seed', is_key=None)
   signal_size = Flag.integer(None, 'Hyper signal size', is_key=None)
 
+  etch_string = Flag.string(None, 'An etch config string', is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True
+    if self.prune_on and self.etch_on:
+      raise AssertionError('!! prune and etch can not be on in the same time')

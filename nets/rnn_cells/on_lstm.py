@@ -45,7 +45,7 @@ class ON_LSTM(CellBase):
     h, c = pre_states
 
     # Get neuron activations
-    if self.prune_is_on:
+    if self.lottery_activated:
       f_tilde, i_tilde_bar, f, i, o, c_hat = self._get_neurons(x, h)
     else: f_tilde, i_tilde_bar, f, i, o, c_hat = self._get_neurons_fast(x, h)
     f_tilde_bar = tf.subtract(1., f_tilde)

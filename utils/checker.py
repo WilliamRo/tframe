@@ -4,6 +4,11 @@ import numpy as np
 from tframe.utils import misc
 
 
+def try_str2float(s):
+  try: return float(s)
+  except ValueError: return s
+
+
 def check_tensor_shape(tensor1, tensor2, name1=None, name2=None):
   if name1 is None: name1 = misc.retrieve_name(tensor1)
   if name2 is None: name2 = misc.retrieve_name(tensor2)

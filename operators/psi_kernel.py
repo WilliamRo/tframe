@@ -23,11 +23,12 @@ class PsyKernel(KernelBase):
                prune_frac=0,
                LN=False,
                gain_initializer='ones',
+               etch=None,
                **kwargs):
 
     # Call parent's initializer
     super().__init__(kernel_key, num_neurons, weight_initializer, prune_frac,
-                     **kwargs)
+                     etch=etch, **kwargs)
 
     self.input_ = checker.check_type(input_, tf.Tensor)
     self.suffix = checker.check_type(suffix, str)

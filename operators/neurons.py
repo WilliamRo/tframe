@@ -36,6 +36,14 @@ class NeuronArray(NeuroBase):
 
   # region : Properties
 
+  @property
+  def etch(self):
+    return self._nb_kwargs.get('etch', None)
+  
+  @property
+  def being_etched(self):
+    return self.etch is not None and hub.etch_on
+
   # endregion : Properties
 
   # region : Link
@@ -115,7 +123,7 @@ class NeuronArray(NeuroBase):
       kernel_key, self.num_neurons, input_, suffix,
       weight_initializer=weight_initializer, prune_frac=prune_frac,
       LN=self._layer_normalization and self._normalize_each_psi,
-      gain_initializer=self._gain_initializer, **kwargs)
+      gain_initializer=self._gain_initializer, etch=self.etch, **kwargs)
 
     self.psi_kernels.append(psi_kernel)
 

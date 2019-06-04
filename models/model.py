@@ -25,10 +25,9 @@ from tframe.core.quantity import Quantity
 from tframe.trainers.metric_slot import MetricSlot
 from tframe.trainers.scheme import TrainScheme
 from tframe.trainers.trainer import Trainer, TrainerHub
-from tframe.trainers.smartrainer import SmartTrainer, SmartTrainerHub
+from tframe.trainers.smartrainer import SmartTrainer
 from tframe.trainers.metrics_manager import MetricsManager
 
-from tframe.data.base_classes import TFRData
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.data.bigdata import BigData
 from tframe.data.perpetual_machine import PerpetualMachine
@@ -189,9 +188,9 @@ class Model(object):
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
     # Initialize pruner if necessary
-    if hub.prune_on or hub.weights_mask_on:
+    if any([hub.prune_on, hub.weights_mask_on, hub.etch_on]):
       # import here to prevent circular import (temporarily)
-      from tframe.utils.pruner import Pruner
+      from tframe.operators.prune.pruner import Pruner
       tfr.context.pruner = Pruner(self)
     # If optimizer if not provided here, try hub.get_optimizer()
     #   this requires that th.optimizer and th.learning_rate have been provided

@@ -35,10 +35,11 @@ class NeuroBase(object):
 
   @property
   def _prune_frac(self):
+    """Weight prune fraction in lottery finding"""
     return self._nb_kwargs.get('prune_frac', 0)
 
   @property
-  def prune_is_on(self):
+  def lottery_activated(self):
     """This property is decided in linker.neuron"""
     return hub.prune_on and self._prune_frac > 0
 
@@ -54,6 +55,8 @@ class NeuroBase(object):
       
       A more elegant way is letting NeuroBase and NeuronArray inheriting from
       a same parent class. But the developer does not want to do this for now.
+      
+      TODO: this is a bad designed and should be refactored to be more elegant
     """
     if weight_initializer is None: weight_initializer = self._weight_initializer
     if use_bias is None: use_bias = self._use_bias
@@ -87,18 +90,21 @@ class NeuroBase(object):
   # region : Library
 
   def dense(self, output_dim, x, scope, activation=None,
-            num_or_size_splits=None):
+            num_or_size_splits=None, **kwargs):
     """Dense neuron.
     :param output_dim: neuron number (output dimension)
     :param x: input tensor of shape [batch_size, input_dim]
     :param scope: scope
     :param activation: activation function
     :param num_or_size_splits: if provided, tf.split will be used to output
+    :param kwargs: other setting which will be flow into neuron array
+                   and finally caught by NeuroBase._nb_kwargs
     :return: a tensor of shape [batch_size, output_dim] if split option if off
     """
-    na = self.differentiate(output_dim, scope, activation)
-    if not self.prune_is_on: output = na(x)
+    na = self.differentiate(output_dim, scope, activation, **kwargs)
+    if not self.lottery_activated: output = na(x)
     else:
+      assert not na.being_etched
       na.add_kernel(x, suffix='x', prune_frac=self._prune_frac)
       output = na()
     # Split if necessary
@@ -113,19 +119,21 @@ class RNeuroBase(NeuroBase):
 
   @property
   def _s_prune_frac(self):
+    """State weight matrix pruning fraction during lottery finding"""
     frac = self._nb_kwargs.get('s_prune_frac', 0)
     if frac == 0: return self._prune_frac
     else: return frac
 
   @property
   def _x_prune_frac(self):
+    """Pruning fraction of input weight matrix during lottery finding"""
     frac =  self._nb_kwargs.get('x_prune_frac', 0)
     if frac == 0: return self._prune_frac
     else: return frac
 
   @property
-  def prune_is_on(self):
-    """This property is decided in linker.neuron"""
+  def lottery_activated(self):
+    """Whether to find lottery in this recurrent neuron cluster"""
     return hub.prune_on and (self._s_prune_frac > 0 or self._x_prune_frac > 0)
 
   # region : Public Methods
@@ -151,13 +159,15 @@ class RNeuroBase(NeuroBase):
   # region : Library
 
   def dense_rn(self, x, s, scope, activation=None, output_dim=None,
-               is_gate=False, num_or_size_splits=None):
+               is_gate=False, num_or_size_splits=None, **kwargs):
     """Dense recurrent neuron"""
     if output_dim is None: output_dim = self.get_state_size(s)
-    na = self.differentiate(output_dim, scope, activation, is_gate=is_gate)
+    na = self.differentiate(
+      output_dim, scope, activation, is_gate=is_gate, **kwargs)
     # If don't need to prune
-    if not self.prune_is_on: output = na(x, s)
+    if not self.lottery_activated: output = na(x, s)
     else:
+      assert not na.being_etched
       # Add x and s separately
       na.add_kernel(x, suffix='x', prune_frac=self._x_prune_frac)
       na.add_kernel(s, suffix='s', prune_frac=self._s_prune_frac)

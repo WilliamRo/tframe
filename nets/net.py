@@ -2,14 +2,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import tensorflow as tf
 
 from tframe import console
 from tframe.core import Function
 from tframe import context
 from tframe.layers.layer import Layer
-from tframe.layers import Activation
 from tframe.layers import Input
 from tframe.utils import shape_string
 import tframe.utils.format_string as fs
@@ -127,7 +125,7 @@ class Net(Function):
 
     def get_num_string(num, dense_num):
       if num == 0: num_str = ''
-      elif hub.prune_on:
+      elif hub.prune_on or hub.etch_on:
         num_str = '{} ({:.1f}%)'.format(num, 100.0 * num / dense_num)
       else: num_str = str(num)
       return num_str
@@ -506,7 +504,7 @@ class Net(Function):
 
     # if hub.export_masked_weights and hub.pruning_rate_fc > 0:
     if hub.export_masked_weights:
-      from tframe.utils.pruner import Pruner
+      from tframe.operators.prune.pruner import Pruner
       Pruner.extractor()
 
     if hub.export_sparse_weights:

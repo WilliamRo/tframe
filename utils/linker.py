@@ -434,7 +434,8 @@ def get_weights_to_prune(name, shape, initializer, frac):
   weights = get_variable(name, shape, initializer)
   # Register, context.pruner should be created in early model.build
   assert context.pruner is not None
-  masked_weights = context.pruner.register_to_dense(weights, frac)
+  etch_config = 'lottery:prune_frac={}'.format(frac)
+  masked_weights = context.pruner.register_to_dense(weights, etch_config)
   # Return
   assert isinstance(masked_weights, tf.Tensor)
   return masked_weights
