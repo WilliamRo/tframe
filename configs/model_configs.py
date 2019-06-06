@@ -98,6 +98,10 @@ class ModelConfigs(object):
 
   etch_string = Flag.string(None, 'An etch config string', is_key=None)
 
+  lottery_kernel = Flag.string(
+    'lottery18', 'Method used in Lottery(EtchKernel) to get new mask',
+    is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True

@@ -106,7 +106,7 @@ class Pruner(object):
 
   @staticmethod
   def extractor(*args):
-    if not any([tfr.hub.prune_on, tfr.hub.weights_mask_on,
+    if not any([tfr.hub.prune_on, tfr.hub.weights_mask_on, tfr.hub.etch_on,
                 tfr.hub.export_weights]): return
     pruner = tfr.context.pruner
     if pruner is None:
@@ -116,7 +116,7 @@ class Pruner(object):
     for kernel in pruner._dense_kernels:
       assert isinstance(kernel, EtchKernel)
       export_dict = tfr.context.variables_to_export
-      if tfr.hub.prune_on:
+      if tfr.hub.prune_on or tfr.hub.etch_on:
         export_dict[kernel.weight_key] = kernel.weights
         export_dict[kernel.mask_key] = kernel.mask
       elif tfr.hub.weights_mask_on:
