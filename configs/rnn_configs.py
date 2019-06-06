@@ -116,3 +116,5 @@ class RNNConfigs(object):
   gate_output = Flag.boolean(False, 'Whether to gate output', is_key=None)
 
   psi_string = Flag.string(None, 'Config string for psi', is_key=None)
+
+  group_string = Flag.string(None, 'Group string', is_key=None)
