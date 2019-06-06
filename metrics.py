@@ -44,9 +44,10 @@ def accuracy(truth, output, pred_thres=None):
     # Convert one-hot to dense if necessary
     if shape[-1] > 1:
       # tensor = tf.argmax(tensor, -1, name='labels' if i == 0 else 'predictions')
-      tensor = tf.argmax(tensor, -1)
+      tensor = tf.argmax(tensor, -1, output_type=tf.int32)
+      tensor = tf.expand_dims(tensor, -1)
     # Put tensor back to list
-    # tensors[i] = tensor
+    tensors[i] = tensor
     if pred_thres is None:
       tensors[i] = tf.round(tensor, name='labels' if i == 0 else 'predictions')
 
@@ -57,7 +58,7 @@ def accuracy(truth, output, pred_thres=None):
     assert pred_thres > 0
     abs_delta = tf.abs(tensors[0] - tensors[1])
     correct_prediction = tf.greater_equal(pred_thres, abs_delta)
-  correct_prediction = tf.cast(correct_prediction, tf.float32)
+  correct_prediction = tf.cast(correct_prediction, tfr.hub.dtype)
   return correct_prediction
 
 def generalized_accuracy(truth, output):
