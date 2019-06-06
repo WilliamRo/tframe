@@ -9,10 +9,9 @@ from tframe import linker
 from tframe.nets.rnn_cells.cell_base import CellBase
 
 from tframe.operators.apis.distributor import Distributor
-from tframe.operators.neurons import NeuronArray
 
 
-class GDU(CellBase, Distributor, NeuronArray):
+class GDU(CellBase, Distributor):
   """Grouped Distributor Unit
      Reference: gdu2019"""
   net_name = 'gdu'
