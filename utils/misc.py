@@ -5,8 +5,13 @@ from __future__ import print_function
 import numpy as np
 import inspect
 import datetime
+import math
 
 import tensorflow as tf
+
+
+def ordinal(n):
+  return "%d%s" % (n,"tsnrhtdd"[(math.floor(n/10)%10!=1)*(n%10<4)*n%10::4])
 
 
 def get_scale(tensor):
