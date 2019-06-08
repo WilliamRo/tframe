@@ -13,8 +13,8 @@ from tframe.utils.misc import date_string
 from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
-
 flags, flag_names = None, None
+
 
 def register_flags(config_class):
   global flags, flag_names
@@ -22,6 +22,7 @@ def register_flags(config_class):
            [getattr(config_class, key) for key in dir(config_class)]
            if isinstance(attr, Flag)]
   flag_names = [f.name for f in flags]
+
 
 register_flags(SmartTrainerHub)
 
@@ -39,11 +40,11 @@ def check_flag_name(method):
           flag_name))
       input()
     method(obj, flag_name, *args, **kwargs)
+
   return wrapper
 
 
 class Helper(object):
-
   # Class variables
   true_and_false = (True, False)
   true = True
@@ -57,7 +58,7 @@ class Helper(object):
     self.hyper_parameters = OrderedDict()
     self.constraints = OrderedDict()
 
-    self._python_cmd = 'python'
+    self._python_cmd = 'python' if os.name == 'nt' else 'python3'
 
   # region : Properties
 
@@ -150,8 +151,10 @@ class Helper(object):
       assert isinstance(condition, tuple) and len(condition) > 0
       for key, values in condition:
         if not isinstance(values, (tuple, list)): values = values,
-        if key not in configs.keys(): return False
-        elif configs[key] not in values: return False
+        if key not in configs.keys():
+          return False
+        elif configs[key] not in values:
+          return False
       return True
 
     def _set_flag(flag_name, value):
@@ -165,7 +168,6 @@ class Helper(object):
       assert isinstance(constraint, dict)
       if _satisfy(condition):
         for key, value in constraint.items(): _set_flag(key, value)
-
 
   @staticmethod
   def _get_config_string(flag_name, val):
@@ -199,7 +201,8 @@ class Helper(object):
   def _hyper_parameter_dicts(self, keys=None):
     """Provide a generator of hyper-parameters for running"""
     if keys is None: keys = list(self.hyper_parameters.keys())
-    if len(keys) == 0: yield OrderedDict()
+    if len(keys) == 0:
+      yield OrderedDict()
     else:
       for val in self.hyper_parameters[keys[0]]:
         configs = OrderedDict()
