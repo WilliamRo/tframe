@@ -25,6 +25,7 @@ class GDU(CellBase, Distributor):
       bias_initializer='zeros',
       reverse=False,
       use_reset_gate=False,
+      dropout=0.0,
       layer_normalization=False,
       **kwargs):
     """
@@ -41,6 +42,8 @@ class GDU(CellBase, Distributor):
 
     self._groups = self._get_groups(configs)
     self._state_size = self._get_total_size(self._groups)
+    self._dropout_rate = checker.check_type(dropout, float)
+    assert 0 <= dropout < 1
 
 
   @property
@@ -73,6 +76,9 @@ class GDU(CellBase, Distributor):
       self._gate_dict['reset_gate'] = r
     else:
       s_bar = self.dense_rn(x, prev_s, 's_bar', self._activation)
+
+    # - Dropout if necessary
+    if self._dropout_rate > 0: s_bar = self.dropout(s_bar, self._dropout_rate)
 
     # - Update state
     with tf.name_scope('transit'):
