@@ -51,8 +51,9 @@ class GRU(CellBase, DynamicWeights):
 
   @property
   def _scale_tail(self):
-    return '[{}]({})'.format(
-      '-' if not self._use_reset_gate else ('r' + self._reset_who),
+    return '[{}{}]({})'.format(
+      '-' if not self._use_reset_gate else 'r',
+      '' if self._dropout_rate == 0 else '|dp{}'.format(self._dropout_rate),
       self._state_size)
 
 
