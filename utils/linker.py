@@ -276,8 +276,7 @@ def softmax_over_groups(net_input, configs, output_name='sog'):
   assert sum(group_sizes) == get_dimension(net_input)
 
   # Calculate output
-  splitted = (tf.split(net_input, group_sizes, axis=1) if len(group_sizes) > 1
-              else [net_input])
+  splitted = split(net_input, configs)
   output_list = []
   # s: group size; n: group number
   # for (s, n), net_s in zip(groups, splitted):
@@ -559,5 +558,16 @@ def sparse_affine(x, y_dim, heads=1, use_bit_max=False,
   else: return y
 
 # endregion : Sparse affine
+
+# region : MISC
+
+def split(tensor_batch, groups):
+  assert isinstance(groups, (list, tuple)) and len(groups) >= 1
+  groups = [g[:2] for g in groups]
+  group_sizes = [s*n for s, n in groups]
+  if len(group_sizes) == 1: return [tensor_batch]
+  return tf.split(tensor_batch, group_sizes, axis=1)
+
+# endregion : MISC
 
 

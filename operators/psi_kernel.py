@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe import checker
@@ -61,6 +62,7 @@ class PsyKernel(KernelBase):
     if identifier in ('dense', 'fc'): return self.dense
     elif identifier in ('mul', 'multiplicative'): return self.multiplicative
     elif identifier in ('row_mask', 'hyper16'): return self.row_mask
+    elif identifier in ('elect', 'election'): return self.elect
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
 
   def _layer_normalization(self, a):
@@ -127,7 +129,8 @@ class PsyKernel(KernelBase):
   def row_mask(self, seed, seed_weight_initializer):
     """Generate weights with rows being masked.
        y = (diag(row_mask) @ W) @ x
-       Note that during implementation, this is actually called column mask.
+       Note that during implementation, weight matrix is actually masked
+       by columns.
        Used in (1) Ha, etc. Hyper Networks. 2016.
                (2) a GRU variant: reset_gate \odot (Ws @ s_{t-1})
     """
@@ -142,5 +145,42 @@ class PsyKernel(KernelBase):
     x = self.input_
     a = (seed @ Wsy) * (x @ Wxy)
     return a
+
+  def elect(self, groups):
+    """Given a vector with group specification, one representative will be
+       elected.
+       groups = ((size1, num1), (size2, num2), ...)
+       x.shape = [batch_size, Dx]
+       y.shape = [batch_size, num_groups]
+    """
+    # Sanity check
+    assert isinstance(groups, (list, tuple))
+    groups = [g[:2] for g in groups]
+    total_units = sum([s*n for s, n in groups])
+    assert total_units == self.input_dim
+
+    # Get weights
+    initializer = tf.constant_initializer(np.concatenate(
+        [np.ones([1, s * n], dtype=np.float32) / s for s, n in groups], axis=1))
+    weights = self._get_weights(
+      'W', [1, self.input_dim], initializer=initializer)
+
+    # Calculate output
+    splitted_x = linker.split(self.input_, groups)
+    splitted_w = linker.split(weights, groups)
+    output_list = []
+    for (s, n), x, w in zip(groups, splitted_x, splitted_w):
+      if s == 1:
+        output_list.append(x)
+        continue
+      y = tf.multiply(w, x)
+      if n > 1: y = tf.reshape(y, [-1, s])
+      y = tf.reduce_sum(y, axis=1, keepdims=True)
+      if n > 1: y = tf.reshape(y, [-1, n])
+      output_list.append(y)
+
+    if len(output_list) == 1: output = output_list[0]
+    else: output = tf.concat(output_list, axis=1)
+    return output
 
   # endregion : Kernels

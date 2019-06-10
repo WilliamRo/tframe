@@ -4,10 +4,8 @@ from __future__ import print_function
 
 from collections import OrderedDict
 import numpy as np
-import tensorflow as tf
 
 import tframe as tfr
-from tframe.core import VariableSlot
 
 from tframe.operators.prune.etches.etch_kernel import EtchKernel
 
@@ -199,107 +197,3 @@ class Pruner(object):
     tfr.console.show_status('Model {} saved.'.format(model.mark))
 
   # endregion : Lottery 2018
-
-  # TODO ======================================================================
-
-  # def _fetch_masked_weights(self):
-  #   masked_weights = [ws.masked_weights for ws in self._dense_kernels]
-  #   value_masked_weights = self._run_op(masked_weights)
-  #   for vmw, ws in zip(value_masked_weights, self._dense_kernels):
-  #     assert isinstance(ws, WeightSlot)
-  #     ws.masked_weights_buffer = vmw
-  #
-  # def _set_weights_and_masks(self, p):
-  #   assert 0 < p < 1
-  #   reset_weights_ops = [ws.reset_weights for ws in self._dense_kernels]
-  #   # get_assign_mask_op does the pruning work
-  #   set_mask_ops = [
-  #     ws.get_assign_mask_op_lottery(p) for ws in self._dense_kernels]
-  #   self._run_op([reset_weights_ops, set_mask_ops])
-  #   # Show status
-  #   tfr.console.show_status('Weights reset and masks updated.')
-  #
-  # def _fetch_masks(self):
-  #   fetches = [ws.mask for ws in self._dense_kernels]
-  #   val_masks = self._run_op(fetches)
-  #   # Distribute to weight_slots
-  #   for slot, val_mask in zip(self._dense_kernels, val_masks):
-  #     assert isinstance(slot, WeightSlot)
-  #     slot.mask_buffer = val_mask
-
-
-# class WeightSlot(object):
-#   """Weight Slot is not a tframe Slot. Currently this class is a little bit
-#      of chaos. It's used for
-#      (1) lottery
-#      (2) etch
-#      (3) generic masked weights
-#   """
-#
-#   def __init__(self, weights, frac=None, mask=None):
-#     # Sanity check
-#     assert isinstance(weights, tf.Variable)
-#     if frac is not None: assert np.isreal(frac) and 0 <= frac <= 1
-#     if mask is not None: assert isinstance(mask, (tf.Variable, tf.Tensor))
-#
-#     self.weights = weights
-#     self.init_val = tf.Variable(
-#       tf.zeros_like(weights), trainable=False, name='init_val')
-#
-#     if mask is not None: self.mask = mask
-#     else: self.mask = tf.Variable(
-#       tf.ones_like(weights), trainable=False, name='mask')
-#
-#     self.masked_weights = tf.multiply(self.weights, self.mask)
-#     self.frac = frac
-#
-#     # Define assign ops
-#     self.assign_init = tf.assign(self.init_val, self.weights)
-#     self.reset_weights = tf.assign(self.weights, self.init_val)
-#
-#     # Define weights and mask placeholder
-#     self.masked_weights_buffer = None
-#     self.mask_buffer = None
-#     # weights fraction will be assigned during
-#     #  launching session => model.handle_structure_detail
-#     #  => net.structure_detail => pruner.get_variable_sizes
-#     self.weights_fraction = None
-#
-#   @property
-#   def scope_abbr(self):
-#     """In tframe, RNN model, weight's name may be ../gdu/net_u/W"""
-#     scopes = self.weights.name.split('/')
-#     return '/'.join(scopes[-3:-1])
-#
-#   @property
-#   def weight_key(self):
-#     """Used in Pruner.extractor"""
-#     scopes = self.weights.name.split('/')
-#     key = '/'.join(scopes[-3:])
-#     key = key.split(':')[0]
-#     return key
-#
-#   @property
-#   def mask_key(self):
-#     return self.weight_key + '_mask'
-#
-#   def get_assign_mask_op_lottery(self, p):
-#     """Weights pruned in previous iterations will be be kept pruned."""
-#     assert 0 < p < 1
-#     p = p * self.frac
-#     w = self.masked_weights_buffer
-#     assert isinstance(w, np.ndarray) and np.isreal(self.weights_fraction)
-#     assert 0 < self.weights_fraction <= 100
-#     weight_fraction = np.ceil(self.weights_fraction * (1 - p))
-#     # Get weights magnitude
-#     w = np.abs(w)
-#     # Create mask
-#     mask = np.zeros_like(w, dtype=np.float32)
-#     mask[w > np.percentile(w, 100 - weight_fraction)] = 1.0
-#     # Return mask assign operator
-#     op = tf.assign(self.mask, mask)
-#     return op
-#
-#
-#
-

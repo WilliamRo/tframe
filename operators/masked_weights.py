@@ -26,14 +26,14 @@ class MaskedWeights(object):
   def scope_abbr(self):
     """In tframe, RNN model, weight's name may be ../gdu/net_u/W"""
     scopes = self.weights.name.split('/')
-    return '/'.join(scopes[-3:-1])
+    return '/'.join(scopes[1:-1])
 
   @property
   def weight_key(self):
     """Used in Pruner.extractor"""
     scopes = self.weights.name.split('/')
-    key = '/'.join(scopes[-3:])
-    key = key.split(':')[0]
+    key = '/'.join(scopes[1:])
+    # key = key.split(':')[0]
     return key
 
   @property
