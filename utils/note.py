@@ -71,6 +71,16 @@ class Note(object):
   def content(self):
     return '\n'.join(self._lines)
 
+  @property
+  def tensor_free(self):
+    note = Note()
+    note._lines = self._lines
+    note._steps = self._steps
+    note._scalars = self._scalars
+    note._configs = self._configs
+    note._criteria = self._criteria
+    return note
+
   # endregion : Properties
 
   # region : Public Methods

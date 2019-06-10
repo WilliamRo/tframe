@@ -39,6 +39,7 @@ class Agent(object):
     self._summary_writer = None
     # An agent holds a default note
     self._note = Note()
+    context.note = self._note
 
   # region : Properties
 
@@ -243,7 +244,8 @@ class Agent(object):
       assert len(summary) > 0
     else: summary = []
     # Add note to list and save
-    summary.append(self._note)
+    note = self._note.tensor_free if hub.gather_only_scalars else self._note
+    summary.append(note)
     with open(file_path, 'wb') as f:
       pickle.dump(summary, f, pickle.HIGHEST_PROTOCOL)
     # Show status

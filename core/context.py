@@ -51,6 +51,9 @@ class Context(object):
     self.weights_list = []
     self.sparse_weights_list = []
 
+    # Note
+    self.note = None
+
   # region : Properties
 
   @property

@@ -62,6 +62,8 @@ class NoteConfigs(object):
            ' extractor will be registered to net.variable extractor, '
            'as it does in MNIST tasks.')
 
+  gather_only_scalars = Flag.boolean(False, 'Whether to export only scalars')
+
 
   def smooth_out_note_configs(self):
     if self.use_default_s_in_dy_ds: self.export_dy_ds = True
