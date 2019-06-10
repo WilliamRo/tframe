@@ -9,6 +9,7 @@ from tframe import checker
 from tframe import hub
 from tframe import initializers
 from tframe import linker
+from tframe import pedia
 
 
 class NeuroBase(object):
@@ -84,6 +85,13 @@ class NeuroBase(object):
     """
     assert isinstance(x, tf.Tensor) and len(x.shape) == 2
     return x.shape.as_list()[-1]
+
+  @staticmethod
+  def dropout(input_, dropout_rate):
+    keep_prob = 1 - dropout_rate
+    assert 0 < keep_prob < 1
+    return tf.nn.dropout(input_, tf.cond(
+      tf.get_collection(pedia.is_training)[0], lambda: keep_prob, lambda: 1.0))
 
   # endregion : Public Methods
 

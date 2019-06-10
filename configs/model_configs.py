@@ -103,6 +103,7 @@ class ModelConfigs(object):
     is_key=None)
   use_gate_as_mask = Flag.boolean(False, 'Whether to use gates as masks',
                                   is_key=None, name='gam')
+  rec_dropout = Flag.float(0.0, 'Recurrent dropout', is_key=None)
 
 
   def smooth_out_model_configs(self):

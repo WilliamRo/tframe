@@ -24,6 +24,7 @@ class GRU(CellBase, DynamicWeights):
       bias_initializer='zeros',
       z_bias_initializer='zeros',
       reset_who='s',
+      dropout=0.0,
       **kwargs):
     """
     :param reset_who: in ('x', 'y')
@@ -41,6 +42,8 @@ class GRU(CellBase, DynamicWeights):
     self._state_size = checker.check_positive_integer(state_size)
     self._use_reset_gate = checker.check_type(use_reset_gate, bool)
     self._z_bias_initializer = initializers.get(z_bias_initializer)
+
+    self._dropout_rate = checker.check_type(dropout, float)
 
     assert reset_who in ('s', 'a')
     self._reset_who = reset_who
@@ -69,6 +72,8 @@ class GRU(CellBase, DynamicWeights):
         x, prev_s, activation=self._activation, scope='s_bar')
 
     # - Update state
+    if self._dropout_rate > 0: s_bar = self.dropout(s_bar, self._dropout_rate)
+
     with tf.name_scope('update_state'): new_s = tf.add(
       tf.multiply(z, prev_s), tf.multiply(tf.subtract(1., z), s_bar))
 
