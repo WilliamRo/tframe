@@ -49,7 +49,7 @@ class GRU(CellBase, DynamicWeights):
   @property
   def _scale_tail(self):
     return '[{}]({})'.format(
-      '-' if self._use_reset_gate is None else 'r' + self._reset_who,
+      '-' if not self._use_reset_gate else ('r' + self._reset_who),
       self._state_size)
 
 
