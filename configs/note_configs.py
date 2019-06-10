@@ -52,6 +52,7 @@ class NoteConfigs(object):
   dense_total_params = Flag.integer(
     0, 'Parameter # before pruning', is_key=None)
   serial_num = Flag.integer(1, '...', is_key=None)
+  supplement = Flag.string(None, 'Supplement', is_key=None)
 
   take_note_in_beginning = Flag.boolean(
     False, 'Whether to take note on 1st iteration')

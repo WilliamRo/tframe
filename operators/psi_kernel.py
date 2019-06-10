@@ -126,6 +126,7 @@ class PsyKernel(KernelBase):
     a = ((x @ Wxf) * (seed @ Wsf)) @ Wfy
     return a
 
+
   def row_mask(self, seed, seed_weight_initializer):
     """Generate weights with rows being masked.
        y = (diag(row_mask) @ W) @ x
@@ -145,6 +146,7 @@ class PsyKernel(KernelBase):
     x = self.input_
     a = (seed @ Wsy) * (x @ Wxy)
     return a
+
 
   def elect(self, groups):
     """Given a vector with group specification, one representative will be

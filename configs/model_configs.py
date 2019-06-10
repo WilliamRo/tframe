@@ -101,6 +101,8 @@ class ModelConfigs(object):
   lottery_kernel = Flag.string(
     'lottery18', 'Method used in Lottery(EtchKernel) to get new mask',
     is_key=None)
+  use_gate_as_mask = Flag.boolean(False, 'Whether to use gates as masks',
+                                  is_key=None, name='gam')
 
 
   def smooth_out_model_configs(self):
