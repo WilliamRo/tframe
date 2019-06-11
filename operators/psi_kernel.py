@@ -148,7 +148,7 @@ class PsyKernel(KernelBase):
     return a
 
 
-  def elect(self, groups):
+  def elect(self, groups, votes):
     """Given a vector with group specification, one representative will be
        elected.
        groups = ((size1, num1), (size2, num2), ...)
@@ -161,28 +161,28 @@ class PsyKernel(KernelBase):
     total_units = sum([s*n for s, n in groups])
     assert total_units == self.input_dim
 
-    # Get weights
-    initializer = tf.constant_initializer(np.concatenate(
-        [np.ones([1, s * n], dtype=np.float32) / s for s, n in groups], axis=1))
-    weights = self._get_weights(
-      'W', [1, self.input_dim], initializer=initializer)
+    # Get votes
+    # initializer = tf.constant_initializer(np.concatenate(
+    #     [np.ones([1, s * n], dtype=np.float32) / s for s, n in groups], axis=1))
+    if votes is None:
+      initializer = 'glorot_uniform'
+      votes = self._get_weights(
+        'V', [1, self.input_dim], initializer=initializer)
 
     # Calculate output
     splitted_x = linker.split(self.input_, groups)
-    splitted_w = linker.split(weights, groups)
+    splitted_v = linker.split(votes, groups)
     output_list = []
-    for (s, n), x, w in zip(groups, splitted_x, splitted_w):
+    for (s, n), x, v in zip(groups, splitted_x, splitted_v):
       if s == 1:
         output_list.append(x)
         continue
-      y = tf.multiply(w, x)
+      y = tf.multiply(v, x)
       if n > 1: y = tf.reshape(y, [-1, s])
       y = tf.reduce_sum(y, axis=1, keepdims=True)
       if n > 1: y = tf.reshape(y, [-1, n])
       output_list.append(y)
 
-    if len(output_list) == 1: output = output_list[0]
-    else: output = tf.concat(output_list, axis=1)
-    return output
+    return linker.concatenate(output_list)
 
   # endregion : Kernels
