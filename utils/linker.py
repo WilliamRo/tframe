@@ -568,6 +568,11 @@ def split(tensor_batch, groups):
   if len(group_sizes) == 1: return [tensor_batch]
   return tf.split(tensor_batch, group_sizes, axis=1)
 
+def concatenate(tensor_list):
+  assert isinstance(tensor_list, list) and len(tensor_list) > 0
+  if len(tensor_list) == 1: return tensor_list[0]
+  else: return tf.concat(tensor_list, axis=1)
+
 # endregion : MISC
 
 
