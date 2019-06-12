@@ -561,12 +561,16 @@ def sparse_affine(x, y_dim, heads=1, use_bit_max=False,
 
 # region : MISC
 
+def split_by_sizes(tensor_batch, sizes):
+  assert isinstance(sizes, (tuple, list))
+  if len(sizes) == 1: return [tensor_batch]
+  return tf.split(tensor_batch, sizes, axis=1)
+
 def split(tensor_batch, groups):
   assert isinstance(groups, (list, tuple)) and len(groups) >= 1
   groups = [g[:2] for g in groups]
   group_sizes = [s*n for s, n in groups]
-  if len(group_sizes) == 1: return [tensor_batch]
-  return tf.split(tensor_batch, group_sizes, axis=1)
+  return split_by_sizes(tensor_batch, group_sizes)
 
 def concatenate(tensor_list):
   assert isinstance(tensor_list, list) and len(tensor_list) > 0

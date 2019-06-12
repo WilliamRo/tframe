@@ -91,4 +91,29 @@ class Distributor(object):
   def _softmax_over_groups(a, configs, output_name='sog'):
     return linker.softmax_over_groups(a, configs, output_name)
 
+  def _distributively_write(self, net_a, data):
+    assert linker.get_dimension(data) == self.total_groups
+    splitted_net_a = linker.split(net_a, self._groups)
+    splitted_data = linker.split_by_sizes(data, [g[1] for g in self._groups])
+
+    a_list, bar_list = [], []
+    for (s, n), net_a_, data_ in zip(
+        [(g[0], g[1]) for g in self._groups], splitted_net_a, splitted_data):
+      a = net_a
+      bar = data_
+      if n > 1:
+        a = tf.reshape(a, [-1, s])
+        bar = tf.reshape(bar, [-1, 1])
+      a = tf.nn.softmax(a)
+      bar = a * bar
+      if n > 1:
+        a = tf.reshape(a, [-1, s*n])
+        bar = tf.reshape(bar, [-1, s*n])
+      a_list.append(a)
+      bar_list.append(bar)
+
+    a = linker.concatenate(a_list)
+    bar = linker.concatenate(bar_list)
+    return a, bar
+
   # endregion : Static Methods
