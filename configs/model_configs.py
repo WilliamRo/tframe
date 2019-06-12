@@ -58,7 +58,8 @@ class ModelConfigs(object):
   dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
   input_dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
   output_dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
-  forward_dropout = Flag.boolean(False, 'Whether to use forward dropout')
+  forward_dropout = Flag.boolean(
+    False, 'Whether to use forward dropout', is_key=None)
 
   use_recurrent_net = Flag.boolean(False, 'Whether to use recurrent net')
 
