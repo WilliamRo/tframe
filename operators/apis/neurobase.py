@@ -125,6 +125,27 @@ class NeuroBase(object):
 
 class RNeuroBase(NeuroBase):
 
+  def __init__(
+      self,
+      activation=None,
+      weight_initializer='xavier_normal',
+      use_bias=False,
+      bias_initializer='zeros',
+      layer_normalization=False,
+      dropout_rate=0.0,
+      **kwargs):
+
+    super().__init__(
+      activation=activation,
+      weight_initializer=weight_initializer,
+      use_bias=use_bias,
+      bias_initializer=bias_initializer,
+      layer_normalization=layer_normalization,
+      **kwargs)
+
+    self._dropout_rate = checker.check_type(dropout_rate, float)
+    assert 0 <= dropout_rate < 1
+
   @property
   def _s_prune_frac(self):
     """State weight matrix pruning fraction during lottery finding"""

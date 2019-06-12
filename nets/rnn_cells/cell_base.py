@@ -19,11 +19,20 @@ class CellBase(RNet, RNeuroBase):
       use_bias=True,
       bias_initializer='zeros',
       layer_normalization=False,
+      dropout_rate=0.0,
       **kwargs):
+
     # Call parent's constructor
     RNet.__init__(self, self.net_name)
-    RNeuroBase.__init__(self, activation, weight_initializer, use_bias,
-                        bias_initializer, layer_normalization, **kwargs)
+    RNeuroBase.__init__(
+      self,
+      activation=activation,
+      weight_initializer=weight_initializer,
+      use_bias=use_bias,
+      bias_initializer=bias_initializer,
+      layer_normalization=layer_normalization,
+      dropout_rate=dropout_rate,
+      **kwargs)
 
     self._output_scale_ = None
 
