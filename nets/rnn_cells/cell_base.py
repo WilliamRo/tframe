@@ -56,3 +56,12 @@ class CellBase(RNet, RNeuroBase):
     return self.net_name + self._scale_tail if scale else ''
 
   # endregion : Properties
+
+  def _get_s_bar(self, x, s, output_dim=None, use_reset_gate=False):
+    if output_dim is None: output_dim = self._state_size
+    if use_reset_gate:
+      r = self.dense_rn(
+        x, s, 'reset_gate', output_dim=self.get_dimension(s), is_gate=True)
+      self._gate_dict['reset_gate'] = r
+      s = r * s
+    return self.dense_rn(x, s, 's_bar', self._activation, output_dim=output_dim)

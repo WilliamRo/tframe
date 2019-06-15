@@ -19,10 +19,11 @@ class HyperKernel(RNeuroBase):
     """
     assert len(kwargs) == 0
 
-    if kernel_key in ('srn', 'vanilla'): kernel = self._srn
+    if kernel_key in ('rnn', 'srn', 'vanilla'): kernel = self._srn
     elif kernel_key == 'gru': kernel = self._gru
     elif kernel_key in ['ugrnn']: kernel = self._ugrnn
     elif kernel_key in ['lstm']: kernel = self._lstm
+    elif kernel_key in ['cm', 'column_mask']: kernel = self._column_mask
     else: raise KeyError('!! Unknown hyper key `{}`'.format(kernel_key))
 
     def kernel_with_scope(x, s):
@@ -72,6 +73,15 @@ class HyperKernel(RNeuroBase):
     new_h = sigma(o) * tanh(new_c)
     return new_h, (new_h, new_c)
 
+  def _column_mask(self, x, prev_s):
+    x_dim = self.get_dimension(x)
+    state_size = self.get_state_size(prev_s)
+    rx = self.dense_rn(x, prev_s, 'rx', is_gate=True, output_dim=x_dim)
+    rs, z =  self.dense_rn(x, prev_s, 'gate_block', is_gate=True,
+                           output_dim=state_size * 2, num_or_size_splits=2)
+    s_bar = self.dense_rn(rx*x, rs*prev_s, 's_bar', 'tanh')
+    new_s = z * prev_s + (1. - z) * s_bar
+    return new_s, new_s
 
   def _get_embeddings_hyper16(self, s_hat, num_cluster, signal_size):
     """Get num_cluster groups of embedding vectors.
