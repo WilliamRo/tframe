@@ -19,6 +19,7 @@ class HardDriver(Groups, RNeuroBase):
       config_string,
       arm_size=None,
       fetching_method='sector',
+      diff_head=False,
   ):
     # Call parent's constructor
     Groups.__init__(self, config_string)
@@ -27,18 +28,22 @@ class HardDriver(Groups, RNeuroBase):
     if arm_size is None: arm_size = self.num_groups
     self._arm_size = checker.check_positive_integer(arm_size)
     self._fetching_method = fetching_method
+    self._diff_head = checker.check_type(diff_head, bool)
 
 
   def _read(self, arm, s, scope, num_heads=1):
+    # Get read method
     if self._fetching_method in ('sector', 'default'):
-      return self._read_sector(arm, s, scope)
+      read_method = self._read_sector
     elif self._fetching_method == 'mix':
-      return self._read_mix(arm, s, scope)
+      read_method = self._read_mix
     else: raise KeyError(
       '!! Unknown fetching method `{}`'.format(self._fetching_method))
+    # Read `num_head` times from hard-driver
+    return read_method(arm, s, scope, num_heads=num_heads)
 
 
-  def _read_mix(self, arm, s, scope):
+  def _read_mix(self, arm, s, scope, **kwargs):
     # Prepare
     net_head = self.dense(
       self.total_size, arm, scope + '_read',
@@ -53,24 +58,31 @@ class HardDriver(Groups, RNeuroBase):
     return data
 
 
-  def _read_sector(self, arm, s, scope):
-    # Prepare
-    net_head = self.dense(self.total_size, arm, scope + '_read')
-    # Read
-    head_list = []
-    def operator(state, net_h, size):
-      h = tf.nn.softmax(net_h, axis=1)
-      head_list.append(tf.reshape(h, [-1, size]))
-      return tf.reduce_sum(state * h, axis=1, keepdims=True)
-    reshape2 = lambda _, n: n
-    data = self._binary_operate_over_groups(
-      s, net_head, operator, reshape2=reshape2)
-    assert self.get_dimension(data) == self.num_groups
-    # Concatenate head_list and register
-    assert len(head_list) == len(self._groups)
-    head = linker.concatenate(head_list)
-    self._register_gate(scope + '_head', head)
-    return data
+  def _read_sector(self, arm, s, scope, num_heads):
+    heads_sum = 0.
+    data_list = []
+    for i in range(num_heads):
+      # Prepare
+      net_head = self.dense(self.total_size, arm, scope + '_read_' + str(i))
+      if self._diff_head:
+        net_head, heads_sum = net_head - heads_sum, net_head + heads_sum
+      # Read
+      head_list = []
+      def operator(state, net_h, size):
+        h = tf.nn.softmax(net_h, axis=1)
+        head_list.append(tf.reshape(h, [-1, size]))
+        return tf.reduce_sum(state * h, axis=1, keepdims=True)
+      reshape2 = lambda _, n: n
+      data = self._binary_operate_over_groups(
+        s, net_head, operator, reshape2=reshape2)
+      assert self.get_dimension(data) == self.num_groups
+      data_list.append(data)
+      # Concatenate head_list and register
+      assert len(head_list) == len(self._groups)
+      head = linker.concatenate(head_list)
+      self._register_gate(scope + '_head_' + str(i), head)
+
+    return linker.concatenate(data_list)
 
 
   def _write(self, arm, s, s_bar):
