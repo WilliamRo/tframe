@@ -24,6 +24,7 @@ class CellBase(RNet, RNeuroBase):
       bias_initializer='zeros',
       layer_normalization=False,
       dropout_rate=0.0,
+      zoneout_rate=0.0,
       **kwargs):
 
     # Call parent's constructor
@@ -35,6 +36,7 @@ class CellBase(RNet, RNeuroBase):
       use_bias=use_bias,
       bias_initializer=bias_initializer,
       layer_normalization=layer_normalization,
+      zoneout_rate=zoneout_rate,
       dropout_rate=dropout_rate,
       **kwargs)
 

@@ -133,6 +133,7 @@ class RNeuroBase(NeuroBase):
       bias_initializer='zeros',
       layer_normalization=False,
       dropout_rate=0.0,
+      zoneout_rate=0.0,
       **kwargs):
 
     super().__init__(
@@ -145,6 +146,8 @@ class RNeuroBase(NeuroBase):
 
     self._dropout_rate = checker.check_type(dropout_rate, float)
     assert 0 <= dropout_rate < 1
+    self._zoneout_rate = checker.check_type(zoneout_rate, float)
+    assert 0 <= zoneout_rate < 1
 
   @property
   def _s_prune_frac(self):

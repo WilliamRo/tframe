@@ -85,7 +85,7 @@ class HardDriver(Groups, RNeuroBase):
     return linker.concatenate(data_list)
 
 
-  def _write(self, arm, s, s_bar):
+  def _write(self, arm, s, s_bar, tail=''):
     """Write rule:
         write_head: h
         data_to_write: data
@@ -95,9 +95,9 @@ class HardDriver(Groups, RNeuroBase):
     """
 
     # Get h and data
-    net_head = self.dense(self.total_size, arm, 'net_head_write')
+    net_head = self.dense(self.total_size, arm, 'net_head_write' + tail)
     new_data, head = self._distribute(s_bar, net_head)
-    self._register_gate('write_head', head)
+    self._register_gate('write_head' + tail, head)
     return (1. - head) * s + new_data
 
 
