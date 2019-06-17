@@ -74,9 +74,7 @@ class CellBase(RNet, RNeuroBase):
     assert self.get_dimension(new_s) == self.get_dimension(prev_s)
     assert 0 < ratio < 1
 
-    # Here initializer must be set otherwise z[0] will be all `True`
-    seed = tf.scan(lambda _, t: tf.random_uniform(t.shape, 0, 1),
-                   prev_s, initializer=prev_s[0], back_prop=False)
+    seed = tf.random_uniform(tf.shape(new_s), 0, 1)
     z = tf.cast(tf.less(seed, ratio), hub.dtype)
     zoned_out = z * prev_s + (1. - z) * new_s
 
