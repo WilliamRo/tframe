@@ -2,6 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
+
+from tframe import hub
+from tframe import pedia
 from tframe.nets import RNet
 from tframe.operators.apis.neurobase import RNeuroBase
 
@@ -65,3 +69,20 @@ class CellBase(RNet, RNeuroBase):
       self._gate_dict['reset_gate'] = r
       s = r * s
     return self.dense_rn(x, s, 's_bar', self._activation, output_dim=output_dim)
+
+  def _zoneout(self, new_s, prev_s, ratio):
+    assert self.get_dimension(new_s) == self.get_dimension(prev_s)
+    assert 0 < ratio < 1
+
+    # Here initializer must be set otherwise z[0] will be all `True`
+    seed = tf.scan(lambda _, t: tf.random_uniform(t.shape, 0, 1),
+                   prev_s, initializer=prev_s[0], back_prop=False)
+    z = tf.cast(tf.less(seed, ratio), hub.dtype)
+    zoned_out = z * prev_s + (1. - z) * new_s
+
+    return tf.cond(tf.get_collection(
+      pedia.is_training)[0], lambda: zoned_out, lambda: prev_s)
+
+
+
+

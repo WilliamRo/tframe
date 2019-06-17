@@ -25,6 +25,7 @@ class GRU(CellBase, DynamicWeights):
       z_bias_initializer='zeros',
       reset_who='s',
       dropout=0.0,
+      zoneout=0.0,
       **kwargs):
     """
     :param reset_who: in ('x', 'y')
@@ -44,6 +45,7 @@ class GRU(CellBase, DynamicWeights):
     self._z_bias_initializer = initializers.get(z_bias_initializer)
 
     self._dropout_rate = checker.check_type(dropout, float)
+    self._zoneout_rate = checker.check_type(zoneout, float)
 
     assert reset_who in ('s', 'a')
     self._reset_who = reset_who
@@ -66,17 +68,17 @@ class GRU(CellBase, DynamicWeights):
     self._gate_dict['update_gate'] = z
 
     # - Calculate s_bar
-    if self._use_reset_gate:
-      s_bar = self.neurons_with_reset_gate(x, prev_s, self._reset_who)
-    else:
-      s_bar = self.neurons(
-        x, prev_s, activation=self._activation, scope='s_bar')
+    s_bar = self._get_s_bar(x, prev_s, use_reset_gate=self._use_reset_gate)
 
     # - Update state
     if self._dropout_rate > 0: s_bar = self.dropout(s_bar, self._dropout_rate)
 
     with tf.name_scope('update_state'): new_s = tf.add(
       tf.multiply(z, prev_s), tf.multiply(tf.subtract(1., z), s_bar))
+
+    # Zoneout if necessary
+    if self._zoneout_rate > 0:
+      new_s = self._zoneout(new_s, prev_s, self._zoneout_rate)
 
     return new_s, new_s
 
