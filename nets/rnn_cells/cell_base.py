@@ -79,7 +79,7 @@ class CellBase(RNet, RNeuroBase):
     zoned_out = z * prev_s + (1. - z) * new_s
 
     return tf.cond(tf.get_collection(
-      pedia.is_training)[0], lambda: zoned_out, lambda: prev_s)
+      pedia.is_training)[0], lambda: zoned_out, lambda: new_s)
 
 
 
