@@ -50,6 +50,15 @@ def check_type_v2(inputs, types):
   return inputs
 
 
+def check_scalar_list(inputs, raise_error=False):
+  assert isinstance(inputs, list)
+  for x in inputs:
+    if not np.isscalar(x):
+      if raise_error: raise TypeError('{} is not a scalar.'.format(x))
+      return False
+  return True
+
+
 def check_type(inputs, type_tuples):
   """
   Check the types of inputs
