@@ -24,3 +24,4 @@ class DataConfigs(object):
     2, 'Can be used in k-bit temporal order problem', is_key=None)
 
   test_directly = Flag.boolean(False, 'Whether to use validation set')
+  num_words = Flag.integer(0, 'Words number in data set like IMDB', is_key=None)

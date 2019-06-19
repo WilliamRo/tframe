@@ -312,12 +312,15 @@ class SequenceSet(DataSet):
     for name, summ_list in self.summ_dict.items():
       # Check type and length
       if not isinstance(summ_list, list) or len(summ_list) != list_length:
-        raise ValueError('!! {} should be a list with length {}'.format(
+        raise ValueError('!! {} should be a list of length {}'.format(
           name, list_length))
+
+      # TODO: integer list should be allowed
       checker.check_type(summ_list, np.ndarray)
       # Check structure
       for i, summ in enumerate(summ_list):
         if summ.shape[0] > 1: summ_list[i] = np.reshape(summ, (1, *summ.shape))
+
       # Check sample shape
       shapes = [s.shape[1:] for s in summ_list]
       if shapes.count(shapes[0]) != len(shapes):

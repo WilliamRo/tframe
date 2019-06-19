@@ -49,6 +49,11 @@ class DataSet(TFRData):
     self._check_data()
 
   # region : Properties
+
+  @property
+  def gather_indices(self):
+    assert isinstance(self.active_length, (list, tuple))
+    return [[i, al - 1] for i, al in enumerate(self.active_length)]
   
   @property
   def features(self): return self.data_dict.get(self.FEATURES, None)

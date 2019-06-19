@@ -2,18 +2,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os, sys
-import tarfile
-import collections
+import os
 
 import numpy as np
-import tensorflow as tf
 from tframe import console
+from tframe.utils.misc import convert_to_one_hot
 
-# from tframe.data.dataset import DataSet
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.data.base_classes import DataAgent
-# from tframe.data.sequences.nlp.text_data_agent import TextDataAgent
 
 
 class IMDB(DataAgent):
@@ -25,50 +21,50 @@ class IMDB(DataAgent):
   """
 
   DATA_NAME = 'IMDB'
-  DATA_URL = 'http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz'
 
   @classmethod
-  def load(cls, data_dir, **kwargs):
-    data_set = cls.load_as_tframe_data(data_dir)
-    return data_set
+  def load(cls, data_dir, train_size=15000, val_size=10000, test_size=25000,
+           num_words=10000, **kwargs):
+    data_set = cls.load_as_tframe_data(data_dir, num_words=num_words)
+    return data_set.split(
+      train_size, val_size, test_size,
+      names=('train_set', 'val_set', 'test_set'))
 
   @classmethod
-  def load_as_tframe_data(cls, data_dir, **kwargs):
+  def load_as_tframe_data(cls, data_dir, num_words=10000, **kwargs):
     # Load directly if data set exists
-    data_path = cls._get_data_path(data_dir)
-    if os.path.exists(data_path): seq_set = SequenceSet.load(data_path)
-    else:
-      # If data does not exist, create from raw data
-      console.show_status('Creating data sets ...')
-      raw_data = cls._load_raw_data(data_dir)
+    data_path = cls._get_data_path(data_dir, num_words)
+    if os.path.exists(data_path): return SequenceSet.load(data_path)
+    # If data does not exist, create from raw data
+    console.show_status('Creating data sets ...')
+    (train_data, train_labels), (test_data, test_labels) = cls._load_raw_data(
+      data_dir, num_words=num_words)
+    data_list = list(train_data) + list(test_data)
+    features = [np.array(cmt).reshape([-1, 1]) for cmt in data_list]
+    targets = list(np.concatenate((train_labels, test_labels)))
+    targets = list(convert_to_one_hot(targets, 2))
 
-      seq_set = None
-
-    return seq_set
+    data_set = SequenceSet(features, summ_dict={'targets': targets},
+                           n_to_one=True, name='IMDB')
+    console.show_status('Saving data set ...')
+    data_set.save(data_path)
+    console.show_status('Data set saved to `{}`'.format(data_path))
+    return data_set
 
   # region : Private Methods
 
   @classmethod
-  def _load_raw_data(cls, data_dir):
-    # Check .feat files
-    feat_paths = [os.path.join(data_dir, 'aclImdb', dir_name, 'labeledBow.feat')
-                  for dir_name in ('train', 'test')]
-    # Download and unzip if necessary
-    if not all([os.path.exists(p) for p in feat_paths]):
-      # Check gz file, download if necessary
-      gz_file_path = cls._check_raw_data(data_dir)
-      # Extract file to data_dir
-      gz_file_name = os.path.basename(gz_file_path)
-      console.show_status('Extracting {} ...'.format(gz_file_name))
-      tarfile.open(gz_file_path).extractall(data_dir)
-
-    # Read .feat files
-    # TODO
-
-    return None
+  def _load_raw_data(cls, data_dir, num_words=10000):
+    from tensorflow import keras
+    imdb = keras.datasets.imdb
+    data_path = os.path.join(data_dir, 'imdb.npz')
+    return imdb.load_data(data_path, num_words=num_words)
 
   @classmethod
-  def _get_data_path(cls, data_dir):
-    return os.path.join(data_dir, 'IMDB.tfds')
+  def _get_data_path(cls, data_dir, num_words):
+    assert isinstance(num_words, int) and num_words > 0
+    return os.path.join(data_dir, 'IMDB_{}.tfds'.format(num_words))
 
   # endregion : Private Methods
+
+
