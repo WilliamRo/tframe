@@ -54,6 +54,9 @@ class Context(object):
     # Note
     self.note = None
 
+    # This placeholder is used for sequence classification
+    self.gather_indices = None
+
   # region : Properties
 
   @property

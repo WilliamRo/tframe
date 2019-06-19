@@ -18,6 +18,7 @@ Encoder = 'Encoder'
 features = 'features'
 fork = 'fork'
 
+gather_indices = 'gather_indices'
 Generator = 'Generator'
 
 invisible = 'do_not_show'

@@ -73,7 +73,13 @@ class Predictor(Feedforward, Recurrent):
     # For some RNN predictors, their last step is counted as the only output
     #   e.g. RNNs for sequence classification tasks
     last_only = False
-    if 'last_only' in kwargs.keys(): last_only = kwargs.pop('last_only')
+    if 'last_only' in kwargs.keys():
+      last_only = kwargs.pop('last_only')
+      # Initiate gather_indices placeholder
+      assert context.gather_indices is None
+      context.gather_indices = tf.placeholder(
+        tf.int32, [None, 2], 'gather_indices')
+      tf.add_to_collection(pedia.default_feed_dict, context.gather_indices)
 
     # Get loss quantity before building
     self.loss_quantity = losses.get(loss, last_only)

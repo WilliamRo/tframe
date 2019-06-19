@@ -485,9 +485,10 @@ class Trainer(object):
   @staticmethod
   def _check_data_batch(batch):
     assert isinstance(batch, DataSet)
-    if batch.is_rnn_input and batch.active_length is not None:
-      if max(batch.active_length) > min(batch.active_length):
-        raise ValueError('!! Sequence batches must be equal-length')
+    # The constraint below is not necessary due to gather_indices mechanism
+    # if batch.is_rnn_input and batch.active_length is not None:
+    #   if max(batch.active_length) > min(batch.active_length):
+    #     raise ValueError('!! Sequence batches must be equal-length')
 
   def _advanced_strategy(self, rnd):
     """Should be overridden"""

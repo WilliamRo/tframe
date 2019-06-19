@@ -183,6 +183,9 @@ class Config(
     self.smooth_out_model_configs()
 
     if self.export_dl_dx or self.export_dl_ds_stat:
+      # TODO: these 2 options should be used carefully,
+      #       since sequences with different lengths may yield
+      #       incorrect result
       self.allow_loss_in_loop = True
     if self.prune_on and self.pruning_iterations > 0:
       self.overwrite = False

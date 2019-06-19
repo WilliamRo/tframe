@@ -113,9 +113,11 @@ class Quantity(object):
     # For SequenceSet containing non-equal-length sequences, q.shape[0] must
     #  be 1, i.e. batch_size must be 1
     if self._last_only:
-      # q.shape must be [batch_size, steps]
+      # q.shape must be [batch_size, steps, *dims]
       assert len(q.shape) > 1
-      q = q[:, -1]
+      assert tfr.context.gather_indices is not None
+      q = tf.gather_nd(q, tfr.context.gather_indices)
+      # q = q[:, -1]
     if self._tf_summ_method is None:
       raise TypeError('!! summ_method should be provided')
     self._quantity = self._tf_summ_method(q)

@@ -380,7 +380,8 @@ class Model(object):
       checker.check_positive_integer(batch_size)
       if batch_size > 1 and isinstance(data_set, SequenceSet):
         assert num_steps < 0
-        if is_training: assert data_set.equal_length
+        # The constraint below is not necessary due to gather_indices mechanism
+        # if is_training: assert data_set.equal_length
 
       # Check num_steps
       checker.check_type(num_steps, int)
@@ -644,6 +645,8 @@ class Model(object):
       # elif 'target' in tensor.name:
         # TODO: when predict without outputting loss ...
         if batch.targets is not None: feed_dict[tensor] = batch.targets
+      elif pedia.gather_indices in tensor.name:
+        feed_dict[tensor] = batch.gather_indices
       else:
         name = tensor.name.split('/')[-1].split(':')[0]
         val = batch.data_dict.get(name, None)
