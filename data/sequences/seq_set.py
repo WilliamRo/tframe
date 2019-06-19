@@ -84,9 +84,9 @@ class SequenceSet(DataSet):
     for name, summ_list in self.summ_dict.items():
       full_data = []
       for summ, seq_len in zip(summ_list, self.structure):
+        if np.isscalar(summ): summ = np.array([summ]).reshape(1, 1)
         assert isinstance(summ, np.ndarray) and summ.shape[0] == 1
-        if len(summ.shape) == 1:
-          summ = np.reshape(summ, (1, 1))
+        if len(summ.shape) == 1: summ = np.reshape(summ, (1, 1))
         full_data.append(np.broadcast_to(summ, (seq_len, *summ.shape[1:])))
       merged_dict[name] = full_data
     return merged_dict
@@ -315,7 +315,8 @@ class SequenceSet(DataSet):
         raise ValueError('!! {} should be a list of length {}'.format(
           name, list_length))
 
-      # TODO: integer list should be allowed
+      if checker.check_scalar_list(summ_list): continue
+
       checker.check_type(summ_list, np.ndarray)
       # Check structure
       for i, summ in enumerate(summ_list):

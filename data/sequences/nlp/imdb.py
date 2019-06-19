@@ -41,8 +41,8 @@ class IMDB(DataAgent):
       data_dir, num_words=num_words)
     data_list = list(train_data) + list(test_data)
     features = [np.array(cmt).reshape([-1, 1]) for cmt in data_list]
+
     targets = list(np.concatenate((train_labels, test_labels)))
-    targets = list(convert_to_one_hot(targets, 2))
 
     data_set = SequenceSet(features, summ_dict={'targets': targets},
                            n_to_one=True, name='IMDB')
