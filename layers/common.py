@@ -21,18 +21,20 @@ from tframe import pedia
 
 class Activation(Layer):
   """"""
-  def __init__(self, identifier, **kwargs):
+  def __init__(self, identifier, set_logits=False, **kwargs):
     self._id = identifier
     self.abbreviation = (identifier if isinstance(identifier, six.string_types)
                          else identifier.__name__)
     self.full_name = self.abbreviation
     self._activation = activations.get(identifier, **kwargs)
+    self._set_logits = set_logits
 
   @single_input
   def _link(self, inputs, **kwargs):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
-    if self._id == 'softmax': tfr.context.set_logits_tensor(inputs)
+    if self._id == 'softmax' or self._set_logits:
+      tfr.context.set_logits_tensor(inputs)
     outputs = self._activation(inputs)
     return outputs
 
