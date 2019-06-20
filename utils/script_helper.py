@@ -2,7 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
+import os, sys
+import re
 from subprocess import call
 from collections import OrderedDict
 
@@ -30,6 +31,7 @@ register_flags(SmartTrainerHub)
 def check_flag_name(method):
   def wrapper(obj, flag_name, *args, **kwargs):
     assert isinstance(obj, Helper)
+    if flag_name in obj.sys_keys: return
     # Make sure flag_name is not in parameter list of obj
     if flag_name in obj.param_keys:
       raise ValueError('!! Key `{}` has already been set'.format(flag_name))
@@ -59,6 +61,11 @@ class Helper(object):
     self.constraints = OrderedDict()
 
     self._python_cmd = 'python' if os.name == 'nt' else 'python3'
+
+    # System argv info
+    self.sys_keys = []
+    self._register_sys_argv()
+
 
   # region : Properties
 
@@ -97,6 +104,7 @@ class Helper(object):
   @check_flag_name
   def register(self, flag_name, *val):
     """Flag value can not be a tuple or a list"""
+    if flag_name in self.sys_keys: return
     assert len(val) > 0
     if len(val) == 1 and isinstance(val[0], (tuple, list)): val = val[0]
 
@@ -114,6 +122,8 @@ class Helper(object):
     # Set the corresponding flags if save
     if save:
       self.common_parameters['save_model'] = True
+    # Show parameters
+    self._show_parameters()
     # Begin iteration
     counter = 0
     for _ in range(times):
@@ -207,11 +217,33 @@ class Helper(object):
       for val in self.hyper_parameters[keys[0]]:
         configs = OrderedDict()
         configs[keys[0]] = val
-        # cfg_str = self._get_config_string(keys[0], val)
         for cfg_dict in self._hyper_parameter_dicts(keys[1:]):
           configs.update(cfg_dict)
           yield configs
-        # for cfg_list in self._hyper_parameter_lists(keys[1:]):
-        #   yield [cfg_str] + cfg_list
+
+  def _show_parameters(self):
+    console.section('Parameters')
+    def _show_config(name, od):
+      assert isinstance(od, OrderedDict)
+      if len(od) == 0: return
+      console.show_info(name)
+      for k, v in od.items(): console.supplement('{}: {}'.format(k, v), level=2)
+    _show_config('Common Settings', self.common_parameters)
+    _show_config('Hyper Parameters', self.hyper_parameters)
+    _show_config('Constraints', self.constraints)
+    print()
+
+  def _register_sys_argv(self):
+    for s in sys.argv[1:]:
+      assert isinstance(s, str)
+      # Check format
+      r = re.fullmatch(r'--([\w_]+)=([\w/,]+)', s)
+      if r is None: raise AssertionError(
+        'Can not parse argument `{}`'.format(s))
+      k, v = r.groups()
+      assert isinstance(v, str)
+      val_list = re.split(r'[,/]', v)
+      self.register(k, *val_list)
+      self.sys_keys.append(k)
 
   # endregion : Private Methods
