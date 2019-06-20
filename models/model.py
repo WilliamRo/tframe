@@ -381,7 +381,8 @@ class Model(object):
       if batch_size > 1 and isinstance(data_set, SequenceSet):
         assert num_steps < 0
         # The constraint below is not necessary due to gather_indices mechanism
-        # if is_training: assert data_set.equal_length
+        if is_training and not hub.use_gather_indices:
+          assert data_set.equal_length
 
       # Check num_steps
       checker.check_type(num_steps, int)

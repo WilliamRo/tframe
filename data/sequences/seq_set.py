@@ -117,6 +117,7 @@ class SequenceSet(DataSet):
     self.properties[self.PADDED_STACK] = DataSet(
       data_dict=self._apply(f, self.merged_data_dict),
       name=self.name + '(padded_stack)', is_rnn_input=True, **self.properties)
+    self.padded_stack.active_length = self.structure
     return self.padded_stack
 
   @property

@@ -75,11 +75,12 @@ class Predictor(Feedforward, Recurrent):
     last_only = False
     if 'last_only' in kwargs.keys():
       last_only = kwargs.pop('last_only')
-      # Initiate gather_indices placeholder
-      assert context.gather_indices is None
-      context.gather_indices = tf.placeholder(
-        tf.int32, [None, 2], 'gather_indices')
-      tf.add_to_collection(pedia.default_feed_dict, context.gather_indices)
+      if hub.use_gather_indices:
+        # Initiate gather_indices placeholder
+        assert context.gather_indices is None
+        context.gather_indices = tf.placeholder(
+          tf.int32, [None, 2], 'gather_indices')
+        tf.add_to_collection(pedia.default_feed_dict, context.gather_indices)
 
     # Get loss quantity before building
     self.loss_quantity = losses.get(loss, last_only)
@@ -127,24 +128,6 @@ class Predictor(Feedforward, Recurrent):
         self._metrics_manager.initialize(
           metric, last_only, self._val_targets.tensor,
           self._outputs.tensor, **kwargs)
-
-    # TODO ===================================================================
-    # # Define metric
-    # if metric is not None:
-    #   # Create placeholder for val_targets if necessary
-    #   # Common targets will be plugged into val_target slot by default
-    #   self._plug_val_target_in(kwargs.get('val_targets', None))
-    #
-    #   self._metric_quantity = metrics.get(metric, last_only, **kwargs)
-    #   with tf.name_scope('Metric'):
-    #     metric_tensor = self._metric_quantity(
-    #       self._val_targets.tensor, self._outputs.tensor)
-    #     self._metric.plug(metric_tensor, symbol=metric_name,
-    #                       quantity_def=self._metric_quantity)
-    #     if hub.summary:
-    #       tf.add_to_collection(
-    #         pedia.validation_summaries,
-    #         tf.summary.scalar('metric_sum', self._metric.tensor))
 
     # Merge summaries
     self._merge_summaries()

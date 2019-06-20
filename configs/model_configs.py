@@ -110,6 +110,9 @@ class ModelConfigs(object):
   rec_dropout = Flag.float(0.0, 'Recurrent dropout', is_key=None)
   zoneout = Flag.float(0.0, 'Zoneout rate', is_key=None)
 
+  use_gather_indices = Flag.boolean(
+    True, 'Option to enable training irregular sequences in batches')
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True
