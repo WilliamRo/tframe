@@ -7,7 +7,7 @@ import tensorflow as tf
 from tframe import checker
 from tframe import hub
 
-from .psi_kernel import PsyKernel
+from .psi_kernel import PsiKernel
 from .bias_kernel import BiasKernel
 from .apis.neurobase import NeuroBase
 
@@ -76,7 +76,7 @@ class NeuronArray(NeuroBase):
       # Do layer normalization here if necessary
       if self._layer_normalization:
         if not self._normalize_each_psi:
-          a = PsyKernel.layer_normalization(a, self._gain_initializer, False)
+          a = PsiKernel.layer_normalization(a, self._gain_initializer, False)
         # If LN is on, use_bias option must be True
         self._use_bias = True
 
@@ -119,11 +119,12 @@ class NeuronArray(NeuroBase):
     if weight_initializer is None: weight_initializer = self._weight_initializer
 
     # Initiate a psi_kernel
-    psi_kernel = PsyKernel(
+    psi_kernel = PsiKernel(
       kernel_key, self.num_neurons, input_, suffix,
       weight_initializer=weight_initializer, prune_frac=prune_frac,
       LN=self._layer_normalization and self._normalize_each_psi,
-      gain_initializer=self._gain_initializer, etch=self.etch, **kwargs)
+      gain_initializer=self._gain_initializer, etch=self.etch,
+      weight_dropout=self._weight_dropout, **kwargs)
 
     self.psi_kernels.append(psi_kernel)
 

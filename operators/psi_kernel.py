@@ -13,7 +13,7 @@ from tframe import initializers
 from .kernel_base import KernelBase
 
 
-class PsyKernel(KernelBase):
+class PsiKernel(KernelBase):
 
   def __init__(self,
                kernel_key,
@@ -25,11 +25,12 @@ class PsyKernel(KernelBase):
                LN=False,
                gain_initializer='ones',
                etch=None,
+               weight_dropout=0.0,
                **kwargs):
 
     # Call parent's initializer
     super().__init__(kernel_key, num_neurons, weight_initializer, prune_frac,
-                     etch=etch, **kwargs)
+                     etch=etch, weight_dropout=weight_dropout, **kwargs)
 
     self.input_ = checker.check_type(input_, tf.Tensor)
     self.suffix = checker.check_type(suffix, str)
@@ -47,7 +48,7 @@ class PsyKernel(KernelBase):
   # region : Public Methods
 
   def __call__(self):
-    with tf.variable_scope('psy_' + self.suffix):
+    with tf.variable_scope('psi_' + self.suffix):
       a = self.kernel(**self.kwargs)
       if self.LN: a = self._layer_normalization(a)
     return a

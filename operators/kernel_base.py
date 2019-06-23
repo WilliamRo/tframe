@@ -8,6 +8,7 @@ import tensorflow as tf
 from tframe import context
 from tframe import checker
 from tframe import hub
+from tframe import linker
 from tframe import initializers
 
 from tframe.operators.prune.etches import get_etch_kernel
@@ -21,6 +22,7 @@ class KernelBase(object):
                initializer,
                prune_frac=0,
                etch=None,
+               weight_dropout=0.0,
                **kwargs):
 
     self.kernel_key = checker.check_type(kernel_key, str)
@@ -32,6 +34,9 @@ class KernelBase(object):
     # IMPORTANT
     self.prune_frac = prune_frac * hub.pruning_rate_fc
     self.etch = etch
+
+    self.weight_dropout = checker.check_type(weight_dropout, float)
+    assert 0 <= self.weight_dropout < 1
 
     self.kwargs = kwargs
     self._check_arguments()
@@ -75,6 +80,9 @@ class KernelBase(object):
     if dtype is None: dtype = hub.dtype
     # Get weights
     weights = tf.get_variable(name, shape, dtype=dtype, initializer=initializer)
+    # If weight dropout is positive, dropout and return
+    if self.weight_dropout > 0:
+      return linker.dropout(weights, self.weight_dropout)
     # If no mask is needed to be created, return weight variable directly
     if not any([self.prune_is_on, self.being_etched]): return weights
     # Register, context.pruner should be created in early model.build

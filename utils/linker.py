@@ -12,6 +12,7 @@ import tframe.regularizers as regularizers
 from tframe import hub
 from tframe import checker
 from tframe import context
+from tframe import pedia
 from tframe.utils.maths.periodicals import bit_waves
 
 
@@ -576,6 +577,15 @@ def concatenate(tensor_list):
   assert isinstance(tensor_list, list) and len(tensor_list) > 0
   if len(tensor_list) == 1: return tensor_list[0]
   else: return tf.concat(tensor_list, axis=1)
+
+def dropout(input_, dropout_rate, rescale=True):
+  keep_prob = 1 - dropout_rate
+  assert 0 < keep_prob < 1
+  p = tf.cond(tf.get_collection(pedia.is_training)[0],
+              lambda: keep_prob, lambda: 1.0)
+  output = tf.nn.dropout(input_, keep_prob=p)
+  if not rescale: return output * p
+  return output
 
 # endregion : MISC
 

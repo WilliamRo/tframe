@@ -9,7 +9,6 @@ from tframe import checker
 from tframe import hub
 from tframe import initializers
 from tframe import linker
-from tframe import pedia
 
 
 class NeuroBase(object):
@@ -21,6 +20,7 @@ class NeuroBase(object):
       use_bias=False,
       bias_initializer='zeros',
       layer_normalization=False,
+      weight_dropout=0.0,
       **kwargs):
 
     if activation: activation = activations.get(activation)
@@ -32,6 +32,8 @@ class NeuroBase(object):
     self._gain_initializer = initializers.get(
       kwargs.get('gain_initializer', 'ones'))
     self._normalize_each_psi = kwargs.pop('normalize_each_psi', False)
+    self._weight_dropout = checker.check_type(weight_dropout, float)
+    assert 0 <= self._weight_dropout < 1
     self._nb_kwargs = kwargs
 
   @property
@@ -49,7 +51,8 @@ class NeuroBase(object):
   def differentiate(
       self, num_neurons, name, activation=None,
       weight_initializer=None, use_bias=None, bias_initializer=None,
-      layer_normalization=None, normalize_each_psi=None, **kwargs):
+      layer_normalization=None, normalize_each_psi=None,
+      weight_dropout=None, **kwargs):
     from tframe.operators.neurons import NeuronArray
     """A neuron group can differentiate to produce a neuron array which shares
       part of attributes in NeuroBase.
@@ -65,6 +68,7 @@ class NeuroBase(object):
     if layer_normalization is None:
       layer_normalization = self._layer_normalization
     if normalize_each_psi is None: normalize_each_psi = self._normalize_each_psi
+    if weight_dropout is None: weight_dropout = self._weight_dropout
 
     merged_dict = {}
     merged_dict.update(self._nb_kwargs)
@@ -75,7 +79,9 @@ class NeuroBase(object):
       weight_initializer=weight_initializer,
       use_bias=use_bias, bias_initializer=bias_initializer,
       layer_normalization=layer_normalization,
-      normalize_each_psi=normalize_each_psi, **merged_dict)
+      normalize_each_psi=normalize_each_psi,
+      weight_dropout=weight_dropout,
+      **merged_dict)
 
   @staticmethod
   def get_dimension(x):
@@ -88,10 +94,7 @@ class NeuroBase(object):
 
   @staticmethod
   def dropout(input_, dropout_rate):
-    keep_prob = 1 - dropout_rate
-    assert 0 < keep_prob < 1
-    return tf.nn.dropout(input_, tf.cond(
-      tf.get_collection(pedia.is_training)[0], lambda: keep_prob, lambda: 1.0))
+    return linker.dropout(input_, dropout_rate)
 
   # endregion : Public Methods
 
@@ -134,6 +137,7 @@ class RNeuroBase(NeuroBase):
       layer_normalization=False,
       dropout_rate=0.0,
       zoneout_rate=0.0,
+      weight_dropout=0.0,
       **kwargs):
 
     super().__init__(
@@ -142,6 +146,7 @@ class RNeuroBase(NeuroBase):
       use_bias=use_bias,
       bias_initializer=bias_initializer,
       layer_normalization=layer_normalization,
+      weight_dropout=weight_dropout,
       **kwargs)
 
     self._dropout_rate = checker.check_type(dropout_rate, float)
@@ -173,14 +178,15 @@ class RNeuroBase(NeuroBase):
   def differentiate(
       self, num_neurons, name, activation=None, weight_initializer=None,
       use_bias=None, bias_initializer=None, layer_normalization=None,
-      normalize_each_psi=None, is_gate=False, **kwargs):
+      normalize_each_psi=None, weight_dropout=None, is_gate=False, **kwargs):
     """A cell can differentiate to produce a neuron array which shares
       part of attributes in NeuroBase"""
 
     if activation is None and is_gate: activation = tf.sigmoid
     return super().differentiate(
       num_neurons, name, activation, weight_initializer, use_bias,
-      bias_initializer, layer_normalization, normalize_each_psi, **kwargs)
+      bias_initializer, layer_normalization, normalize_each_psi,
+      weight_dropout, **kwargs)
 
   @staticmethod
   def get_state_size(s):
