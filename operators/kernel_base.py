@@ -82,7 +82,7 @@ class KernelBase(object):
     weights = tf.get_variable(name, shape, dtype=dtype, initializer=initializer)
     # If weight dropout is positive, dropout and return
     if self.weight_dropout > 0:
-      return linker.dropout(weights, self.weight_dropout, rescale=False)
+      return linker.dropout(weights, self.weight_dropout, rescale=True)
     # If no mask is needed to be created, return weight variable directly
     if not any([self.prune_is_on, self.being_etched]): return weights
     # Register, context.pruner should be created in early model.build
