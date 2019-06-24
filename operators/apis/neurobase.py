@@ -149,9 +149,9 @@ class RNeuroBase(NeuroBase):
       weight_dropout=weight_dropout,
       **kwargs)
 
-    self._dropout_rate = checker.check_type(dropout_rate, float)
+    self._dropout_rate = checker.check_type(dropout_rate, (int, float))
     assert 0 <= dropout_rate < 1
-    self._zoneout_rate = checker.check_type(zoneout_rate, float)
+    self._zoneout_rate = checker.check_type(zoneout_rate, (int, float))
     assert 0 <= zoneout_rate < 1
 
   @property

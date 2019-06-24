@@ -110,7 +110,8 @@ class ModelConfigs(object):
   rec_dropout = Flag.float(0.0, 'Recurrent dropout', is_key=None)
   zoneout = Flag.float(0.0, 'Zoneout rate', is_key=None)
 
-  weight_dropout = Flag.float(0.0, 'Weight dropout', is_key=None)
+  weight_dropout = Flag.float(None, 'Weight dropout', is_key=None)
+  global_weight_dropout = Flag.float(0.0, 'Global weight dropout', is_key=None)
 
   use_gather_indices = Flag.boolean(
     True, 'Option to enable training irregular sequences in batches')
