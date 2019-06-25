@@ -100,6 +100,18 @@ class NeuroBase(object):
 
   # region : Library
 
+  def dense_v2(self, num_neurons, scope, *inputs, activation=None,
+               num_or_size_splits=None, is_gate=False, **kwargs):
+    # Sanity check
+    assert isinstance(inputs, (tuple, list))
+    if activation is None and is_gate: activation = tf.sigmoid
+    na = self.differentiate(num_neurons, scope, activation, **kwargs)
+    output = na(*inputs)
+    # Split if necessary
+    if num_or_size_splits is not None:
+      return tf.split(output, num_or_size_splits, axis=1)
+    return output
+
   def dense(self, output_dim, x, scope, activation=None,
             num_or_size_splits=None, **kwargs):
     """Dense neuron.

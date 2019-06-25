@@ -28,10 +28,9 @@ class Dense(LayerWithNeurons):
     # Call parent's constructor
     LayerWithNeurons.__init__(
       self, activation, weight_initializer, use_bias, bias_initializer,
-      **kwargs)
+      prune_frac=prune_frac, **kwargs)
 
     self.num_neurons = checker.check_positive_integer(num_neurons)
-    self._prune_frac = checker.check_gate(prune_frac)
     self.neuron_scale = [num_neurons]
 
   @property

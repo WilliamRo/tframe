@@ -8,6 +8,7 @@ import tensorflow as tf
 
 from tframe.core.function import Function
 from tframe import activations, initializers, checker, linker
+from tframe.operators.apis.neurobase import NeuroBase
 
 
 class Layer(Function):
@@ -72,7 +73,7 @@ def single_input(_link):
   return wrapper
 
 
-class LayerWithNeurons(Layer):
+class LayerWithNeurons(Layer, NeuroBase):
   is_nucleus = True
 
   def __init__(
@@ -83,14 +84,12 @@ class LayerWithNeurons(Layer):
       bias_initializer='zeros',
       **kwargs):
 
+    # Call parent's constructor
+    NeuroBase.__init__(self, activation, weight_initializer,
+                       use_bias, bias_initializer, **kwargs)
+
     # Common attributes
     self._activation_string = activation
-    if activation is None: self._activation = None
-    else: self._activation = activations.get(activation, **kwargs)
-    self._weight_initializer = initializers.get(weight_initializer)
-    self._use_bias = checker.check_type(use_bias, bool)
-    self._bias_initializer = initializers.get(bias_initializer)
-
     self._output_dim = None
     self.tensors_to_export = OrderedDict()
 

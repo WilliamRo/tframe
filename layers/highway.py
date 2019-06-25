@@ -6,8 +6,54 @@ import tensorflow as tf
 
 from tframe import checker, linker
 from tframe import hub, context
+from tframe import initializers
 from tframe.layers.layer import LayerWithNeurons
 from tframe.operators.apis.distributor import Distributor
+
+
+class Highway(LayerWithNeurons):
+
+  full_name = 'highway'
+  abbreviation = 'hw'
+
+  def __init__(
+      self,
+      layer_width,
+      num_layers,
+      activation='relu',
+      use_bias=True,
+      weight_initializer='xavier_normal',
+      bias_initializer='zeros',
+      t_bias_initializer=-1,
+      **kwargs):
+    # Call parent's constructor
+    LayerWithNeurons.__init__(self, activation, weight_initializer,
+                              use_bias, bias_initializer, **kwargs)
+
+    self._layer_width = checker.check_positive_integer(layer_width)
+    self._num_layers = checker.check_positive_integer(num_layers)
+    assert isinstance(activation, str)
+    self._activation_string = activation
+    self._t_bias_initializer = initializers.get(t_bias_initializer)
+
+  @property
+  def structure_tail(self):
+    tail = '{}'.format(self._layer_width)
+    if self._activation_string:
+      tail = '{}=>{}'.format(tail, self._activation_string)
+    return '(({})x{})'.format(tail, self._num_layers)
+
+  def forward(self, x, **kwargs):
+    # Alignment check
+    assert self.get_dimension(x) == self._layer_width
+    # Calculate output iteratively
+    for i in range(self._num_layers):
+      scope = lambda pre: '{}_{}'.format(pre, i + 1)
+      h = self.dense(self._layer_width, x, scope('h'), self._activation)
+      t = self.dense_v2(self._layer_width, scope('t'), x, is_gate=True,
+                        bias_initializer=self._t_bias_initializer)
+      x = h * t + x * (1. - t)
+    return x
 
 
 class LinearHighway(LayerWithNeurons, Distributor):

@@ -20,8 +20,8 @@ class ModelConfigs(object):
                             is_key=None)
   weight_initializer = Flag.string(None, 'Weight initializer', is_key=None)
   bias_initializer = Flag.string(None, 'Bias initializer', is_key=None)
-  actype1 = Flag.string('relu', 'Activation type 1', is_key=None)
-  actype2 = Flag.string('relu', 'Activation type 2', is_key=None)
+  actype1 = Flag.string(None, 'Activation type 1', is_key=None)
+  actype2 = Flag.string(None, 'Activation type 2', is_key=None)
   use_bias = Flag.boolean(True, 'Whether to use bias', is_key=None)
   use_batchnorm = Flag.boolean(False, 'Whether to use batch norm', is_key=None)
 
@@ -81,7 +81,7 @@ class ModelConfigs(object):
   weights_fraction = Flag.float(None, 'Master weights fraction', is_key=None)
   weights_mask_on = Flag.boolean(False, 'Whether to use pruner')
 
-  head_nums = Flag.whatever(None, 'Head numbers for sparse layers')
+  head_size = Flag.integer(None, 'Head size of a HHD', is_key=None)
   sigmoid_coef = Flag.float(
     1.0, 'Used in narrow the effective domain of sigmoid function', is_key=None)
   full_weight = Flag.boolean(
