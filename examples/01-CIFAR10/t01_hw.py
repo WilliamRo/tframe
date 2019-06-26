@@ -43,8 +43,10 @@ def main(_):
   # 2. model setup
   # ---------------------------------------------------------------------------
   th.model = model
-  th.num_layers = 10
-  th.layer_width = 200
+  th.centralize_data = True
+
+  th.num_layers = 50
+  th.layer_width = 100
   th.spatial_activation = 'tanh'
   th.bias_initializer = -5.
 
@@ -53,7 +55,7 @@ def main(_):
   # ---------------------------------------------------------------------------
   th.epoch = 200
   th.batch_size = 128
-  th.validation_per_round = 2
+  th.validation_per_round = 1
 
   th.optimizer = tf.train.AdamOptimizer
   th.learning_rate = 0.0004
