@@ -55,13 +55,12 @@ class SLHighway(LayerWithNeurons, HardDriver):
     # Iteration
     for i in range(self._num_layers):
       scope = lambda pre: '{}_{}'.format(pre, i + 1)
-      rhead, whead = self.dense(self._arm_size * 2, x, scope('rw_heads'),
-                                num_or_size_splits=2)
+      head = self.dense(self._arm_size, x, scope('head'))
       # Read
-      x_hat = self._read(rhead, x, scope('read'))
+      x_hat = self._read(head, x, scope('read'))
       h = self.dense(self.num_groups, x_hat, scope('h'), self._activation)
       # Write
-      x = self._write(whead, x, h, scope('write'))
+      x = self._write(head, x, h, scope('write'))
 
     return x
 
