@@ -19,7 +19,7 @@ class ModelConfigs(object):
   reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
                             is_key=None)
   weight_initializer = Flag.string(None, 'Weight initializer', is_key=None)
-  bias_initializer = Flag.string(None, 'Bias initializer', is_key=None)
+  bias_initializer = Flag.float(None, 'Bias initializer', is_key=None)
   actype1 = Flag.string(None, 'Activation type 1', is_key=None)
   actype2 = Flag.string(None, 'Activation type 2', is_key=None)
   use_bias = Flag.boolean(True, 'Whether to use bias', is_key=None)
