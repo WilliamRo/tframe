@@ -2,9 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe import checker
+from tframe import hub
 from tframe import linker
 
 from .groups import Groups
@@ -20,6 +22,8 @@ class HardDriver(Groups, RNeuroBase):
       arm_size=None,
       fetching_method='sector',
       diff_head=False,
+      gutter=False,
+      gutter_bias=None,
   ):
     # Call parent's constructor
     Groups.__init__(self, config_string)
@@ -29,6 +33,10 @@ class HardDriver(Groups, RNeuroBase):
     self._arm_size = checker.check_positive_integer(arm_size)
     self._fetching_method = fetching_method
     self._diff_head = checker.check_type(diff_head, bool)
+
+    self._gutter = checker.check_type(gutter, bool)
+    if gutter_bias is not None: assert isinstance(gutter_bias, (int, float))
+    self._gutter_bias = gutter_bias
 
 
   def _read(self, arm, s, scope, num_heads=1):
@@ -85,7 +93,7 @@ class HardDriver(Groups, RNeuroBase):
     return linker.concatenate(data_list)
 
 
-  def _write(self, arm, s, s_bar, tail=''):
+  def _write(self, arm, s, s_bar, tail='', gutter=False, return_head=False):
     """Write rule:
         write_head: h
         data_to_write: data
@@ -94,31 +102,57 @@ class HardDriver(Groups, RNeuroBase):
     :param s_bar: tensor of shape [batch_size, num_groups]
     """
 
-    # Get h and data
-    net_head = self.dense(self.total_size, arm, 'net_head_write' + tail)
-    new_data, head = self._distribute(s_bar, net_head)
+    # - Get h and data
+    head_size, b_init = self.total_size, None
+    if gutter:
+      head_size += self.num_groups
+      if self._gutter_bias is not None: b_init = self._get_gutter_bias_init()
+    net_head = self.dense(
+      head_size, arm, 'net_head_write' + tail, bias_initializer=b_init)
+
+    new_data, head = self._distribute(s_bar, net_head, gutter)
     self._register_gate('write_head' + tail, head)
-    return (1. - head) * s + new_data
+    output = (1. - head) * s + new_data
+    if return_head: return output, head
+    return output
 
 
-  def _distribute(self, s_bar, net_h):
+  def _distribute(self, s_bar, net_h, gutter=False):
     """This method should be used only for hd-write methods"""
     head_list = []
     def operator(s_block, h_block, size):
       # s_block.shape = [batch_size*n, 1]
-      #       h.shape = [batch_size*n, s]
+      #       h.shape = [batch_size*n, s] or [batch_size*n, s+1]
       h = tf.nn.softmax(h_block)
+      if gutter: h = h[:, :-1]
       # y.shape = [batch_size*n, s]
       y = s_block * h
       head_list.append(tf.reshape(h, [-1, size]))
       return y
     reshape1_1 = lambda s, n: 1
+    reshape1_2 = lambda s, n: s + int(gutter)
+    sizes2 = [s + 1 for s in self.group_sizes] if gutter else self.group_sizes
     data = self._binary_operate_over_groups(
-      s_bar, net_h, operator, sizes1=self.group_sizes, reshape1_1=reshape1_1)
+      s_bar, net_h, operator, sizes1=self.group_sizes, sizes2=sizes2,
+      reshape1_1=reshape1_1, reshape1_2=reshape1_2)
     # Concatenate head_list to head
     assert len(head_list) == len(self._groups)
     head = linker.concatenate(head_list)
     return data, head
+
+
+  def _get_gutter_bias_init(self):
+    assert self._gutter
+    if self._gutter_bias is None: return None
+    b_list = []
+    for s, n in self._groups:
+      b = np.zeros(shape=[s*n+n], dtype=np.float32)
+      for i in range(n):
+        # For each group, set the last number to `bias`
+        b[(i+1)*(s+1)-1] = self._gutter_bias
+      b_list.append(b)
+    bias = np.concatenate(b_list)
+    return tf.initializers.constant(bias, dtype=hub.dtype)
 
 
   def _register_gate(self, key, gate):

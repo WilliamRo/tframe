@@ -21,8 +21,10 @@ def model(th):
     num_layers=th.num_layers,
     head_size=th.head_size,
     activation=th.spatial_activation,
+    gutter=th.gutter,
+    gutter_bias=th.gutter_bias,
   ))
-  # model.register_extractor(LinearHighway.extractor)
+  model.register_extractor(SLHighway.extractor)
   return m.finalize(th, model)
 
 
@@ -39,8 +41,9 @@ def main(_):
   th.job_dir += '/{:02d}_{}'.format(id, model_name)
   summ_name = model_name
   th.prefix = '{}_'.format(date_string())
-  th.suffix = '_t10_test'
+  th.suffix = '_t00_test'
   th.visible_gpu_id = 0
+  th.identifier = '01'
 
   # ---------------------------------------------------------------------------
   # 2. model setup
@@ -48,7 +51,9 @@ def main(_):
   th.model = model
   th.group_string = '10x5'
   th.head_size = 25
-  th.num_layers = 50
+  th.num_layers = 100
+  th.gutter = False
+  th.gutter_bias = 2
 
   th.spatial_activation = 'tanh'
 
@@ -60,7 +65,6 @@ def main(_):
   th.batch_size = 128
   th.validation_per_round = 1
 
-  tf.train.AdamOptimizer()
   th.optimizer = tf.train.AdamOptimizer
   th.learning_rate = 0.0002
 
@@ -71,8 +75,8 @@ def main(_):
 
   # ---------------------------------------------------------------------------
   # 4. summary and note setup
-  # th.export_tensors_upon_validation = True
-  # th.export_gates = True
+  th.export_tensors_upon_validation = True
+  th.export_gates = True
 
   th.train = True
   th.save_model = False

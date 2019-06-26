@@ -43,7 +43,7 @@ def main(_):
   # 2. model setup
   # ---------------------------------------------------------------------------
   th.model = model
-  th.num_layers = 50
+  th.num_layers = 100
   th.layer_width = 50
   th.spatial_activation = 'tanh'
   th.bias_initializer = -5.
