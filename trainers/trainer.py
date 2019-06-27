@@ -218,7 +218,7 @@ class Trainer(object):
     num_steps = (self.th.num_steps
                  if self.model.input_type is InputTypes.RNN_BATCH else None)
     self.th.round_length = self.training_set.get_round_length(
-      self.th.batch_size, num_steps)
+      self.th.batch_size, num_steps, training=True)
     def set_cycle(attr_name, num_per_round):
       assert hasattr(self.th, attr_name)
       if self.th.round_length is not None:

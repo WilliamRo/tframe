@@ -151,7 +151,7 @@ class SequenceSet(DataSet):
 
   # region : Basic APIs
 
-  def get_round_length(self, batch_size, num_steps=None):
+  def get_round_length(self, batch_size, num_steps=None, training=False):
     if num_steps is None:
       # when num_steps is None, this seq_set is treated as common data_set
       # and always contains single sequence

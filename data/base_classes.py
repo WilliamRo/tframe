@@ -79,7 +79,7 @@ class TFRData(object):
 
   # endregion : Properties
 
-  def get_round_length(self, batch_size, num_steps=None):
+  def get_round_length(self, batch_size, num_steps=None, training=False):
     raise NotImplementedError
 
   def gen_batches(self, batch_size, shuffle=False):
