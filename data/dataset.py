@@ -109,7 +109,7 @@ class DataSet(TFRData):
   def as_rnn_batch(self):
     """Convert a regular array to RNN batch format"""
     if self.is_rnn_input: return self
-    return self._convert_to_rnn_input()
+    return self._convert_to_rnn_input(training=False)
 
   @property
   def feature_mean(self):
@@ -156,7 +156,12 @@ class DataSet(TFRData):
         round_len = np.ceil(self.total_steps / num_steps)
       else:
         if num_steps < 0: round_len = 1
-        else: round_len = np.ceil(self.size // batch_size / num_steps)
+        else:
+          # e.g. PTB
+          M, N, p = self.size, batch_size, hub.overlap_pct
+          assert 0 <= p < 1
+          L = M/((N - 1)*(1 - p) + 1)
+          round_len = int(np.ceil(L / num_steps))
 
     return int(round_len)
 
@@ -201,7 +206,7 @@ class DataSet(TFRData):
                   else self.batch_preprocessor(self, is_training))
       # Total steps will be data_size // batch_size, i.e. data may be
       # .. truncated
-      rnn_data = data_set._convert_to_rnn_input(batch_size)
+      rnn_data = data_set._convert_to_rnn_input(is_training, batch_size)
 
     # here each entry in data_dict has shape [batch_size, steps, *dim]
     round_len = self.get_round_length(batch_size, num_steps)
@@ -380,13 +385,32 @@ class DataSet(TFRData):
     for k, v in data_dict.items(): result_dict[k] = f(v)
     return result_dict
 
-  def _convert_to_rnn_input(self, batch_size=1):
+  def _convert_to_rnn_input(self, training, batch_size=1):
+    """Used in partitioning a sequence, e.g. partitioning PTB data set.
+       Given: Total_length=M, Batch_size=N, overlap_percent=p
+       Calculate: Total_num_steps denoted as L
+       [(N-1)*(1-p)+1]*L <= M
+
+    """
+    assert isinstance(training, bool)
     checker.check_positive_integer(batch_size)
     def f(array):
       assert isinstance(array, np.ndarray) and len(array.shape) > 1
-      L = len(array) // batch_size
+      # Get overlap percent
+      M, N, p = len(array), batch_size, hub.overlap_pct if training else 0.
+      assert 0 <= p < 1
+      L = int(M/((N - 1)*(1 - p) + 1))
+      L_bar = int(L*(1 - p))
       data = np.zeros(shape=(batch_size, L, *array.shape[1:]))
-      for i in range(batch_size): data[i] = array[i * L:(i + 1) * L]
+      r = hub.random_shift_pct if training else 0.
+      assert 0 <= r < 1
+      s = int(np.floor(r*L))
+      for i in range(batch_size):
+        i_start = i * L_bar + np.random.randint(-s, s)
+        i_end = i_start + L
+        if i_start < 0: i_start, i_end = 0, L
+        elif i_end >= M: i_start, i_end = M - 1 - L, M - 1
+        data[i] = array[i_start:i_end]
       return data
     return DataSet(data_dict=self._apply(f), is_rnn_input=True,
                    name=self.name, **self.properties)

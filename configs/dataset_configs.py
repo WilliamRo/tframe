@@ -25,3 +25,12 @@ class DataConfigs(object):
 
   test_directly = Flag.boolean(False, 'Whether to use validation set')
   num_words = Flag.integer(0, 'Words number in data set like IMDB', is_key=None)
+
+  overlap_pct = Flag.float(
+    0.0, 'Overlap percent used in converting dataset to `rnn_input`',
+    is_key=None)
+
+  random_shift_pct = Flag.float(
+    0.0, 'Random shift percent used in converting dataset to `rnn_input`',
+    is_key=None)
+
