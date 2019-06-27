@@ -406,7 +406,8 @@ class DataSet(TFRData):
       assert 0 <= r < 1
       s = int(np.floor(r*L))
       for i in range(batch_size):
-        i_start = i * L_bar + np.random.randint(-s, s)
+        i_start = i * L_bar
+        if s > 0: i_start += np.random.randint(-s, s)
         i_end = i_start + L
         if i_start < 0: i_start, i_end = 0, L
         elif i_end >= M: i_start, i_end = M - 1 - L, M - 1
