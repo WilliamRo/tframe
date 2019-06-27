@@ -145,8 +145,8 @@ class DataSet(TFRData):
 
   # region : Basic APIs
 
-  def get_round_length(self, batch_size, num_steps=None):
-    assert isinstance(batch_size, int)
+  def get_round_length(self, batch_size, num_steps=None, training=False):
+    assert isinstance(batch_size, int) and isinstance(training, bool)
     if batch_size < 0: batch_size = self.size
 
     if num_steps is None: round_len = np.ceil(self.size / batch_size)
@@ -158,7 +158,7 @@ class DataSet(TFRData):
         if num_steps < 0: round_len = 1
         else:
           # e.g. PTB
-          M, N, p = self.size, batch_size, hub.overlap_pct
+          M, N, p = self.size, batch_size, hub.overlap_pct if training else 0
           assert 0 <= p < 1
           L = M/((N - 1)*(1 - p) + 1)
           round_len = int(np.ceil(L / num_steps))
@@ -209,7 +209,7 @@ class DataSet(TFRData):
       rnn_data = data_set._convert_to_rnn_input(is_training, batch_size)
 
     # here each entry in data_dict has shape [batch_size, steps, *dim]
-    round_len = self.get_round_length(batch_size, num_steps)
+    round_len = self.get_round_length(batch_size, num_steps, is_training)
     if num_steps < 0: num_steps = rnn_data.total_steps
 
     # Generate batches
