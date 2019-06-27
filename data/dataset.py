@@ -394,6 +394,8 @@ class DataSet(TFRData):
     """
     assert isinstance(training, bool)
     checker.check_positive_integer(batch_size)
+    # Init a shared indices list
+    indices = []
     def f(array):
       assert isinstance(array, np.ndarray) and len(array.shape) > 1
       # Get overlap percent
@@ -406,12 +408,17 @@ class DataSet(TFRData):
       assert 0 <= r < 1
       s = int(np.floor(r*L))
       for i in range(batch_size):
-        i_start = i * L_bar
-        if s > 0: i_start += np.random.randint(-s, s)
-        i_end = i_start + L
-        if i_start < 0: i_start, i_end = 0, L
-        elif i_end >= M: i_start, i_end = M - 1 - L, M - 1
-        data[i] = array[i_start:i_end]
+        # Use already generated indices if provided
+        if len(indices) == batch_size:
+          j_start, j_end = indices[i]
+        else:
+          j_start = i * L_bar
+          if s > 0: j_start += np.random.randint(-s, s)
+          j_end = j_start + L
+          if j_start < 0: j_start, j_end = 0, L
+          elif j_end > M: j_start, j_end = M - L, M
+          indices.append((j_start, j_end))
+        data[i] = array[j_start:j_end]
       return data
     return DataSet(data_dict=self._apply(f), is_rnn_input=True,
                    name=self.name, **self.properties)
