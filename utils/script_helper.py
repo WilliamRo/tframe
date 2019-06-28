@@ -65,6 +65,7 @@ class Helper(object):
     # System argv info
     self.sys_keys = []
     self._register_sys_argv()
+    self._sys_runs = None
 
 
   # region : Properties
@@ -119,6 +120,8 @@ class Helper(object):
     self._python_cmd = 'python{}'.format(suffix)
 
   def run(self, times=1, save=False, mark=''):
+    if self._sys_runs is not None:
+      times = checker.check_positive_integer(self._sys_runs)
     # Set the corresponding flags if save
     if save:
       self.common_parameters['save_model'] = True
@@ -243,6 +246,10 @@ class Helper(object):
       k, v = r.groups()
       assert isinstance(v, str)
       val_list = re.split(r'[,/]', v)
+      if k in ('run', 'runs'):
+        assert len(val_list) == 1
+        self._sys_runs = checker.check_positive_integer(int(val_list[0]))
+        continue
       self.register(k, *val_list)
       self.sys_keys.append(k)
 
