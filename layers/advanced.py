@@ -43,8 +43,8 @@ class Dense(LayerWithNeurons):
     return '({})'.format(self.num_neurons) + activation
 
   def forward(self, x, **kwargs):
-    return self.neurons(x, self.num_neurons, activation=self._activation,
-                        prune_frac=self._prune_frac)
+    return self.dense(self.num_neurons, x, activation=self._activation,
+                      scope='dense')
 
 
 class SparseAffine(Layer):
