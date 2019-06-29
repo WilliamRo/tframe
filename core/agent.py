@@ -152,7 +152,8 @@ class Agent(object):
     self._session = tf.Session(graph=self._graph, config=config)
     console.show_status('Session launched')
     # Prepare some tools
-    self._saver = tf.train.Saver(var_list=self._model.variable_to_save)
+    self._saver = tf.train.Saver(var_list=self._model.variable_to_save,
+                                 max_to_keep=2)
     if hub.summary or hub.hp_tuning:
       self._summary_writer = tf.summary.FileWriter(self.log_dir)
 
