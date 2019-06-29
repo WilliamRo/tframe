@@ -49,11 +49,12 @@ def main(_):
   # 2. model setup
   # ---------------------------------------------------------------------------
   th.model = model
+
   th.group_string = '10x5'
   th.head_size = 25
   th.num_layers = 100
-  th.gutter = False
-  th.gutter_bias = 2
+  th.gutter = True
+  th.gutter_bias = 5
 
   th.spatial_activation = 'tanh'
 

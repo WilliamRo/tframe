@@ -30,7 +30,7 @@ class HardDriver(Groups, RNeuroBase):
 
     # BETA attributes
     if arm_size is None: arm_size = self.num_groups
-    self._arm_size = checker.check_positive_integer(arm_size)
+    self._arm_size = checker.check_type(arm_size, int)
     self._fetching_method = fetching_method
     self._diff_head = checker.check_type(diff_head, bool)
 
@@ -115,6 +115,10 @@ class HardDriver(Groups, RNeuroBase):
     output = (1. - head) * s + new_data
     if return_head: return output, head
     return output
+
+
+  def _write_v2(self, arm, s, s_bar, tail=''):
+    net_head = self.dense(self.total_size, arm, 'net_head_write' + tail)
 
 
   def _distribute(self, s_bar, net_h, gutter=False):

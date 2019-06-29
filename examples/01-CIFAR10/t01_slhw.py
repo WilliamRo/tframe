@@ -50,8 +50,8 @@ def main(_):
   th.model = model
   th.centralize_data = True
 
-  th.group_string = '10x20'
-  th.head_size = 130
+  th.group_string = '2x100'
+  th.head_size = 100
   th.num_layers = 10
   th.gutter = True
   th.gutter_bias = 5
