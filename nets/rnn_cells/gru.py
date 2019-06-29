@@ -7,10 +7,9 @@ import tensorflow as tf
 from tframe import checker
 from tframe.nets.rnn_cells.cell_base import CellBase
 from tframe import initializers
-from tframe.operators.apis.dynamic_weights import DynamicWeights
 
 
-class GRU(CellBase, DynamicWeights):
+class GRU(CellBase):
   """Gated Recurrent Unit"""
   net_name = 'gru'
 
@@ -63,8 +62,8 @@ class GRU(CellBase, DynamicWeights):
     """s(pre_states) is state_array of size 'state_size'"""
     self._check_state(prev_s)
     # - Calculate z gate
-    z = self.neurons(x, prev_s, is_gate=True, scope='update_gate',
-                     bias_initializer=self._z_bias_initializer)
+    z = self.dense_rn(x, prev_s, scope='update_gate', is_gate=True,
+                      bias_initializer=self._z_bias_initializer)
     self._gate_dict['update_gate'] = z
 
     # - Calculate s_bar
