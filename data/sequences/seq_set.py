@@ -48,6 +48,11 @@ class SequenceSet(DataSet):
 
   # region : Properties
 
+  @property
+  def feature_mean(self):
+    assert self.equal_length
+    return np.mean(self.features, axis=0)
+
   @DataSet.features.setter
   def features(self, val):
     if val is not None:
@@ -260,6 +265,14 @@ class SequenceSet(DataSet):
   # region : Public Methods
 
   def turn_parallel_on(self): self.properties[self.PARALLEL_ON] = True
+
+  def normalize_feature(self, mu, sigma=None):
+    assert self.equal_length
+    assert isinstance(mu, np.ndarray) and len(mu) == self.structure[0]
+    self.features = [x - mu for x in self.features]
+    if sigma is not None:
+      assert isinstance(sigma, np.ndarray) and sigma.size == self.structure[0]
+      self.features = [x/sigma for x in self.features]
 
   # endregion : Public Methods
 
