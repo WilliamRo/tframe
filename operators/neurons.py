@@ -53,6 +53,7 @@ class NeuronArray(NeuroBase):
     :param input_list: inputs to be fully connected
     :return: neuron outputs
     """
+    input_list = [x for x in input_list if x is not None]
     # Add inputs
     if input_list:
       checker.check_type(input_list, tf.Tensor)
@@ -114,6 +115,7 @@ class NeuronArray(NeuroBase):
                    PsiKernel instantiating
     """
 
+    if input_ is None: return
     # Set default suffix/weight_initializer if not provided
     if not suffix: suffix = str(len(self.psi_kernels) + 1)
     if weight_initializer is None: weight_initializer = self._weight_initializer
