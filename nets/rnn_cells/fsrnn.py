@@ -52,7 +52,7 @@ class FastSlow(CellBase, HyperKernel):
 
   @property
   def _scale_tail(self):
-    return 'fs{}({}x{}+{})'.format(
+    return '{}({}x{}+{})'.format(
       self.kernel_key, self._fast_size, self._fast_layers, self._slow_size)
 
 
@@ -60,6 +60,7 @@ class FastSlow(CellBase, HyperKernel):
   def mark():
     return 'fs{}({}x{}+{})'.format(
       th.hyper_kernel, th.fast_size, th.fast_layers, th.slow_size)
+
 
   def _link(self, prev_s, x, **kwargs):
     f_state, s_state = prev_s
