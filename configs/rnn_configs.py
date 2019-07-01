@@ -118,3 +118,7 @@ class RNNConfigs(object):
   psi_string = Flag.string(None, 'Config string for psi', is_key=None)
 
   group_string = Flag.string(None, 'Group string', is_key=None)
+
+  fast_size = Flag.integer(None, 'Fast cell size in fsrnn', is_key=None)
+  fast_layers = Flag.integer(None, 'Fast layer number in fsrnn', is_key=None)
+  slow_size = Flag.integer(None, 'Slow cell size in fsrnn', is_key=None)
