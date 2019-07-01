@@ -195,7 +195,7 @@ class Onehot(Layer):
     assert isinstance(indices, tf.Tensor)
     shape = indices.shape.as_list()
     assert shape[-1] == 1
-    return tf.one_hot(tf.squeeze(indices, squeeze_dims=-1), self._depth)
+    return tf.one_hot(tf.squeeze(indices, axis=-1), self._depth)
 
 
 class Reshape(Layer):
