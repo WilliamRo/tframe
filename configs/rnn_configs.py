@@ -122,3 +122,6 @@ class RNNConfigs(object):
   fast_size = Flag.integer(None, 'Fast cell size in fsrnn', is_key=None)
   fast_layers = Flag.integer(None, 'Fast layer number in fsrnn', is_key=None)
   slow_size = Flag.integer(None, 'Slow cell size in fsrnn', is_key=None)
+
+  cell_zoneout = Flag.float(0.0, 'Cell zoneout for LSTM', is_key=None)
+  hidden_zoneout = Flag.float(0.0, 'Hidden zoneout for LSTM', is_key=None)

@@ -73,16 +73,18 @@ class CellBase(RNet, RNeuroBase):
     return self.dense_rn(x, s, 's_bar', self._activation, output_dim=output_dim)
 
   def _zoneout(self, new_s, prev_s, ratio):
-    assert self.get_dimension(new_s) == self.get_dimension(prev_s)
-    assert 0 < ratio < 1
-
-    seed = tf.random_uniform(tf.shape(new_s), 0, 1)
-    z = tf.cast(tf.less(seed, ratio), hub.dtype)
-    zoned_out = z * prev_s + (1. - z) * new_s
-
-    return tf.cond(tf.get_collection(
-      pedia.is_training)[0], lambda: zoned_out, lambda: new_s)
-
-
-
+    def zo(n_s, p_s, r):
+      if r == 0: return n_s
+      assert self.get_dimension(n_s) == self.get_dimension(p_s) and 0 < r < 1
+      seed = tf.random_uniform(tf.shape(n_s), 0, 1)
+      z = tf.cast(tf.less(seed, r), hub.dtype)
+      result = z * p_s + (1. - z) * n_s
+      return tf.cond(tf.get_collection(
+        pedia.is_training)[0], lambda: result, lambda: n_s)
+    if not isinstance(new_s, (tuple, list)): new_s = [new_s]
+    if not isinstance(prev_s, (tuple, list)): prev_s = [prev_s]
+    if not isinstance(ratio, (tuple, list)): ratio = [ratio]
+    outputs = [zo(n_s, p_s, r) for n_s, p_s, r in zip(new_s, prev_s, ratio)]
+    if len(outputs) == 1: return outputs[0]
+    else: return tuple(outputs)
 

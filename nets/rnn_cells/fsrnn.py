@@ -28,6 +28,8 @@ class FastSlow(CellBase, HyperKernel):
       weight_initializer='xavier_normal',
       use_bias=True,
       bias_initializer='zeros',
+      input_dropout=0.0,
+      output_dropout=0.0,
       **kwargs):
     # Call parent's constructor
     CellBase.__init__(self, activation, weight_initializer, use_bias,
@@ -38,7 +40,10 @@ class FastSlow(CellBase, HyperKernel):
     self._fast_size = checker.check_positive_integer(fast_size)
     self._fast_layers = checker.check_positive_integer(fast_layers)
     self._slow_size = checker.check_positive_integer(slow_size)
-    self._hyper_kernel = self._get_hyper_kernel(hyper_kernel)
+    self._hyper_kernel = self._get_hyper_kernel(hyper_kernel, do=th.rec_dropout)
+
+    self._input_do = checker.check_type(input_dropout, float)
+    self._output_do = checker.check_type(output_dropout, float)
 
 
   @property
@@ -64,6 +69,8 @@ class FastSlow(CellBase, HyperKernel):
 
   def _link(self, prev_s, x, **kwargs):
     f_state, s_state = prev_s
+    prev_f_state, prev_s_state = prev_s
+    if self._input_do > 0: x = self.dropout(x, self._input_do)
 
     with tf.variable_scope('fast_0'):
       f_output, f_state = self._hyper_kernel(x, f_state)
@@ -78,6 +85,13 @@ class FastSlow(CellBase, HyperKernel):
       with tf.variable_scope('fast_{}'.format(i)):
         f_output, f_state = self._hyper_kernel(None, f_state)
 
+    if self._output_do > 0: f_output = self.dropout(f_output, self._output_do)
+
+    if self.kernel_key in ['lstm', 'cplstm']:
+      assert len(f_state) == len(s_state) == 2
+      ratio = (th.hidden_zoneout, th.cell_zoneout)
+      f_state = self._zoneout(f_state, prev_f_state, ratio)
+      s_state = self._zoneout(s_state, prev_s_state, ratio)
     return f_output, (f_state, s_state)
 
 
