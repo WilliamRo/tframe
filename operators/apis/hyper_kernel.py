@@ -115,7 +115,7 @@ class HyperKernel(RNeuroBase):
     sigma, tanh = tf.sigmoid, tf.tanh
     f = sigma(f)
     new_c = (1. - f) * tanh(g) + f * c
-    new_h = sigma(o) * tanh(new_c)
+    new_h = sigma(o) * new_c
     return new_h, (new_h, new_c)
 
   def _column_mask(self, x, prev_s):
