@@ -40,6 +40,14 @@ class RHN(CellBase, HyperKernel):
 
 
   @property
+  def init_state(self):
+    if self._init_state is not None: return self._init_state
+    self._init_state = self._get_hyper_state_holder(
+      self.kernel_key, self._state_size)
+    return self._init_state
+
+
+  @property
   def _scale_tail(self):
     return '_{}({}x{})'.format(
       self.kernel_key, self._state_size, self._num_layers)
