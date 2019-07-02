@@ -59,8 +59,6 @@ class RHN(CellBase, HyperKernel):
 
 
   def _link(self, s, x, **kwargs):
-    self._check_state(s)
-
     for i in range(self._num_layers):
       with tf.variable_scope('layer_{}'.format(i + 1)):
         output, s = self._hyper_kernel(x if i == 0 else None, s)
