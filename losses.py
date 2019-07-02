@@ -37,7 +37,7 @@ def _reshape_labels(labels, num_classes=None):
   # currently tframe requires data points in data_dict of a DataSet keeps their
   #  dimension even if it is 1
   assert isinstance(labels, tf.Tensor) and labels.shape.as_list()[-1] == 1
-  labels = tf.squeeze(labels, squeeze_dims=-1)
+  labels = tf.squeeze(labels, axis=-1)
   if num_classes is not None: labels = tf.one_hot(labels, num_classes)
   return labels
 
