@@ -13,16 +13,19 @@ from .neurobase import RNeuroBase
 class HyperKernel(RNeuroBase):
   """Provide kernels for hyper RNNs"""
 
-  def _get_hyper_kernel(self, kernel_key, **kwargs):
+  def _get_hyper_kernel(self, kernel_key, do=0, zo=0, **kwargs):
     """In the future, initializers in kernel may be different from that in
        main cells. Use kwargs in this circumstances.
     """
     assert len(kwargs) == 0
+    self._hdo = do
+    self._hzo = zo
 
     if kernel_key in ('rnn', 'srn', 'vanilla'): kernel = self._srn
     elif kernel_key == 'gru': kernel = self._gru
     elif kernel_key == 'gruv3': kernel = self._gruv3
     elif kernel_key == 'dcgru': kernel = self._dcgru
+    elif kernel_key == 'dcgruv2': kernel = self._dcgruv2
     elif kernel_key == 'gru4g': kernel = self._gru4g
     elif kernel_key in ['ugrnn']: kernel = self._ugrnn
     elif kernel_key in ['lstm']: kernel = self._lstm
@@ -36,7 +39,6 @@ class HyperKernel(RNeuroBase):
 
     return kernel_with_scope
 
-
   @staticmethod
   def _get_hyper_state_holder(key, size):
     get_holder = lambda name: tf.placeholder(hub.dtype, [None, size], name)
@@ -44,6 +46,9 @@ class HyperKernel(RNeuroBase):
       return get_holder('hyper_h'), get_holder('hyper_c')
     return get_holder('hyper_s')
 
+  def _update_states(self, z, prev_s, u, s_bar):
+    if self._hdo > 0: s_bar = self.dropout(s_bar, self._hdo)
+    return z * prev_s + u * s_bar
 
   def _srn(self, x, prev_s):
     y = self.dense_rn(x, prev_s, 'hyper_srn', 'tanh')
@@ -54,7 +59,7 @@ class HyperKernel(RNeuroBase):
     r, z = self.dense_rn(x, prev_s, 'gate_block', is_gate=True,
                          output_dim=2*state_size, num_or_size_splits=2)
     s_bar = self.dense_rn(x, r*prev_s, scope='s_bar', activation='tanh')
-    new_s = z * prev_s + (1. - z) * s_bar
+    new_s = self._update_states(z, prev_s, 1. - z, s_bar)
     return new_s, new_s
 
   def _gruv3(self, x, prev_s):
@@ -64,7 +69,7 @@ class HyperKernel(RNeuroBase):
     s_bar, z = self.dense_rn(x, s, 'net_block', output_dim=2*state_size,
                              num_or_size_splits=2)
     s_bar, z = tf.tanh(s_bar), tf.sigmoid(z)
-    new_s = z * prev_s + (1. - z) * s_bar
+    new_s = self._update_states(z, prev_s, 1. - z, s_bar)
     return new_s, new_s
 
   def _dcgru(self, x, prev_s):
@@ -73,8 +78,19 @@ class HyperKernel(RNeuroBase):
     r, u, z = self.dense_rn(x, s, 'gate_block', is_gate=True,
                             output_dim=3*state_size, num_or_size_splits=3)
     s_bar = self.dense_rn(x, r*s, scope='s_bar', activation='tanh')
-    new_s = z * prev_s + u * s_bar
+    new_s = self._update_states(z, prev_s, u, s_bar)
     return tf.tanh(new_s), new_s
+
+  def _dcgruv2(self, x, prev_s):
+    sigma, tanh = tf.sigmoid, tf.tanh
+    state_size = self.get_state_size(prev_s)
+    s = tanh(prev_s)
+    r = self.dense_rn(x, s, 'reset_gate', is_gate=True, output_dim=state_size)
+    s = r * s
+    u, z, s_bar = self.dense_rn(
+      x, s, 'gate_block', output_dim=3*state_size, num_or_size_splits=3)
+    new_s = self._update_states(sigma(z), prev_s, sigma(u), tanh(s_bar))
+    return tanh(new_s), new_s
 
   def _gru4g(self, x, c):
     state_size = self.get_state_size(c)
@@ -82,7 +98,7 @@ class HyperKernel(RNeuroBase):
     h = self.dense_rn(x, h, 'r_gate', is_gate=True, output_dim=state_size) * h
     u, z, o, g = self.dense_rn(x, h, 'gate_block', output_dim=4*state_size,
                                num_or_size_splits=4)
-    new_c = tf.sigmoid(z) * c + tf.sigmoid(u) * tf.tanh(g)
+    new_c = self._update_states(tf.sigmoid(z), c, tf.sigmoid(u), tf.tanh(g))
     y = tf.sigmoid(o) * tf.tanh(new_c)
     return y, new_c
 
@@ -92,7 +108,7 @@ class HyperKernel(RNeuroBase):
       x, prev_s, 'gate_block', output_dim=2 * state_size,
       num_or_size_splits=2)
     s_bar, z = tf.tanh(a_s_bar), tf.sigmoid(a_z)
-    new_s = z * prev_s + (1. - z) * s_bar
+    new_s = self._update_states(z, prev_s, 1. - z, s_bar)
     return new_s, new_s
 
   def _lstm(self, x, prev_s):
@@ -102,7 +118,7 @@ class HyperKernel(RNeuroBase):
     f, i, o, g = self.dense_rn(x, h, 'fiog', output_dim=dim*4,
                                num_or_size_splits=4)
     sigma, tanh = tf.sigmoid, tf.tanh
-    new_c = sigma(i) * tanh(g) + sigma(f) * c
+    new_c = self._update_states(sigma(f), c, sigma(i), tanh(g))
     new_h = sigma(o) * tanh(new_c)
     return new_h, (new_h, new_c)
 
@@ -114,7 +130,7 @@ class HyperKernel(RNeuroBase):
       x, h, 'fiog', output_dim=dim*3, num_or_size_splits=3)
     sigma, tanh = tf.sigmoid, tf.tanh
     f = sigma(f)
-    new_c = (1. - f) * tanh(g) + f * c
+    new_c = self._update_states(f, c, 1. - f, tanh(g))
     new_h = sigma(o) * new_c
     return new_h, (new_h, new_c)
 
@@ -125,7 +141,7 @@ class HyperKernel(RNeuroBase):
     rs, z =  self.dense_rn(x, prev_s, 'gate_block', is_gate=True,
                            output_dim=state_size * 2, num_or_size_splits=2)
     s_bar = self.dense_rn(rx*x, rs*prev_s, 's_bar', 'tanh')
-    new_s = z * prev_s + (1. - z) * s_bar
+    new_s = self._update_states(z, prev_s, 1. - z, s_bar)
     return new_s, new_s
 
   def _get_embeddings_hyper16(self, s_hat, num_cluster, signal_size):
