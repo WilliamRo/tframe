@@ -47,7 +47,7 @@ class BaseControl(ttk.Frame):
 
   @staticmethod
   def to_str(v):
-    return str(v) if v == int(v) else '{:.2f}'.format(v)
+    return str(v) if v == int(v) else '{:.3f}'.format(v)
 
 
   @staticmethod
