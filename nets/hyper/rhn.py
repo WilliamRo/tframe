@@ -36,7 +36,8 @@ class RHN(CellBase, HyperKernel):
     # Specific attributes
     self._state_size = checker.check_positive_integer(state_size)
     self._num_layers = checker.check_positive_integer(num_layers)
-    self._hyper_kernel = self._get_hyper_kernel(hyper_kernel, do=th.rec_dropout)
+    self._hyper_kernel = self._get_hyper_kernel(
+      hyper_kernel, do=th.rec_dropout, ln=self._layer_normalization)
 
 
   @property
