@@ -59,6 +59,10 @@ class Dropout(Layer):
     # self._keep_prob = None
     self.train_keep_prob = train_keep_prob
 
+  @property
+  def structure_tail(self):
+    return '({:.2f})'.format(1 - self.train_keep_prob)
+
   @single_input
   def _link(self, input_, **kwargs):
     return tf.nn.dropout(
