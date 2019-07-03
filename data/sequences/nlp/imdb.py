@@ -24,23 +24,23 @@ class IMDB(DataAgent):
 
   @classmethod
   def load(cls, data_dir, train_size=15000, val_size=10000, test_size=25000,
-           num_words=10000, max_len=512, **kwargs):
-    data_set = cls.load_as_tframe_data(
-      data_dir, num_words=num_words, max_len=max_len)
+           num_words=10000, max_len=None, **kwargs):
+    data_set = cls.load_as_tframe_data(data_dir, num_words=num_words)
+    if max_len is not None:
+      data_set.features = [s[:max_len] for s in data_set.features]
     return data_set.split(
       train_size, val_size, test_size,
       names=('train_set', 'val_set', 'test_set'))
 
   @classmethod
-  def load_as_tframe_data(
-      cls, data_dir, num_words=10000, max_len=512, **kwargs):
+  def load_as_tframe_data(cls, data_dir, num_words=10000, **kwargs):
     # Load directly if data set exists
     data_path = cls._get_data_path(data_dir, num_words)
     if os.path.exists(data_path): return SequenceSet.load(data_path)
     # If data does not exist, create from raw data
     console.show_status('Creating data sets ...')
     (train_data, train_labels), (test_data, test_labels) = cls._load_raw_data(
-      data_dir, num_words=num_words, max_len=max_len)
+      data_dir, num_words=num_words)
     data_list = list(train_data) + list(test_data)
     features = [np.array(cmt).reshape([-1, 1]) for cmt in data_list]
 
@@ -56,18 +56,16 @@ class IMDB(DataAgent):
   # region : Private Methods
 
   @classmethod
-  def _load_raw_data(cls, data_dir, num_words=10000, max_len=512):
+  def _load_raw_data(cls, data_dir, num_words=10000):
     from tensorflow import keras
     imdb = keras.datasets.imdb
     data_path = os.path.join(data_dir, 'imdb.npz')
-    return imdb.load_data(data_path, num_words=num_words, maxlen=max_len)
+    return imdb.load_data(data_path, num_words=num_words)
 
   @classmethod
-  def _get_data_path(cls, data_dir, num_words, max_len):
+  def _get_data_path(cls, data_dir, num_words):
     assert isinstance(num_words, int) and num_words > 0
-    assert isinstance(max_len, int) and max_len > 0
-    return os.path.join(data_dir, 'IMDB_{}words_{}maxL.tfds'.format(
-      num_words, max_len))
+    return os.path.join(data_dir, 'IMDB_{}.tfds'.format(num_words))
 
   # endregion : Private Methods
 

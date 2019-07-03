@@ -25,7 +25,7 @@ class DataConfigs(object):
 
   test_directly = Flag.boolean(False, 'Whether to use validation set')
   num_words = Flag.integer(0, 'Words number in data set like IMDB', is_key=None)
-  max_len = Flag.integer(0, 'Max sequence length. e.g. max_len in IMDB seqs',
+  max_len = Flag.integer(None, 'Max sequence length. e.g. max_len in IMDB seqs',
                          is_key=None)
 
   overlap_pct = Flag.float(
