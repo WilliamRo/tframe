@@ -185,6 +185,9 @@ class Agent(object):
         write_file(description_path, self._model.description)
       # Show status
       console.show_status('New model initiated')
+    elif hub.branch_suffix not in [None, '']:
+      hub.mark += hub.branch_suffix
+      console.show_status('Checkpoint swithced to branch `{}`'.format(hub.mark))
 
     self._model.launched = True
     self.take_notes('Model launched')
