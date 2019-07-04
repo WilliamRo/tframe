@@ -622,7 +622,7 @@ class Trainer(object):
     # Validate val_set and record
     val_dict = self.model.validate_model(
       self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary,
-      verbose=self.th.val_progress_bar)
+      verbose=self.th.val_progress_bar, seq_detail=self.th.val_info_splits > 0)
     new_record = self.metrics_manager.record_stats_on_dataset(
       self.validation_set, val_dict, True, rnd)
     # Terminator will check early_stop_criterion if new_record appears

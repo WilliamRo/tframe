@@ -125,3 +125,8 @@ class RNNConfigs(object):
 
   cell_zoneout = Flag.float(0.0, 'Cell zoneout for LSTM', is_key=None)
   hidden_zoneout = Flag.float(0.0, 'Hidden zoneout for LSTM', is_key=None)
+
+  val_info_splits = Flag.integer(
+    0, 'If is not 0, metric of different part of sequence will be displayed'
+       ' during validation in training model handling tasks with long '
+       'sequences, e.g. cPTB')

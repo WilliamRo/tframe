@@ -152,13 +152,14 @@ class Quantity(object):
   def _check_link(self):
     if self._quantity is None: self._raise_not_linked_error()
 
-  def apply_np_summ_method(self, quantities):
+  def apply_np_summ_method(self, quantities, show_detail=False):
     """Used only in model.validate_model method"""
     if not self._last_only:
       tfr.checker.check_type(quantities, np.ndarray)
 
     # Concatenate if necessary
     if isinstance(quantities, list):
+      if show_detail: self._show_seq_metric_detail(quantities)
       # Extract data in last step if necessary
       # TODO: this has been done in __call__, check again
       # if self._last_only: quantities = [s[:, -1] for s in quantities]
@@ -166,6 +167,17 @@ class Quantity(object):
         quantities = np.concatenate(quantities, axis=0)
 
     return self.np_summ_method(quantities)
+
+  def _show_seq_metric_detail(self, val_list):
+    console = tfr.console
+    splits = tfr.hub.val_info_splits
+    assert splits > 0
+    size = int(np.ceil(len(val_list) / splits))
+    console.show_info('Metric detail (BETA)')
+    for i in range(splits):
+      q = np.concatenate(val_list[i*size:(i+1)*size], axis=0)
+      console.supplement('{:.3f}'.format(self.np_summ_method(q)))
+
 
 
 

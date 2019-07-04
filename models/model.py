@@ -398,7 +398,7 @@ class Model(object):
     return data_batches
 
   def validate_model(self, data_set, batch_size=None, allow_sum=False,
-                     verbose=False):
+                     verbose=False, seq_detail=False):
     """Evaluate quantities in validate group of this model
     :param data_set: a tframe DataSet
     :param batch_size: if is None or -1, batch_size will be data_set.size
@@ -457,7 +457,7 @@ class Model(object):
         if not data_set.n_to_one:
           checker.check_type(val, np.ndarray)
       # Apply np_summ_method on val
-      scalar = qd.apply_np_summ_method(val)
+      scalar = qd.apply_np_summ_method(val, seq_detail)
       # Add summ to results
       result_dict[slot] = scalar
 
