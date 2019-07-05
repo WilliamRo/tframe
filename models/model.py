@@ -41,6 +41,7 @@ class Model(object):
 
   def __init__(self, mark=None):
     # Model mark usually helps to decide the folder name
+    # TODO: need to be refactored
     self.mark = hub.mark or mark
     assert mark is not None
     if hub.prefix is not None: self.mark = hub.prefix + self.mark
