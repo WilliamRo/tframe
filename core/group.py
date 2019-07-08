@@ -24,6 +24,7 @@ class Group(object):
 
   # region : Properties
 
+  @property
   def tensor_slots(self):
     return [s for s in self._slots if isinstance(s, TensorSlot)]
 

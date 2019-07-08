@@ -6,6 +6,7 @@ from collections import OrderedDict
 import tensorflow as tf
 
 import tframe as tfr
+from tframe import pedia
 
 from .flag import Flag
 from .model_configs import ModelConfigs
@@ -210,6 +211,14 @@ class Config(
       assert self.clip_method in ('norm', 'value', 'global_norm', 'avg_norm')
       optimizer = GradientClipOptimizer(
         optimizer, self.clip_threshold, method=self.clip_method)
+    if not self.save_train_opt_vars:
+      if not isinstance(optimizer, tf.train.Optimizer):
+        assert isinstance(optimizer, GradientClipOptimizer)
+        tf_opt = optimizer._tf_optimizer
+      else: tf_opt = optimizer
+      assert isinstance(tf_opt, tf.train.Optimizer)
+      # TODO: may be not safe to do this
+      tf_opt._name = pedia.train_opt
     return optimizer
 
   # endregion : Public Methods

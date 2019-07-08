@@ -62,7 +62,7 @@ class Classifier(Predictor):
     # If not necessary, use Predictor's evaluate_model method
     metric_is_accuracy = self.eval_metric.name.lower() == 'accuracy'
     if not export_false or not metric_is_accuracy:
-      result = super().evaluate_model(data, batch_size)
+      result = super().evaluate_model(data, batch_size, **kwargs)
       if metric_is_accuracy: result *= 100
       return result
 

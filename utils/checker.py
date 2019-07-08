@@ -32,7 +32,7 @@ def check_gate(inputs):
 
 
 def check_fetchable(inputs):
-  return check_type_v2(inputs, (tf.Tensor, tf.Variable))
+  return check_type_v2(inputs, (tf.Tensor, tf.Variable, tf.Operation))
 
 
 def check_type_v2(inputs, types):

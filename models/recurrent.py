@@ -434,7 +434,7 @@ class Recurrent(Model, RNet):
     assert isinstance(data_batch, DataSet)
 
     # Check val_num_steps
-    partition = hub.val_num_steps != -1
+    partition = kwargs.get('num_steps') != -1
     # Fetch states if partition
     if partition:
       # fetch_list is mutable, do not append!
@@ -449,31 +449,52 @@ class Recurrent(Model, RNet):
     # Set buffer if necessary
     if partition: self.set_buffers(batch_outputs.pop(-1), is_training=False)
 
-    # checker.check_type_v2(batch_outputs, np.ndarray)  # TODO: crash sometimes
-    # TODO: should be removed after this method has been sufficiently tested
-    for array in batch_outputs:
-      assert isinstance(array, np.ndarray)
-      # make sure array is a sequence stack
-      assert array.shape[0] == data_batch.size
-
-    # Check active length. e.g. in TIMIT25 and mERG tasks
-    al = data_batch.active_length
+    # Clear up outputs
+    outputs, al = [], data_batch.active_length
     if al is None: al = [None] * data_batch.size
-    assert isinstance(al, list) and len(al) == data_batch.size
-    batch_outputs = [[y[:l] if l is not None else y for y, l in zip(array, al)]
-                     for array in batch_outputs]
+    for output, op in zip(batch_outputs, fetch_list):
+      # tf.Operation yields None
+      if isinstance(op, tf.Operation): continue
+      assert isinstance(op, (tf.Tensor, tf.Variable))
+      # If output has different shape compared to fetch tensor, e.g.
+      # .. gradients or variables, return directly
+      if op.shape.as_list()[0] is not None:
+        outputs.append(output)
+        continue
+      #
+      assert output.shape[0] == data_batch.size
+      output = [y[:l] if l is not None else y for y, l in zip(output, al)]
+      if data_batch.n_to_one: output = [s[-1] for s in output]
+      outputs.append(output)
 
-    # To this point, batch_outputs is like
-    # [[aaaaa, aaa, aaaaaaa],    <= fetch_list[0]
-    #  [bbbbb, bbb, bbbbbbb]]    <= fetch_list[1]
-    # active_length = [5, 3, 7]
+    return outputs
 
-    # In tasks like sequence classification, only last value should be output
-    if data_batch.n_to_one:
-      batch_outputs = [[s[-1] for s in sequence_list]
-                       for sequence_list in batch_outputs]
-
-    return batch_outputs
+    # # checker.check_type_v2(batch_outputs, np.ndarray)  # TODO: crash sometimes
+    # # TODO: should be removed after this method has been sufficiently tested
+    # for array in batch_outputs:
+    #   assert isinstance(array, np.ndarray)
+    #   # make sure array is a sequence stack
+    #   # TODO: sometimes array is a summary over batches, e.g. loss
+    #   assert array.shape[0] == data_batch.size
+    #
+    # # Check active length. e.g. in TIMIT25 and mERG tasks
+    # al = data_batch.active_length
+    # if al is None: al = [None] * data_batch.size
+    # assert isinstance(al, list) and len(al) == data_batch.size
+    # batch_outputs = [[y[:l] if l is not None else y for y, l in zip(array, al)]
+    #                  for array in batch_outputs]
+    #
+    # # To this point, batch_outputs is like
+    # # [[aaaaa, aaa, aaaaaaa],    <= fetch_list[0]
+    # #  [bbbbb, bbb, bbbbbbb]]    <= fetch_list[1]
+    # # active_length = [5, 3, 7]
+    #
+    # # In tasks like sequence classification, only last value should be output
+    # if data_batch.n_to_one:
+    #   batch_outputs = [[s[-1] for s in sequence_list]
+    #                    for sequence_list in batch_outputs]
+    #
+    # return batch_outputs
 
   # endregion : Abstract Implementations
 

@@ -191,13 +191,18 @@ class Predictor(Feedforward, Recurrent):
       self._outputs.tensor, data, batch_size, extractor)
 
   @with_graph
-  def evaluate_model(self, data, batch_size=None, **kwargs):
+  def evaluate_model(self, data, batch_size=None, dynamic=False, **kwargs):
     """The word `evaluate` in this method name is different from that in
        `self.evaluate` method. Here only eval_metric willl be evaluated and
        the result will be printed on terminal."""
     # Check metric
     if not self.eval_metric.activated:
       raise AssertionError('!! Metric not defined')
+    # Do dynamic evaluation if necessary
+    if dynamic:
+      from tframe.trainers.eval_tools.dynamic_eval import DynamicEvaluator as de
+      de.dynamic_evaluate(self, data, kwargs.get('val_set', None))
+      return
     # If hub.val_progress_bar is True, this message will be showed in
     #   model.evaluate method
     if not hub.val_progress_bar:

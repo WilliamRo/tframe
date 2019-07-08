@@ -130,3 +130,16 @@ class RNNConfigs(object):
     0, 'If is not 0, metric of different part of sequence will be displayed'
        ' during validation in training model handling tasks with long '
        'sequences, e.g. cPTB')
+
+  dynamic_evaluation = Flag.boolean(
+    False, 'Whether to turn on dynamic evaluation', is_key=None)
+  de_num_steps = Flag.integer(
+    20, 'According to Krause2018, this value should be 20 for c-level model '
+        'and 5 for w-level model', is_key=None)
+  de_batch_size = Flag.integer(
+    100, 'Batch size used in calculating gradient stats. Ref: Krause2018',
+    is_key=None)
+  de_val_pct = Flag.float(
+    1.0, 'Proportion of validation set used in dynamic evaluation')
+  de_max_batches = Flag.integer(
+    -1, 'Max batches used in evaluating gradstats')

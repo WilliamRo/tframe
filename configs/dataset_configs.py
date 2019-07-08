@@ -36,3 +36,7 @@ class DataConfigs(object):
     0.0, 'Random shift percent used in converting dataset to `rnn_input`',
     is_key=None)
 
+  train_set = Flag.whatever(None, 'Training set')
+  val_set = Flag.whatever(None, 'Validation set')
+  test_set = Flag.whatever(None, 'Testing set')
+

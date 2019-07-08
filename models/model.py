@@ -145,8 +145,19 @@ class Model(object):
     """Should be called in with_graph decorator"""
     vars = (tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) +
             tf.get_collection(tf.GraphKeys.SAVEABLE_OBJECTS))
-    return [var for var in vars
+    # Remove `do not save` vars
+    vars = [var for var in vars
             if var not in tf.get_collection(pedia.do_not_save)]
+
+    filter_by_name = lambda key: [var for var in vars if key not in var.name]
+    # Remove `train_opt` vars if necessary
+    if not hub.save_train_opt_vars: vars = filter_by_name(pedia.train_opt)
+    # Remove `dynamic_opt` vars
+    vars = filter_by_name(pedia.dynamic_opt)
+    # Krause optimizer related vars (TODO: need to be refactored)
+    vars = filter_by_name('de_theta0')
+    if not hub.train_stats_exists: vars = filter_by_name('de_sqrt_MS_g')
+    return vars
 
   @property
   def metric_foreach(self):
@@ -256,6 +267,7 @@ class Model(object):
 
       # TODO: BETA
       if hub.use_rtrl:
+        raise AssertionError('use_rtrl option has been deprecated')
         from tframe.optimizers.rtrl_opt import RealTimeOptimizer
         optimizer = RealTimeOptimizer(self, optimizer)
 
@@ -399,7 +411,7 @@ class Model(object):
     return data_batches
 
   def validate_model(self, data_set, batch_size=None, allow_sum=False,
-                     verbose=False, seq_detail=False):
+                     verbose=False, seq_detail=False, num_steps=None):
     """Evaluate quantities in validate group of this model
     :param data_set: a tframe DataSet
     :param batch_size: if is None or -1, batch_size will be data_set.size
@@ -408,7 +420,7 @@ class Model(object):
              and values are scalars corresponding to these slots
     """
     assert isinstance(data_set, DataSet)
-    num_steps = hub.val_num_steps
+    if num_steps is None: num_steps = hub.val_num_steps
 
     # - One-shot validation
     one_shot = False
@@ -442,10 +454,11 @@ class Model(object):
       return self.validate_group.run(feed_dict, allow_sum=allow_sum)
 
     # - Otherwise do batch validation
-    tensor_slots = self.validate_group.tensor_slots()
+    tensor_slots = self.validate_group.tensor_slots
     quantity_defs = [s.quantity_definition for s in tensor_slots]
     fetches = [q.quantities for q in quantity_defs]
-    values = self.evaluate(fetches, data_set, batch_size, verbose=verbose)
+    values = self.evaluate(
+      fetches, data_set, batch_size, verbose=verbose, num_steps=num_steps)
     result_dict = OrderedDict()
 
     for val, qd, slot in zip(values, quantity_defs, tensor_slots):
@@ -557,8 +570,8 @@ class Model(object):
   def launch_model(self, overwrite=False):
     return self.agent.launch_model(overwrite)
 
-  def evaluate(
-      self, fetches, data, batch_size=None, postprocessor=None, verbose=False):
+  def evaluate(self, fetches, data, batch_size=None, postprocessor=None,
+               verbose=False, num_steps=None):
     """
     Evaluate tensors based on data
     TODO: note that if num_steps != -1, outputs from a same sequence may be
@@ -582,16 +595,17 @@ class Model(object):
     single_fetch = not isinstance(fetches, (tuple, list))
     # Wrap fetches into a list if necessary
     if single_fetch: fetches = [fetches]
+    if num_steps is None: num_steps = hub.val_num_steps
 
-    # Get outputs
-    outputs = [[] for _ in fetches]
+    # Get outputs (sometimes fetches may contain operations which yields None)
+    outputs = [[] for op in fetches if not isinstance(op, tf.Operation)]
 
     if verbose:
-      bar = ProgressBar(data.get_round_length(batch_size, hub.val_num_steps))
+      bar = ProgressBar(data.get_round_length(batch_size, num_steps))
       console.show_status('Evaluating on {} ...'.format(data.name))
 
     for cursor, data_batch in enumerate(self.get_data_batches(
-        data, batch_size, hub.val_num_steps)):
+        data, batch_size, num_steps)):
       data_batch = self._sanity_check_before_use(data_batch)
       # Get batch outputs          fetches[0]  fetches[1]
       #  for FNN, batch_outputs = [np_array_1, np_array_2, ...]
@@ -599,14 +613,16 @@ class Model(object):
       #  for RNN, batch_outputs = [[s1_1, s1_2, ..., s1_N],       <= fetches[0]
       #                            [s2_1, s2_2, ..., s2_N], ...]  <= fetches[1]
       #           N is the batch_size, and each sk_i is a numpy array
-      batch_outputs = self._evaluate_batch(fetches, data_batch)
+      batch_outputs = self._evaluate_batch(
+        fetches, data_batch, num_steps=num_steps)
       assert isinstance(batch_outputs, list)
       assert len(batch_outputs) == len(outputs)
 
       # Add batch_outputs to outputs accordingly
       for i, batch_output in enumerate(batch_outputs):
         assert isinstance(outputs[i], list)
-        if self.input_type is InputTypes.RNN_BATCH:
+        output_is_a_batch = fetches[i].shape.as_list()[0] is None
+        if self.input_type is InputTypes.RNN_BATCH and output_is_a_batch:
           # batch_output is [s1_1, s1_2, ..., s1_N]
           assert isinstance(batch_output, list)
           outputs[i] = outputs[i] + batch_output

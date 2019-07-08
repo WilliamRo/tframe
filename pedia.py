@@ -12,6 +12,7 @@ default_feed_dict = 'default_feed_dict '
 do_not_save = 'do_not_save'
 Decoder = 'Decoder'
 Discriminator = 'Discriminator'
+dynamic_opt = 'dynamic_opt'
 
 Encoder = 'Encoder'
 
@@ -54,6 +55,7 @@ training = 'training'
 train_step_summaries = 'train_step_summaries '
 top_k_label = 'top_k_label'
 top_k_prob = 'top_k_prob'
+train_opt = 'train_opt'
 
 validation = 'validation'
 validation_summaries = 'validation_summaries'
