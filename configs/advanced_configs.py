@@ -30,6 +30,8 @@ class AdvancedConfigs(object):
   de_lambda = Flag.string(
     None, 'Decay rate used in krause evaluator. Can be a list separated by'
           ' comma to provide a search list.')
+  de_eval_val_set = Flag.boolean(
+    False, 'Whether to evaluate validation set before HP searching')
 
   @property
   def de_eta_option(self):

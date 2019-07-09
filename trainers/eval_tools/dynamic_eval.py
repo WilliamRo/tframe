@@ -90,8 +90,8 @@ class DynamicEvaluator(object):
     # Truncate val_set
     size = int(val_set.size * th.de_val_pct)
     val_set = val_set[:size]
-    # Validate on val_set
-    self._validate(val_set)
+    # Validate on val_set if necessary
+    if th.de_eval_val_set: self._validate(val_set)
     # Do grid search
     console.show_status('Searching hyper-parameters on validation set ...')
     best_metric, best_lr, best_dc = None, None, None
