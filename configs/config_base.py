@@ -16,6 +16,7 @@ from .rnn_configs import RNNConfigs
 from .monitor_configs import MonitorConfigs
 from .cloud_configs import CloudConfigs
 from .dataset_configs import DataConfigs
+from .advanced_configs import AdvancedConfigs
 
 
 class Config(
@@ -26,6 +27,7 @@ class Config(
   MonitorConfigs,
   CloudConfigs,
   DataConfigs,
+  AdvancedConfigs,
 ):
   registered = False
 
@@ -222,5 +224,6 @@ class Config(
     return optimizer
 
   # endregion : Public Methods
+
 
 Config.register()

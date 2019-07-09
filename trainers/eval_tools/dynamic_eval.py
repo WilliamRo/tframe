@@ -21,6 +21,8 @@ class DynamicEvaluator(object):
          (2.2) set th.de_max_batches to specify max batches used for calculating
                gradient statistics
          (2.3) specify th.de_eta and th.de_lambda to fix corresponding HP
+     (3) set de_num_steps. For character level model it should be approx 20.
+         For word level model, it should be approx 5. (according to krause18)
 
      TODO: ISSUES TO FIX:
      CUDA_ERROR_OUT_OF_MEMORY occurs during calculating gradstats
@@ -53,13 +55,19 @@ class DynamicEvaluator(object):
     assert isinstance(val_set, DataSet) or val_set is None
 
     # Do hyper-parameter search if necessary
-    if val_set is not None and (th.de_eta is None or th.de_lambda is None):
-      self._search_hp(val_set)
+    lr_option, dc_option = th.de_eta_option, th.de_lambda_option
+    assert isinstance(lr_option, list) and isinstance(lr_option, list)
+    hp_grid = [(lr, dc) for lr in lr_option for dc in dc_option]
+    if val_set is not None and len(hp_grid) > 1:
+      lr, dc = self._search_hp(val_set, hp_grid)
+    else:
+      if len(hp_grid) != 1: raise ValueError(
+        '!! HP searching is required yet val_set is not provided')
+      lr, dc = hp_grid[0]
 
     # Dynamic evaluation on test set
-    assert th.de_eta > 0 and 0 < th.de_lambda < 1
-    self._dynamic_eval(data_set, th.de_eta, th.de_lambda)
-
+    assert lr > 0 and 0 < dc < 1
+    self._dynamic_eval(data_set, lr, dc)
 
   def _dynamic_eval(self, data_set, lr, lambd, prompt='[Dynamic Evaluation]'):
     assert isinstance(data_set, DataSet)
@@ -77,33 +85,23 @@ class DynamicEvaluator(object):
     console.supplement('Dynamic metric = {:.3f}'.format(metric))
     return metric
 
-  def _search_hp(self, val_set):
+  def _search_hp(self, val_set, hp_grid):
     assert isinstance(val_set, DataSet)
     # Truncate val_set
     size = int(val_set.size * th.de_val_pct)
     val_set = val_set[:size]
     # Validate on val_set
     self._validate(val_set)
-    # Generate HP grid
-    lr_list = self.optimizer.lrlist if th.de_eta is None else [th.de_eta]
-    lambd_list = (self.optimizer.lamblist if th.de_lambda is None
-                  else [th.de_lambda])
-    hp_grid = [(lr, lambd) for lr in lr_list for lambd in lambd_list]
     # Do grid search
     console.show_status('Searching hyper-parameters on validation set ...')
-    best_metric = None
+    best_metric, best_lr, best_dc = None, None, None
     for i, (lr, lambd) in enumerate(hp_grid):
       metric = self._dynamic_eval(
         val_set, lr, lambd, '[{}/{}]'.format(i + 1, len(hp_grid)))
       if best_metric is None or metric < best_metric:
         best_metric = metric
-        th.de_eta, th.de_lambda = lr, lambd
-
-  # def _reset_train_op(self, lr):
-  #   assert isinstance(self._loss_tensor, tf.Tensor)
-  #   optimizer = self.opt_def(lr, name=pedia.dynamic_opt)
-  #   self._train_op = optimizer.minimize(self._loss_tensor)
-  #   self.model.session.run(tf.variables_initializer(optimizer.variables()))
+        best_lr, best_dc = lr, lambd
+    return best_lr, best_dc
 
   def _get_quantity(self):
     tensor_slots = self.model.validate_group.tensor_slots

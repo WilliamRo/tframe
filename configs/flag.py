@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import re
 import tensorflow as tf
 from tframe.enums import EnumPro
 
@@ -152,4 +153,16 @@ class Flag(object):
     self._frozen = True
 
   # endregion : Public Methods
+
+  # region : Private Methods
+
+  @staticmethod
+  def parse_comma(arg, dtype=str):
+    r = re.fullmatch(r'([\-\d.,]+)', arg)
+    if r is None: raise AssertionError(
+      'Can not parse argument `{}`'.format(arg))
+    val_list = re.split(r'[,]', r.group())
+    return [dtype(v) for v in val_list]
+
+  # endregion : Private Methods
 

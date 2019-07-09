@@ -121,9 +121,6 @@ class ModelConfigs(object):
   gutter = Flag.boolean(False, 'Whether to use gutter', is_key=None)
   gutter_bias = Flag.float(None, 'Gutter bias', is_key=None)
 
-  train_stats_exists = Flag.boolean(
-    False, 'Whether or not train_stats used in dynamic evaluation exists')
-
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True

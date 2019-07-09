@@ -50,8 +50,4 @@ class TrainerConfigs(object):
   save_train_opt_vars = Flag.boolean(
     True, 'Whether to save variables in optimizer for training')
 
-  de_eta = Flag.float(None, 'Learning rate used in krause evaluator')
-  de_lambda = Flag.float(None, 'Decay rate used in krause evaluator')
-
-
 
