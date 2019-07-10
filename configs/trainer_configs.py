@@ -48,6 +48,6 @@ class TrainerConfigs(object):
   val_decimals = Flag.integer(3, 'Decimals displayed in validation reports')
 
   save_train_opt_vars = Flag.boolean(
-    True, 'Whether to save variables in optimizer for training')
+    False, 'Whether to save variables in optimizer for training')
 
 
