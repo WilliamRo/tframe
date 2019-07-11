@@ -108,9 +108,15 @@ class HyperKernel(RNeuroBase):
 
   def _ugrnn(self, x, prev_s):
     state_size = self.get_state_size(prev_s)
-    a_s_bar, a_z = self._dense_h(
-      x, prev_s, 'gate_block', output_dim=2 * state_size,
-      num_or_size_splits=2)
+    forget_bias = self._hyper_kwargs.get('forget_bias', 0)
+    if forget_bias == 0:
+      a_s_bar, a_z = self._dense_h(
+        x, prev_s, 'gate_block', output_dim=2 * state_size,
+        num_or_size_splits=2)
+    else:
+      a_z = self._dense_h(x, prev_s, 'net_z', output_dim=state_size,
+                          bias_initializer=forget_bias)
+      a_s_bar = self._dense_h(x, prev_s, 'net_s_bar', output_dim=state_size)
     s_bar, z = tf.tanh(a_s_bar), tf.sigmoid(a_z)
     new_s = self._update_states(z, prev_s, 1. - z, s_bar)
     return new_s, new_s

@@ -27,6 +27,7 @@ class RHN(CellBase, HyperKernel):
       weight_initializer='xavier_normal',
       use_bias=True,
       bias_initializer='zeros',
+      forget_bias=0,
       **kwargs):
     # Call parent's constructor
     CellBase.__init__(self, activation, weight_initializer, use_bias,
@@ -37,7 +38,8 @@ class RHN(CellBase, HyperKernel):
     self._state_size = checker.check_positive_integer(state_size)
     self._num_layers = checker.check_positive_integer(num_layers)
     self._hyper_kernel = self._get_hyper_kernel(
-      hyper_kernel, do=th.rec_dropout, ln=self._layer_normalization)
+      hyper_kernel, do=th.rec_dropout, ln=self._layer_normalization,
+      forget_bias=forget_bias)
 
 
   @property
