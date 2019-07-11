@@ -93,7 +93,8 @@ class HardDriver(Groups, RNeuroBase):
     return linker.concatenate(data_list)
 
 
-  def _write(self, arm, s, s_bar, tail='', gutter=False, return_head=False):
+  def _write(self, arm, s, s_bar, tail='', gutter=False, return_head=False,
+             full_write=False):
     """Write rule:
         write_head: h
         data_to_write: data
@@ -110,7 +111,8 @@ class HardDriver(Groups, RNeuroBase):
     net_head = self.dense(
       head_size, arm, 'net_head_write' + tail, bias_initializer=b_init)
 
-    new_data, head = self._distribute(s_bar, net_head, gutter)
+    new_data, head = self._distribute(
+      s_bar, net_head, gutter, full_write=full_write)
     self._register_gate('write_head' + tail, head)
     output = (1. - head) * s + new_data
     if return_head: return output, head
@@ -121,7 +123,7 @@ class HardDriver(Groups, RNeuroBase):
     net_head = self.dense(self.total_size, arm, 'net_head_write' + tail)
 
 
-  def _distribute(self, s_bar, net_h, gutter=False):
+  def _distribute(self, s_bar, net_h, gutter=False, full_write=False):
     """This method should be used only for hd-write methods"""
     head_list = []
     def operator(s_block, h_block, size):
@@ -133,11 +135,12 @@ class HardDriver(Groups, RNeuroBase):
       y = s_block * h
       head_list.append(tf.reshape(h, [-1, size]))
       return y
-    reshape1_1 = lambda s, n: 1
-    reshape1_2 = lambda s, n: s + int(gutter)
+    sizes1 = self.group_sizes if full_write else self.group_duplicates
     sizes2 = [s + 1 for s in self.group_sizes] if gutter else self.group_sizes
+    reshape1_1 = lambda s, n: s if full_write else 1
+    reshape1_2 = lambda s, n: s + int(gutter)
     data = self._binary_operate_over_groups(
-      s_bar, net_h, operator, sizes1=self.group_sizes, sizes2=sizes2,
+      s_bar, net_h, operator, sizes1=sizes1, sizes2=sizes2,
       reshape1_1=reshape1_1, reshape1_2=reshape1_2)
     # Concatenate head_list to head
     assert len(head_list) == len(self._groups)

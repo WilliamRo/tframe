@@ -28,6 +28,9 @@ class Groups(object):
   def group_sizes(self): return [s * n for s, n in self._groups]
 
   @property
+  def group_duplicates(self): return [n for _, n in self._groups]
+
+  @property
   def total_size(self): return sum(self.group_sizes)
 
   @property
