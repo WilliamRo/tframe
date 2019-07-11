@@ -19,10 +19,11 @@ class HyperKernel(RNeuroBase):
 
        If ln is True, Layer Normalization will be applied to each cell unit
     """
-    assert len(kwargs) == 0
+    # assert len(kwargs) == 0
     self._hdo = do
     self._hzo = zo
     self._hln = ln
+    self._hyper_kwargs = kwargs
 
     if kernel_key in ('rnn', 'srn', 'vanilla'): kernel = self._srn
     elif kernel_key == 'gru': kernel = self._gru
@@ -115,11 +116,18 @@ class HyperKernel(RNeuroBase):
     return new_s, new_s
 
   def _lstm(self, x, prev_s):
+    forget_bias = self._hyper_kwargs.get('forget_bias', 0)
     h, c = prev_s
     dim = self.get_state_size(h)
 
-    f, i, o, g = self._dense_h(x, h, 'fiog', output_dim=dim*4,
-                               num_or_size_splits=4)
+    if forget_bias == 0:
+      f, i, o, g = self._dense_h(
+        x, h, 'fiog', output_dim=dim*4, num_or_size_splits=4)
+    else:
+      f = self._dense_h(
+        x, h, 'net_f', bias_initializer=forget_bias, output_dim=dim)
+      i, o, g = self._dense_h(
+        x, h, 'iog', output_dim=dim*3, num_or_size_splits=3)
     sigma, tanh = tf.sigmoid, tf.tanh
     new_c = self._update_states(sigma(f), c, sigma(i), tanh(g))
     new_h = sigma(o) * tanh(new_c)

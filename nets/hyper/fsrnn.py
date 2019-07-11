@@ -30,6 +30,7 @@ class FastSlow(CellBase, HyperKernel):
       bias_initializer='zeros',
       input_dropout=0.0,
       output_dropout=0.0,
+      forget_bias=0,
       **kwargs):
     # Call parent's constructor
     CellBase.__init__(self, activation, weight_initializer, use_bias,
@@ -40,7 +41,8 @@ class FastSlow(CellBase, HyperKernel):
     self._fast_size = checker.check_positive_integer(fast_size)
     self._fast_layers = checker.check_positive_integer(fast_layers)
     self._slow_size = checker.check_positive_integer(slow_size)
-    self._hyper_kernel = self._get_hyper_kernel(hyper_kernel, do=th.rec_dropout)
+    self._hyper_kernel = self._get_hyper_kernel(
+      hyper_kernel, do=th.rec_dropout, forget_bias=forget_bias)
 
     self._input_do = checker.check_type(input_dropout, float)
     self._output_do = checker.check_type(output_dropout, float)
