@@ -53,6 +53,14 @@ class GDU(CellBase, Distributor):
     if self._use_reset_gate: tail = '[r]' + tail
     return tail
 
+  @staticmethod
+  def mark():
+    from tframe import hub as th
+    options = ''
+    if th.use_reset_gate: options += 'r'
+    if options: options = '[{}]'.format(options)
+    return 'gdu({}){}'.format(th.gdu_string, options)
+
 
   def _get_sog_activation(self, x, s, configs, scope, name):
     assert isinstance(configs, (list, tuple)) and len(configs) > 0
