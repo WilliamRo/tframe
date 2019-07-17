@@ -58,7 +58,7 @@ class GDU(CellBase, Distributor):
     from tframe import hub as th
     options = ''
     if th.use_reset_gate: options += 'r'
-    if options: options = '[{}]'.format(options)
+    if options: options = '({})'.format(options)
     return 'gdu({}){}'.format(th.gdu_string, options)
 
 
