@@ -630,6 +630,14 @@ class Trainer(object):
       if self._terminator(self.metrics_manager.early_stop_criterion):
         self.th.force_terminate = True
 
+    # Validate test set if necessary TODO: BETA
+    if self.th.validate_test_set:
+      test_dict = self.model.validate_model(
+        self.test_set, self.th.val_batch_size, allow_sum=False,
+        verbose=self.th.val_progress_bar)
+      # Record
+      self.metrics_manager.record_stats_on_dataset(self.test_set, test_dict)
+
     # Print stats and return new_record flag
     self.metrics_manager.print_latest_stats(
       '[Validate]', decimals=self.th.val_decimals)
@@ -704,6 +712,8 @@ class TrainerHub(Config):
     20, 'Max length of historical statistics buffer length')
   validate_train_set = Flag.boolean(
     False, 'Whether to validate train set in trainer._validate_model')
+  validate_test_set = Flag.boolean(
+    False, 'Whether to test train set in trainer._validate_model')
   terminal_threshold = Flag.float(0., 'Terminal threshold')
 
   # endregion : Class Attributes
