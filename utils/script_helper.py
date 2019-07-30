@@ -129,7 +129,7 @@ class Helper(object):
     self._show_parameters()
     # Begin iteration
     counter = 0
-    for _ in range(times):
+    for run_id in range(times):
       counter += 1
       if save: self.common_parameters['suffix'] = '_{}{}'.format(mark, counter)
       history = []
@@ -141,7 +141,8 @@ class Helper(object):
         params_string = ' '.join(params_list)
         if params_string in history: continue
         history.append(params_string)
-
+        console.show_status(
+          'Loading task ...', '[Run {}/{}]'.format(run_id + 1, times))
         call([self._python_cmd, self.module_name] + params_list)
         # call(self.command_head + params_list)
         print()
