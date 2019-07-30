@@ -250,6 +250,7 @@ class Helper(object):
       if k in ('run', 'runs'):
         assert len(val_list) == 1
         self._sys_runs = checker.check_positive_integer(int(val_list[0]))
+        console.show_status('run times set to {}'.format(self._sys_runs))
         continue
       self.register(k, *val_list)
       self.sys_keys.append(k)
