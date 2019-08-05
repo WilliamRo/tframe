@@ -2,10 +2,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe import checker
 from tframe import linker
+from tframe import hub as th
 from tframe.nets.rnn_cells.cell_base import CellBase
 
 from tframe.operators.apis.distributor import Distributor
@@ -44,6 +46,9 @@ class GDU(CellBase, Distributor):
     self._state_size = self._get_total_size(self._groups)
     self._dropout_rate = checker.check_type(dropout, float)
     assert 0 <= dropout < 1
+    # matrices for SOG v1
+    self._D = None
+    self._S = None
 
 
   @property
@@ -53,19 +58,17 @@ class GDU(CellBase, Distributor):
     if self._use_reset_gate: tail = '[r]' + tail
     return tail
 
+
   @staticmethod
   def mark():
-    from tframe import hub as th
-    options = ''
-    if th.use_reset_gate: options += 'r'
-    if options: options = '({})'.format(options)
-    return 'gdu({}){}'.format(th.gdu_string, options)
+    return '{}gdu({})'.format('r' if th.use_reset_gate else '', th.gdu_string)
 
 
   def _get_sog_activation(self, x, s, configs, scope, name):
     assert isinstance(configs, (list, tuple)) and len(configs) > 0
     net_u = self.dense_rn(x, s, scope)
-    u = linker.softmax_over_groups(net_u, configs, name)
+    if th.sog_version == 0: u = linker.softmax_over_groups(net_u, configs, name)
+    else: u = self._sog_v1(net_u)
     return u
 
 
@@ -96,3 +99,23 @@ class GDU(CellBase, Distributor):
     y = new_s
     return y, new_s
 
+
+  def _sog_v1(self, x):
+    # This version of sog is much faster than v0
+    s, n, delta = self._groups[0]
+    assert len(self._groups) == 1 and delta == 1
+    # Check matrices
+    if self._D is None:
+      # This code block is copied from GAM._init_const_matrices
+      # Duplicating matrix D
+      D = np.zeros((n, s * n), dtype=np.float32)
+      indices=[[i, j] for i in range(n) for j in range(i*s, i*s+s)]
+      for i, j in indices: D[i, j] = 1.0
+      self._D = tf.constant(D, dtype=th.dtype)
+      # Summarizing matrix S
+      S = np.transpose(D)
+      self._S = tf.constant(S, dtype=th.dtype)
+    # Calculate SOG
+    exp = tf.exp(x)
+    deno = tf.matmul(tf.matmul(x, self._S), self._D)
+    return tf.divide(exp, deno, name='sog')
