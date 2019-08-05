@@ -26,6 +26,8 @@ class GAM(Groups, RNeuroBase):
     # Do not init till link, otherwise D and S will be put into a different
     #   graph
     # self._init_const_matrices()
+    # Be careful of inappropriate increment by while-free building
+    # Use reset_counters at the beginning of _link
     self._head_counter = 0
     self._address_counter = 0
 
@@ -96,6 +98,12 @@ class GAM(Groups, RNeuroBase):
   # endregion : Operations V2
 
   # region : Private Methods
+
+  def _reset_counter(self):
+    """This method is used to avoid inappropriate increment by
+       while-free build by recurrent base"""
+    self._head_counter = 0
+    self._address_counter = 0
 
   def _check_const_matrices(self):
     if self.D is None: self._init_const_matrices()

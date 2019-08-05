@@ -72,6 +72,7 @@ class GamRHN(CellBase, GAM, HyperKernel):
   def _link(self, prev_states, x, **kwargs):
     gam, state = prev_states
     output = state[0] if isinstance(state, (tuple, list)) else state
+    self._reset_counter() # important
 
     # - Write to GAM
     gam, hw = self._write(gam, x, output)
