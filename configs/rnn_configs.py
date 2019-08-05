@@ -135,7 +135,11 @@ class RNNConfigs(object):
   gam_config = Flag.string(None, 'Gam config string (SxN)', is_key=None)
   sog_version = Flag.integer(
     1, 'Version of `softmax over groups` activation. '
-       'v0 bases on reshape, 1 bases on matmul', is_key=None)
+       'v0 bases on reshape, v1 bases on matmul')
+  gam_read_version = Flag.integer(
+    1, 'Version of read operation from GAM. '
+       'v0 bases on reshape, slow but save space.'
+       'v1 bases on matmul, quick but needs more space.')
   gam_dropout = Flag.float(0.0, 'Dropout for GAM', is_key=None)
   rhn_dropout = Flag.float(0.0, 'Dropout for RHN', is_key=None)
   sparse_gam = Flag.boolean(True, 'Whether to use sparse tensor in GAM')

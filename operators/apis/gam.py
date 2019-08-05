@@ -80,8 +80,21 @@ class GAM(Groups, RNeuroBase):
     return (1. - a) * gam + a * self._duplicate(m_bar), h
 
   def _read(self, gam, *inputs, head=None):
-    a = self._get_address(*inputs, head=head)
-    return self._summarize(a * gam)
+    if hub.gam_read_version == 1:
+      a = self._get_address(*inputs, head=head)
+      return self._summarize(a * gam)
+    else:
+      assert hub.gam_read_version == 0
+      # Implement read operation basing on reshape
+      # Runs slow but needs less RAM
+      if head is None: head = self._get_head(*inputs)
+      net_a = self.dense(self.total_size, head, self.address_scope)
+      def operator(state, n_a):
+        a = tf.nn.softmax(n_a, axis=1)
+        return tf.reduce_sum(state * a, axis=1, keepdims=True)
+      reshape2 = lambda _, n: n
+      return self._binary_operate_over_groups(
+        gam, net_a, operator, reshape2=reshape2)
 
   def _softmax_over_groups(self, tensor):
     """The 'softmax over groups' activation implemented using matrix
