@@ -138,5 +138,6 @@ class RNNConfigs(object):
        'v0 bases on reshape, 1 bases on matmul', is_key=None)
   gam_dropout = Flag.float(0.0, 'Dropout for GAM', is_key=None)
   rhn_dropout = Flag.float(0.0, 'Dropout for RHN', is_key=None)
+  sparse_gam = Flag.boolean(True, 'Whether to use sparse tensor in GAM')
   # head_size is defined in model_configs.py
 

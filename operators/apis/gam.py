@@ -106,19 +106,27 @@ class GAM(Groups, RNeuroBase):
     self._address_counter = 0
 
   def _check_const_matrices(self):
-    if self.D is None: self._init_const_matrices()
+    if self.D is None:
+      if hub.sparse_gam: self._init_const_matrices_sp()
+      else: self._init_const_matrices()
+
+  @staticmethod
+  def _matmul(x, y):
+    if hub.sparse_gam: return tf.matrix_transpose(
+        tf.sparse_tensor_dense_matmul(y, x, True, True))
+    return tf.matmul(x, y)
 
   def _duplicate(self, tensor):
     self._check_const_matrices()
     assert isinstance(tensor, tf.Tensor)
     assert tensor.shape.as_list()[1] == self.num_groups
-    return tf.matmul(tensor, self.D)
+    return self._matmul(tensor, self.D)
 
   def _summarize(self, tensor):
     self._check_const_matrices()
     assert isinstance(tensor, tf.Tensor)
     assert tensor.shape.as_list()[1] == self.total_size
-    return tf.matmul(tensor, self.S)
+    return self._matmul(tensor, self.S)
 
   def _init_const_matrices(self):
     """M stands for batch_size, SxN is GAM config
