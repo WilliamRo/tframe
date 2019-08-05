@@ -117,5 +117,5 @@ class GDU(CellBase, Distributor):
       self._S = tf.constant(S, dtype=th.dtype)
     # Calculate SOG
     exp = tf.exp(x)
-    deno = tf.matmul(tf.matmul(x, self._S), self._D)
+    deno = tf.matmul(tf.matmul(exp, self._S), self._D)
     return tf.divide(exp, deno, name='sog')
