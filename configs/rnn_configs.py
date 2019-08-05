@@ -131,3 +131,12 @@ class RNNConfigs(object):
        ' during validation in training model handling tasks with long '
        'sequences, e.g. cPTB')
 
+  # GAM-RHN configs
+  gam_config = Flag.string(None, 'Gam config string (SxN)', is_key=None)
+  sog_version = Flag.integer(
+    1, 'Version of `softmax over groups` activation. '
+       'v0 bases on reshape, 1 bases on matmul', is_key=None)
+  gam_dropout = Flag.float(0.0, 'Dropout for GAM', is_key=None)
+  rhn_dropout = Flag.float(0.0, 'Dropout for RHN', is_key=None)
+  # head_size is defined in model_configs.py
+

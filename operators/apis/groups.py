@@ -19,6 +19,7 @@ class Groups(object):
     """
     self._groups = self._parse(config_string)
 
+  # region : Configs
 
   @property
   def group_string(self):
@@ -37,7 +38,6 @@ class Groups(object):
   def num_groups(self):
     return sum([n for _, n in self._groups])
 
-
   @staticmethod
   def _parse(config_string):
     assert isinstance(config_string, str)
@@ -52,6 +52,9 @@ class Groups(object):
     for g in groups: assert g[0] > 0 and g[1] > 0
     return groups
 
+  # endregion : Configs
+
+  # region : Operations V1
 
   def _operate_over_groups(
       self, tensor, operator, sizes=None, reshape1=None, reshape2=None):
@@ -69,7 +72,6 @@ class Groups(object):
       output_list.append(data)
     # Concatenate and return
     return linker.concatenate(output_list)
-
 
   def _binary_operate_over_groups(
       self, tensor1, tensor2, operator, sizes1=None, sizes2=None,
@@ -104,9 +106,10 @@ class Groups(object):
     # Concatenate and return
     return linker.concatenate(output_list)
 
-
   def _softmax_over_groups(self, tensor):
+    """The 'softmax over groups' activation implemented using tf.reshape"""
     operator = lambda t: tf.nn.softmax(t, axis=1)
     return self._operate_over_groups(tensor, operator)
 
+  # endregion : Operations V1
 
