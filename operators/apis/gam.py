@@ -61,7 +61,7 @@ class GAM(Groups, RNeuroBase):
   def _get_address(self, *inputs, head=None, return_head=False):
     if head is None: head = self._get_head(*inputs)
     net_a = self.dense(
-      self.total_size, head, self.address_scope, use_bias=False)
+      self.total_size, head, self.address_scope, use_bias=hub.address_bias)
     a = self._softmax_over_groups(net_a)
     if return_head: return a, head
     return a
