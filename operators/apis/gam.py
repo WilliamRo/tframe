@@ -54,7 +54,7 @@ class GAM(Groups, RNeuroBase):
 
   def _get_head(self, *inputs):
     head = self.dense_v2(
-      self._head_size, self.head_scope, *inputs, use_bias=False)
+      self._head_size, self.head_scope, *inputs, use_bias=hub.head_bias)
     # Dropout may be applied
     return head
 

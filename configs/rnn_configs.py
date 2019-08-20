@@ -143,5 +143,7 @@ class RNNConfigs(object):
   gam_dropout = Flag.float(0.0, 'Dropout for GAM', is_key=None)
   rhn_dropout = Flag.float(0.0, 'Dropout for RHN', is_key=None)
   sparse_gam = Flag.boolean(True, 'Whether to use sparse tensor in GAM')
+  head_bias = Flag.boolean(False, 'Whether to use bias in head neurons',
+                           is_key=None)
   # head_size is defined in model_configs.py
 
