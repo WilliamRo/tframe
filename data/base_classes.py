@@ -196,7 +196,9 @@ class DataAgent(object):
     from six.moves import urllib
     # Show status
     file_name = cls._split_path(file_path)[-1]
-    console.show_status('Downloading {} ...'.format(file_name))
+    data_dir = '/'.join(cls._split_path(file_path)[:-1])
+    console.show_status('Downloading {} to {} ...'.format(
+      file_name, data_dir))
     start_time = time.time()
     def _progress(count, block_size, total_size):
       console.clear_line()
