@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import re
+import tarfile, zipfile
 import numpy as np
 import pickle
 
@@ -191,12 +192,34 @@ class DataAgent(object):
     return file_path
 
   @classmethod
+  def _check_extracted_data(
+      cls, compressed_file_path, extracted_file_name=None):
+    data_dir = os.path.dirname(compressed_file_path)
+    compressed_file_name = os.path.basename(compressed_file_path)
+    assert isinstance(compressed_file_path, str)
+    if extracted_file_name is None:
+      extracted_file_name = '.'.join(compressed_file_name.split('.')[:-1])
+    extracted_file_path = os.path.join(data_dir, extracted_file_name)
+    if os.path.exists(extracted_file_path): return extracted_file_path
+    # If file has not been extracted yet, uncompress it
+    console.show_status('Extracting {} to {} ...'.format(
+      compressed_file_name, data_dir))
+    if compressed_file_name.endswith('zip'):
+      zipfile.ZipFile(compressed_file_path, 'r').extractall(data_dir)
+    elif compressed_file_name.endswith('tar'):
+      tarfile.open(compressed_file_path).extractall(data_dir)
+    else: raise ValueError(
+      'Can not extract file {}. Unknown extension.'.format(
+        compressed_file_name))
+    return extracted_file_path
+
+  @classmethod
   def _download(cls, file_path, url=None):
     import time
     from six.moves import urllib
     # Show status
-    file_name = cls._split_path(file_path)[-1]
-    data_dir = '/'.join(cls._split_path(file_path)[:-1])
+    file_name = os.path.basename(file_path)
+    data_dir = os.path.dirname(file_path)
     console.show_status('Downloading {} to {} ...'.format(
       file_name, data_dir))
     start_time = time.time()
