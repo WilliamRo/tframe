@@ -8,15 +8,32 @@ from collections import OrderedDict
 
 class Parser(object):
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, ignore_in_suffix=(), **kwargs):
     self.name = None
     self.arg_list = list(args)
     self.arg_dict = OrderedDict(kwargs)
+    if not isinstance(ignore_in_suffix, (tuple, list)):
+      ignore_in_suffix = (ignore_in_suffix,)
+    self.ignore_in_suffix = ignore_in_suffix
 
 
   def __getitem__(self, key):
     if key in self.arg_dict: return self.arg_dict[key]
     raise KeyError('!! Key `{}` not found'.format(key))
+
+
+  @property
+  def filename_suffix(self):
+    name = self.name if self.name else 'noname'
+    suffix = ''
+    if len(self.arg_list) > 0: suffix += self.arg_list[0]
+    if len(self.arg_dict) > 0:
+      for k, v in self.arg_dict.items():
+        if k in self.ignore_in_suffix: continue
+        if suffix is not '': suffix += ','
+        suffix += '{}={}'.format(k, v)
+    if suffix is not '': suffix = '({})'.format(suffix)
+    return name + suffix
 
 
   def get_arg(self, dtype=str, default=None):
@@ -26,9 +43,10 @@ class Parser(object):
     return dtype(arg)
 
 
-  def get_kwarg(self, key, dtype=str, default=None):
+  def get_kwarg(self, key, dtype=str, default=None, pop=False):
     assert isinstance(key, str)
     if key not in self.arg_dict and default is not None: return default
+    if pop: self.arg_dict.pop(key, None)
     return dtype(self.arg_dict[key])
 
 
@@ -62,12 +80,13 @@ class Parser(object):
 
 
   @staticmethod
-  def parse(arg_string, *args, **kwargs):
-    p = Parser(*args, **kwargs)
+  def parse(arg_string, *args, ignore_in_suffix=(), **kwargs):
+    p = Parser(*args, ignore_in_suffix=ignore_in_suffix, **kwargs)
     p.parse_arg_string(arg_string)
     return p
 
 
 if __name__ == '__main__':
-  p = Parser.parse('linear:0.5')
-  print(p.name)
+  p = Parser.parse('raw:save=True', ignore_in_suffix='save')
+  print(p.filename_suffix)
+  print(p.get_kwarg('save', bool))
