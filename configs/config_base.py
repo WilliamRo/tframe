@@ -86,7 +86,7 @@ class Config(
 
   @property
   def should_create_path(self):
-    return self.train and not self.on_cloud
+    return (self.train or self.dynamic_evaluation) and not self.on_cloud
 
   @property
   def key_options(self):
