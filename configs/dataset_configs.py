@@ -6,6 +6,7 @@ from .flag import Flag
 
 
 class DataConfigs(object):
+  data_config = Flag.string(None, 'Data set config string', is_key=None)
   train_size = Flag.integer(0, 'Size of training set')
   val_size = Flag.integer(0, 'Size of validation set')
   test_size = Flag.integer(0, 'Size of test set')
