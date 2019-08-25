@@ -19,6 +19,7 @@ from tframe import hub
 from tframe import InputTypes
 from tframe.core import with_graph
 from tframe.core import TensorSlot
+from tframe.core.quantity import Quantity
 
 
 class Predictor(Feedforward, Recurrent):
@@ -119,7 +120,7 @@ class Predictor(Feedforward, Recurrent):
 
     # Initialize metric
     if metric is not None:
-      checker.check_type(metric, str)
+      checker.check_type(metric, (str, Quantity))
       # Create placeholder for val_targets if necessary
       # Common targets will be plugged into val_target slot by default
       self._plug_val_target_in(kwargs.get('val_targets', None))

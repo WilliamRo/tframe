@@ -81,24 +81,26 @@ class MetricsManager(object):
   def initialize(
       self, metric_list, last_only, target_tensor, output_tensor, **kwargs):
     # Sanity check
-    if isinstance(metric_list, str): metric_list = [metric_list]
+    if not isinstance(metric_list, (tuple, list)): metric_list = [metric_list]
+    # if isinstance(metric_list, str): metric_list = [metric_list] TODO: X
     checker.check_type([target_tensor, output_tensor], tf.Tensor)
 
-    for metric_str in metric_list:
-      assert isinstance(metric_str, str)
-      metric_str = metric_str.lower()
+    for metric in metric_list:
+      assert isinstance(metric, (str, Quantity))
+      if isinstance(metric, str): metric = metric.lower()
 
       # Get quality
-      if metric_str == 'loss':
+      if metric == 'loss':
         quantity = self.model.loss_quantity
         tensor = quantity.quantity
       else:
         # Initiate a new Quantity
-        quantity = metrics.get(metric_str, last_only=last_only, **kwargs)
+        quantity = metrics.get(metric, last_only=last_only, **kwargs)
         tensor = quantity(target_tensor, output_tensor)
 
       # Create a metric_slot and plug tensor in
-      metric_slot = MetricSlot(self.model, metric_str)
+      name = metric if isinstance(metric, str) else quantity.name
+      metric_slot = MetricSlot(self.model, name=name)
       metric_slot.plug(tensor, quantity.name, quantity_def=quantity)
 
       # Append metric slot to metrics list
