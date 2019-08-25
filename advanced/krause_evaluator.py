@@ -156,6 +156,7 @@ class KrauseEvaluator(object):
     th.train_stats_exists = True
     # When th.train_stats_exists is True, saver will initiated with _sqrt_MS_g
     self._model.agent.reset_saver()
+    th.save_model = True
     self._model.agent.save_model()
     console.show_status('sqrt_MS_g saved to checkpoint', '[Gradient Stats]')
 
