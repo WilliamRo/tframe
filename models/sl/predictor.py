@@ -120,7 +120,7 @@ class Predictor(Feedforward, Recurrent):
 
     # Initialize metric
     if metric is not None:
-      checker.check_type(metric, (str, Quantity))
+      checker.check_type_v2(metric, (str, Quantity))
       # Create placeholder for val_targets if necessary
       # Common targets will be plugged into val_target slot by default
       self._plug_val_target_in(kwargs.get('val_targets', None))
@@ -140,7 +140,8 @@ class Predictor(Feedforward, Recurrent):
     dtype = hub.dtype
     if hub.target_dim != 0: shape[-1] = hub.target_dim
     # If target is sparse label
-    if hub.target_dim == 1: dtype = tf.int32
+    if hub.target_dtype is not None: dtype = hub.target_dtype
+    # if hub.target_dim == 1: dtype = tf.int32  # TODO: X
 
     # Handle recurrent situation
     if self._targets.tensor is not None:
