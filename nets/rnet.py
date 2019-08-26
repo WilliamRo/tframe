@@ -225,6 +225,24 @@ class RNet(Net):
       self._gradient_buffer_array = self._get_zero_gradient_buffer(
         batch_size)
 
+  def decrease_buffer_size(self, indices, is_training):
+    assert self.is_root and isinstance(indices, (list, tuple))
+
+    def _decrease(state):
+      if isinstance(state, np.ndarray):
+        assert len(state) > len(indices)
+        return state[np.array(indices)]
+      elif isinstance(state, (list, tuple)):
+        # tf.scan returns a list of states
+        state = list(state)
+        for i, s in enumerate(state): state[i] = _decrease(s)
+        return tuple(state)
+      else: raise TypeError('!! Unknown type of states: {}'.format(type(state)))
+
+    if is_training:
+      self._train_state_buffer = _decrease(self._train_state_buffer)
+    else: self._eval_state_buffer = _decrease(self._eval_state_buffer)
+
   def reset_part_buffer(self, indices, values=None):
     """This method is first designed for parallel training of RNN model with
         irregular sequence input"""

@@ -84,6 +84,7 @@ class Model(object):
 
     # Public attributes
     self.counter = None
+    self.epochs = None
     self.launched = False
 
     # Quantities
@@ -392,10 +393,11 @@ class Model(object):
       # it's legal for common DataSet to have num_steps > 0 while batch_size > 1
       checker.check_positive_integer(batch_size)
       if batch_size > 1 and isinstance(data_set, SequenceSet):
-        assert num_steps < 0
+        #assert num_steps < 0  # XXXXXXXX
         # The constraint below is not necessary due to gather_indices mechanism
-        if is_training and not hub.use_gather_indices:
-          assert data_set.equal_length
+        # if is_training and not hub.use_gather_indices:
+        #   assert data_set.equal_length
+        pass
 
       # Check num_steps
       checker.check_type(num_steps, int)
@@ -596,6 +598,7 @@ class Model(object):
     # Wrap fetches into a list if necessary
     if single_fetch: fetches = [fetches]
     if num_steps is None: num_steps = hub.val_num_steps
+    if batch_size is None: batch_size = data.size
 
     # Get outputs (sometimes fetches may contain operations which yields None)
     outputs = [[] for op in fetches if not isinstance(op, tf.Operation)]

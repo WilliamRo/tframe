@@ -509,6 +509,10 @@ class Recurrent(Model, RNet):
     if batch.should_reset_state:
       self.reset_buffers(batch.size, is_training)
       if is_training and hub.notify_when_reset: console.write_line('- ' * 40)
+    # (2) Decrease batch size if necessary
+    if batch.active_indices is not None:
+      # This signal is set in DataSet.gen_rnn_batches invoked by SequenceSet
+      self.decrease_buffer_size(batch.active_indices, is_training)
 
     # BETA: for parallel engine logic
     if batch.should_partially_reset_state:
@@ -521,7 +525,7 @@ class Recurrent(Model, RNet):
         else: info = batch.reset_batch_indices
         console.write_line('{}'.format(info))
 
-    # (2) Set status buffer to status placeholder
+    # (3) Set status buffer to status placeholder
     feed_dict.update(self._get_rnn_dict(is_training, batch.size))
 
     return feed_dict

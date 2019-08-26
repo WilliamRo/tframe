@@ -128,7 +128,7 @@ class Trainer(object):
     return self.model.metrics_manager
 
   @property
-  def total_rounds(self):
+  def total_rounds(self):  # TODO: CC
     # TODO: Batch size must be kept the same among different trials
     if self.th.round_length is None: return None
     return self.counter / self.th.round_length
@@ -214,47 +214,11 @@ class Trainer(object):
       self.th.trainer = self
     else: self.th.set_up(**kwargs)
 
-    # Get round length
-    num_steps = (self.th.num_steps
-                 if self.model.input_type is InputTypes.RNN_BATCH else None)
-    self.th.round_length = self.training_set.get_round_length(
-      self.th.batch_size, num_steps, training=True)
-    def set_cycle(attr_name, num_per_round):
-      assert hasattr(self.th, attr_name)
-      if self.th.round_length is not None:
-        setattr(self.th, attr_name, self.th.round_length // num_per_round)
-
     # Set progress bar
-    if self.th.progress_bar:
-      self.th.progress_bar = self.th.round_length is not None
-
-    # Check validation cycle
-    if self.th.validation_per_round > 0 and self.validation_set is not None:
-      # give validate_cycle the highest priority
-      if self.th.validate_cycle == 0:
-        set_cycle('validate_cycle', self.th.validation_per_round)
-
-    # Check probe cycle
-    if self.th.probe_per_round > 0 and self._probe is not None:
-      if self.th.probe_cycle == 0:
-        set_cycle('probe_cycle', self.th.probe_per_round)
-
-    # Check note cycle
-    if self.th.note_per_round > 0:
-      if self.th.note_cycle == 0:
-        set_cycle('note_cycle', self.th.note_per_round)
-
-    # Check etch cycle
-    if self.th.etch_per_round > 0:
-      if self.th.etch_cycle == 0:
-        set_cycle('etch_cycle', self.th.etch_per_round)
-
-    if self.th.note_cycle == 0 and self.th.export_tensors_upon_validation:
-      self.th.note_cycle = self.th.validate_cycle
+    if self.th.progress_bar: self.th.progress_bar = self.th.round_len_is_active
 
     # Other setting
-    if not self.th.warm_up:
-      self._warm_up = False
+    if not self.th.warm_up: self._warm_up = False
 
   def _sanity_check(self):
     """Should be overrode by subclasses"""
@@ -477,6 +441,7 @@ class Trainer(object):
       #     self.training_set.batch_preprocessor is None):
       #   # a batch of equal-length sequences is allowed
       #   raise AssertionError('!! parallel engine is not activated')
+
       pass
     return self.model.get_data_batches(
       self.training_set, self.th.batch_size, self.th.num_steps,
@@ -564,9 +529,9 @@ class Trainer(object):
 
   def _take_notes_for_export(self):
     # Note switch should be turned on
-    if self.th.note_cycle == 0: return
+    if self.th.note_modulus == 0: return
     # Note cycle should be met
-    if np.mod(self.counter, self.th.note_cycle) != 0:
+    if np.mod(self.counter, self.th.note_modulus) != 0:
       if not (self.counter == 1 and self.th.take_note_in_beginning): return
     # Loss history should not be blank
     if not self.batch_loss_stat.last_value: return
@@ -589,8 +554,8 @@ class Trainer(object):
     if self.th.terminate_on_note: self.th.force_terminate = True
 
   def _run_probe(self):
-    if self._probe is None or self.th.probe_cycle == 0: return False
-    if np.mod(self.counter, self.th.probe_cycle) != 0: return False
+    if self._probe is None or self.th.probe_modulus == 0: return False
+    if np.mod(self.counter, self.th.probe_modulus) != 0: return False
     # content = self._probe(self, loss_dict=loss_dict)
     content = self._probe(self)
     if content is None or content == '': return
@@ -598,7 +563,7 @@ class Trainer(object):
 
   def _etch(self):
     if not self.th.etch_on: return
-    if np.mod(self.counter, self.th.etch_cycle) != 0: return
+    if np.mod(self.counter, self.th.etch_modulus) != 0: return
     pruner = context.pruner
     assert pruner is not None
     pruner.etch_all()
@@ -606,7 +571,7 @@ class Trainer(object):
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
     # Validate cycle should be met
-    if np.mod(self.counter, self.th.validate_cycle) != 0:
+    if np.mod(self.counter, self.th.validate_modulus) != 0:
       if not (self.counter == 1 and self.th.take_note_in_beginning):
         return False
 
@@ -731,7 +696,7 @@ class TrainerHub(Config):
     self._start_time = None
     self._stop = False
 
-    self.round_length = None
+    self._round_length = None
     self.cursor = None
 
     self.force_terminate = False
@@ -739,6 +704,11 @@ class TrainerHub(Config):
     self.logs = {}
 
   # region : Properties
+
+  @property
+  def round_length(self):
+    assert isinstance(self.trainer.training_set, TFRData)
+    return self.trainer.training_set.dynamic_round_len
 
   @property
   def total_outer_loops(self):
@@ -756,7 +726,9 @@ class TrainerHub(Config):
     assert isinstance(mm, MetricsManager)
     if not mm.has_metric: return False
     val_data = self.trainer.validation_set
-    return val_data is not None and self.validate_cycle > 0
+    # [Compromise] avoid error in _show_configurations method
+    if self.validate_modulus is None: return None
+    return val_data is not None and self.validate_modulus > 0
 
   @property
   def start_time(self):
@@ -772,6 +744,47 @@ class TrainerHub(Config):
   def round_progress(self):
     if self.round_length is None or self.cursor is None: return None
     return 1.0 * self.cursor / self.round_length
+
+  # region : Modulus
+
+  @property
+  def round_len_is_active(self):
+    assert isinstance(self.trainer.training_set, TFRData)
+    return not isinstance(self.trainer.training_set, PerpetualMachine)
+
+  def _get_modulus(self, verb, act_per_round_key=None, act_cycle_key=None):
+    assert isinstance(verb, str)
+    if act_per_round_key is None:
+      act_per_round_key = '{}_per_round'.format(verb)
+    if act_cycle_key is None: act_cycle_key = '{}_cycle'.format(verb)
+    # Get value
+    act_per_round = getattr(self, act_per_round_key)
+    act_cycle = getattr(self, act_cycle_key)
+    # act_cycle has the highest priority
+    if any([act_cycle > 0, not self.round_len_is_active, act_per_round <= 0]):
+      return act_cycle
+    # [Compromise] avoid error in Trainer._show_configuration method
+    if self.round_length is None: return None
+    return self.round_length // act_per_round
+
+  @property
+  def validate_modulus(self):
+    return self._get_modulus(
+      'validate', act_per_round_key='validation_per_round')
+
+  @property
+  def probe_modulus(self): return self._get_modulus('probe')
+
+  @property
+  def etch_modulus(self): return self._get_modulus('etch')
+
+  @property
+  def note_modulus(self):
+    if self.note_cycle <= 0 and self.export_tensors_upon_validation:
+      return self.validate_modulus
+    return self._get_modulus('note')
+
+  # endregion : Modulus
 
   # endregion : Properties
 

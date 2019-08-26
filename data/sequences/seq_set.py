@@ -45,7 +45,6 @@ class SequenceSet(DataSet):
     # Call parent's constructor
     super().__init__(features, targets, data_dict, name, **kwargs)
 
-
   # region : Properties
 
   @property
@@ -178,15 +177,26 @@ class SequenceSet(DataSet):
         if batch_size < 0: batch_size = self.size
 
         if batch_size == 1:
+          # When batch_size == 1, num_steps can be any integer
           round_len = sum([np.ceil(L / (num_steps if num_steps > 0 else L))
                            for L in self.structure])
         else:
-          assert num_steps < 0
-          round_len = np.ceil(self.size / batch_size)
-    return int(round_len)
+          # When batch_size > 1, num_steps can be any integer
+          # This is the most complicated branch in which the result depends
+          # .. on the permutation of indices and is only valid within one
+          # .. epoch
+          # SeqSets that contain only one sequence should be encapsulated
+          # .. as a tframe DataSet instead of SequenceSet. e.g. PTB and text8
+          if num_steps < 0: num_steps = max(self.structure)
+          round_len = self._get_most_complicated_round_len(
+            batch_size, num_steps, training=training)
+
+    round_len = int(round_len)
+    if training: self._set_dynamic_round_len(round_len)
+    return round_len
 
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False,
-                      is_training=False):
+                      is_training=False, **kwargs):
     """Generate RNN batches in which each data item has shape
       (batch_size, steps, *sample_shape)
       If parallel option is on, batches will be yielded from a BETA method
@@ -205,14 +215,20 @@ class SequenceSet(DataSet):
                         to -1 or any positive integer.
     :param num_steps:  a non-negative integer.
     :param shuffle:    Whether to shuffle
+    :param is_training: Whether this method is invoked by tframe Trainer
+                        during training
     """
-    # BETA, only available for model training
+    # BETA, only available for model training (is deprecated)
     if self.parallel_on:
       yield from self._gen_parallel_batches(batch_size, num_steps, shuffle)
       return
 
+    # Initialize indices, shuffle if necessary
+    # This line must be put before self.get_round_length method
+    self._init_indices(shuffle)
+    if shuffle: assert is_training
     # Get round length
-    round_len = self.get_round_length(batch_size, num_steps)
+    round_len = self.get_round_length(batch_size, num_steps, is_training)
     # If batch_size < 0, set it to self.size
     if batch_size < 0: batch_size = self.size
     # Calculate # batches in one epoch
@@ -220,11 +236,9 @@ class SequenceSet(DataSet):
     # counter helps to enforce the total iterations in one epoch matches the
     #  round length
     counter = 0
-    # Initialize indices, shuffle if necessary
-    self._init_indices(shuffle)
     for i in range(num_batches):
       # Get sequence list of length `batch_size`
-      indices = self._select(i, batch_size, shuffle)
+      indices = self._select(i, batch_size, training=is_training)
       seq_batch = self[indices]
       active_length = None
       # Pre-proceed this batch if necessary
@@ -238,8 +252,6 @@ class SequenceSet(DataSet):
         #   batch have various lengths
         if seq_batch.size > 1:
           active_length = seq_batch.structure
-          # forbid sequence partition
-          assert num_steps < 0
         # padded_stack is_rnn_input, and is a DataSet, not SeqSet any more
         seq_batch = seq_batch.padded_stack
         # At this point, seq_batch is a DataSet with active_length being
@@ -247,18 +259,20 @@ class SequenceSet(DataSet):
 
       # seq_batch.shape = (batches, steps, *shape)
       # Use DataSet's gen_rnn_batches method to yield batches
-      # Note that here `batch_size` parameter will not be used in
-      #  seq_batch.gen_rnn_batches method
       for batch in seq_batch.gen_rnn_batches(
-          1, num_steps, is_training=is_training):
-        batch.active_length = active_length
+          seq_batch.size, num_steps, is_training=is_training,
+          act_lens=active_length):
+        assert isinstance(batch.active_length, list)
+        assert len(batch.active_length) > 0
         yield batch
         counter += 1
-        if counter == round_len: break
 
-      if counter == round_len: break
-
-    if not shuffle: assert counter == round_len
+    if counter != round_len:
+      raise AssertionError(
+        '!! counter = {} while round_len = {}. (batch_size = {}, num_steps={})'
+        ''.format(counter, round_len, batch_size, num_steps))
+    # Clear dynamic_round_len if necessary
+    if is_training: self._clear_dynamic_round_len()
 
   # endregion : Basic APIs
 
@@ -358,6 +372,27 @@ class SequenceSet(DataSet):
     for i, s in enumerate(sequences): stack[i, :len(s)] = s
 
     return stack
+
+  def _get_most_complicated_round_len(self, batch_size, num_steps, training):
+    """Get dynamic round length when batch_size > 1"""
+    checker.check_positive_integer(batch_size)
+    checker.check_type(num_steps, int)
+    checker.check_type(training, bool)
+    assert batch_size > 1
+    # Check indices
+    _indices = self.indices if training else self._ordered_indices
+    assert isinstance(_indices, np.ndarray) and _indices.size == self.size
+    # Simulate the gen_batches process in gen_rnn_batches method
+    num_batches = int(np.ceil(self.size / batch_size))
+    counter = 0
+    structure = np.array(self.structure)
+    for i in range(num_batches):
+      # Get sequence list of length `batch_size`
+      indices = self._select(i, batch_size, training=training)
+      act_lens = structure[indices]
+      # Traverse this sequence batch
+      counter += self._get_dynamic_round_len(act_lens, num_steps, training)
+    return counter
 
   # endregion : Private Methods
 

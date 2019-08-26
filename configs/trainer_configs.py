@@ -50,4 +50,7 @@ class TrainerConfigs(object):
   save_train_opt_vars = Flag.boolean(
     False, 'Whether to save variables in optimizer for training')
 
+  uncertain_round_len = Flag.boolean(
+    False, 'Whether tframe is uncertain about the round length ', is_key=False)
+
 

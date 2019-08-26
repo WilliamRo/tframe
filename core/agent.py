@@ -92,6 +92,13 @@ class Agent(object):
                       self._model.mark, create_path=hub.snapshot)
   @property
   def model_path(self):
+    """This property will be used only when checkpoint is to be saved.
+        Old name format: XXXX.model
+        New name format: XXXX[(x.xxx-epochs)]?  e.g. classifier(112.328-epochs)
+        Where XXXX denotes self._model.model_name
+    """
+    model_name = self._model.model_name
+
     return os.path.join(
       self.ckpt_dir, '{}.model'.format(self._model.model_name))
 
@@ -171,16 +178,11 @@ class Agent(object):
     if hub.prune_on: context.pruner.set_init_val_lottery18()
 
     # Try to load exist model
-    load_flag, self._model.counter = self.load()
+    load_flag, self._model.counter = self.load()  # TODO +++
     # Sanity check
     if hub.prune_on and hub.pruning_iterations > 0:
-      if not load_flag:
-        raise AssertionError(
-          '!! Model {} should be initialized'.format(self._model.mark))
-      # else:
-      #   console.show_status(
-      #   'Counter: {}, Min Weight Fraction: {:.2f}'.format(
-      #     self._model.counter, context.pruner.weights_fraction))
+      if not load_flag: raise AssertionError(
+        '!! Model {} should be initialized'.format(self._model.mark))
 
     if not load_flag:
       assert self._model.counter == 0

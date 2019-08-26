@@ -27,7 +27,15 @@ class TFRData(object):
     self.name = name
     self.properties = {}
 
+    # Variables for dynamic round length. drl should be set only once
+    # .. within one epoch inside the corresponding gen_[rnn_]batches method
+    self._dynamic_round_len = None
+    # self._drl_permission = False
+
   # region : Properties
+
+  @property
+  def dynamic_round_len(self): return self._dynamic_round_len
 
   @property
   def batch_preprocessor(self):

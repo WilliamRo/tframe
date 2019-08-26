@@ -41,12 +41,14 @@ class DataSet(TFRData):
     self.should_reset_state = False
     self.reset_batch_indices = None
     self.reset_values = None
-
-    # Indices
-    self.indices = None
+    self.active_indices = None
 
     # Sanity checks
     self._check_data()
+
+    # Indices
+    self.indices = None
+    self._ordered_indices = np.array(list(range(self.size)))
 
   # region : Properties
 
@@ -163,7 +165,9 @@ class DataSet(TFRData):
           L = M/((N - 1)*(1 - p) + 1)
           round_len = int(np.ceil(L / num_steps))
 
-    return int(round_len)
+    round_len = int(round_len)
+    if training: self._set_dynamic_round_len(round_len)
+    return round_len
 
   def gen_batches(self, batch_size, shuffle=False, is_training=False):
     """Yield batches of data with the specific size"""
@@ -173,7 +177,7 @@ class DataSet(TFRData):
     # Generate batches
     self._init_indices(shuffle)
     for i in range(round_len):
-      indices = self._select(i, batch_size, shuffle)
+      indices = self._select(i, batch_size, training=is_training)
       # Get subset
       data_batch = self[indices]
       # Preprocess if necessary
@@ -184,8 +188,11 @@ class DataSet(TFRData):
       # Yield data batch
       yield data_batch
 
+    # Clear dynamic_round_len if necessary
+    if is_training: self._clear_dynamic_round_len()
+
   def gen_rnn_batches(self, batch_size=1, num_steps=-1, shuffle=False,
-                      is_training=False):
+                      is_training=False, act_lens=None):
     """Each numpy array will be regarded as a single sequence and will be
        partitioned into batches of sequences with corresponding steps.
 
@@ -194,7 +201,11 @@ class DataSet(TFRData):
                          if self is already an RNN input, this parameter
                          will not be used
       :param num_steps: steps of each RNN data batch
-      :param shuffle: Whether to shuffle the partitioned sequences
+      :param shuffle: This parameter must be False here
+      :param is_training: Whether this method is invoked by tframe Trainer
+                          during training
+      :param act_lens: Must be provided when invoked by
+                       SequenceSet.gen_rnn_batches
      """
     # Check batch_size and shuffle
     checker.check_positive_integer(batch_size)
@@ -209,21 +220,82 @@ class DataSet(TFRData):
       rnn_data = data_set._convert_to_rnn_input(is_training, batch_size)
 
     # here each entry in data_dict has shape [batch_size, steps, *dim]
-    round_len = self.get_round_length(batch_size, num_steps, is_training)
-    if num_steps < 0: num_steps = rnn_data.total_steps
+    if act_lens is None:
+      if num_steps < 0: num_steps = rnn_data.total_steps
+      round_len = self.get_round_length(batch_size, num_steps, is_training)
+    else:
+      # This branch will be visited only when this method is called by
+      # .. SequenceSet.gen_rnn_batches. Thus set_dynamic_round_len is not
+      # .. necessary
+      assert isinstance(act_lens, list) and len(act_lens) > 0
+      if num_steps < 0:
+        num_steps = min(act_lens) if is_training else max(act_lens)
+      round_len = self._get_dynamic_round_len(act_lens, num_steps, is_training)
+    # TODO CC
 
     # Generate batches
-    for i in range(round_len):
-      # Last data_batch may be shorter. (a = [1, 2], a[:9] is legal)
-      f = lambda x: x[:, i*num_steps:(i + 1)*num_steps]
+    def extract(i, f, data=None):
+      assert callable(f) and isinstance(i, int) and i >= 0
+      if data is None: data = rnn_data
       batch = DataSet(
-        data_dict=rnn_data._apply(f), is_rnn_input=True,
+        data_dict=data._apply(f), is_rnn_input=True,
         name=self.name + '_batch_{}_of_{}'.format(i + 1, round_len),
         **self.properties)
       # Signal for predictor's _get_default_feed_dict method
       if i == 0: batch.should_reset_state = True
-      # Yield data batch
-      yield batch
+      return batch
+    i = 0
+    if act_lens is None:
+      for i in range(round_len):
+        # Last data_batch may be shorter. (a = [1, 2], a[:9] is legal)
+        f = lambda x: x[:, i*num_steps:(i + 1)*num_steps]
+        # Yield data batch
+        yield extract(i, f)
+    else:
+      training = is_training
+      # This block is the mirror of _get_dynamic_round_len
+      # TODO: should be refactored to be more elegant
+      assert isinstance(act_lens, list) and len(act_lens) > 0
+      checker.check_positive_integer(num_steps)
+      i, start, decrease, indices = 0, 0, False, None
+      while len(act_lens) > 0:
+        assert rnn_data.size == len(act_lens)
+        # Decide steps to sample
+        sl = min(act_lens)
+        assert sl > 0
+        L = min(sl, num_steps) if training else num_steps
+        # Extract
+        f = lambda x: x[:, start:(start + L)]
+        batch = extract(i, f, data=rnn_data)
+        # Set active_length to batch
+        batch.active_length = [L if training else min(al, L) for al in act_lens]
+
+        # Set decrease signal to decrease batch size
+        if decrease:
+          batch.active_indices = indices
+          decrease = False
+        # Yield data_batch
+        yield batch
+
+        # Calculate new active_length
+        new_lens = [al - L for al in act_lens]
+        indices = [i for i, al in enumerate(new_lens) if al > 0]
+        # Update rnn_data if any sequence has been finished
+        if 0 < len(indices) < len(act_lens):
+          decrease = True
+          rnn_data = rnn_data[indices]
+        # Update act_lens
+        act_lens = [new_lens[i] for i in indices]
+        # Update other variables
+        i += 1
+        start += L
+
+    if i != round_len: raise AssertionError(
+      '!! Counter = {} while round_len = {} (num_steps = {})'.format(
+        i, round_len, num_steps))
+
+    # Clear dynamic_round_len if necessary
+    if is_training: self._clear_dynamic_round_len()
 
   # endregion : Basic APIs
 
@@ -338,24 +410,22 @@ class DataSet(TFRData):
       data_set.refresh_groups()
     return data_set
 
-  def _select(self, batch_index, batch_size, shuffle, upper_bound=None):
+  def _select(self, batch_index, batch_size, upper_bound=None, training=False):
+    """The result indices may have a length less than batch_size specified.
+       * shuffle option is handled in  gen_[rnn_]batches method
+    """
     if upper_bound is None: upper_bound = self.size
     assert isinstance(batch_index, int) and batch_index >= 0
     checker.check_positive_integer(batch_size)
-
-    # if shuffle:
-    #   indices = self._rand_indices(upper_bound=upper_bound, size=batch_size)
-    # else:
-    #   from_index = batch_index * batch_size
-    #   to_index = min((batch_index + 1) * batch_size, upper_bound)
-    #   indices = list(range(from_index, to_index))
 
     from_index = batch_index * batch_size
     to_index = min((batch_index + 1) * batch_size, upper_bound)
     indices = list(range(from_index, to_index))
 
     # return indices
-    return self.indices[indices]
+    if training: return self.indices[indices]
+    else: return self._ordered_indices[indices]
+
 
   def _check_data(self):
     """data_dict should be a non-empty dictionary containing regular numpy
@@ -425,6 +495,9 @@ class DataSet(TFRData):
 
   @staticmethod
   def _get_subset(data, indices):
+    """Get subset of data. For DataSet, data is np.ndarray.
+       For SequenceSet, data is a list.
+    """
     if np.isscalar(indices):
       if isinstance(data, (list, tuple)): return [data[indices]]
       elif isinstance(data, np.ndarray):
@@ -457,6 +530,41 @@ class DataSet(TFRData):
     indices = list(range(len(self.features)))
     if shuffle: np.random.shuffle(indices)
     self.indices = np.array(indices)
+
+  def _set_dynamic_round_len(self, val):
+    assert self._dynamic_round_len is None
+    self._dynamic_round_len = checker.check_positive_integer(val)
+
+  def _clear_dynamic_round_len(self):
+    self._dynamic_round_len = None
+
+
+  @staticmethod
+  def _get_dynamic_round_len(act_lens, num_steps, training):
+    """
+                                 not train
+    x x x x x|x x x x x|x x x/x x:x x x x x x x
+    x x x x x|x x x x x|x x x/   :
+    x x x x x|x x x x x|x x x/x  :
+    x x x x x|x x x x x|x x x/x x:x x x x x
+                           train
+    """
+    assert isinstance(act_lens, (np.ndarray, list)) and len(act_lens) > 0
+    checker.check_positive_integer(num_steps)
+    counter = 0
+    while len(act_lens) > 0:
+      # Find the shortest sequence
+      sl = min(act_lens)
+      assert sl > 0
+      # Calculate iterations (IMPORTANT). Note that during training act_len
+      # .. does not help to avoid inappropriate gradient flow thus sequences
+      # .. have to be truncated
+      n = int(np.ceil(sl / num_steps))
+      counter += n
+      # Update act_lens list
+      L = sl if training else n * num_steps
+      act_lens = [al for al in [al - L for al in act_lens] if al > 0]
+    return counter
 
   # endregion : Private Methods
 
