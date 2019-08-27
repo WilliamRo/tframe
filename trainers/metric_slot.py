@@ -91,7 +91,7 @@ class MetricSlot(TensorSlot):
     trend = []
     for i in range(min(self.memory, len(self._metric_logs) - 1)):
       hist_mean = self._metric_logs[-(i + 2)]
-      assert hist_mean >= 0.0
+      # assert hist_mean >= 0.0  # Metric can be negtive TODO X
       trend.append((metric_mean - hist_mean) / hist_mean * 100)
     # trend = [re(rnd-1), re(rnd-2), ..., re(rnd-memory)]
     self._trend = trend

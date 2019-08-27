@@ -263,11 +263,6 @@ class Trainer(object):
         if self.key_metric.get_idle_rounds(rnd) > self.th.patience:
           self.th.raise_stop_flag()
 
-      # Advanced strategy
-      # self._advanced_strategy(rnd)
-      # Export monitor info
-      # if tfr.monitor.activated: tfr.monitor.export()
-
       # Maybe save model
       if self._save_model_at_round_end: self._save_model()
       # Early stop
@@ -726,9 +721,10 @@ class TrainerHub(Config):
     assert isinstance(mm, MetricsManager)
     if not mm.has_metric: return False
     val_data = self.trainer.validation_set
-    # [Compromise] avoid error in _show_configurations method
-    if self.validate_modulus is None: return None
-    return val_data is not None and self.validate_modulus > 0
+
+    # return val_data is not None and self.validate_modulus > 0
+    return all([val_data is not None,
+                self.validate_cycle > 0 or self.validation_per_round > 0])
 
   @property
   def start_time(self):
