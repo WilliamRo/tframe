@@ -44,6 +44,12 @@ class Predictor(Feedforward, Recurrent):
   # region : Properties
 
   @property
+  def affix(self):
+    if self.master is Feedforward: return 'forward'
+    assert self.master is Recurrent
+    return 'recurrent'
+
+  @property
   def description(self):
     return '{}: {}'.format(self.master.__name__, self.structure_string())
 

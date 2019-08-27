@@ -192,7 +192,7 @@ class TIMIT25(DataAgent):
 
     # Load best model
     if trainer.th.save_model:
-      flag, _ = trainer.model.agent.load()
+      flag, _, _ = trainer.model.agent.load()
       assert flag
     else: console.warning('Save model option should be turned on.')
 

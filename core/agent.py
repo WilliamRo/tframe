@@ -94,13 +94,11 @@ class Agent(object):
   def model_path(self):
     """This property will be used only when checkpoint is to be saved.
         Old name format: XXXX.model
-        New name format: XXXX[(x.xxx-epochs)]?  e.g. classifier(112.328-epochs)
+        New name example: recurrent.predictor(26.799_epochs)-train-1800
         Where XXXX denotes self._model.model_name
     """
-    model_name = self._model.model_name
-
-    return os.path.join(
-      self.ckpt_dir, '{}.model'.format(self._model.model_name))
+    name = '{}.{}'.format(self._model.affix, self._model.model_name.lower())
+    return os.path.join(self.ckpt_dir, name)
 
   @property
   def gather_path(self):
@@ -124,12 +122,15 @@ class Agent(object):
   def load(self):
     # TODO: when save_model option is turned off and the user want to
     #   try loading the exist model, set overwrite to False
-    if not hub.save_model and hub.overwrite: return False, 0
+    if not hub.save_model and hub.overwrite: return False, 0, None
     return load_checkpoint(self.ckpt_dir, self.session, self._saver)
 
-  def save_model(self):
-    save_checkpoint(self.model_path, self.session, self._saver,
-                    self._model.counter)
+  def save_model(self, rounds=None, suffix=None):
+    """rounds is used only by trainer"""
+    path = self.model_path
+    if rounds is not None: path += '({:.3f}_rounds)'.format(rounds)
+    if suffix is not None: path += '-{}'.format(suffix)
+    save_checkpoint(path, self.session, self._saver, self._model.counter)
 
   @with_graph
   def reset_saver(self):
@@ -178,7 +179,7 @@ class Agent(object):
     if hub.prune_on: context.pruner.set_init_val_lottery18()
 
     # Try to load exist model
-    load_flag, self._model.counter = self.load()  # TODO +++
+    load_flag, self._model.counter, self._model.rounds = self.load()
     # Sanity check
     if hub.prune_on and hub.pruning_iterations > 0:
       if not load_flag: raise AssertionError(

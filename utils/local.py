@@ -74,15 +74,25 @@ def load_checkpoint(path, session, saver):
   if ckpt_state and ckpt_state.model_checkpoint_path:
     ckpt_name = os.path.basename(ckpt_state.model_checkpoint_path)
     saver.restore(session, os.path.join(path, ckpt_name))
-    counter = int(next(re.finditer("(\d+)(?!.*\d)", ckpt_name)).group(0))
+    # Find counter
+    step_list = re.findall(r'-(\d+).', ckpt_name)
+    assert len(step_list) == 1
+    counter = int(step_list[0])
+    # Try to find rounds
+    rnd_list = re.findall(r'\((\d+.\d+)_rounds\)', ckpt_name)
+    if len(rnd_list) > 0:
+      assert len(rnd_list) == 1
+      rnd = float(rnd_list[0])
+    else: rnd = None
+    # Show status
     console.show_status("Loaded {}".format(ckpt_name))
-    return True, counter
+    return True, counter, rnd
   else:
     if tfr.context.hub.train and tfr.context.hub.save_model:
       console.show_status('New checkpoints will be created ...')
     else:
       console.warning('Can not found model checkpoint')
-    return False, 0
+    return False, 0, None
 
 
 def save_checkpoint(path, session, saver, step):

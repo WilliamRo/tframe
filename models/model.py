@@ -84,7 +84,7 @@ class Model(object):
 
     # Public attributes
     self.counter = None
-    self.epochs = None
+    self.rounds = None
     self.launched = False
 
     # Quantities
@@ -93,6 +93,10 @@ class Model(object):
   # region : Properties
 
   # region : Accessor
+
+  @property
+  def affix(self):
+    return 'model'
 
   @property
   def graph(self):

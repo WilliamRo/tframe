@@ -237,6 +237,8 @@ class Trainer(object):
   def _check_model(self):
     if not self.model.launched:
       self.model.launch_model(self.th.overwrite)
+    # Check model.epoch
+    if not self.is_online and self.model.rounds is None: self.model.rounds = 0
 
   # endregion : Before training
 
@@ -257,13 +259,14 @@ class Trainer(object):
       if hub.progress_bar:
         console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
           hub.round_name, hub.toc()))
+      self.model.rounds += 1.0
       # Maybe give a report on metric
       if not self.is_online and hub.validation_on:
         self.model.end_round(rnd)
         if self.key_metric.get_idle_rounds(rnd) > self.th.patience:
           self.th.raise_stop_flag()
 
-      # Maybe save model
+      # Maybe save model (model.rounds var has been increased)
       if self._save_model_at_round_end: self._save_model()
       # Early stop
       if hub.stop and self.model.bust(rnd): break
@@ -290,7 +293,7 @@ class Trainer(object):
     if len(ds_dict) > 0:
       # Load the best model
       if hub.save_model:
-        flag, _ = self.model.agent.load()
+        flag, _, _ = self.model.agent.load()
         assert flag
       # Evaluate the specified data sets
       for name, data_set in ds_dict.items():
@@ -326,7 +329,8 @@ class Trainer(object):
       self._print_progress(rnd, loss_dict)
       # Validation
       if self._validate_model(rnd) and self._save_model_when_record_appears:
-        self._save_model(inter_cut=True)
+        if not self.is_online: assert np.isscalar(self.th.round_progress)
+        self._save_model(inter_cut=True, progress=self.th.round_progress)
       # Etch
       self._etch()
       # Probe
@@ -347,6 +351,7 @@ class Trainer(object):
             self.th.force_terminate = True
       # After probing, training process may be terminated
       if self.th.force_terminate: break
+    # Check warm up logic
     if self._warm_up and self._record_count < self.th.warm_up_thres:
       self._warm_up = False
 
@@ -614,8 +619,18 @@ class Trainer(object):
     self.model.agent.save_plot(fig, filename)
     self._inter_cut("Images saved to '{}'".format(filename), '[Snapshot]')
 
-  def _save_model(self, inter_cut=False):
-    self.model.agent.save_model()
+  def _save_model(self, inter_cut=False, progress=None):
+    # Update model rounds
+    total_rounds = None
+    if not self.is_online:
+      assert np.isscalar(self.model.rounds)
+      total_rounds = self.model.rounds
+      if progress is not None:
+        assert 0 <= progress <= 1
+        total_rounds += progress
+    # Save model
+    self.model.agent.save_model(rounds=total_rounds, suffix='train')
+    # Show status
     print_method = self._inter_cut if inter_cut else console.show_status
     print_method('Model saved')
 
