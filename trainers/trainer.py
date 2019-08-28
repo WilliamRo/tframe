@@ -718,7 +718,10 @@ class TrainerHub(Config):
   @property
   def round_length(self):
     assert isinstance(self.trainer.training_set, TFRData)
-    return self.trainer.training_set.dynamic_round_len
+    # For being compatible with old versions
+    if hasattr(self.trainer.training_set, 'dynamic_round_len'):
+      return self.trainer.training_set.dynamic_round_len
+    else: return getattr(self.trainer.training_set, '_dynamic_round_len', None)
 
   @property
   def total_outer_loops(self):

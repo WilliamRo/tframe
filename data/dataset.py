@@ -231,7 +231,6 @@ class DataSet(TFRData):
       if num_steps < 0:
         num_steps = min(act_lens) if is_training else max(act_lens)
       round_len = self._get_dynamic_round_len(act_lens, num_steps, is_training)
-    # TODO CC
 
     # Generate batches
     def extract(i, f, data=None):
@@ -290,9 +289,10 @@ class DataSet(TFRData):
         i += 1
         start += L
 
-    if i != round_len: raise AssertionError(
-      '!! Counter = {} while round_len = {} (num_steps = {})'.format(
-        i, round_len, num_steps))
+    # TODO
+    # if i != round_len: raise AssertionError(
+    #   '!! Counter = {} while round_len = {} (num_steps = {})'.format(
+    #     i, round_len, num_steps))
 
     # Clear dynamic_round_len if necessary
     if is_training: self._clear_dynamic_round_len()
@@ -532,7 +532,8 @@ class DataSet(TFRData):
     self.indices = np.array(indices)
 
   def _set_dynamic_round_len(self, val):
-    assert self._dynamic_round_len is None
+    # To be compatible with old version
+    assert getattr(self, '_dynamic_round_len', None) is None
     self._dynamic_round_len = checker.check_positive_integer(val)
 
   def _clear_dynamic_round_len(self):
