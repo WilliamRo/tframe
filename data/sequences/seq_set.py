@@ -262,8 +262,9 @@ class SequenceSet(DataSet):
       for batch in seq_batch.gen_rnn_batches(
           seq_batch.size, num_steps, is_training=is_training,
           act_lens=active_length):
-        assert isinstance(batch.active_length, list)
-        assert len(batch.active_length) > 0
+        if seq_batch.size > 1:
+          assert isinstance(batch.active_length, list)
+          assert len(batch.active_length) > 0
         yield batch
         counter += 1
 
