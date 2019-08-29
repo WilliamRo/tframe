@@ -131,7 +131,8 @@ class Helper(object):
     counter = 0
     for run_id in range(times):
       counter += 1
-      if save: self.common_parameters['suffix'] = '_{}{}'.format(mark, counter)
+      if save: self.common_parameters['script_suffix'] = '_{}{}'.format(
+        mark, counter)
       history = []
       for hyper_dict in self._hyper_parameter_dicts():
         params = self._get_all_configs(hyper_dict)

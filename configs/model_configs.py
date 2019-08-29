@@ -10,6 +10,7 @@ class ModelConfigs(object):
   mark = Flag.string(None, 'Model identifier', is_key=True)
   prefix = Flag.string(None, 'Prefix to mark')
   suffix = Flag.string(None, 'Suffix to mark')
+  script_suffix = Flag.string(None, 'Suffix used in script helper')
   branch_suffix = Flag.string(
     '', 'Suffix added to mark after model has been loaded')
   model = Flag.whatever(None, 'A function which returns a built model')

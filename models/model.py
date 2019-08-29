@@ -46,6 +46,7 @@ class Model(object):
     assert mark is not None
     if hub.prefix is not None: self.mark = hub.prefix + self.mark
     if hub.suffix is not None: self.mark += hub.suffix
+    if hub.script_suffix is not None: self.mark += hub.script_suffix
     # TODO: set prune iteration number.
     #       At this time configs conflicts are not smoothed.
     if hub.prune_on or hub.pruning_rate_fc > 0:
