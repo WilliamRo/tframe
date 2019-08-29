@@ -196,7 +196,7 @@ class Predictor(Feedforward, Recurrent):
   @with_graph
   def predict(self, data, batch_size=None, extractor=None, **kwargs):
     return self.evaluate(
-      self._outputs.tensor, data, batch_size, extractor)
+      self._outputs.tensor, data, batch_size, extractor, **kwargs)
 
   @with_graph
   def evaluate_model(self, data, batch_size=None, dynamic=False, **kwargs):
