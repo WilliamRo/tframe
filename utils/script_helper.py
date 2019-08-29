@@ -241,7 +241,7 @@ class Helper(object):
     for s in sys.argv[1:]:
       assert isinstance(s, str)
       # Check format
-      r = re.fullmatch(r'--([\w_]+)=([\w./,]+)', s)
+      r = re.fullmatch(r'--([\w_]+)=([-\w./,]+)', s)
       if r is None: raise AssertionError(
         'Can not parse argument `{}`'.format(s))
       k, v = r.groups()
