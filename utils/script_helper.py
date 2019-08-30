@@ -65,6 +65,7 @@ class Helper(object):
     # System argv info
     self.sys_keys = []
     self._sys_runs = None
+    self._add_script_suffix = None
     self._register_sys_argv()
 
   # region : Properties
@@ -131,6 +132,8 @@ class Helper(object):
     counter = 0
     for run_id in range(times):
       counter += 1
+      # Grand self._add_script_suffix the highest priority
+      if self._add_script_suffix is not None: save = self._add_script_suffix
       if save: self.common_parameters['script_suffix'] = '_{}{}'.format(
         mark, counter)
       history = []
@@ -251,6 +254,12 @@ class Helper(object):
       if k in ('run', 'runs'):
         assert len(val_list) == 1
         self._sys_runs = checker.check_positive_integer(int(val_list[0]))
+        continue
+      if k in ('save', 'brand'):
+        assert len(val_list) == 1
+        option = val_list[0]
+        assert option.lower() in ('true', 'false')
+        self._add_script_suffix = option.lower() == 'true'
         continue
       self.register(k, *val_list)
       self.sys_keys.append(k)
