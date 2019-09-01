@@ -43,10 +43,18 @@ class Parser(object):
     return dtype(arg)
 
 
-  def get_kwarg(self, key, dtype=str, default=None, pop=False):
+  def get_kwarg(self, key, dtype=str, default=None):
     assert isinstance(key, str)
-    if key not in self.arg_dict and default is not None: return default
-    if pop: self.arg_dict.pop(key, None)
+    if key not in self.arg_dict:
+      if default is not None: return default
+      else: raise KeyError('Key `{}` does not exist.'.format(key))
+    # Key is in self.arg_dict
+    val_str = self.arg_dict[key]
+    assert isinstance(val_str, str)
+    if dtype is bool:
+      if val_str.lower() not in ('true', 'false'):
+        raise ValueError('Illegal bool string `{}`'.format(val_str))
+      return val_str.lower() == 'true'
     return dtype(self.arg_dict[key])
 
 
