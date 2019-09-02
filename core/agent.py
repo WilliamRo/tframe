@@ -123,7 +123,9 @@ class Agent(object):
     # TODO: when save_model option is turned off and the user want to
     #   try loading the exist model, set overwrite to False
     if not hub.save_model and hub.overwrite: return False, 0, None
-    return load_checkpoint(self.ckpt_dir, self.session, self._saver)
+    ckpt_dir = (hub.specified_ckpt_path if hub.specified_ckpt_path
+                else self.ckpt_dir)
+    return load_checkpoint(ckpt_dir, self.session, self._saver)
 
   def save_model(self, rounds=None, suffix=None):
     """rounds is used only by trainer"""

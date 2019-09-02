@@ -506,7 +506,10 @@ class Recurrent(Model, RNet):
     assert isinstance(batch, DataSet)
 
     # (1) If a new sequence begin during training or validation, reset state
-    if batch.should_reset_state:
+    reset_flag = batch.should_reset_state
+    if hub.supreme_reset_flag is not None:
+      reset_flag = hub.supreme_reset_flag
+    if reset_flag:
       self.reset_buffers(batch.size, is_training)
       if is_training and hub.notify_when_reset: console.write_line('- ' * 40)
     # (2) Decrease batch size if necessary

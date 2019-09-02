@@ -53,4 +53,6 @@ class TrainerConfigs(object):
   uncertain_round_len = Flag.boolean(
     False, 'Whether tframe is uncertain about the round length ', is_key=False)
 
+  supreme_reset_flag = Flag.boolean(
+    None, 'Reset buffer option of highest priority')
 

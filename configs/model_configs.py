@@ -13,6 +13,8 @@ class ModelConfigs(object):
   script_suffix = Flag.string(None, 'Suffix used in script helper')
   branch_suffix = Flag.string(
     '', 'Suffix added to mark after model has been loaded')
+  specified_ckpt_path = Flag.string(
+    None, 'Specified checkpoints path used in Agent.load method')
   model = Flag.whatever(None, 'A function which returns a built model')
   identifier = Flag.string(
     '', 'Model identifier, used in summary viewer', is_key=None)
