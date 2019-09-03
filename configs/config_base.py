@@ -75,6 +75,7 @@ class Config(
   delta = Flag.float(0.0, 'Delta', is_key=None)
 
   developer_code = Flag.string('', 'Code for developers to debug')
+  verbose_config = Flag.string('', 'String for configuring verbosity')
 
   def __init__(self, as_global=False):
     # Try to register flags into tensorflow

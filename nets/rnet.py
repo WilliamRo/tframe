@@ -9,6 +9,7 @@ from collections import OrderedDict
 
 import tframe as tfr
 from tframe import hub
+from tframe import console
 from tframe import context
 from tframe import checker
 from tframe import linker
@@ -219,6 +220,8 @@ class RNet(Net):
     assert self.is_root
     if is_training: self._train_state_buffer = self._get_zero_state(batch_size)
     else: self._eval_state_buffer = self._get_zero_state(batch_size)
+    if 'reset_buffer' in hub.verbose_config:
+      console.show_status('State buffer has been reset.')
     # TODO: BETA
     assert not hub.use_rtrl
     if hub.use_rtrl:
