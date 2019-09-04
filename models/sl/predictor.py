@@ -201,7 +201,7 @@ class Predictor(Feedforward, Recurrent):
   @with_graph
   def evaluate_model(self, data, batch_size=None, dynamic=False, **kwargs):
     """The word `evaluate` in this method name is different from that in
-       `self.evaluate` method. Here only eval_metric willl be evaluated and
+       `self.evaluate` method. Here only eval_metric will be evaluated and
        the result will be printed on terminal."""
     # Check metric
     if not self.eval_metric.activated:
