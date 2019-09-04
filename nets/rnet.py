@@ -221,7 +221,9 @@ class RNet(Net):
     if is_training: self._train_state_buffer = self._get_zero_state(batch_size)
     else: self._eval_state_buffer = self._get_zero_state(batch_size)
     if 'reset_buffer' in hub.verbose_config:
-      console.show_status('State buffer has been reset.')
+      prefix = 'Train' if is_training else 'Eval'
+      console.show_status(
+        '{} state buffer has been reset.'.format(prefix), '[RNet]')
     # TODO: BETA
     assert not hub.use_rtrl
     if hub.use_rtrl:
