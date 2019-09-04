@@ -75,7 +75,7 @@ def load_checkpoint(path, session, saver):
     ckpt_name = os.path.basename(ckpt_state.model_checkpoint_path)
     saver.restore(session, os.path.join(path, ckpt_name))
     # Find counter
-    step_list = re.findall(r'-(\d+).', ckpt_name)
+    step_list = re.findall(r'-(\d+)$', ckpt_name)
     assert len(step_list) == 1
     counter = int(step_list[0])
     # Try to find rounds
