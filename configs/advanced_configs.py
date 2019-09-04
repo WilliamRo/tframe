@@ -14,6 +14,9 @@ class AdvancedConfigs(object):
     False, 'Whether to turn on dynamic evaluation', is_key=None)
   train_stats_exists = Flag.boolean(
     False, 'Whether or not train_stats used in dynamic evaluation exists')
+  de_save_train_stats = Flag.boolean(False, 'Whether to save train stats')
+  de_val_size = Flag.integer(
+    -1, 'Size of validation set used in dynamic evaluation')
   de_val_pct = Flag.float(
     1.0, 'Proportion of validation set used in dynamic evaluation')
   de_num_steps = Flag.integer(
@@ -32,6 +35,9 @@ class AdvancedConfigs(object):
           ' comma to provide a search list.')
   de_eval_val_set = Flag.boolean(
     False, 'Whether to evaluate validation set before HP searching')
+  de_eval_test_set = Flag.boolean(
+    False, 'Whether to evaluate test set in a common way before dynamic '
+           'evaluation')
 
   @property
   def de_eta_option(self):

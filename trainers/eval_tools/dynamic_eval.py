@@ -2,12 +2,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from collections import OrderedDict
+
 from tframe import hub as th
-from tframe import checker
 from tframe import console
+from tframe.utils.display.table import Table
 from tframe.models.model import Model
 from tframe.data.dataset import DataSet
 from tframe.core.quantity import Quantity
+
+from tframe.data.dataset import DataSet
+from tframe.data.sequences.seq_set import SequenceSet
 
 from tframe.advanced.krause_evaluator import KrauseEvaluator
 
@@ -29,6 +34,8 @@ class DynamicEvaluator(object):
 
   """
 
+  show_status = lambda _, s: console.show_status(s, '[Dynamic Evaluation]')
+
   def __init__(self, model):
     assert isinstance(model, Model)
     self.model = model
@@ -39,14 +46,16 @@ class DynamicEvaluator(object):
     self._quantity = None
     self._get_quantity()
 
-    self.optimizer = KrauseEvaluator(
-      model, metric_quantities=self._quantities_op)
+    self.optimizer = KrauseEvaluator(model, metric_quantity=self._quantity)
     self._train_op = self.optimizer.minimize(self._loss_tensor)
 
   @property
   def _dynamic_fetches(self):
     assert self._train_op is not None and self._quantities_op is not None
     return [self._quantities_op, self._train_op]
+
+  @property
+  def train_op(self): return self._train_op
 
   def evaluate(self, data_set, val_set=None):
     """Val set is for hyper-parameters tuning
@@ -64,14 +73,18 @@ class DynamicEvaluator(object):
       if len(hp_grid) != 1: raise ValueError(
         '!! HP searching is required yet val_set is not provided')
       lr, dc = hp_grid[0]
-
+    # Do common evaluation if necessary
+    if th.de_eval_test_set:
+      self.optimizer.reset_parameters()
+      self._validate(data_set)
     # Dynamic evaluation on test set
     assert lr > 0 and 0 < dc < 1
     self._dynamic_eval(data_set, lr, dc)
 
   def _dynamic_eval(self, data_set, lr, lambd, prompt='[Dynamic Evaluation]'):
     assert isinstance(data_set, DataSet)
-    console.show_status('lr = {}, lambd = {}'.format(lr, lambd), prompt)
+    # console.show_status('lr = {}, lambd = {}'.format(lr, lambd), prompt)
+    console.show_status('', prompt)
     # Reset parameters
     self.optimizer.reset_parameters()
     # Set HP to optimizer
@@ -82,30 +95,55 @@ class DynamicEvaluator(object):
       num_steps=th.de_num_steps)[0]
     assert isinstance(self._quantity, Quantity)
     metric = self._quantity.apply_np_summ_method(output)
-    console.supplement('Dynamic metric = {:.3f}'.format(metric))
+    console.supplement('Dynamic {} = {}'.format(
+      self._quantity.name, th.decimal_str(metric, th.val_decimals)))
     return metric
 
   def _search_hp(self, val_set, hp_grid):
+    """TODO: this method is supposed to be put inside KrauseEvaluator"""
     assert isinstance(val_set, DataSet)
-    # Truncate val_set
-    size = int(val_set.size * th.de_val_pct)
-    val_set = val_set[:size]
+    # Truncate val_set if necessary
+    if isinstance(val_set, SequenceSet):
+      if th.de_val_size > 0:
+        val_set = val_set[:th.de_val_size]
+        val_set.name = 'val_set[:{}]'.format(th.de_val_size)
+    else:
+      assert isinstance(val_set, DataSet)
+      if th.de_val_pct < 1.0:
+        size = int(val_set.size * th.de_val_pct)
+        val_set = val_set[:size]
+        val_set.name = 'val_set[:{:.2f}]'.format(th.de_val_pct)
     # Validate on val_set if necessary
     if th.de_eval_val_set: self._validate(val_set)
     # Do grid search
     console.show_status('Searching hyper-parameters on validation set ...')
     best_metric, best_lr, best_dc = None, None, None
+    result_dict = OrderedDict()
+    assert isinstance(self._quantity, Quantity)
     for i, (lr, lambd) in enumerate(hp_grid):
       metric = self._dynamic_eval(
         val_set, lr, lambd, '[{}/{}]'.format(i + 1, len(hp_grid)))
-      if best_metric is None or metric < best_metric:
+      # if best_metric is None or metric < best_metric:
+      if best_metric is None or self.model.eval_metric.is_better_than(
+        metric, best_metric):
         best_metric = metric
         best_lr, best_dc = lr, lambd
+      # Check result dict
+      if lr not in result_dict: result_dict[lr] = OrderedDict()
+      result_dict[lr][lambd] = metric
+    # Print result table
+    lrs = list(result_dict.keys())
+    decays = list(list(result_dict.values())[0].keys())
+    widths = [11] + [8] * len(decays)
+    table = Table(*widths, margin=1)
+    table.specify_format('{}', *['{:.5f}' for _ in decays])
+    table.print_header(r'lr\decay', *['{}'.format(d) for d in decays])
+    for lr in lrs: table.print_row(lr, *[result_dict[lr][d] for d in decays])
     return best_lr, best_dc
 
   def _get_quantity(self):
-    tensor_slots = self.model.validate_group.tensor_slots
-    metric_quantity = [s.quantity_definition for s in tensor_slots][0]
+    """TODO to be refactored using properties"""
+    metric_quantity = self.model.eval_metric.quantity_definition
     assert isinstance(metric_quantity, Quantity)
     quantities_op = metric_quantity.quantities
     self._quantity = metric_quantity
@@ -115,8 +153,11 @@ class DynamicEvaluator(object):
     result_dict = self.model.validate_model(
       data_set, batch_size=batch_size, verbose=True, num_steps=num_steps,
       seq_detail=th.val_info_splits > 0)
-    val = list(result_dict.values())[0]
-    console.supplement('Metric = {:.3f}'.format(val))
+    for name, val in result_dict.items():
+      console.supplement('{} = {}'.format(
+        name, th.decimal_str(val, th.val_decimals)))
+    # val = list(result_dict.values())[0]
+    # console.supplement('Metric = {:.3f}'.format(val))
 
   @staticmethod
   def dynamic_evaluate(model, data_set, val_set=None):

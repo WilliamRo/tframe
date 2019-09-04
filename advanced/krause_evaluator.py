@@ -13,6 +13,8 @@ from tframe import hub as th
 from tframe.models.model import Model
 
 from tframe.data.dataset import DataSet
+from tframe.data.sequences.seq_set import SequenceSet
+from tframe.core.quantity import Quantity
 
 
 class KrauseEvaluator(object):
@@ -29,10 +31,13 @@ class KrauseEvaluator(object):
   # On cPTB, lambda should be large
   lamblist = [0.05, 0.1, 0.15, 0.2]
 
-  def __init__(self, model, metric_quantities=None, epsilon=0.00002):
+  PROMPT = '[Krause]'
+  show_status = lambda _, s: console.show_status(s, KrauseEvaluator.PROMPT)
+
+  def __init__(self, model, metric_quantity=None, epsilon=0.00002):
     assert isinstance(model, Model)
     self._model = model
-    self._metric_quantities = metric_quantities
+    self._metric_quantity = metric_quantity
     #
     self._epsilon = checker.check_type(epsilon, float)
     self._eta = 0.00005
@@ -121,27 +126,40 @@ class KrauseEvaluator(object):
     checker.check_type(th.train_set, DataSet)
     checker.check_positive_integer(th.de_batch_size)
     checker.check_positive_integer(th.de_num_steps)
-    console.show_status('Calculating gradient stats on training set ...')
+    self.show_status('Calculating gradient stats on training set ...')
 
     grad_square = [tf.square(self._grads[var]) for var in self._var_list]
     fetches = grad_square
-    if self._metric_quantities is not None:
-      fetches.append(self._metric_quantities)
+    if self._metric_quantity is not None:
+      assert isinstance(self._metric_quantity, Quantity)
+      fetches.append(self._metric_quantity.quantities)
 
-    # Truncate train set if necessary
+    # Check train_set
     train_set = th.train_set
+    if not isinstance(train_set, DataSet):
+      raise TypeError('!! th.train_set must be an instance of DataSet but has'
+                      ' type `{}`'.format(type(train_set)))
+    # Truncate train set if necessary
     if th.de_max_batches > 0:
-      size = th.de_batch_size * th.de_num_steps * th.de_max_batches
+      if isinstance(train_set, SequenceSet): size = th.de_max_batches
+      else: size = th.de_batch_size * th.de_num_steps * th.de_max_batches
       train_set = train_set[:size]
+      train_set.name = 'train_set[:{}]'.format(size)
+      # Show info
+      # self.show_status('train_set truncated to de_max_batches({})'.format(size))
+    # num_steps = th.eval_num_steps if th.eval_num_steps else th.de_num_steps
+    num_steps = th.de_num_steps
     outputs = self._model.evaluate(
       fetches, train_set, batch_size=th.de_batch_size,
-      num_steps=th.de_num_steps, verbose=True)
+      num_steps=num_steps, verbose=True)
 
     # Show metric on training set if provided
-    if self._metric_quantities is not None:
+    if self._metric_quantity is not None:
       metric_quantities = outputs.pop(-1)
-      metric_val = np.mean(metric_quantities)
-      console.supplement('Metric on training set = {:.3f}'.format(metric_val))
+      metric_val = self._metric_quantity.apply_np_summ_method(metric_quantities)
+      console.supplement('{} on training set = {}'.format(
+        self._metric_quantity.name,
+        th.decimal_str(metric_val, th.val_decimals)))
 
     # Assign mean square grads
     assign_ops = []
@@ -153,11 +171,14 @@ class KrauseEvaluator(object):
     self._model.session.run(assign_ops)
 
     # After gradient stats have been calculated, save them into disk
-    th.train_stats_exists = True
-    # When th.train_stats_exists is True, saver will initiated with _sqrt_MS_g
-    self._model.agent.reset_saver()
-    self._model.agent.save_model()
-    console.show_status('sqrt_MS_g saved to checkpoint', '[Gradient Stats]')
+    # .. if necessary
+    if th.de_save_train_stats:
+      th.train_stats_exists = True
+      # When th.train_stats_exists is True,
+      # .. saver will initiated with _sqrt_MS_g
+      self._model.agent.reset_saver()
+      self._model.agent.save_model(suffix='DeStat')
+      self.show_status('sqrt_MS_g saved to checkpoint')
 
   # endregion : Private Methods
 
@@ -165,7 +186,7 @@ class KrauseEvaluator(object):
 
   def reset_parameters(self):
     self._model.session.run(self._reset_theta_ops)
-    console.show_status('Parameters have been reset.')
+    self.show_status('Model parameters have been reset.')
 
   def minimize(self, loss):
     assert isinstance(loss, tf.Tensor)
@@ -179,7 +200,8 @@ class KrauseEvaluator(object):
                  + self._decay_rate[var] * (self._theta_0[var] - var))
       update_ops.append(tf.assign(var, new_var))
 
-    if not th.train_stats_exists: self._calculate_gradient_stats()
+    if not th.train_stats_exists or th.de_save_train_stats:
+      self._calculate_gradient_stats()
     return tf.group(*update_ops)
 
   def set_hyper_parameters(self, eta, lambd):
