@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 from collections import OrderedDict
 import tensorflow as tf
 
@@ -153,6 +154,13 @@ class Config(
   # endregion : Override
 
   # region : Public Methods
+
+  @staticmethod
+  def decimal_str(num, decimals):
+    assert np.isscalar(num)
+    assert isinstance(decimals, int) and decimals > 0
+    fmt = '{:.' + str(decimals) + 'f}'
+    return fmt.format(num)
 
   @classmethod
   def register(cls):
