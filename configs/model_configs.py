@@ -124,6 +124,8 @@ class ModelConfigs(object):
 
   gutter = Flag.boolean(False, 'Whether to use gutter', is_key=None)
   gutter_bias = Flag.float(None, 'Gutter bias', is_key=None)
+  early_stop_on_loss = Flag.boolean(
+    False, 'Whether to use loss as early stop criterion', is_key=True)
 
 
   def smooth_out_model_configs(self):
