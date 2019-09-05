@@ -408,6 +408,10 @@ class Trainer(object):
     loss_slot = loss_slots[0]
     self.batch_loss_stat.record(loss_dict[loss_slot])
 
+    # Check NaN
+    for val in loss_dict.values():
+      if np.isnan(val): self.th.force_terminate = True
+
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
     if self.th.monitor_weight_grads:
