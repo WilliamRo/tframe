@@ -193,7 +193,8 @@ class MetricsManager(object):
           if hub.early_stop and slot is self.early_stop_slot:
             idle_info = 'Patience {}/{}'.format(idle, self.th.patience)
           else: idle_info = 'Idle: {}'.format(idle)
-          suffix = '(Best: {:.3f}, {})'.format(slot.record, idle_info)
+          suffix = '(Best: {}, {})'.format(
+            hub.decimal_str(slot.record, hub.val_decimals), idle_info)
           self.note[note_key] = suffix
 
     return flag
