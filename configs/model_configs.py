@@ -34,6 +34,7 @@ class ModelConfigs(object):
   fc_dims = Flag.whatever(None, '...')
   num_blocks = Flag.integer(-1, 'Block number in model', is_key=None)
   num_layers = Flag.integer(1, 'Layer number', is_key=None)
+  num_concurrent = Flag.integer(1, 'Concurrent number', is_key=None)
   layer_width = Flag.integer(None, 'Layer width', is_key=None)
   input_shape = Flag.list([], 'Input shape of samples')
   output_dim = Flag.integer(0, 'Output dimension of a model')

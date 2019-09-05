@@ -28,6 +28,10 @@ class Table(object):
 
   def hline(self): self.print('-' * self.hline_width)
 
+  def hdash(self): self.print('- ' * int(self.hline_width / 2))
+
+  def dhline(self): self.print('=' * self.hline_width)
+
   def specify_format(self, *fmts):
     assert len(fmts) == self.columns
     self._col_fmt = ['{}' if f in (None, '') else f for f in fmts]
@@ -44,7 +48,7 @@ class Table(object):
   def print_header(self, *header, hline=True):
     if hline: self.hline()
     self.print_row(*header)
-    if hline: self.hline()
+    if hline: self.dhline()
 
   def print_row(self, *cells):
     assert len(cells) == self.columns
@@ -52,6 +56,6 @@ class Table(object):
              for c, fmt in zip(cells, self._col_fmt)]
     self._print_with_margin(self._get_line(cells))
 
-  def print_buffer(self):
-    for row in self._buffer: print(row)
+  def print_buffer(self, indent=0):
+    for row in self._buffer: print('{}{}'.format(' ' * indent, row))
 
