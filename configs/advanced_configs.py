@@ -38,6 +38,7 @@ class AdvancedConfigs(object):
   de_eval_test_set = Flag.boolean(
     False, 'Whether to evaluate test set in a common way before dynamic '
            'evaluation')
+  de_delay = Flag.integer(1, 'Update delay. First used in LOB prediction')
 
   @property
   def de_eta_option(self):
