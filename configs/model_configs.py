@@ -43,6 +43,7 @@ class ModelConfigs(object):
   num_classes = Flag.integer(-1, 'Class number for classification tasks')
   memory_depth = Flag.integer(1, 'Memory depth for system identification')
   loss_function = Flag.whatever('cross_entropy', 'Loss function')
+  loss_string = Flag.string(None, 'Loss string', is_key=None)
   use_logits = Flag.boolean(
     False, 'Whether to use logits to calculate losses', is_key=None)
   last_only = Flag.boolean(
