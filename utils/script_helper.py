@@ -131,13 +131,15 @@ class Helper(object):
     # Begin iteration
     counter = 0
     for run_id in range(times):
-      counter += 1
-      # Grand self._add_script_suffix the highest priority
-      if self._add_script_suffix is not None: save = self._add_script_suffix
-      if save: self.common_parameters['script_suffix'] = '_{}{}'.format(
-        mark, counter)
       history = []
       for hyper_dict in self._hyper_parameter_dicts():
+        # Set counter here
+        counter += 1
+        # Grand self._add_script_suffix the highest priority
+        if self._add_script_suffix is not None: save = self._add_script_suffix
+        if save: self.common_parameters['script_suffix'] = '_{}{}'.format(
+          mark, counter)
+
         params = self._get_all_configs(hyper_dict)
         self._apply_constraints(params)
 

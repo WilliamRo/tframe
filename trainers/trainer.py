@@ -304,7 +304,8 @@ class Trainer(object):
           data_set, batch_size=hub.eval_batch_size)
         title = '{} {}'.format(name, self.metrics_manager.eval_slot.name)
         self.model.agent.put_down_criterion(title, value)
-        self.model.agent.take_notes('{}: {:.3f}'.format(title, value))
+        self.model.agent.take_notes('{}: {}'.format(title, hub.decimal_str(
+          value, hub.val_decimals)))
 
     # Save model here if necessary
     if self._save_model_at_training_end:

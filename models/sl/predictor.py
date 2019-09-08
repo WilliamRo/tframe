@@ -219,8 +219,8 @@ class Predictor(Feedforward, Recurrent):
     result = self.validate_model(
       data, batch_size, allow_sum=False,
       verbose=hub.val_progress_bar)[self.eval_metric]
-    fmt = '{} = {:.' + str(hub.val_decimals) + 'f}'
-    console.supplement(fmt.format(self.eval_metric.symbol, result))
+    console.supplement('{} = {}'.format(
+      self.eval_metric.symbol, hub.decimal_str(result, hub.val_decimals)))
 
     return result
 

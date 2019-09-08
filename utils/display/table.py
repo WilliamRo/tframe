@@ -16,6 +16,9 @@ class Table(object):
     self._buffer = []
 
   @property
+  def content(self): return '\n' + '\n'.join(self._buffer)
+
+  @property
   def tab(self): return ' ' * self._tab
 
   @property
