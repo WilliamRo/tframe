@@ -6,6 +6,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import font as tkFont
 
+import numpy as np
+
 from tframe.utils.viewer_base.main_frame import Viewer
 from tframe.utils.summary_viewer.context import Context
 
@@ -46,8 +48,7 @@ class BaseControl(ttk.Frame):
 
 
   @staticmethod
-  def to_str(v):
-    return str(v) if v == int(v) else '{:.3f}'.format(v)
+  def to_str(v): return str(v) if type(v) == np.int else '{:.4f}'.format(v)
 
 
   @staticmethod
