@@ -57,3 +57,6 @@ class TrainerConfigs(object):
   supreme_reset_flag = Flag.boolean(
     None, 'Reset buffer option of highest priority')
 
+  beta1 = Flag.float(0.9, 'beta1 in Adam', is_key=None)
+  beta2 = Flag.float(0.999, 'beta2 in Adam', is_key=None)
+
