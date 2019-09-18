@@ -341,7 +341,7 @@ class Agent(object):
     #   this placeholder will be got from default graph
     # self._graph.is_training = self._is_training
     # assert context.current_graph is not None
-    context.current_graph = self._graph
+    if not hub.suppress_current_graph: context.current_graph = self._graph
     # tfr.current_graph = self._graph
 
   def _check_bash(self):
