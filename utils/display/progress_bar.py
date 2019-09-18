@@ -13,5 +13,8 @@ class ProgressBar(object):
     self._total = checker.check_positive_integer(total)
     self._start_time = time.time()
 
+  def tic(self):
+    self._start_time = time.time()
+
   def show(self, index):
     console.print_progress(index, self._total, start_time=self._start_time)
