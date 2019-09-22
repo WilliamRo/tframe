@@ -278,8 +278,11 @@ class Model(object):
         optimizer = RealTimeOptimizer(self, optimizer)
 
       self._optimizer = optimizer
-      self._train_step.plug(
-        optimizer.minimize(self._loss.op, var_list=var_list))
+      self.set_train_step(var_list)
+
+  def set_train_step(self, var_list=None):
+    self._train_step.plug(
+      self._optimizer.minimize(self._loss.op, var_list=var_list))
 
   def _merge_summaries(self):
     train_step_summaries = tf.get_collection(pedia.train_step_summaries)

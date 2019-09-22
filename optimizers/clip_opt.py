@@ -36,6 +36,12 @@ class GradientClipOptimizer(object):
     grads_and_vars = self._tf_optimizer.compute_gradients(
       loss, var_list=var_list)
 
+    # Apply lr decay if necessary
+    lr_decay = hub.clip_lr_decay
+    if lr_decay < 1.0:
+      assert lr_decay > 0
+      grads_and_vars = [(grad * lr_decay, var) for grad, var in grads_and_vars]
+
     # Clip gradient if necessary
     if self._threshold > 0:
       bound = self._threshold
