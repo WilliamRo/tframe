@@ -411,7 +411,10 @@ class Trainer(object):
 
     # Check NaN
     for val in loss_dict.values():
-      if np.isnan(val): self.th.force_terminate = True
+      if np.isnan(val):
+        console.show_status(
+          'Forced termination triggered due to NAN in loss_dict')
+        self.th.force_terminate = True
 
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
