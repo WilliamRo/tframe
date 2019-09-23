@@ -37,7 +37,7 @@ class GradientClipOptimizer(object):
       loss, var_list=var_list)
 
     # Apply lr decay if necessary
-    lr_decay = hub.clip_lr_decay
+    lr_decay = hub.clip_lr_multiplier
     if lr_decay < 1.0:
       assert lr_decay > 0
       grads_and_vars = [(grad * lr_decay, var) for grad, var in grads_and_vars]

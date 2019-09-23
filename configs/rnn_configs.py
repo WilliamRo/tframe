@@ -149,3 +149,8 @@ class RNNConfigs(object):
     False, 'Whether to use bias in gam address neurons', is_key=None)
   # head_size is defined in model_configs.py
 
+  # Mogrifier
+  mog_rounds = Flag.integer(5, 'Update rounds in Mogrifier models', is_key=None)
+  mog_lower_rank = Flag.integer(
+    None, 'Lower rank used in Mogrifier models', is_key=None)
+

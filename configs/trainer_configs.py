@@ -60,6 +60,6 @@ class TrainerConfigs(object):
   beta1 = Flag.float(0.9, 'beta1 in Adam', is_key=None)
   beta2 = Flag.float(0.999, 'beta2 in Adam', is_key=None)
 
-  clip_lr_decay = Flag.float(
+  clip_lr_multiplier = Flag.float(
     1.0, 'Learning rate decay applied via  clip_optimizer')
 

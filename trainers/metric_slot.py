@@ -68,6 +68,12 @@ class MetricSlot(TensorSlot):
 
   # region : Public Methods
 
+  def set_record_round(self, rnd):
+    self._record_round = rnd
+
+  def set_record_counter(self, counter):
+    self._record_counter = counter
+
   def get_idle_rounds(self, rnd):
     return rnd - self._record_round
 

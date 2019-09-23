@@ -268,11 +268,21 @@ class Trainer(object):
 
       # Maybe save model (model.rounds var has been increased)
       if self._save_model_at_round_end: self._save_model()
-      # Early stop
-      if hub.stop and self.model.bust(rnd): break
-      # Force terminate
-      if hub.force_terminate: break
 
+      break_flag = False
+      # Early stop via stop flag TODO: needed to be unified
+      if hub.stop and self.model.bust(rnd): break_flag = True
+      # Force terminate
+      if hub.force_terminate: break_flag = True
+      # Resurrect if possible
+      if break_flag and hub.lives > 0:
+        self.resurrect(rnd)
+        hub.force_terminate = False
+        break_flag = False
+      # Break if needed to
+      if break_flag: break
+
+    # Out of loop
     if hub.gather_note:
       if self.is_online:
         self.model.agent.put_down_criterion('Total Iterations', self.counter)
@@ -339,9 +349,6 @@ class Trainer(object):
       # Take notes
       self._take_notes_for_export()
 
-      # Take snapshot TODO: merge snapshot to probe
-      # self._snapshot()
-
       # Check early stop condition
       if self.is_online:
         if self.th.max_iterations is not None:
@@ -351,10 +358,35 @@ class Trainer(object):
           if self.key_metric.get_idle_counts(self.counter) > self.th.patience:
             self.th.force_terminate = True
       # After probing, training process may be terminated
-      if self.th.force_terminate: break
+      if self.th.force_terminate:
+        # If model will be resurrected later, dynamic_round_len if train_set
+        # should be set to None. Otherwise error may occur TODO
+        self.training_set._clear_dynamic_round_len()
+        break
     # Check warm up logic
     if self._warm_up and self._record_count < self.th.warm_up_thres:
       self._warm_up = False
+
+  def resurrect(self, rnd):
+    # Decrease lives by 1 and show status
+    assert self.th.lives > 0
+    self.th.lives -= 1
+    console.show_status(
+      'Lives decreased to {}'.format(self.th.lives), '[Resurrect]')
+    console.show_status('Resurrecting ...')
+    # [Compromise] set record counter or round
+    self.key_metric.set_record_counter(self.counter)
+    self.key_metric.set_record_round(rnd)
+    # Load model
+    flag, _, _ = self.model.agent.load()
+    assert flag
+    # Decay learning rate if necessary
+    if self.th.lr_decay < 1.0:
+      assert self.th.lr_decay > 0
+      self.th.clip_lr_multiplier *= self.th.lr_decay
+      self.model.set_train_step()
+      console.show_status('Learning rate decayed to {:.6f}'.format(
+        self.th.learning_rate * self.th.clip_lr_multiplier))
 
   # endregion : During training
 
@@ -698,6 +730,9 @@ class TrainerHub(Config):
   validate_test_set = Flag.boolean(
     False, 'Whether to test train set in trainer._validate_model')
   terminal_threshold = Flag.float(0., 'Terminal threshold')
+  lives = Flag.integer(0, 'Number of chances to resurrect', is_key=None)
+  lr_decay = Flag.float(
+    1.0, 'Learning rate decay when resurrected', is_key=None)
 
   # endregion : Class Attributes
   trainer_class = Trainer
