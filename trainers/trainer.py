@@ -76,6 +76,9 @@ class Trainer(object):
     if terminator is not None: assert callable(terminator)
     self._terminator = terminator
 
+    # Important, since th.lives initialized by shell command will not change
+    self._lives = self.th.lives
+
     # TODO
     # temporary solution to give agent the access to trainer
     context.trainer = self
@@ -275,7 +278,7 @@ class Trainer(object):
       # Force terminate
       if hub.force_terminate: break_flag = True
       # Resurrect if possible
-      if break_flag and hub.lives > 0:
+      if break_flag and self._lives > 0:
         self.resurrect(rnd)
         hub.force_terminate = False
         break_flag = False
@@ -369,10 +372,10 @@ class Trainer(object):
 
   def resurrect(self, rnd):
     # Decrease lives by 1 and show status
-    assert self.th.lives > 0
-    self.th.lives -= 1
+    assert self._lives > 0
+    self._lives -= 1
     console.show_status(
-      'Lives decreased to {}'.format(self.th.lives), '[Resurrect]')
+      'Lives decreased to {}'.format(self._lives), '[Resurrect]')
     console.show_status('Resurrecting ...')
     # [Compromise] set record counter or round
     self.key_metric.set_record_counter(self.counter)
