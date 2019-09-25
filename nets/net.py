@@ -442,6 +442,9 @@ class Net(Function):
     customized_loss = self._get_customized_loss()
     if customized_loss:
       loss_tensor_list += customized_loss
+    # Add regularizer losses
+    loss_tensor_list += tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    # Add loss tensor list
     if loss_tensor_list:
       result = tf.add_n(loss_tensor_list, 'extra_loss')
     else: result = None

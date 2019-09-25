@@ -60,6 +60,19 @@ class TrainerConfigs(object):
   beta1 = Flag.float(0.9, 'beta1 in Adam', is_key=None)
   beta2 = Flag.float(0.999, 'beta2 in Adam', is_key=None)
 
+  use_global_regularizer = Flag.boolean(
+    False, 'Whether to use global regularizer', is_key=None)
+  global_l1_penalty = Flag.float(0.0, 'Global l1 penalty', is_key=None)
+  global_l2_penalty = Flag.float(0.0, 'Global l2 penalty', is_key=None)
+
+  regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
+  reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
+                            is_key=None)
+
   clip_lr_multiplier = Flag.float(
     1.0, 'Learning rate decay applied via  clip_optimizer')
 
+  def get_global_regularizer(self):
+    if not self.use_global_regularizer: return None
+    from tframe import regularizers
+    return regularizers.get(self.regularizer)

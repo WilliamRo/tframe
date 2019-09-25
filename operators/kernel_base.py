@@ -10,6 +10,7 @@ from tframe import checker
 from tframe import hub
 from tframe import linker
 from tframe import initializers
+from tframe import regularizers
 
 from tframe.operators.prune.etches import get_etch_kernel
 
@@ -78,8 +79,12 @@ class KernelBase(object):
     else: initializer = initializers.get(initializer)
     # Set default dtype if not specified
     if dtype is None: dtype = hub.dtype
+    # Get regularizer if necessary
+    regularizer = None
+    if hub.use_global_regularizer: regularizer = hub.get_global_regularizer()
     # Get weights
-    weights = tf.get_variable(name, shape, dtype=dtype, initializer=initializer)
+    weights = tf.get_variable(name, shape, dtype=dtype, initializer=initializer,
+                              regularizer=regularizer)
     # If weight dropout is positive, dropout and return
     if self.weight_dropout > 0:
       return linker.dropout(weights, self.weight_dropout, rescale=True)

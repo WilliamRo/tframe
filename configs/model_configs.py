@@ -20,9 +20,6 @@ class ModelConfigs(object):
     '', 'Model identifier, used in summary viewer', is_key=None)
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
   momentum = Flag.float(0.9, 'Momentum', is_key=None)
-  regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
-  reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
-                            is_key=None)
   weight_initializer = Flag.string(None, 'Weight initializer', is_key=None)
   bias_initializer = Flag.float(None, 'Bias initializer', is_key=None)
   actype1 = Flag.string(None, 'Activation type 1', is_key=None)
