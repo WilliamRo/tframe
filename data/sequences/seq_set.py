@@ -250,8 +250,9 @@ class SequenceSet(DataSet):
       if isinstance(seq_batch, SequenceSet):
         # If batch_size > 1, calculate active_length in case sequences in this
         #   batch have various lengths
-        if seq_batch.size > 1:
-          active_length = seq_batch.structure
+        # TODO: even if batch size is 1, set active_length
+        # if seq_batch.size > 1:
+        active_length = seq_batch.structure
         # padded_stack is_rnn_input, and is a DataSet, not SeqSet any more
         seq_batch = seq_batch.padded_stack
         # At this point, seq_batch is a DataSet with active_length being
@@ -262,9 +263,9 @@ class SequenceSet(DataSet):
       for batch in seq_batch.gen_rnn_batches(
           seq_batch.size, num_steps, is_training=is_training,
           act_lens=active_length):
-        if seq_batch.size > 1:
-          assert isinstance(batch.active_length, list)
-          assert len(batch.active_length) > 0
+        # if seq_batch.size > 1: TODO: set active_length even if batch_size is 1
+        assert isinstance(batch.active_length, list)
+        assert len(batch.active_length) > 0
         yield batch
         counter += 1
 

@@ -675,6 +675,8 @@ class Model(object):
         # TODO: when predict without outputting loss ...
         if batch.targets is not None: feed_dict[tensor] = batch.targets
       elif pedia.gather_indices in tensor.name:
+        # TODO: when  batch.size is 1, gather_indices is not necessary
+        #       However, Quantity will never know the exact batch size
         feed_dict[tensor] = batch.gather_indices
       else:
         name = tensor.name.split('/')[-1].split(':')[0]
