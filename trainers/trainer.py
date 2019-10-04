@@ -450,6 +450,7 @@ class Trainer(object):
         console.show_status(
           'Forced termination triggered due to NAN in loss_dict')
         self.th.force_terminate = True
+        break
 
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
