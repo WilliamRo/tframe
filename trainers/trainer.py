@@ -262,7 +262,9 @@ class Trainer(object):
       if hub.progress_bar:
         console.show_status('End of {}. Elapsed time is {:.1f} secs'.format(
           hub.round_name, hub.toc()))
-      self.model.rounds += 1.0
+      # Inc rounds for models training in epochs
+      if self.model.rounds is not None:
+        self.model.rounds += 1.0
       # Maybe give a report on metric
       if not self.is_online and hub.validation_on:
         self.model.end_round(rnd)
@@ -364,7 +366,9 @@ class Trainer(object):
       if self.th.force_terminate:
         # If model will be resurrected later, dynamic_round_len if train_set
         # should be set to None. Otherwise error may occur TODO
-        self.training_set._clear_dynamic_round_len()
+        if hasattr(self.training_set, '_clear_dynamic_round_len'):
+          # Perpetual Machine does not have this method
+          self.training_set._clear_dynamic_round_len()
         break
     # Check warm up logic
     if self._warm_up and self._record_count < self.th.warm_up_thres:
