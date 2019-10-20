@@ -12,6 +12,7 @@ class Table(object):
     self._margin = margin
     self._tab = tab
     self._col_fmt = ['{}'] * self.columns
+    self._align = None
     self._buffered = buffered
     self._buffer = []
 
@@ -35,14 +36,20 @@ class Table(object):
 
   def dhline(self): self.print('=' * self.hline_width)
 
-  def specify_format(self, *fmts):
+  def specify_format(self, *fmts, align=None):
     assert len(fmts) == self.columns
     self._col_fmt = ['{}' if f in (None, '') else f for f in fmts]
+    if align is not None:
+      self._align = align
+      assert len(align) == self.columns
 
   def _get_line(self, cells):
-    return self.tab.join(
-      [(('{:>' if i > 0 else '{:<') + str(w) + '}').format(c[ :w])
+    if self._align is None: return self.tab.join(
+      [(('{:>' if i > 0 else '{:<') + str(w) + '}').format(c[:w])
        for i, (c, w) in enumerate(zip(cells, self._widths))])
+    else: return self.tab.join(
+      [(('{:>' if a == 'r' else '{:<') + str(w) + '}').format(c[:w])
+        for c, w, a in zip(cells, self._widths, self._align)])
 
   def _print_with_margin(self, content):
     margin = ' ' * self._margin
