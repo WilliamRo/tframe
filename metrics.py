@@ -109,6 +109,67 @@ def rms_error_ratio(truth, output):
 
 # endregion : Metrics for FNN only
 
+# region : Quantities
+
+def f1_score():
+  """F1 score for classification tasks"""
+  num_classes = tfr.hub.num_classes
+  assert isinstance(num_classes, int) and num_classes > 1
+  def kernel(label, pred):
+    # Convert labels and outputs to 2-D dense tensors
+    tensors = [label, pred]
+    for i, tensor in enumerate(tensors):
+      shape = tensor.shape.as_list()
+      # Convert one-hot/distribution to dense if necessary
+      if shape[-1] > 1:
+        tensor = tf.argmax(tensor, -1, output_type=tf.int32)
+        tensor = tf.expand_dims(tensor, -1)
+      # Put tensor back to list
+      tensors[i] = tensor
+    # Concatenate for summary
+    return tf.concat(tensors, axis=-1, name='label_pred')
+  def tf_summ_method(tensor):
+    assert isinstance(tensor, tf.Tensor)
+    shape = tensor.shape.as_list()
+    assert shape[-1] == 2
+    if not len(shape) == 2: tensor = tf.reshape(tensor, [-1, 2])
+    F1s = []
+    # Assume the prediction axis is on the left in confusion matrix
+    for c in range(num_classes):
+      col = tf.boolean_mask(tensor, tf.equal(tensor[:, 0], c))[:, 1]
+      row = tf.boolean_mask(tensor, tf.equal(tensor[:, 1], c))[:, 0]
+      TP = tf.count_nonzero(tf.equal(col, c), dtype=tf.int32)
+      FP = tf.size(row) - TP
+      FN = tf.size(col) - TP
+      precision = TP / (TP + FP)
+      recall = TP / (TP + FN)
+      F1 = 2 * precision * recall / (precision + recall)
+      F1s.append(tf.cond(tf.is_nan(F1),
+                         lambda: tf.constant(0, dtype=tf.float64), lambda: F1))
+    return tf.reduce_mean(F1s)
+  def np_summ_method(x):
+    assert isinstance(x, np.ndarray) and x.shape[-1] == 2
+    if not len(x.shape) == 2: x = x.reshape(-1, 2)
+    F1s = []
+    # Assume the prediction axis is on the left in confusion matrix
+    for c in range(num_classes):
+      col, row = x[x[:, 0] == c][:, 1], x[x[:, 1] == c][:, 0]
+      TP = len(col[col == c])
+      assert TP == len(row[row == c])
+      if TP == 0:
+        F1s.append(0)
+        continue
+      FP, FN = len(row) - TP, len(col) - TP
+      precision = TP / (TP + FP)
+      recall = TP / (TP + FN)
+      F1 = 2 * precision * recall / (precision + recall)
+      F1s.append(F1)
+    return np.mean(F1s)
+  return Quantity(
+    kernel, tf_summ_method, np_summ_method, name='F1', lower_is_better=False)
+
+# endregion : Quantities
+
 
 def get(identifier, last_only=False, pred_thres=None, **kwargs):
   """This method is only used in predictor.build currently.
@@ -131,6 +192,7 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       if identifier in ['seq_acc', 'seq_accuracy']: last_only = True
       lower_is_better = False
       name = 'Accuracy'
+    elif identifier in ['f1', 'f1_score']: return f1_score()
     elif identifier in ['generalized_accuracy', 'gen_acc']:
       kernel, tf_summ_method = generalized_accuracy, tf.reduce_mean
       lower_is_better = False
