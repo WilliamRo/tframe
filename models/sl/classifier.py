@@ -111,9 +111,10 @@ class Classifier(Predictor):
     return accuracy
 
   @with_graph
-  def classify(self, data, batch_size=None, extractor=None, return_probs=False):
+  def classify(self, data, batch_size=None, extractor=None,
+               return_probs=False, verbose=False):
     probs = self.evaluate(
-      self._probabilities.tensor, data, batch_size, extractor)
+      self._probabilities.tensor, data, batch_size, extractor, verbose=verbose)
     if return_probs: return probs
 
     if self.input_type is InputTypes.RNN_BATCH:
