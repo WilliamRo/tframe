@@ -41,3 +41,9 @@ class DataConfigs(object):
   val_set = Flag.whatever(None, 'Validation set')
   test_set = Flag.whatever(None, 'Testing set')
 
+  # Financial data configs
+  max_level = Flag.integer(None, 'Max level in LOB data', is_key=None)
+  volume_only = Flag.boolean(
+    None, 'Whether to use volume information only', is_key=None)
+  horizon = Flag.integer(None, 'Horizon used in FI-2010 data', is_key=None)
+
