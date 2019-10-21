@@ -418,7 +418,13 @@ class Trainer(object):
       self.model.agent.take_notes(
         'End training after {} rounds{}'.format(rounds, total_round))
     # Evaluate
-    if self._evaluate is not None: self._evaluate(self)
+    if self._evaluate is not None:
+      # Load the best model if necessary
+      if self.th.save_model:
+        flag, _, _ = self.model.agent.load()
+        assert flag
+      # Evaluate model
+      self._evaluate(self)
 
   def _handle_notes(self):
     # Add metric info into notes
