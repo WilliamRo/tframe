@@ -243,31 +243,37 @@ class FI2010(DataAgent):
     console.show_status('Evaluation completed')
     label_pred = np.concatenate(label_pred, axis=0)
     # TODO: here results for each day can be divided wisely
+    # Initialize table
+    movements = ['Upward', 'Stationary', 'Downward']
+    header = ['Movement  ', 'Accuracy %', 'Precision %', 'Recall %',
+              '   F1 %']
+    widths = [len(h) for h in header]
+    table = Table(*widths, tab=3, margin=1, buffered=True)
+    table.specify_format(*['{:.2f}' for _ in header], align='lrrrr')
+    table.hdash()
+    table.print('Prediction Horizon k = {}'.format(th.horizon))
+    table.print_header(*header)
     # Get statistics
-    num_classes = 3
     precisions, recalls, F1s = [], [], []
     x = label_pred
-    for c in range(num_classes):
+    for c, move in enumerate(movements):
       col, row = x[x[:, 0] == c][:, 1], x[x[:, 1] == c][:, 0]
       TP = len(col[col == c])
       FP, FN = len(row) - TP, len(col) - TP
-      precision = TP / (TP + FP)
-      recall = TP / (TP + FN)
-      F1 = 2 * precision * recall / (precision + recall)
+      precision = TP / (TP + FP) * 100
+      recall = TP / (TP + FN) * 100
+      if precision + recall == 0: F1 = 0
+      else: F1 = 2 * precision * recall / (precision + recall)
       precisions.append(precision)
       recalls.append(recall)
       F1s.append(F1)
-    precision, recall = 100 * np.mean(precisions), 100 * np.mean(recalls)
-    F1, accuracy = 100 * np.mean(F1s), 100 * np.sum(x[:, 0] == x[:, 1]) / len(x)
+      # Show in table
+      table.print_row(move, '-', precision, recall, F1)
+    precision, recall = np.mean(precisions), np.mean(recalls)
+    F1, accuracy = np.mean(F1s), 100 * np.sum(x[:, 0] == x[:, 1]) / len(x)
     # Print and save
-    header = ['Accuracy %', 'Precision %', 'Recall %', 'F1 % ']
-    widths = [len(h) for h in header]
-    table = Table(*widths, tab=3, margin=0, buffered=True)
-    table.specify_format(*['{:.2f}' for _ in header], align='llll')
-    table.print_header(*header)
-    table.print_row(accuracy, precision, recall, F1)
     table.hline()
-    table.print('Prediction Horizon k = {}'.format(th.horizon))
+    table.print_row('Overall', accuracy, precision, recall, F1)
     table.hline()
     table.print_buffer()
     # Take note if is training

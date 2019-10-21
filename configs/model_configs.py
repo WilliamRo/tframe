@@ -128,6 +128,10 @@ class ModelConfigs(object):
   suppress_current_graph = Flag.boolean(
     False, 'Option to suppress current graph')
 
+  use_lob_sig_curve = Flag.boolean(
+    False, 'Whether to use significance curve for model in tasks on LOB',
+    is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True
