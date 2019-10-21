@@ -260,8 +260,8 @@ class FI2010(DataAgent):
       col, row = x[x[:, 0] == c][:, 1], x[x[:, 1] == c][:, 0]
       TP = len(col[col == c])
       FP, FN = len(row) - TP, len(col) - TP
-      precision = TP / (TP + FP) * 100
-      recall = TP / (TP + FN) * 100
+      precision = TP / (TP + FP) * 100 if TP + FP > 0 else 0
+      recall = TP / (TP + FN) * 100 if TP+ FN > 0 else 0
       if precision + recall == 0: F1 = 0
       else: F1 = 2 * precision * recall / (precision + recall)
       precisions.append(precision)
