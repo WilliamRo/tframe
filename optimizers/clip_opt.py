@@ -29,8 +29,10 @@ class GradientClipOptimizer(object):
   # region : Private Methods
 
   @staticmethod
-  def _deal_with_nan(self, grad):
+  def _deal_with_nan(grad):
+    # Reference: https://stackoverflow.com/questions/33712178/tensorflow-nan-bug
     assert isinstance(grad, tf.Tensor)
+    return tf.where(tf.is_nan(grad), tf.zeros(grad.shape), grad)
 
   def _compute_gradients(self, loss, var_list=None):
     # Sanity check
@@ -40,8 +42,9 @@ class GradientClipOptimizer(object):
     grads_and_vars = self._tf_optimizer.compute_gradients(
       loss, var_list=var_list)
 
-    # TODO Deal with NaN gradient
-    if 'nan_grad' in hub.verbose_config: pass
+    # Deal with NaN if necessary
+    if hub.clip_nan_protection: grads_and_vars = [
+      (self._deal_with_nan(grad), var) for grad, var in grads_and_vars]
 
     # Apply lr decay if necessary
     lr_decay = hub.clip_lr_multiplier

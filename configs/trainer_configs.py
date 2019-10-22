@@ -71,6 +71,8 @@ class TrainerConfigs(object):
 
   clip_lr_multiplier = Flag.float(
     1.0, 'Learning rate decay applied via  clip_optimizer')
+  clip_nan_protection = Flag.boolean(
+    True, 'Whether to use NaN protection in clip_opt')
 
   def get_global_regularizer(self):
     if not self.use_global_regularizer: return None
