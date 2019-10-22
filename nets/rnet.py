@@ -212,7 +212,9 @@ class RNet(Net):
   # region : Public Methods
 
   def set_buffers(self, state_array, is_training=True):
-    # assert isinstance(state_array, tf.Tensor)
+    if hub.state_nan_protection:
+      state_array = self._apply_to_nested_array(
+        state_array, self._reset_on_nan)
     if is_training: self._train_state_buffer = state_array
     else: self._eval_state_buffer = state_array
 
@@ -234,19 +236,28 @@ class RNet(Net):
     assert self.is_root and isinstance(indices, (list, tuple))
 
     def _decrease(state):
-      if isinstance(state, np.ndarray):
-        assert len(state) > len(indices)
-        return state[np.array(indices)]
-      elif isinstance(state, (list, tuple)):
-        # tf.scan returns a list of states
-        state = list(state)
-        for i, s in enumerate(state): state[i] = _decrease(s)
-        return tuple(state)
-      else: raise TypeError('!! Unknown type of states: {}'.format(type(state)))
+      assert isinstance(state, np.ndarray) and len(state) > len(indices)
+      return state[np.array(indices)]
+
+    # def _decrease(state):
+    #   if isinstance(state, np.ndarray):
+    #     assert len(state) > len(indices)
+    #     return state[np.array(indices)]
+    #   elif isinstance(state, (list, tuple)):
+    #     # tf.scan returns a list of states
+    #     state = list(state)
+    #     for i, s in enumerate(state): state[i] = _decrease(s)
+    #     return tuple(state)
+    #   else: raise TypeError('!! Unknown type of states: {}'.format(type(state)))
+    # if is_training:
+    #   self._train_state_buffer = _decrease(self._train_state_buffer)
+    # else: self._eval_state_buffer = _decrease(self._eval_state_buffer)
 
     if is_training:
-      self._train_state_buffer = _decrease(self._train_state_buffer)
-    else: self._eval_state_buffer = _decrease(self._eval_state_buffer)
+      self._train_state_buffer = self._apply_to_nested_array(
+        self._train_state_buffer, _decrease)
+    else: self._eval_state_buffer = self._apply_to_nested_array(
+      self._eval_state_buffer, _decrease)
 
   def reset_part_buffer(self, indices, values=None):
     """This method is first designed for parallel training of RNN model with
@@ -261,26 +272,59 @@ class RNet(Net):
     assert len(zero_indices) + len(none_indices) == len(indices)
 
     def _reset(state):
-      if isinstance(state, np.ndarray):
-        if len(zero_indices) > 0: state[np.array(zero_indices), :] = 0
-        if len(none_indices) > 0: state = np.delete(state, none_indices, axis=0)
-        return state
-      elif isinstance(state, (list, tuple)):
-        # tf.scan returns a list of states
-        state = list(state)
-        for i, s in enumerate(state): state[i] = _reset(s)
-        return tuple(state)
-      else:
-        raise TypeError('!! Unknown type of states: {}'.format(type(state)))
+      assert isinstance(state, np.ndarray)
+      if len(zero_indices) > 0: state[np.array(zero_indices), :] = 0
+      if len(none_indices) > 0: state = np.delete(state, none_indices, axis=0)
+      return state
 
-    self._train_state_buffer = _reset(self._train_state_buffer)
+    # def _reset(state):
+    #   if isinstance(state, np.ndarray):
+    #     if len(zero_indices) > 0: state[np.array(zero_indices), :] = 0
+    #     if len(none_indices) > 0: state = np.delete(state, none_indices, axis=0)
+    #     return state
+    #   elif isinstance(state, (list, tuple)):
+    #     # tf.scan returns a list of states
+    #     state = list(state)
+    #     for i, s in enumerate(state): state[i] = _reset(s)
+    #     return tuple(state)
+    #   else:
+    #     raise TypeError('!! Unknown type of states: {}'.format(type(state)))
+
+    # self._train_state_buffer = _reset(self._train_state_buffer)
+    self._train_state_buffer = self._apply_to_nested_array(
+      self._train_state_buffer, _reset)
     # TODO: BETA
     if hub.use_rtrl:
-      self._gradient_buffer_array = _reset(self._gradient_buffer_array)
+      # self._gradient_buffer_array = _reset(self._gradient_buffer_array)
+      self._gradient_buffer_array = self._apply_to_nested_array(
+        self._gradient_buffer_array, _reset)
 
   # endregion : Public Methods
 
   # region : Private Methods
+
+  @staticmethod
+  def _reset_on_nan(state):
+    assert isinstance(state, np.ndarray)
+    if not np.isnan(state).any(): return state
+    # Scan each batch
+    for i, s in enumerate(state):
+      if np.isnan(s).any():
+        state[i] = 0.0
+        if 'reset_buffer' in hub.verbose_config:
+          console.show_status('state[{}] reset due to NaN'.format(i), '[RNet]')
+    return state
+
+  def _apply_to_nested_array(self, array, f):
+    assert callable(f)
+    if isinstance(array, np.ndarray):
+      return f(array)
+    elif isinstance(array, (list, tuple)):
+      array = list(array)
+      for i, a in enumerate(array):
+        array[i] = self._apply_to_nested_array(a, f)
+      return tuple(array)
+    assert False
 
   def _get_zero_state(self, batch_size):
     if self.is_root:
