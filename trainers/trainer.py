@@ -457,8 +457,9 @@ class Trainer(object):
     # Check NaN
     for val in loss_dict.values():
       if np.isnan(val):
-        console.show_status(
-          'Forced termination triggered due to NAN in loss_dict')
+        msg = 'Forced termination triggered due to NAN in loss_dict'
+        console.show_status(msg)
+        self.model.agent.take_notes(msg)
         self.th.force_terminate = True
         break
 

@@ -28,6 +28,10 @@ class GradientClipOptimizer(object):
 
   # region : Private Methods
 
+  @staticmethod
+  def _deal_with_nan(self, grad):
+    assert isinstance(grad, tf.Tensor)
+
   def _compute_gradients(self, loss, var_list=None):
     # Sanity check
     assert isinstance(loss, tf.Tensor)
@@ -35,6 +39,9 @@ class GradientClipOptimizer(object):
     # Compute gradients using default method
     grads_and_vars = self._tf_optimizer.compute_gradients(
       loss, var_list=var_list)
+
+    # TODO Deal with NaN gradient
+    if 'nan_grad' in hub.verbose_config: pass
 
     # Apply lr decay if necessary
     lr_decay = hub.clip_lr_multiplier
