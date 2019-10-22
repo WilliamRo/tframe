@@ -49,7 +49,7 @@ class TrainerConfigs(object):
   val_decimals = Flag.integer(3, 'Decimals displayed in validation reports')
 
   save_train_opt_vars = Flag.boolean(
-    False, 'Whether to save variables in optimizer for training')
+    True, 'Whether to save variables in optimizer for training')
 
   uncertain_round_len = Flag.boolean(
     False, 'Whether tframe is uncertain about the round length ', is_key=False)

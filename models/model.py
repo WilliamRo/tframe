@@ -157,7 +157,9 @@ class Model(object):
 
     filter_by_name = lambda key: [var for var in vars if key not in var.name]
     # Remove `train_opt` vars if necessary
-    if not hub.save_train_opt_vars: vars = filter_by_name(pedia.train_opt)
+    if not hub.save_train_opt_vars:
+      vars = filter_by_name(pedia.train_opt)
+      vars = filter_by_name('Optimizer')
     # Remove `dynamic_opt` vars
     vars = filter_by_name(pedia.dynamic_opt)
     # Krause optimizer related vars (TODO: need to be refactored)
