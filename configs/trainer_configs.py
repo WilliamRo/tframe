@@ -76,6 +76,7 @@ class TrainerConfigs(object):
   state_nan_protection = Flag.boolean(
     False, 'Whether to use NaN protection on train state update. '
            'Usually used with clip_nan_protection')
+  terminate_on_nan = Flag.boolean(True, 'Whether to terminate on NaN')
 
   def get_global_regularizer(self):
     if not self.use_global_regularizer: return None

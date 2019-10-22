@@ -455,13 +455,14 @@ class Trainer(object):
     self.batch_loss_stat.record(loss_dict[loss_slot])
 
     # Check NaN
-    for val in loss_dict.values():
-      if np.isnan(val):
-        msg = 'Forced termination triggered due to NAN in loss_dict'
-        console.show_status(msg)
-        self.model.agent.take_notes(msg)
-        self.th.force_terminate = True
-        break
+    if self.th.terminate_on_nan:
+      for val in loss_dict.values():
+        if np.isnan(val):
+          msg = 'Forced termination triggered due to NAN in loss_dict'
+          console.show_status(msg)
+          self.model.agent.take_notes(msg)
+          self.th.force_terminate = True
+          break
 
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
