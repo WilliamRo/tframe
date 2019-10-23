@@ -235,7 +235,7 @@ class FI2010(DataAgent):
     # Sanity check
     assert isinstance(model, Classifier) and isinstance(seq_set, SequenceSet)
     # Get table and F1 score
-    table, F1 = FI2010._get_stats(model, seq_set)
+    table, F1 = FI2010._get_stats(model, seq_set, batch_size=seq_set.size)
     table.print_buffer()
     # Take note if is training
     if is_training:
