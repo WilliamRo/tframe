@@ -224,11 +224,8 @@ class FI2010(DataAgent):
     model = trainer.model
     assert isinstance(model, Classifier)
     # Make prediction
-    pred = model.classify(
-      dataset, batch_size=th.val_batch_size, return_probs=True, verbose=True)
-    # Concatenate the predictions appropriately
-
-    return 'Probe done'
+    table, _ = FI2010._get_stats(model, dataset[:4000])
+    return table.content
 
   @staticmethod
   def evaluate(entity, seq_set):
@@ -237,9 +234,22 @@ class FI2010(DataAgent):
     else: model = entity
     # Sanity check
     assert isinstance(model, Classifier) and isinstance(seq_set, SequenceSet)
+    # Get table and F1 score
+    table, F1 = FI2010._get_stats(model, seq_set)
+    table.print_buffer()
+    # Take note if is training
+    if is_training:
+      model.agent.take_notes(table.content)
+      model.agent.put_down_criterion('F1 Score', F1)
+
+  @staticmethod
+  def _get_stats(model, dataset, batch_size=1):
+    # Sanity check
+    assert isinstance(model, Classifier)
     # Get predictions and labels
     label_pred_tensor = model.key_metric.quantity_definition.quantities
-    label_pred = model.evaluate(label_pred_tensor, seq_set, verbose=True)
+    label_pred = model.evaluate(
+      label_pred_tensor, dataset, batch_size=batch_size, verbose=True)
     console.show_status('Evaluation completed')
     label_pred = np.concatenate(label_pred, axis=0)
     # TODO: here results for each day can be divided wisely
@@ -275,11 +285,8 @@ class FI2010(DataAgent):
     table.hline()
     table.print_row('Overall', accuracy, precision, recall, F1)
     table.hline()
-    table.print_buffer()
-    # Take note if is training
-    if is_training:
-      model.agent.take_notes(table.content)
-      model.agent.put_down_criterion('F1 Score', F1)
+
+    return table, F1
 
   # endregion : Probe and evaluate
 
