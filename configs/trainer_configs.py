@@ -77,6 +77,11 @@ class TrainerConfigs(object):
     False, 'Whether to use NaN protection on train state update. '
            'Usually used with clip_nan_protection')
   terminate_on_nan = Flag.boolean(True, 'Whether to terminate on NaN')
+  reset_optimizer_after_resurrection = Flag.boolean(
+    False, 'Whether to re-initiate optimizer after resurrection. '
+           'Take effect only when lr_decay < 1')
+  adam_epsilon = Flag.float(
+    1e-8, 'epsilon used for initiating AdamOptimizer', is_key=None)
 
   def get_global_regularizer(self):
     if not self.use_global_regularizer: return None

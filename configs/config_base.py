@@ -219,7 +219,7 @@ class Config(
     from tframe.optimizers.clip_opt import GradientClipOptimizer
     if optimizer is None:
       assert self.optimizer is not None and self.learning_rate is not None
-      optimizer = self.optimizer(self.learning_rate)
+      optimizer = self.get_tf_optimizer()
     if self.clip_threshold > 0:
       assert self.clip_method in ('norm', 'value', 'global_norm', 'avg_norm')
       optimizer = GradientClipOptimizer(
@@ -233,6 +233,13 @@ class Config(
       # TODO: may be not safe to do this
       tf_opt._name = pedia.train_opt
     return optimizer
+
+  def get_tf_optimizer(self):
+    if self.optimizer in ['adam', tf.train.AdamOptimizer]:
+      return tf.train.AdamOptimizer(
+        learning_rate=self.learning_rate,
+        beta1=self.beta1, beta2=self.beta2, epsilon=self.adam_epsilon)
+    return self.optimizer(self.learning_rate)
 
   # endregion : Public Methods
 

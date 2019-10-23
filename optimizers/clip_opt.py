@@ -18,6 +18,9 @@ class GradientClipOptimizer(object):
 
   # region : Public Methods
 
+  def reset_optimizer(self):
+    self._tf_optimizer = hub.get_tf_optimizer()
+
   def minimize(self, loss, var_list=None):
     # Step 1: compute gradients
     grads_and_vars = self._compute_gradients(loss, var_list=var_list)

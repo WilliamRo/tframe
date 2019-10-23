@@ -286,6 +286,11 @@ class Model(object):
     self._train_step.plug(
       self._optimizer.minimize(self._loss.op, var_list=var_list))
 
+  def reset_optimizer(self):
+    from tframe.optimizers.clip_opt import GradientClipOptimizer
+    assert isinstance(self._optimizer, GradientClipOptimizer)
+    self._optimizer.reset_optimizer()
+
   def _merge_summaries(self):
     train_step_summaries = tf.get_collection(pedia.train_step_summaries)
     validation_summaries = tf.get_collection(pedia.validation_summaries)
