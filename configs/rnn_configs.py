@@ -89,6 +89,12 @@ class RNNConfigs(object):
   apply_default_gate_loss = Flag.boolean(
     True, 'Whether to use indiscriminate gate loss in training', is_key=None)
 
+  use_conveyor = Flag.boolean(
+    False, 'Whether to use conveyor for accessing previous inputs', is_key=None)
+  conveyor_length = Flag.integer(None, 'Length of conveyor', is_key=None)
+  conveyor_input_shape = Flag.list(
+    None, 'This is a compromising variable for conveyor logic. To be modified')
+
   # Clockwork RNN
   periods = Flag.whatever(None, 'Periods for each module in CWRNN', is_key=None)
 
