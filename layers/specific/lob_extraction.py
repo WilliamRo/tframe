@@ -44,7 +44,8 @@ class Significance(Layer):
 
     # Get tf weights
     weights = tf.get_variable(
-      name='sig_weights', dtype=th.dtype, initializer=self._init_weights)
+      name='sig_weights', dtype=th.dtype, initializer=self._init_weights,
+      trainable=not th.lob_fix_sig_curve)
     # Apply significance
     # U = tf.constant(self.U, dtype=th.dtype)
     def square_max(x):
