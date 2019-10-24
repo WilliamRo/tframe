@@ -176,7 +176,7 @@ class VariableViewer(Frame):
     # Show heat_map
     cmap = 'OrRd' if self.show_absolute_value or is_gate else 'bwr'
     im = self._heat_map(image, cmap=cmap)
-    # if self.show_value: self._annotate_heat_map(im, image)
+    if self.show_value: self._annotate_heat_map(im, image)
     pool = np.abs(images) if self.unify_range else abs_variable
     # Set color limits
     if is_gate:
@@ -283,6 +283,8 @@ class VariableViewer(Frame):
     # Sanity check
     assert isinstance(data, np.ndarray)
     im_data = im.get_array()
+    for d in np.shape(im_data):
+      if d > 50: return
 
     # Normalize the threshold to the images color range.
     if threshold is not None:
