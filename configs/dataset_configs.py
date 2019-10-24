@@ -37,6 +37,10 @@ class DataConfigs(object):
     0.0, 'Random shift percent used in converting dataset to `rnn_input`',
     is_key=None)
 
+  random_sample_length = Flag.integer(
+    None, 'Length of sequences in each batch used in '
+          'dataset._convert_to_rnn_input', is_key=None)
+
   train_set = Flag.whatever(None, 'Training set')
   val_set = Flag.whatever(None, 'Validation set')
   test_set = Flag.whatever(None, 'Testing set')

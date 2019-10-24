@@ -158,6 +158,10 @@ class DataSet(TFRData):
         round_len = np.ceil(self.total_steps / num_steps)
       else:
         if num_steps < 0: round_len = 1
+        elif training and hub.random_sample_length > 0:
+          # This branch is under testing
+          L = checker.check_positive_integer(hub.random_sample_length)
+          round_len = int(np.ceil(L / num_steps))
         else:
           # e.g. PTB
           M, N, p = self.size, batch_size, hub.overlap_pct if training else 0
@@ -217,6 +221,7 @@ class DataSet(TFRData):
                   else self.batch_preprocessor(self, is_training))
       # Total steps will be data_size // batch_size, i.e. data may be
       # .. truncated
+      # overlap_pct and random_shift takes effect here
       rnn_data = data_set._convert_to_rnn_input(is_training, batch_size)
 
     # here each entry in data_dict has shape [batch_size, steps, *dim]
@@ -455,6 +460,19 @@ class DataSet(TFRData):
     for k, v in data_dict.items(): result_dict[k] = f(v)
     return result_dict
 
+  def _random_from_whole_seq(self, batch_size):
+    L = checker.check_positive_integer(hub.random_sample_length)
+    assert L < self.size
+    # Generate indices for each sequence
+    indices = np.random.randint(low=0, high=self.size - L + 1, size=batch_size)
+    def f(array):
+      data = np.zeros(shape=(batch_size, L, *array.shape[1:]))
+      for i, start_j in enumerate(indices):
+        data[i] = array[start_j:start_j+L]
+      return data
+    return DataSet(data_dict=self._apply(f), is_rnn_input=True,
+                   name=self.name, **self.properties)
+
   def _convert_to_rnn_input(self, training, batch_size=1):
     """Used in partitioning a sequence, e.g. partitioning PTB data set.
        Given: Total_length=M, Batch_size=N, overlap_percent=p
@@ -464,6 +482,9 @@ class DataSet(TFRData):
     """
     assert isinstance(training, bool)
     checker.check_positive_integer(batch_size)
+    if training and hub.random_sample_length is not None:
+      # TODO: beta branch
+      return self._random_from_whole_seq(batch_size)
     # Init a shared indices list
     indices = []
     def f(array):
