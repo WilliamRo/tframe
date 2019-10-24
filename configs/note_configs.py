@@ -65,6 +65,9 @@ class NoteConfigs(object):
 
   gather_only_scalars = Flag.boolean(False, 'Whether to export only scalars')
 
+  export_var_alpha = Flag.boolean(
+    False, 'Vars list: (1) coef in sig_curve;')
+
 
   def smooth_out_note_configs(self):
     if self.use_default_s_in_dy_ds: self.export_dy_ds = True
