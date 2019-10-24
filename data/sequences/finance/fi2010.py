@@ -304,8 +304,16 @@ class Extract(Layer):
 
   @single_input
   def _link(self, x, **kwargs):
+    """x = {P_ask[i], V_ask[i], P_bid[i], V_bid[i]}_i=1^10"""
     assert isinstance(x, tf.Tensor) and x.shape.as_list()[-1] == 40
     if not self._volume_only and self._max_level == 10: return x
-    ks = [10, 30] if self._volume_only else [0, 10, 20, 30]
-    return tf.concat([x[:, k:k+self._max_level] for k in ks], axis=1)
-
+    # Apply max_level
+    if self._max_level < 10:
+      sizes = [4 * self._max_level, 4 * (10 - self._max_level)]
+      x, _ = tf.split(x, num_or_size_splits=sizes, axis=-1)
+    # Apply volume only
+    if self._volume_only:
+      dim = x.shape.as_list()[-1]
+      indices = [i for i in range(dim) if i % 2 != 0]
+      x = tf.gather(x, indices, axis=-1)
+    return x

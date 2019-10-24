@@ -5,7 +5,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tframe import checker
+from tframe import checker, context
 from tframe import hub as th
 from tframe.layers.layer import Layer, single_input
 
@@ -15,7 +15,7 @@ class Significance(Layer):
   full_name = 'significance'
   abbreviation = 'signif'
 
-  def __init__(self, init_weights=None, numerator=4.0):
+  def __init__(self, init_weights=None, numerator=1.0):
     self._max_level = checker.check_positive_integer(th.max_level)
     if init_weights is None:
       init_weights = numerator / np.arange(1, self._max_level + 1)
@@ -35,19 +35,25 @@ class Significance(Layer):
 
   @single_input
   def _link(self, x, **kwargs):
+    """x = {P_ask[i], V_ask[i], P_bid[i], V_bid[i]}_i=1^10"""
     # Sanity check
     assert isinstance(x, tf.Tensor)
     dim = x.shape.as_list()[-1]
     repeats = int(dim / self._max_level)
     assert repeats * self._max_level == dim
+
     # Get tf weights
     weights = tf.get_variable(
       name='sig_weights', dtype=th.dtype, initializer=self._init_weights)
     # Apply significance
-    U = tf.constant(self.U, dtype=th.dtype)
-    s = U @ tf.nn.softmax(weights)
-    s = tf.reshape(s, [1, self._max_level])
-    coef = tf.concat([s] * repeats, axis=1)
+    # U = tf.constant(self.U, dtype=th.dtype)
+    def square_max(x):
+      square = x * x
+      return square / (tf.reduce_sum(square) + 1e-6)
+    # s = tf.matmul(U, tf.nn.softmax(weights)) TODO softmax ?
+    s = tf.cumsum(square_max(weights), axis=0, reverse=True)
+    coef = tf.reshape(tf.concat([s] * repeats, axis=-1), [1, -1])
+    if th.export_var_alpha: context.add_var_to_export('Significance', weights)
     return x * coef
 
 
@@ -61,12 +67,16 @@ if __name__ == '__main__':
   U[X <= Y] = 1.0
 
   x = np.arange(1, max_level + 1)
-  init_weights = 4. / x
-  exps = np.exp(init_weights)
+  init_weights = 1. / x
+  # exps = np.exp(init_weights)
+  exps = init_weights * init_weights
   softmax = exps / np.sum(exps)
   s = U @ softmax
 
+  plt.plot(init_weights)
+  plt.plot(softmax)
   plt.plot(s)
+  plt.legend(['w', 'softmax', 's'])
   plt.show()
 
 

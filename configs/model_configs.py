@@ -131,6 +131,8 @@ class ModelConfigs(object):
   use_lob_sig_curve = Flag.boolean(
     False, 'Whether to use significance curve for model in tasks on LOB',
     is_key=None)
+  lob_fix_sig_curve = Flag.boolean(
+    False, 'Whether to fix significant curve', is_key=None)
 
 
   def smooth_out_model_configs(self):
