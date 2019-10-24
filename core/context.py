@@ -160,6 +160,10 @@ class Context(object):
     checker.check(len(loss.shape) == 0, 'Input tensor must be a scalar')
     self.add_to_list_collection(self._LOSSES_LIST, loss)
 
+  def add_var_to_export(self, name, var):
+    assert isinstance(name, str)
+    self.add_to_dict_collection(self._VARIABLE_EXPORT_DICT, name, var)
+
   def add_tensor_to_export(self, name, tensor):
     assert isinstance(name, str)
     self.add_to_dict_collection(self._TENSORS_EXPORT_DICT, name, tensor)
