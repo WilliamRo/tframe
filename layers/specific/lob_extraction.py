@@ -47,12 +47,12 @@ class Significance(Layer):
       name='sig_weights', dtype=th.dtype, initializer=self._init_weights,
       trainable=not th.lob_fix_sig_curve)
     # Apply significance
-    # U = tf.constant(self.U, dtype=th.dtype)
+    U = tf.constant(self.U, dtype=th.dtype)
     def square_max(x):
       square = x * x
       return square / (tf.reduce_sum(square) + 1e-6)
     # s = tf.matmul(U, tf.nn.softmax(weights)) TODO softmax ?
-    s = tf.cumsum(square_max(weights), axis=0, reverse=True)
+    s = tf.matmul(U, square_max(weights))
     coef = tf.reshape(tf.concat([s] * repeats, axis=-1), [1, -1])
     if th.export_var_alpha: context.add_var_to_export('Significance', weights)
     return x * coef
