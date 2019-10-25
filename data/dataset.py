@@ -158,7 +158,7 @@ class DataSet(TFRData):
         round_len = np.ceil(self.total_steps / num_steps)
       else:
         if num_steps < 0: round_len = 1
-        elif training and hub.random_sample_length > 0:
+        elif training and hub.random_sample_length is not None:
           # This branch is under testing
           L = checker.check_positive_integer(hub.random_sample_length)
           round_len = int(np.ceil(L / num_steps))
