@@ -225,7 +225,9 @@ class FI2010(DataAgent):
     model = trainer.model
     assert isinstance(model, Classifier)
     # Make prediction
-    table, _ = FI2010._get_stats(model, dataset[:4000])
+    if 'order002' in th.developer_code:
+      table, _ = FI2010._get_stats(model, dataset, batch_size=3)
+    else: table, _ = FI2010._get_stats(model, dataset[:4000])
     return table.content
 
   @staticmethod
