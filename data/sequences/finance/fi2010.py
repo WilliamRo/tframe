@@ -61,6 +61,7 @@ class FI2010(DataAgent):
       train_set, test_set = seq_set.split(1, 3, names=('Train Set', 'Test Set'))
       assert isinstance(train_set, SequenceSet)
       train_set = train_set.stack
+      if val_size == 0: return train_set, test_set
       if val_size is None: val_size = 54750
       assert isinstance(val_size, int) and val_size > 0
       train_set, val_set = train_set.split(
