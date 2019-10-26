@@ -93,6 +93,12 @@ class Config(
     return (self.train or self.dynamic_evaluation) and not self.on_cloud
 
   @property
+  def np_dtype(self):
+    if self.dtype is tf.float32: return np.float32
+    elif self.dtype is tf.float64: return np.float64
+    raise ValueError
+
+  @property
   def key_options(self):
     ko = OrderedDict()
     for name in self.__dir__():

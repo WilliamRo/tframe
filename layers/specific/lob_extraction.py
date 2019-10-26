@@ -19,7 +19,7 @@ class Significance(Layer):
     self._max_level = checker.check_positive_integer(th.max_level)
     if init_weights is None:
       init_weights = numerator / np.arange(1, self._max_level + 1)
-    self._init_weights = np.array(init_weights, np.float32).reshape(-1, 1)
+    self._init_weights = np.array(init_weights, th.np_dtype).reshape(-1, 1)
     assert len(self._init_weights) == self._max_level
     self._U = None
 
@@ -27,7 +27,7 @@ class Significance(Layer):
   def U(self):
     if self._U is not None: return self._U
     N = self._max_level
-    U = np.zeros([N, N], dtype=np.float32)
+    U = np.zeros([N, N], dtype=th.np_dtype)
     Y, X = np.meshgrid(range(N), range(N))
     U[X <= Y] = 1.0
     self._U = U

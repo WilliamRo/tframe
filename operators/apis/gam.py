@@ -150,7 +150,7 @@ class GAM(Groups, RNeuroBase):
     """
     s, n = self.group_size, self.num_groups
     # Duplicating matrix D
-    D = np.zeros((n, s * n), dtype=np.float32)
+    D = np.zeros((n, s * n), dtype=hub.np_dtype)
     indices=[[i, j] for i in range(n) for j in range(i*s, i*s+s)]
     for i, j in indices: D[i, j] = 1.0
     self.D = tf.constant(D, dtype=hub.dtype)
