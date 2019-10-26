@@ -140,10 +140,10 @@ class RNNConfigs(object):
   # GAM-RHN configs
   gam_config = Flag.string(None, 'Gam config string (SxN)', is_key=None)
   sog_version = Flag.integer(
-    1, 'Version of `softmax over groups` activation. '
+    0, 'Version of `softmax over groups` activation. '
        'v0 bases on reshape, v1 bases on matmul')
   gam_read_version = Flag.integer(
-    1, 'Version of read operation from GAM. '
+    0, 'Version of read operation from GAM. '
        'v0 bases on reshape, slow but save space.'
        'v1 bases on matmul, quick but needs more space.')
   gam_dropout = Flag.float(0.0, 'Dropout for GAM', is_key=None)
