@@ -35,6 +35,7 @@ class FI2010(DataAgent):
   RTRKS  FI0009003552  Rautaruukki   Basic Materials     Steel
   WRT1V  FI0009000727  Wartsila      Industrials         Diversiﬁed Industrials
   -----------------------------------------------------------------------------
+  For LOBs with NoAuction
   Day       1      2      3      4      5      6      7      8      9     10
   Blocks  39512  38397  28535  37023  34785  39152  37346  55478  52172  31937
 
@@ -46,28 +47,28 @@ class FI2010(DataAgent):
 
   DATA_NAME = 'FI-2010'
   DATA_URL = 'https://etsin.fairdata.fi/api/dl?cr_id=73eb48d7-4dbc-4a10-a52a-da745b47a649&file_id=5b32ac028ab4d130110888f19872320'
+  DAY_LENGTH = {
+    True:
+      [47342, 45114, 33720, 43252, 41171, 47253, 45099, 59973, 57951, 37250],
+    False:
+      [39512, 38397, 28535, 37023, 34785, 39152, 37346, 55478, 52172, 31937]}
+
+  LEN_PER_DAY_PER_STOCK = 'LEN_PER_DAY_PER_STOCK'
 
   @classmethod
   def load(cls, data_dir, auction=False, norm_type='zscore', setup=2,
            val_size=None, horizon=100, **kwargs):
     # Sanity check
     assert setup in [1, 2]
-    # Load tframe data
-    seq_set = cls.load_as_tframe_data(
-      data_dir, auction=auction, norm_type=norm_type, setup=setup)
-    seq_set = cls.extract_seq_set(seq_set, horizon)
-    # Separate dataset according to setup
-    if setup == 2:
-      train_set, test_set = seq_set.split(1, 3, names=('Train Set', 'Test Set'))
-      assert isinstance(train_set, SequenceSet)
-      train_set = train_set.stack
-      if val_size == 0: return train_set, test_set
-      if val_size is None: val_size = 54750
-      assert isinstance(val_size, int) and val_size > 0
-      train_set, val_set = train_set.split(
-        -1, val_size, names=('Train Set', 'Val Set'))
-      return train_set, val_set, test_set
-    else: raise NotImplementedError
+    # Load raw LOB data
+    lob_set = cls.load_raw_LOBs(data_dir, auction=auction)
+    # Apply setup and normalization
+    train_set, test_set = cls._apply_setup(lob_set, horizon, setup)
+    train_set, test_set = cls._apply_normalization(
+      train_set, test_set, norm_type)
+    if kwargs.get('validate_setup2') and setup == 2 and norm_type == 'zscore':
+      cls._validate_setup2(data_dir, auction, train_set)
+    return  train_set, test_set
 
   @classmethod
   def extract_seq_set(cls, raw_set, horizon):
@@ -81,7 +82,8 @@ class FI2010(DataAgent):
 
   @classmethod
   def load_as_tframe_data(
-      cls, data_dir, auction=False, norm_type='zscore', setup=2, **kwargs):
+      cls, data_dir, auction=False, norm_type='zscore', setup=None,
+      file_slices=None, **kwargs):
     # Confirm type of normalization
     nt_lower = norm_type.lower()
     # 'Zscore' for directory names and 'ZScore' for file names
@@ -97,7 +99,7 @@ class FI2010(DataAgent):
       os.path.basename(data_path)))
     # Load raw data
     features, targets = cls._load_raw_data(
-      data_dir, auction, norm_type, type_id, setup)
+      data_dir, auction, norm_type, type_id, file_slices=file_slices)
 
     # Wrap raw data into tframe Sequence set
     data_dict = {'raw_data': features}
@@ -109,10 +111,167 @@ class FI2010(DataAgent):
     # Return
     return seq_set
 
+  @classmethod
+  def divide(cls, lob_set, k, first_name, second_name):
+    assert isinstance(lob_set, SequenceSet) and lob_set.size == 5
+    first_features, second_features = [], []
+    first_targets, second_targets = [], []
+    # Separate each stock
+    len_per_day_per_stock = lob_set[cls.LEN_PER_DAY_PER_STOCK]
+    for stock, (lob, move) in enumerate(zip(lob_set.features, lob_set.targets)):
+      lengths = len_per_day_per_stock[stock]
+      L = sum(lengths[:k])
+      first_features.append(lob[:L])
+      second_features.append(lob[L:])
+      first_targets.append(move[:L])
+      second_targets.append(move[L:])
+    # Wrap data sets and return
+    first_properties = {
+      cls.LEN_PER_DAY_PER_STOCK: [s[:k] for s in len_per_day_per_stock]}
+    first_set = SequenceSet(
+      first_features, first_targets, name=first_name, **first_properties)
+    test_properties = {
+      cls.LEN_PER_DAY_PER_STOCK: [s[k:] for s in len_per_day_per_stock]}
+    second_set = SequenceSet(
+      second_features, second_targets, name=second_name, **test_properties)
+    for seq_set in [first_set, second_set]:
+      assert np.sum(seq_set.structure) == np.sum(
+        seq_set[cls.LEN_PER_DAY_PER_STOCK])
+    return first_set, second_set
+
+  @classmethod
+  def load_raw_LOBs(cls, data_dir, auction=False):
+    # Load directly if dataset exists
+    data_path = cls._get_data_path(data_dir, auction=auction)
+    if os.path.exists(data_path): return SequenceSet.load(data_path)
+    # Otherwise restore raw LOBs from decimal precision data
+    dp_set = cls.load_as_tframe_data(
+      data_dir, auction=auction, norm_type='decpre', setup=9,
+      file_slices=(slice(8, 9), slice(8, 9)))
+    # Extract first 40 dimensions in de_set.raw_data
+    dp_lob_list = [array[:, :40] for array in dp_set.data_dict['raw_data']]
+    # Set parameters for restoration
+    p_coef, v_coef = 10000, 100000
+    coefs = np.array([p_coef, v_coef] * 20).reshape(1, 40)
+    lob_list = [array * coefs for array in dp_lob_list]
+    # Check targets
+    cls._check_targets(data_dir, auction, dp_set.data_dict)
+    # Check lob list
+    cls._check_raw_lob(data_dir, auction, lob_list, raise_err=True)
+
+    # Separate sequences for each stock
+    # i  0 1 2 3 4 5 6 7
+    # --------------------
+    #    1 1 0 0 0 1 1 1        := x
+    #      1 1 0 0 0 1 1 1
+    # d  x 0 1 0 0 1 0 0 x      x[0:2], x[2:5], x[5:8]
+    # --------------------
+    # j    0 1 2 3 4 5 6
+    #        *     *
+    # |x[1:] - x[:-1]| reveals cliffs
+    LOBs = [[] for _ in range(5)]
+    horizons = [10, 20, 30, 50, 100]
+    targets = {h: [[] for _ in range(5)] for h in horizons}
+    for j, lobs in enumerate(lob_list):
+      # Find cliff indices
+      max_delta = 300 if auction else 200
+      indices = cls._get_cliff_indices(lobs, auction, max_delta=max_delta)
+      # Fill LOBs
+      from_i = 0
+      for stock in range(5):
+        to_i = (indices[stock] + 1) if stock < 4 else len(lobs)
+        slc = slice(from_i, to_i)
+        LOBs[stock].append(lobs[slc])
+        for h in horizons: targets[h][stock].append(dp_set.data_dict[h][j][slc])
+        if stock != 4: from_i = indices[stock] + 1
+    # Generate new data_dict
+    data_dict = {h: [np.concatenate(tgt_list) for tgt_list in tgt_lists]
+                 for h, tgt_lists in targets.items()}
+    data_dict['raw_data'] = [np.concatenate(lb_list) for lb_list in LOBs]
+    # Initiate a new seq_set
+    seq_set = SequenceSet(
+      data_dict=data_dict, name='FI-2010-LOBs',
+      **{cls.LEN_PER_DAY_PER_STOCK: cls._get_len_per_day_per_stock(
+        data_dir, auction)})
+    # Sanity check (394337)
+    assert sum(seq_set.structure) == sum(cls.DAY_LENGTH[auction])
+    # Save and return
+    seq_set.save(filename=data_path)
+    console.show_status('{} saved to `{}`'.format(seq_set.name, data_path))
+    return seq_set
+
   # region : Private Methods
 
   @classmethod
-  def _load_raw_data(cls, data_dir, auction, norm_type, type_id, setup):
+  def _validate_setup2(cls, data_dir, auction, train_set):
+    console.show_status('Validating train set ...', '[Setup2-ZScore]')
+    assert isinstance(train_set, SequenceSet)
+    # Load zscore data set
+    zs_set = cls.load_as_tframe_data(
+      data_dir, auction=auction, norm_type='zscore', setup=2,
+      file_slices=(slice(6, 7), slice(7, 9)))
+    zs_feature = zs_set.data_dict['raw_data'][0][:, :40]
+    feature = np.concatenate(train_set.features, axis=0)
+    assert len(zs_feature) == len(feature)
+    delta = np.abs(zs_feature - feature)
+    assert np.max(delta) < 1e-4
+    console.show_info('Validation completed.')
+
+  @classmethod
+  def _apply_setup(cls, lob_set, horizon, setup):
+    # Sanity check
+    # Currently only Setup2 is supported
+    assert setup == 2
+    assert isinstance(lob_set, SequenceSet)
+    lob_set.features = lob_set.data_dict['raw_data']
+    lob_set.targets = lob_set.data_dict[horizon]
+    return cls.divide(lob_set, 7, 'Train Set', 'Test Set')
+
+  @classmethod
+  def _apply_normalization(cls, train_set, test_set, norm_type):
+    assert norm_type == 'zscore'
+    assert isinstance(train_set, SequenceSet)
+    assert isinstance(test_set, SequenceSet)
+    train_x = train_set.stack.features
+    mu, sigma = np.mean(train_x, axis=0), np.std(train_x, axis=0)
+    train_set.normalize_feature(mu, sigma, element_wise=False)
+    test_set.normalize_feature(mu, sigma, element_wise=False)
+    return train_set, test_set
+
+  @classmethod
+  def _get_cliff_indices(cls, lobs, auction, max_delta=200.0):
+    p = lobs[:, 0]
+    shift = 1
+    delta = np.abs(p[shift:] - p[:-shift])
+    indices = np.where(delta > max_delta)[0] + shift - 1
+    if auction: indices = [
+      i for i in indices
+      if np.abs(p[min(i + 100, len(p) - 1)] - p[i - 100]) > max_delta]
+    if len(indices) != 4:
+      raise AssertionError
+    return list(indices)
+
+  @classmethod
+  def _get_len_per_day_per_stock(cls, data_dir, auction):
+    zscore_set = cls.load_as_tframe_data(
+      data_dir, auction=auction, norm_type='zscore', setup=109,
+      file_slices=(slice(0, 1), slice(0, 9)))
+    lobs_list = zscore_set.data_dict['raw_data']
+    assert len(lobs_list) == 10
+    lengths = [[] for _ in range(5)]
+    for lobs in lobs_list:
+      max_delta = 0.4 if auction else 0.1
+      indices = cls._get_cliff_indices(lobs, auction, max_delta)
+      indices = [-1] + indices + [len(lobs) - 1]
+      for i, L in enumerate([indices[j + 1] - indices[j] for j in range(5)]):
+        lengths[i].append(L)
+    # Sanity check
+    assert np.sum(lengths) == sum(cls.DAY_LENGTH[auction])
+    return lengths
+
+  @classmethod
+  def _load_raw_data(
+      cls, data_dir, auction, norm_type, type_id, file_slices=None):
     assert isinstance(auction, bool)
     if not isinstance(norm_type, str): norm_type = str(norm_type)
     # Confirm sub-directory name
@@ -141,8 +300,8 @@ class FI2010(DataAgent):
       [os.path.exists(training_set_path), os.path.exists(test_set_path)])
 
     # Read data and return
-    return cls._read_10_days(
-      training_set_path, test_set_path, auction, norm_type, setup)
+    return cls._read_train_test(
+      training_set_path, test_set_path, auction, norm_type, file_slices)
 
   @classmethod
   def _get_data_file_path_list(cls, dir_name, training, auction, norm_type):
@@ -158,9 +317,10 @@ class FI2010(DataAgent):
     return file_path_list
 
   @classmethod
-  def _read_10_days(cls, train_dir, test_dir, auction, norm_type, setup):
-    """Read train_1, test_1, ... test_9 in order."""
-    assert setup == 2
+  def _read_train_test(
+      cls, train_dir, test_dir, auction, norm_type, file_slices=None):
+    """This method is better used for reading DecPre data for further restoring
+    """
     train_paths = cls._get_data_file_path_list(
       train_dir, True, auction, norm_type)
     test_paths = cls._get_data_file_path_list(
@@ -170,8 +330,12 @@ class FI2010(DataAgent):
     horizons = [10, 20, 30, 50, 100]
     for h in horizons: targets[h] = []
     dim = 144
-    # For Setup 2, train_set = train_7, test_set = test_[789]
-    data_paths = [train_paths[6]] + test_paths[-3:]
+    if file_slices is None:train_slice, test_slice = slice(0, 1), slice(0, 9)
+    else:
+      checker.check_type(file_slices, slice)
+      assert len(file_slices) == 2
+      train_slice, test_slice = file_slices
+    data_paths = train_paths[train_slice] + test_paths[test_slice]
     for i, path in enumerate(data_paths):
       # Create day slot for features and targets
       features.append([])
@@ -207,10 +371,104 @@ class FI2010(DataAgent):
     return features, targets
 
   @classmethod
-  def _get_data_path(cls, data_dir, auction, norm_type, setup):
+  def _check_targets(cls, data_dir, auction, data_dict):
+    console.show_status('Checking targets list ...')
+    assert isinstance(data_dict, dict)
+    # Load z-score data
+    zscore_set = cls.load_as_tframe_data(
+      data_dir, auction=auction, norm_type='zscore', setup=9,
+      file_slices=(slice(8, 9), slice(8, 9)))
+    assert isinstance(zscore_set, SequenceSet)
+    # Check targets
+    horizons = [10, 20, 30, 50, 100]
+    for h in horizons:
+      lob_targets = np.concatenate(data_dict[h])
+      zs_targets = np.concatenate(zscore_set.data_dict[h])
+      if not np.equal(lob_targets, zs_targets).all():
+        raise AssertionError('Targets not equal when horizon = {}'.format(h))
+    console.show_info('Targets are all correct.')
+
+  @classmethod
+  def _check_raw_lob(cls, data_dir, auction, lob_list, raise_err=False):
+    console.show_status('Checking LOB list ...')
+    # Sanity check
+    assert isinstance(auction, bool) and len(lob_list) == 2
+    for lob in lob_list:
+      assert isinstance(lob, np.ndarray) and lob.shape[1] == 40
+    # Calculate stats for normalization
+    lob_1_9 = lob_list[0]
+    mu, sigma = np.mean(lob_1_9, axis=0), np.std(lob_1_9, axis=0)
+    x_min, x_max = np.min(lob_1_9, axis=0), np.max(lob_1_9, axis=0)
+    x_deno = x_max - x_min
+    # Load z-score data
+    zscore_set = cls.load_as_tframe_data(
+      data_dir, auction=auction, norm_type='zscore', setup=9,
+      file_slices=(slice(8, 9), slice(8, 9)))
+    assert isinstance(zscore_set, SequenceSet)
+    zs_all = np.concatenate([
+      array[ :, :40] for array in zscore_set.data_dict['raw_data']], axis=0)
+    # Load min-max data
+    mm_set = cls.load_as_tframe_data(
+      data_dir, auction=False, norm_type='minmax', setup=9,
+      file_slices=(slice(8, 9), slice(8, 9)))
+    mm_all = np.concatenate([
+      array[:, :40] for array in mm_set.data_dict['raw_data']], axis=0)
+    # Generate lob -> zscore data for validation
+    lob_all = np.concatenate(lob_list, axis=0)
+    lob_zs_all = (lob_all - mu) / sigma
+    # Check error
+    max_err = 1e-4
+    delta_all = np.abs(lob_zs_all - zs_all)
+    if np.max(delta_all) < max_err:
+      console.show_info('LOB list is correct.')
+      return True
+    if raise_err: raise AssertionError
+    # Correct LOB using
+    console.show_status('Correcting LOB list ...')
+    V_errs, P_errs = 0, 0
+    bar = ProgressBar(total=len(lob_all))
+    for i, j in np.argwhere(delta_all > max_err):
+      price_err = j % 2 == 0
+      V_errs, P_errs = V_errs + 1 - price_err, P_errs + price_err
+      # Find correct value
+      val_zs = zs_all[i][j] * sigma[j] + mu[j]
+      val_mm = mm_all[i][j] * x_deno[j] + x_min[j]
+      zs_mm_err = abs(val_zs - val_mm)
+      if zs_mm_err > 0.1:
+        raise AssertionError(
+          'In LOB[{}, {}] val_zs = {} while val_mm = {}'.format(
+            i, j, val_zs, val_mm))
+      correct_val = val_mm
+      if not P_errs:
+        correct_val = np.round(val_mm)
+        cor_mm_err = abs(correct_val - val_mm)
+        if cor_mm_err > 1e-3:
+          raise AssertionError(
+            'In LOB[{}, {}] cor_val = {} while val_mm = {}'.format(
+              i, j, cor_mm_err, val_mm))
+      # Correct value in lob_all
+      lob_all[i, j] = correct_val
+      bar.show(i)
+    # Show status after correction
+    console.show_status(
+      '{} price errors and {} volume errors have been corrected'.format(
+        P_errs, V_errs))
+    new_lob_list = []
+    for s in [len(array) for array in lob_list]:
+      day_block, lob_all = np.split(lob_all, [s])
+      new_lob_list.append(day_block)
+    assert cls._check_raw_lob(data_dir, auction, new_lob_list, True)
+    # for i in range(10): lob_list[i] = new_lob_list[i] TODO
+    assert False
+
+  @classmethod
+  def _get_data_path(cls, data_dir, auction, norm_type=None, setup=None):
     assert isinstance(auction, bool)
-    file_name = 'FI-2010-{}Auction-{}-Setup{}.tfds'.format(
-     '' if auction else 'No', norm_type, setup)
+    if all([norm_type is None, setup is None]):
+      file_name = 'FI-2010-{}Auction-LOBs.tfds'.format(
+        '' if auction else 'No')
+    else: file_name = 'FI-2010-{}Auction-{}-Setup{}.tfds'.format(
+      '' if auction else 'No', norm_type, setup)
     return os.path.join(data_dir, file_name)
 
   # endregion : Private Methods
@@ -292,6 +550,59 @@ class FI2010(DataAgent):
     return table, F1
 
   # endregion : Probe and evaluate
+
+  # region : Deprecated
+
+  @classmethod
+  def _read_10_days_dep(cls, train_dir, test_dir, auction, norm_type, setup):
+    """Read train_1, test_1, ... test_9 in order."""
+    assert setup == 2
+    train_paths = cls._get_data_file_path_list(
+      train_dir, True, auction, norm_type)
+    test_paths = cls._get_data_file_path_list(
+      test_dir, False, auction, norm_type)
+    # Read data from .txt files
+    features, targets = [], {}
+    horizons = [10, 20, 30, 50, 100]
+    for h in horizons: targets[h] = []
+    dim = 144
+    # For Setup 2, train_set = train_7, test_set = test_[789]
+    data_paths = [train_paths[6]] + test_paths[-3:]
+    for i, path in enumerate(data_paths):
+      # Create day slot for features and targets
+      features.append([])
+      for h in horizons: targets[h].append([])
+      console.show_status('Reading data from `{}` ...'.format(
+        os.path.basename(path)))
+      with open(path, 'r') as f: lines = f.readlines()
+      # Sanity check
+      assert len(lines) == dim + len(horizons)
+      # Parse data
+      data = [[s for s in line.split(' ') if s] for line in lines]
+      total = len(data[0])
+      assert [len(d) == total for d in data]
+      bar = ProgressBar(total)
+      # Put data appropriately
+      for j, str_list in enumerate(zip(*data)):
+        col = np.array(str_list, dtype=np.float)
+        features[-1].append(col[:dim])
+        for k, h in enumerate(horizons): targets[h][-1].append(col[dim + k])
+        # Refresh progress bar
+        bar.show(j + 1)
+      # Stack list
+      features[-1] = np.stack(features[-1], axis=0)
+      for k, h in enumerate(horizons):
+        targets[h][-1] = np.array(
+          np.stack(targets[h][-1], axis=0), dtype=np.int64) - 1
+      console.show_status('Successfully read {} event blocks'.format(total))
+    # Sanity check and return
+    total = sum([len(x) for x in features])
+    console.show_status('Totally {} event blocks read.'.format(total))
+    if not auction: assert total == 394337
+    else: assert total == 458125
+    return features, targets
+
+  # endregion : Deprecated
 
 
 class Extract(Layer):
