@@ -282,13 +282,15 @@ class SequenceSet(DataSet):
 
   def turn_parallel_on(self): self.properties[self.PARALLEL_ON] = True
 
-  def normalize_feature(self, mu, sigma=None):
-    assert self.equal_length
-    assert isinstance(mu, np.ndarray) and len(mu) == self.structure[0]
+  def normalize_feature(self, mu, sigma=None, element_wise=True):
+    if element_wise: assert self.equal_length
+    assert isinstance(mu, np.ndarray)
+    if element_wise: assert len(mu) == self.structure[0]
     self.features = [x - mu for x in self.features]
     if sigma is not None:
-      assert isinstance(sigma, np.ndarray) and sigma.size == self.structure[0]
+      assert isinstance(sigma, np.ndarray)
       self.features = [x/sigma for x in self.features]
+      if element_wise: assert sigma.size == self.structure[0]
 
   # endregion : Public Methods
 
