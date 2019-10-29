@@ -60,7 +60,7 @@ class DataConfigs(object):
 
   @property
   def sample_among_sequences(self):
-    if self.sub_seq_len is None: return False
+    if self.sub_seq_len in [None, 0]: return False
     assert isinstance(self.sub_seq_len, int) and self.sub_seq_len > 0
     return True
 
