@@ -259,6 +259,12 @@ class RNet(Net):
     else: self._eval_state_buffer = self._apply_to_nested_array(
       self._eval_state_buffer, _decrease)
 
+    # Display info if necessary
+    if 'partial_reset' in hub.verbose_config:
+      prefix = 'train' if is_training else 'eval'
+      console.show_status(
+        'Batch size of {} state buffer decreased'.format(prefix), '[RNet]')
+
   def reset_part_buffer(self, indices, values=None):
     """This method is first designed for parallel training of RNN model with
         irregular sequence input"""
