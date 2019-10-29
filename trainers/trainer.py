@@ -749,8 +749,6 @@ class TrainerHub(Config):
     False, 'Whether to test train set in trainer._validate_model')
   terminal_threshold = Flag.float(0., 'Terminal threshold')
   lives = Flag.integer(0, 'Number of chances to resurrect', is_key=None)
-  lr_decay = Flag.float(
-    1.0, 'Learning rate decay when resurrected', is_key=None)
 
   # endregion : Class Attributes
   trainer_class = Trainer
