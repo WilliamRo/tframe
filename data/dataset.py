@@ -226,7 +226,7 @@ class DataSet(TFRData):
 
     # here each entry in data_dict has shape [batch_size, steps, *dim]
     if act_lens is None:
-      if num_steps < 0: num_steps = rnn_data.total_steps
+      if num_steps < 0 or num_steps is None: num_steps = rnn_data.total_steps
       round_len = self.get_round_length(batch_size, num_steps, is_training)
     else:
       # This branch will be visited only when this method is called by
