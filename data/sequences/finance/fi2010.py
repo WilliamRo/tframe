@@ -59,6 +59,7 @@ class FI2010(DataAgent):
   @classmethod
   def load(cls, data_dir, auction=False, norm_type='zscore', setup=2,
            val_size=None, horizon=100, **kwargs):
+    should_apply_norm = 'use_log' not in th.developer_code
     # Sanity check
     assert setup in [1, 2]
     # Load raw LOB data
@@ -66,8 +67,9 @@ class FI2010(DataAgent):
     lob_set = cls._init_features_and_targets(lob_set, horizon)
     # Apply setup and normalization
     train_set, test_set = cls._apply_setup(lob_set, setup)
-    train_set, test_set = cls._apply_normalization(
-      train_set, test_set, norm_type)
+    if should_apply_norm:
+      train_set, test_set = cls._apply_normalization(
+        train_set, test_set, norm_type)
     if kwargs.get('validate_setup2') and setup == 2 and norm_type == 'zscore':
       cls._validate_setup2(data_dir, auction, train_set)
     return  train_set, test_set
@@ -230,6 +232,10 @@ class FI2010(DataAgent):
     features = [array[:, :4*max_level] for array in features]
     # .. volume only
     if th.volume_only: features = [array[:, 1::2] for array in features]
+    # .. check developer code
+    if 'use_log' in th.developer_code:
+      assert th.volume_only
+      features = [np.log10(x + 1.0) for x in features]
     # Set features back
     lob_set.features = features
     # Initialize targets
@@ -532,9 +538,8 @@ class FI2010(DataAgent):
     assert isinstance(model, Classifier) and isinstance(seq_set, SequenceSet)
     # Get table and F1 score for each stock
     label_pred = FI2010._get_label_pred(model, seq_set)
-    for i, (lp, id) in enumerate(zip(label_pred, FI2010.STOCK_IDs)):
-      table, _ = FI2010._get_table_and_F1(
-        lp, title='[{}] Stock {}, '.format(i + 1, id))
+    for i, lp in enumerate(label_pred):
+      table, _ = FI2010._get_table_and_F1(lp, title='[{}] '.format(i + 1))
       table.print_buffer()
       if is_training: model.agent.take_notes(table.content)
 
