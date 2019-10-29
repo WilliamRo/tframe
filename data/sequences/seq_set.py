@@ -4,10 +4,12 @@ from __future__ import print_function
 
 import numpy as np
 
+from tframe import hub as th
 from tframe import checker
 
 from tframe.data.dataset import DataSet
 from tframe.data.sequences.paral_engine import ParallelEngine
+from tframe.utils.fancy.wheel import Wheel
 
 
 class SequenceSet(DataSet):
@@ -157,8 +159,12 @@ class SequenceSet(DataSet):
 
   def get_round_length(self, batch_size, num_steps=None, training=False):
     if num_steps is None:
+      raise AssertionError
       # when num_steps is None, this seq_set is treated as common data_set
       # and always contains single sequence
+      # Oct 29th, 19: the assertion above should be TODO deprecated
+      #   since single-sequence data set should be encapsulated as a
+      #   DataSet such as PTB or TEXT8
       if self.batch_preprocessor is None:
         return self.stack.get_round_length(batch_size)
       else:
@@ -170,26 +176,31 @@ class SequenceSet(DataSet):
           L = sum([self.length_calculator(l) for l in self.structure])
           round_len = np.ceil(L / batch_size)
     else:  # else generate RNN batches
-      if self.parallel_on:
-        return self._get_pe_round_length(batch_size, num_steps)
-      else:
-        assert isinstance(batch_size, int)
-        if batch_size < 0: batch_size = self.size
+      if batch_size < 0 or batch_size is None: batch_size = self.size
 
-        if batch_size == 1:
-          # When batch_size == 1, num_steps can be any integer
-          round_len = sum([np.ceil(L / (num_steps if num_steps > 0 else L))
-                           for L in self.structure])
-        else:
-          # When batch_size > 1, num_steps can be any integer
-          # This is the most complicated branch in which the result depends
-          # .. on the permutation of indices and is only valid within one
-          # .. epoch
-          # SeqSets that contain only one sequence should be encapsulated
-          # .. as a tframe DataSet instead of SequenceSet. e.g. PTB and text8
-          if num_steps < 0: num_steps = max(self.structure)
-          round_len = self._get_most_complicated_round_len(
-            batch_size, num_steps, training=training)
+      if training and th.sample_among_sequences:
+        # TODO: BETA branch
+        L = checker.check_positive_integer(th.sub_seq_len)
+        assert L <= max(self.structure)
+        if num_steps < 0 or num_steps is None:
+          # This is not recommended
+          round_len = 1
+        else: round_len = np.ceil(L / num_steps)
+      elif batch_size == 1:
+        # When batch_size == 1, num_steps can be any integer
+        round_len = sum([np.ceil(L / (num_steps if num_steps > 0 else L))
+                         for L in self.structure])
+      else:
+        # When batch_size > 1, num_steps can be any integer (which is not
+        # .. supported previously)
+        # This is the most complicated branch in which the result depends
+        # .. on the permutation of indices and is only valid within one
+        # .. epoch
+        # SeqSets that contain only one sequence should be encapsulated
+        # .. as a tframe DataSet instead of SequenceSet. e.g. PTB and text8
+        if num_steps < 0: num_steps = max(self.structure)
+        round_len = self._get_most_complicated_round_len(
+          batch_size, num_steps, training=training)
 
     round_len = int(round_len)
     if training: self._set_dynamic_round_len(round_len)
@@ -199,42 +210,45 @@ class SequenceSet(DataSet):
                       is_training=False, **kwargs):
     """Generate RNN batches in which each data item has shape
       (batch_size, steps, *sample_shape)
-      If parallel option is on, batches will be yielded from a BETA method
-      Otherwise for training, batch_size should be set to 1.
-
-      (batch_size, num_steps) combination can be:
-      (1) batch_size = 1
-
-      (2) batch_size > 1, if batch_size is -1, it will be set to self.size
-          (a) num_steps is forced to be -1,
-             i.e. sequence partition is forbidden.
-
-       Here batch pre-processor is not considered
 
     :param batch_size: integer. When is not training, this value can be set
                         to -1 or any positive integer.
-    :param num_steps:  a non-negative integer.
+    :param num_steps:  -1, None or a non-negative integer.
     :param shuffle:    Whether to shuffle
     :param is_training: Whether this method is invoked by tframe Trainer
                         during training
     """
-    # BETA, only available for model training (is deprecated)
-    if self.parallel_on:
-      yield from self._gen_parallel_batches(batch_size, num_steps, shuffle)
-      return
-
     # Initialize indices, shuffle if necessary
     # This line must be put before self.get_round_length method
     self._init_indices(shuffle)
     if shuffle: assert is_training
     # Get round length
     round_len = self.get_round_length(batch_size, num_steps, is_training)
-    # If batch_size < 0, set it to self.size
-    if batch_size < 0: batch_size = self.size
+    # Route
+    configs = {}
+    if is_training and th.sample_among_sequences:
+      _gen_rnn_batches = self._gen_rnn_batches_by_wheel
+      configs['L'] = checker.check_positive_integer(th.sub_seq_len)
+    else: _gen_rnn_batches = self._gen_rnn_batches_traversal
+    # Yield
+    yield from _gen_rnn_batches(
+      batch_size=batch_size, num_steps=num_steps, is_training=is_training,
+      round_len=round_len, **configs)
+
+    # Clear dynamic_round_len if necessary
+    if is_training: self._clear_dynamic_round_len()
+
+  def _gen_rnn_batches_traversal(
+      self, batch_size, num_steps, is_training, round_len):
+    """Traverse the whole data set. Works for all sequence set comprising
+        more than one sequence.
+    """
+    # If batch_size < 0 or None, set it to self.size
+    if batch_size < 0 or batch_size is None: batch_size = self.size
     # Calculate # batches in one epoch
     num_batches = int(np.ceil(self.size / batch_size))
     # counter helps to enforce the total iterations in one epoch matches the
-    #  round length
+    #  round length so that the progress bar works properly
     counter = 0
     for i in range(num_batches):
       # Get sequence list of length `batch_size`
@@ -245,6 +259,7 @@ class SequenceSet(DataSet):
       # preprocessor should be used very carefully
       if self.batch_preprocessor is not None:
         seq_batch = self.batch_preprocessor(seq_batch, is_training)
+        # Remove batch preprocessor in case it will apply to data batches
         seq_batch.remove_batch_preprocessor()
 
       if isinstance(seq_batch, SequenceSet):
@@ -273,8 +288,44 @@ class SequenceSet(DataSet):
       raise AssertionError(
         '!! counter = {} while round_len = {}. (batch_size = {}, num_steps={})'
         ''.format(counter, round_len, batch_size, num_steps))
-    # Clear dynamic_round_len if necessary
-    if is_training: self._clear_dynamic_round_len()
+
+  def _gen_rnn_batches_by_wheel(
+      self, batch_size, num_steps, round_len, L, **_):
+    """Each sequence in batch is a sub-sequence of length L of a randomly
+       selected sequence. First introduced in sampling LOB data.
+       The sub-sequence length L must be specified.
+    """
+    # Sanity check
+    if batch_size < 0 or batch_size is None: batch_size = self.size
+    if num_steps < 0 or num_steps is None: num_steps = L
+    # Generate feature list and target list
+    features, targets = [], []
+    wheel = Wheel(self.structure)
+    for i in range(batch_size):
+      # Choose a sequence to sample from
+      index = wheel.spin()
+      t = np.random.randint(0, self.structure[index] - L + 1)
+      x = self.features[index][t:t+L]
+      y = self.targets[index][t:t+L]
+      assert len(x) == len(y) == L
+      features.append(x)
+      targets.append(y)
+    # Stack features and targets
+    features, targets = np.stack(features), np.stack(targets)
+    data_set = DataSet(features, targets, is_rnn_input=True)
+    assert data_set.size == batch_size
+    # Generate RNN batches using DataSet.gen_rnn_batches
+    counter = 0
+    for batch in data_set.gen_rnn_batches(
+        batch_size, num_steps, is_training=True):
+      yield batch
+      counter += 1
+
+    # Check round_len
+    if counter != round_len:
+      raise AssertionError(
+        '!! counter = {} while round_len = {}. (batch_size = {}, num_steps={})'
+        ''.format(counter, round_len, batch_size, num_steps))
 
   # endregion : Basic APIs
 

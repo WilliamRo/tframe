@@ -51,3 +51,17 @@ class DataConfigs(object):
     None, 'Whether to use volume information only', is_key=None)
   horizon = Flag.integer(None, 'Horizon used in FI-2010 data', is_key=None)
 
+  # BETA configs
+  use_wheel = Flag.boolean(
+    True, 'Whether to used wheel to select sequences', is_key=None)
+  sub_seq_len = Flag.integer(
+    None, 'Length of sub-sequence used in seq_set.get_round_len or '
+          'gen_rnn_batches', is_key=None)
+
+  @property
+  def sample_among_sequences(self):
+    if self.sub_seq_len is None: return False
+    assert isinstance(self.sub_seq_len, int) and self.sub_seq_len > 0
+    return True
+
+
