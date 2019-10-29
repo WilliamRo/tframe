@@ -300,7 +300,8 @@ class SequenceSet(DataSet):
     if num_steps < 0 or num_steps is None: num_steps = L
     # Generate feature list and target list
     features, targets = [], []
-    wheel = Wheel(self.structure)
+    wheel = Wheel(
+      self.structure if th.use_wheel else list(np.ones([self.size])/ self.size))
     for i in range(batch_size):
       # Choose a sequence to sample from
       index = wheel.spin()
