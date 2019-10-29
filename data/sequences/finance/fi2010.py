@@ -14,6 +14,7 @@ from tframe.data.base_classes import DataAgent
 
 from tframe.utils.display.progress_bar import ProgressBar
 from tframe.utils.display.table import Table
+from tframe.utils.janitor import recover_seq_set_outputs
 
 from tframe import checker
 from tframe import Classifier
@@ -52,7 +53,7 @@ class FI2010(DataAgent):
       [47342, 45114, 33720, 43252, 41171, 47253, 45099, 59973, 57951, 37250],
     False:
       [39512, 38397, 28535, 37023, 34785, 39152, 37346, 55478, 52172, 31937]}
-
+  STOCK_IDs = ['KESBV', 'OUT1V', 'SAMPO', 'RTRKS', 'WRT1V']
   LEN_PER_DAY_PER_STOCK = 'LEN_PER_DAY_PER_STOCK'
 
   @classmethod
@@ -62,8 +63,9 @@ class FI2010(DataAgent):
     assert setup in [1, 2]
     # Load raw LOB data
     lob_set = cls.load_raw_LOBs(data_dir, auction=auction)
+    lob_set = cls._init_features_and_targets(lob_set, horizon)
     # Apply setup and normalization
-    train_set, test_set = cls._apply_setup(lob_set, horizon, setup)
+    train_set, test_set = cls._apply_setup(lob_set, setup)
     train_set, test_set = cls._apply_normalization(
       train_set, test_set, norm_type)
     if kwargs.get('validate_setup2') and setup == 2 and norm_type == 'zscore':
@@ -218,13 +220,28 @@ class FI2010(DataAgent):
     console.show_info('Validation completed.')
 
   @classmethod
-  def _apply_setup(cls, lob_set, horizon, setup):
+  def _init_features_and_targets(cls, lob_set, horizon):
+    """x = {P_ask[i], V_ask[i], P_bid[i], V_bid[i]}_i=1^10"""
+    max_level = checker.check_positive_integer(th.max_level)
+    assert 0 < max_level <= 10
+    # Initialize features
+    features = lob_set.data_dict['raw_data']
+    # .. max_level
+    features = [array[:, :4*max_level] for array in features]
+    # .. volume only
+    if th.volume_only: features = [array[:, 1::2] for array in features]
+    # Set features back
+    lob_set.features = features
+    # Initialize targets
+    lob_set.targets = lob_set.data_dict[horizon]
+    return lob_set
+
+  @classmethod
+  def _apply_setup(cls, lob_set, setup):
     # Sanity check
     # Currently only Setup2 is supported
     assert setup == 2
     assert isinstance(lob_set, SequenceSet)
-    lob_set.features = lob_set.data_dict['raw_data']
-    lob_set.targets = lob_set.data_dict[horizon]
     return cls.divide(lob_set, 7, 'Train Set', 'Test Set')
 
   @classmethod
@@ -473,20 +490,38 @@ class FI2010(DataAgent):
 
   # endregion : Private Methods
 
+  # region : Public APIs
+
+  @classmethod
+  def set_input_shape(cls):
+    th.input_shape = [th.max_level * (2 if th.volume_only else 4)]
+
+  # endregion : Public APIs
+
   # region : Probe and evaluate
 
   @staticmethod
   def probe(dataset, trainer):
     from tframe.trainers.trainer import Trainer
     # Sanity check
-    assert isinstance(trainer, Trainer) and isinstance(dataset, DataSet)
+    assert isinstance(trainer, Trainer) and isinstance(dataset, SequenceSet)
     model = trainer.model
     assert isinstance(model, Classifier)
-    # Make prediction
-    if 'order002' in th.developer_code:
-      table, _ = FI2010._get_stats(model, dataset, batch_size=3)
-    else: table, _ = FI2010._get_stats(model, dataset[:4000])
-    return table.content
+
+    # Get table and F1 score for each stock
+    label_pred = FI2010._get_label_pred(model, dataset)
+    F1s = []
+    for lp in label_pred:
+      _, F1 = FI2010._get_table_and_F1(lp)
+      F1s.append(F1)
+
+    # Get overall table and score
+    label_pred = np.concatenate(label_pred)
+    table, F1 = FI2010._get_table_and_F1(label_pred, title='All Stocks, ')
+
+    content = 'F1 Scores: {}'.format(', '.join(
+      ['[{}] {:.2f}'.format(i + 1, score) for i, score in enumerate(F1s)]))
+    return content + table.content
 
   @staticmethod
   def evaluate(entity, seq_set):
@@ -495,16 +530,36 @@ class FI2010(DataAgent):
     else: model = entity
     # Sanity check
     assert isinstance(model, Classifier) and isinstance(seq_set, SequenceSet)
-    # Get table and F1 score
-    table, F1 = FI2010._get_stats(model, seq_set, batch_size=seq_set.size)
+    # Get table and F1 score for each stock
+    label_pred = FI2010._get_label_pred(model, seq_set)
+    for i, (lp, id) in enumerate(zip(label_pred, FI2010.STOCK_IDs)):
+      table, _ = FI2010._get_table_and_F1(
+        lp, title='[{}] Stock {}, '.format(i + 1, id))
+      table.print_buffer()
+      if is_training: model.agent.take_notes(table.content)
+
+    # Get overall table and score
+    label_pred = np.concatenate(label_pred)
+    table, F1 = FI2010._get_table_and_F1(label_pred, title='All Stocks, ')
     table.print_buffer()
     # Take note if is training
     if is_training:
       model.agent.take_notes(table.content)
       model.agent.put_down_criterion('F1 Score', F1)
 
-  @staticmethod
-  def _get_stats(model, dataset, batch_size=1):
+  @classmethod
+  def _get_label_pred(cls, model, dataset):
+    # Sanity check
+    assert isinstance(model, Classifier)
+    # Get predictions and labels
+    label_pred_tensor = model.key_metric.quantity_definition.quantities
+    label_pred = model.evaluate(label_pred_tensor, dataset, verbose=True)
+    console.show_status('Evaluation completed')
+    label_pred = recover_seq_set_outputs(label_pred, dataset)
+    return label_pred
+
+  @classmethod
+  def _get_stats(cls, model, dataset, batch_size=1, report_each_stock=False):
     # Sanity check
     assert isinstance(model, Classifier)
     # Get predictions and labels
@@ -512,8 +567,12 @@ class FI2010(DataAgent):
     label_pred = model.evaluate(
       label_pred_tensor, dataset, batch_size=batch_size, verbose=True)
     console.show_status('Evaluation completed')
-    label_pred = np.concatenate(label_pred, axis=0)
-    # TODO: here results for each day can be divided wisely
+    table, F1 = cls._get_table_and_F1(label_pred)
+    return table, F1
+
+  @classmethod
+  def _get_table_and_F1(cls, label_pred, title=''):
+    assert isinstance(label_pred, np.ndarray) and label_pred.shape[-1] == 2
     # Initialize table
     movements = ['Upward', 'Stationary', 'Downward']
     header = ['Movement  ', 'Accuracy %', 'Precision %', 'Recall %',
@@ -522,7 +581,7 @@ class FI2010(DataAgent):
     table = Table(*widths, tab=3, margin=1, buffered=True)
     table.specify_format(*['{:.2f}' for _ in header], align='lrrrr')
     table.hdash()
-    table.print('Prediction Horizon k = {}'.format(th.horizon))
+    table.print('{}Prediction Horizon k = {}'.format(title, th.horizon))
     table.print_header(*header)
     # Get statistics
     precisions, recalls, F1s = [], [], []
