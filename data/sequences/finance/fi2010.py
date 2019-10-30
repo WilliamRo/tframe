@@ -15,6 +15,7 @@ from tframe.data.base_classes import DataAgent
 from tframe.utils.display.progress_bar import ProgressBar
 from tframe.utils.display.table import Table
 from tframe.utils.janitor import recover_seq_set_outputs
+import tframe.utils.maths.wise_man as wise_man
 
 from tframe import checker
 from tframe import Classifier
@@ -504,6 +505,50 @@ class FI2010(DataAgent):
     th.input_shape = [th.max_level * (2 if th.volume_only else 4)]
 
   # endregion : Public APIs
+
+  # region : RNN batch generator for Sequence Set
+
+  @staticmethod
+  def rnn_batch_generator(
+      data_set, batch_size, num_steps, is_training, round_len):
+    """Generated epoch batches are guaranteed to cover all sequences"""
+    assert isinstance(data_set, SequenceSet) and is_training
+    L = int(sum(data_set.structure) / batch_size)
+    assert L < min(data_set.structure) and L == th.sub_seq_len
+    rad = int(th.random_shift_pct * L)
+    # Distribute batch_size to stocks
+    # [23336, 44874, 38549, 54675, 93316]
+    num_sequences = wise_man.apportion(data_set.structure, batch_size)
+    # Generate feature list and target list
+    features, targets = [], []
+    for num, x, y in zip(num_sequences, data_set.features, data_set.targets):
+      # Find starts for each sequence to sample
+      starts = wise_man.spread(len(x), num, L, rad)
+      # Sanity check
+      assert len(starts) == num
+      # Put the sub-sequences into corresponding lists
+      for s in starts:
+        features.append(x[s:s+L])
+        targets.append(y[s:s+L])
+    # Stack features and targets
+    features, targets = np.stack(features), np.stack(targets)
+    data_set = DataSet(features, targets, is_rnn_input=True)
+    assert data_set.size == batch_size
+    # Generate RNN batches using DataSet.gen_rnn_batches
+    counter = 0
+    for batch in data_set.gen_rnn_batches(
+        batch_size, num_steps, is_training=True):
+      yield batch
+      counter += 1
+
+    # Check round_len
+    if counter != round_len:
+      raise AssertionError(
+        '!! counter = {} while round_len = {}. (batch_size = {}, num_steps={})'
+        ''.format(counter, round_len, batch_size, num_steps))
+
+
+  # endregion : RNN batch generator for Sequence Set
 
   # region : Probe and evaluate
 

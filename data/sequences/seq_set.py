@@ -5,7 +5,7 @@ from __future__ import print_function
 import numpy as np
 
 from tframe import hub as th
-from tframe import checker
+from tframe import checker, console
 
 from tframe.data.dataset import DataSet
 from tframe.data.sequences.paral_engine import ParallelEngine
@@ -30,6 +30,7 @@ class SequenceSet(DataSet):
   PARALLEL_ON = 'PARALLEL_ON'
   DATA_STACK = 'DATA_STACK'
   PADDED_STACK = 'PADDED_STACK'
+  RNN_BATCH_GENERATOR = 'RNN_BATCH_GENERATOR_METHOD'
 
   def __init__(self, features=None, targets=None, data_dict=None,
                summ_dict=None, n_to_one=False, name='seqset', **kwargs):
@@ -226,7 +227,11 @@ class SequenceSet(DataSet):
     round_len = self.get_round_length(batch_size, num_steps, is_training)
     # Route
     configs = {}
-    if is_training and th.sample_among_sequences:
+    if is_training and hasattr(self, self.RNN_BATCH_GENERATOR):
+      generator = getattr(self, self.RNN_BATCH_GENERATOR)
+      _gen_rnn_batches = lambda *args, **kwargs_: (
+        data for data in generator(self, *args, **kwargs_))
+    elif is_training and th.sample_among_sequences:
       _gen_rnn_batches = self._gen_rnn_batches_by_wheel
       configs['L'] = checker.check_positive_integer(th.sub_seq_len)
     else: _gen_rnn_batches = self._gen_rnn_batches_traversal
@@ -302,7 +307,7 @@ class SequenceSet(DataSet):
     features, targets = [], []
     wheel = Wheel(
       self.structure if th.use_wheel else list(np.ones([self.size])/ self.size))
-    for i in range(batch_size):
+    for _ in range(batch_size):
       # Choose a sequence to sample from
       index = wheel.spin()
       t = np.random.randint(0, self.structure[index] - L + 1)
@@ -327,6 +332,11 @@ class SequenceSet(DataSet):
       raise AssertionError(
         '!! counter = {} while round_len = {}. (batch_size = {}, num_steps={})'
         ''.format(counter, round_len, batch_size, num_steps))
+
+  def set_rnn_batch_generator(self, generator):
+    assert callable(generator)
+    setattr(self, self.RNN_BATCH_GENERATOR, generator)
+    console.show_info('RNN batch generator set to {}'.format(self.name), '++')
 
   # endregion : Basic APIs
 
