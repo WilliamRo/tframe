@@ -75,7 +75,7 @@ class Config(
   epsilon = Flag.float(0.0, 'Epsilon', is_key=None)
   delta = Flag.float(0.0, 'Delta', is_key=None)
 
-  developer_code = Flag.string('', 'Code for developers to debug')
+  developer_code = Flag.string('', 'Code for developers to debug', is_key=None)
   verbose_config = Flag.string('', 'String for configuring verbosity')
 
   def __init__(self, as_global=False):
