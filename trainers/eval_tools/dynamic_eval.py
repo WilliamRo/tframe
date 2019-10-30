@@ -5,7 +5,7 @@ from __future__ import print_function
 from collections import OrderedDict
 
 from tframe import hub as th
-from tframe import console
+from tframe import console, checker
 from tframe.utils.display.table import Table
 from tframe.models.model import Model
 from tframe.data.dataset import DataSet
@@ -36,9 +36,10 @@ class DynamicEvaluator(object):
 
   show_status = lambda _, s: console.show_status(s, '[Dynamic Evaluation]')
 
-  def __init__(self, model):
+  def __init__(self, model, delay=None):
     assert isinstance(model, Model)
     self.model = model
+    self.delay = delay
 
     # Preparation
     self._loss_tensor = self.model.loss.op
@@ -99,6 +100,9 @@ class DynamicEvaluator(object):
       self._quantity.name, th.decimal_str(metric, th.val_decimals)))
     return metric
 
+  def _dynamic_eval_with_delay(self, data_set, lr, lambd):
+    assert isinstance(data_set, DataSet)
+
   def _search_hp(self, val_set, hp_grid):
     """TODO: this method is supposed to be put inside KrauseEvaluator"""
     assert isinstance(val_set, DataSet)
@@ -139,6 +143,7 @@ class DynamicEvaluator(object):
     table.specify_format('{}', *['{:.5f}' for _ in decays])
     table.print_header(r'lr\decay', *['{}'.format(d) for d in decays])
     for lr in lrs: table.print_row(lr, *[result_dict[lr][d] for d in decays])
+    table.hline()
     return best_lr, best_dc
 
   def _get_quantity(self):
@@ -160,8 +165,8 @@ class DynamicEvaluator(object):
     # console.supplement('Metric = {:.3f}'.format(val))
 
   @staticmethod
-  def dynamic_evaluate(model, data_set, val_set=None):
-    de = DynamicEvaluator(model)
+  def dynamic_evaluate(model, data_set, val_set=None, delay=None):
+    de = DynamicEvaluator(model, delay)
     de.evaluate(data_set, val_set)
 
 

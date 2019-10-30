@@ -209,7 +209,8 @@ class Predictor(Feedforward, Recurrent):
     # Do dynamic evaluation if necessary
     if dynamic:
       from tframe.trainers.eval_tools.dynamic_eval import DynamicEvaluator as de
-      de.dynamic_evaluate(self, data, kwargs.get('val_set', None))
+      de.dynamic_evaluate(
+        self, data, kwargs.get('val_set', None), kwargs.get('delay', None))
       return
     # If hub.val_progress_bar is True, this message will be showed in
     #   model.evaluate method
