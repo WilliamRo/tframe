@@ -236,6 +236,7 @@ class FI2010(DataAgent):
     if 'use_log' in th.developer_code:
       assert th.volume_only
       features = [np.log10(x + 1.0) for x in features]
+      console.show_info('log10 applied to features', '++')
     # Set features back
     lob_set.features = features
     # Initialize targets
