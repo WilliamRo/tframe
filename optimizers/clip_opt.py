@@ -16,16 +16,20 @@ class GradientClipOptimizer(object):
     self._method = method
     assert method in ('norm', 'global_norm', 'value', 'avg_norm')
 
-  # region : Public Methods
+    self.reset_tf_optimizer = None
 
-  def reset_optimizer(self):
-    self._tf_optimizer = hub.get_tf_optimizer()
+  # region : Public Methods
 
   def minimize(self, loss, var_list=None):
     # Step 1: compute gradients
     grads_and_vars = self._compute_gradients(loss, var_list=var_list)
     # Step 2: apply gradients
-    return self._tf_optimizer.apply_gradients(grads_and_vars)
+    update = self._tf_optimizer.apply_gradients(grads_and_vars)
+    # Set reset_tf_optimizer if necessary
+    if hub.reset_optimizer_after_resurrection and hub.lives > 0:
+      self.reset_tf_optimizer = tf.variables_initializer(
+        self._tf_optimizer.variables())
+    return update
 
   # endregion : Public Methods
 

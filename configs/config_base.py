@@ -201,6 +201,7 @@ class Config(
     self.smooth_out_monitor_configs()
     self.smooth_out_note_configs()
     self.smooth_out_model_configs()
+    self.smooth_out_trainer_configs()
 
     if self.export_dl_dx or self.export_dl_ds_stat:
       # TODO: these 2 options should be used carefully,
@@ -222,10 +223,13 @@ class Config(
     return flag
 
   def get_optimizer(self, optimizer=None):
+    from tframe import context
     from tframe.optimizers.clip_opt import GradientClipOptimizer
     if optimizer is None:
       assert self.optimizer is not None and self.learning_rate is not None
       optimizer = self.get_tf_optimizer()
+    context.tf_optimizer = optimizer
+
     if self.clip_threshold > 0:
       assert self.clip_method in ('norm', 'value', 'global_norm', 'avg_norm')
       optimizer = GradientClipOptimizer(

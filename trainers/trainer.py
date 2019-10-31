@@ -748,7 +748,6 @@ class TrainerHub(Config):
   validate_test_set = Flag.boolean(
     False, 'Whether to test train set in trainer._validate_model')
   terminal_threshold = Flag.float(0., 'Terminal threshold')
-  lives = Flag.integer(0, 'Number of chances to resurrect', is_key=None)
 
   # endregion : Class Attributes
   trainer_class = Trainer

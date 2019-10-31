@@ -289,7 +289,8 @@ class Model(object):
   def reset_optimizer(self):
     from tframe.optimizers.clip_opt import GradientClipOptimizer
     assert isinstance(self._optimizer, GradientClipOptimizer)
-    self._optimizer.reset_optimizer()
+    self.session.run(self._optimizer.reset_tf_optimizer)
+    console.show_status('TensorFlow optimizer has been reset.')
 
   def _merge_summaries(self):
     train_step_summaries = tf.get_collection(pedia.train_step_summaries)

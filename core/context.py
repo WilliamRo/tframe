@@ -57,6 +57,9 @@ class Context(object):
     # This placeholder is used for sequence classification
     self.gather_indices = None
 
+    # Optimizer list for resurrection
+    self.tf_optimizer = None
+
   # region : Properties
 
   @property
