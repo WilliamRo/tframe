@@ -31,6 +31,10 @@ class MetricsManager(object):
 
     self._eval_metric_slot = None
 
+    self.resurrected = False
+    self._RAS = OrderedDict()
+    for i in reversed(range(hub.lives)): self._RAS[i] = []
+
   # region : Properties
 
   @property
@@ -73,6 +77,12 @@ class MetricsManager(object):
   @property
   def ready_for_note_taking(self):
     return len(self.stats_dict) > 0
+
+  @property
+  def RAS_string(self):
+    return '; '.join([
+      'L{}: {}{}'.format(lv, len(scalars), '->{:.3f}'.format(scalars[-1])
+      if len(scalars) > 0 else '') for lv, scalars in self._RAS.items()])
 
   # endregion : Properties
 
@@ -187,7 +197,9 @@ class MetricsManager(object):
         note_key = (data_set, slot)
         if new_record:
           self.note[note_key] = '<New Record>'
-          if slot is self.early_stop_slot: flag = True
+          if slot is self.early_stop_slot:
+            flag = True
+            if self.resurrected: self._record_after_resurrection(scalar)
         else:
           idle = self.idle_counter(slot, rnd)
           if hub.early_stop and slot is self.early_stop_slot:
@@ -232,4 +244,13 @@ class MetricsManager(object):
         scalar_dict['{} {}'.format(data_prefix, slot.symbol)] = value
 
   # endregion : Statistics
+
+  # region : Private Methods
+
+  def _record_after_resurrection(self, scalar):
+    lives = self.trainer._lives
+    assert isinstance(self._RAS[lives], list)
+    self._RAS[lives].append(scalar)
+
+  # endregion : Private Methods
 
