@@ -117,31 +117,37 @@ class FI2010(DataAgent):
     return seq_set
 
   @classmethod
-  def divide(cls, lob_set, k, first_name, second_name):
+  def divide(cls, lob_set, k_list, first_name, second_name):
     assert isinstance(lob_set, SequenceSet) and lob_set.size == 5
+    if isinstance(k_list, int): k_list = [k_list] * lob_set.size
     first_features, second_features = [], []
     first_targets, second_targets = [], []
     # Separate each stock
     len_per_day_per_stock = lob_set[cls.LEN_PER_DAY_PER_STOCK]
-    for stock, (lob, move) in enumerate(zip(lob_set.features, lob_set.targets)):
+    for stock, (k, lob, move) in enumerate(
+        zip(k_list, lob_set.features, lob_set.targets)):
       lengths = len_per_day_per_stock[stock]
       L = sum(lengths[:k])
-      first_features.append(lob[:L])
-      second_features.append(lob[L:])
-      first_targets.append(move[:L])
-      second_targets.append(move[L:])
+      if k != 0:
+        first_features.append(lob[:L])
+        first_targets.append(move[:L])
+      if k != len(lengths):
+        second_features.append(lob[L:])
+        second_targets.append(move[L:])
     # Wrap data sets and return
     first_properties = {
-      cls.LEN_PER_DAY_PER_STOCK: [s[:k] for s in len_per_day_per_stock]}
+      cls.LEN_PER_DAY_PER_STOCK: [
+        s[:k] for k, s in zip(k_list, len_per_day_per_stock) if k != 0]}
     first_set = SequenceSet(
       first_features, first_targets, name=first_name, **first_properties)
-    test_properties = {
-      cls.LEN_PER_DAY_PER_STOCK: [s[k:] for s in len_per_day_per_stock]}
+    second_properties = {
+      cls.LEN_PER_DAY_PER_STOCK: [
+        s[k:] for k, s in zip(k_list, len_per_day_per_stock) if k != len(s)]}
     second_set = SequenceSet(
-      second_features, second_targets, name=second_name, **test_properties)
+      second_features, second_targets, name=second_name, **second_properties)
     for seq_set in [first_set, second_set]:
       assert np.sum(seq_set.structure) == np.sum(
-        seq_set[cls.LEN_PER_DAY_PER_STOCK])
+        np.concatenate(seq_set[cls.LEN_PER_DAY_PER_STOCK]))
     return first_set, second_set
 
   @classmethod
