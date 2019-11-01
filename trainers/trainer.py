@@ -282,7 +282,9 @@ class Trainer(object):
       # Resurrect if possible
       if break_flag and self._lives > 0:
         self.resurrect(rnd)
-        self.metrics_manager.resurrected = True
+        if not self.metrics_manager.resurrected:
+          self.metrics_manager.resurrected = True
+          self.metrics_manager.rar0 = self.metrics_manager.early_stop_criterion
         hub.force_terminate = False
         break_flag = False
       # Break if needed to
@@ -430,7 +432,7 @@ class Trainer(object):
       self._evaluate(self)
     # Show RAS if necessary
     if self.th.lives > 0:
-      ras_info = self.metrics_manager.RAS_string
+      ras_info = self.metrics_manager.RAR_string
       console.show_status(ras_info)
       self.model.agent.take_notes(ras_info)
 

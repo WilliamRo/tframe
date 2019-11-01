@@ -32,8 +32,9 @@ class MetricsManager(object):
     self._eval_metric_slot = None
 
     self.resurrected = False
-    self._RAS = OrderedDict()
-    for i in reversed(range(hub.lives)): self._RAS[i] = []
+    self.rar0 = None
+    self._RAR = OrderedDict()
+    for i in reversed(range(hub.lives)): self._RAR[i] = []
 
   # region : Properties
 
@@ -79,10 +80,12 @@ class MetricsManager(object):
     return len(self.stats_dict) > 0
 
   @property
-  def RAS_string(self):
-    return '; '.join([
-      'L{}: {}{}'.format(lv, len(scalars), '->{:.3f}'.format(scalars[-1])
-      if len(scalars) > 0 else '') for lv, scalars in self._RAS.items()])
+  def RAR_string(self):
+    """e.g. 0.676 => L1(2)->0.678 => L0(3->0.680)"""
+    rs = ' => '.join([
+      'L{}({}){}'.format(lv, len(scalars), '->{:.3f}'.format(scalars[-1])
+      if len(scalars) > 0 else '') for lv, scalars in self._RAR.items()])
+    return '{:.3f} => '.format(self.rar0) + rs
 
   # endregion : Properties
 
@@ -249,8 +252,8 @@ class MetricsManager(object):
 
   def _record_after_resurrection(self, scalar):
     lives = self.trainer._lives
-    assert isinstance(self._RAS[lives], list)
-    self._RAS[lives].append(scalar)
+    assert isinstance(self._RAR[lives], list)
+    self._RAR[lives].append(scalar)
 
   # endregion : Private Methods
 
