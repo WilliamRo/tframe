@@ -238,13 +238,12 @@ class FI2010(DataAgent):
     features = lob_set.data_dict['raw_data']
     # .. max_level
     features = [array[:, :4*max_level] for array in features]
-    # .. volume only
-    if th.volume_only: features = [array[:, 1::2] for array in features]
     # .. check developer code
     if 'use_log' in th.developer_code:
-      assert th.volume_only
-      features = [np.log10(x + 1.0) for x in features]
+      for x in features: x[:, 1::2] = np.log10(x[:, 1::2] + 1.0)
       console.show_info('log10 applied to features', '++')
+    # .. volume only
+    if th.volume_only: features = [array[:, 1::2] for array in features]
     # Set features back
     lob_set.features = features
     # Initialize targets
