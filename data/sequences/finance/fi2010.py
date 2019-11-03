@@ -60,7 +60,8 @@ class FI2010(DataAgent):
   @classmethod
   def load(cls, data_dir, auction=False, norm_type='zscore', setup=2,
            val_size=None, horizon=100, **kwargs):
-    should_apply_norm = 'use_log' not in th.developer_code
+    should_apply_norm = any(['use_log' not in th.developer_code,
+                             'force_norm' in th.developer_code])
     # Sanity check
     assert setup in [1, 2]
     # Load raw LOB data
