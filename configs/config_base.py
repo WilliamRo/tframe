@@ -65,7 +65,7 @@ class Config(
     0.4, 'config.gpu_options.per_process_gpu_memory_fraction')
 
   # Other fancy stuff
-  int_para_1 = Flag.integer(0, 'Used to pass an integer parameter using '
+  int_para_1 = Flag.integer(None, 'Used to pass an integer parameter using '
                                ' command line')
   bool_para_1 = Flag.boolean(False, 'Used to pass a boolean parameter using'
                                     ' command line')
