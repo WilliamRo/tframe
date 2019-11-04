@@ -79,7 +79,7 @@ class TrainerConfigs(object):
   terminate_on_nan = Flag.boolean(True, 'Whether to terminate on NaN')
   lives = Flag.integer(0, 'Number of chances to resurrect', is_key=None)
   reset_optimizer_after_resurrection = Flag.boolean(
-    True, 'Whether to re-initiate optimizer after resurrection. '
+    False, 'Whether to re-initiate optimizer after resurrection. '
            'Take effect only when lr_decay < 1')
   adam_epsilon = Flag.float(
     1e-8, 'epsilon used for initiating AdamOptimizer', is_key=None)
