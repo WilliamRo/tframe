@@ -45,6 +45,9 @@ class DataConfigs(object):
   val_set = Flag.whatever(None, 'Validation set')
   test_set = Flag.whatever(None, 'Testing set')
 
+  class_weights = Flag.list(None, 'Class weights used in weighted '
+                                  'cross entropy loss')
+
   # Financial data configs
   max_level = Flag.integer(None, 'Max level in LOB data', is_key=None)
   volume_only = Flag.boolean(

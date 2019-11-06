@@ -76,6 +76,29 @@ def cross_entropy(labels, outputs):
       return xent
 
 
+def weighted_cross_entropy(labels, logits):
+  """It is recommended that
+     sum(class_weights) == len(logits.reshape(-1, num_classes))
+  """
+  from tframe import hub as th
+  assert len(th.class_weights) == th.num_classes
+  use_logits = context.logits_tensor is not None
+  # Calculate weighted cross-entropy
+  with tf.name_scope('weighted_cross_entropy'):
+    if use_logits:
+      if _aligned(labels, logits): raise NotImplementedError
+      else:
+        # Squeeze last dimension of sparse labels cuz tf only accept this shape
+        labels = _reshape_labels(labels, None)
+        weights = tf.gather(th.class_weights, labels)
+        return tf.losses.sparse_softmax_cross_entropy(
+          labels=labels,
+          logits=logits + _epsilon,
+          weights=weights,
+        )
+    else: raise NotImplementedError
+
+
 def cross_entropy_base2(labels, outputs):
   xent = cross_entropy(labels, outputs)
   return tf.divide(xent, tf.log(2.))
@@ -122,6 +145,10 @@ def get(identifier, last_only=False, **kwargs):
     elif identifier in ['cross_entropy', 'softmax_cross_entropy']:
       use_logits = True
       kernel = cross_entropy
+    elif identifier in ['wce', 'weighted_cross_entropy']:
+      use_logits = True
+      kernel = weighted_cross_entropy
+      tf_summ_method, np_summ_method = None, None
     elif identifier in ['nlp_cross_entropy', 'nlp_softmax_cross_entropy']:
       use_logits = True
       kernel = cross_entropy
