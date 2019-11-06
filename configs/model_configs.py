@@ -16,6 +16,8 @@ class ModelConfigs(object):
   specified_ckpt_path = Flag.string(
     None, 'Specified checkpoints path used in Agent.load method')
   model = Flag.whatever(None, 'A function which returns a built model')
+  archi_string = Flag.string(
+    None, 'Architecture string for parsing', is_key=None)
   identifier = Flag.string(
     '', 'Model identifier, used in summary viewer', is_key=None)
   learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
@@ -133,6 +135,8 @@ class ModelConfigs(object):
     is_key=None)
   lob_fix_sig_curve = Flag.boolean(
     False, 'Whether to fix significant curve', is_key=None)
+
+  max_norm = Flag.float(None, 'Max norm constraint on variables', is_key=None)
 
 
   def smooth_out_model_configs(self):

@@ -23,13 +23,18 @@ class Bilinear(HyperBase):
       weight_initializer='xavier_normal',
       bias_initializer='zeros',
       layer_normalization=False,
+      max_norm=None,
       **kwargs):
-     # Call parent's constructor
-     super().__init__(activation, weight_initializer, use_bias,
-                      bias_initializer, layer_normalization, **kwargs)
+    # Call parent's constructor
+    super().__init__(activation, weight_initializer, use_bias,
+                     bias_initializer, layer_normalization, **kwargs)
 
-     self.dim1 = checker.check_positive_integer(dim1)
-     self.dim2 = checker.check_positive_integer(dim2)
+    self.dim1 = checker.check_positive_integer(dim1)
+    self.dim2 = checker.check_positive_integer(dim2)
+    self.constraint = None
+    if max_norm is not None:
+      assert max_norm > 0
+      self.constraint = tf.keras.constraints.max_norm(max_norm, axis=0)
 
 
   @property
@@ -53,9 +58,11 @@ class Bilinear(HyperBase):
     # TODO: to be capsulate into hyper
     # Get weights
     W1 = tf.get_variable('W1', shape=[dim1, xd1], dtype=th.dtype,
-                         initializer=self._weight_initializer)
+                         initializer=self._weight_initializer,
+                         constraint=self.constraint)
     W2 = tf.get_variable('W2', shape=[xd2, dim2], dtype=th.dtype,
-                         initializer=self._weight_initializer)
+                         initializer=self._weight_initializer,
+                         constraint=self.constraint)
     # Do bilinear calculation [1]
     XT = tf.matrix_transpose(x)
     XTW1T = tf.matmul(tf.reshape(XT, [-1, xd1]), W1, transpose_b=True)
