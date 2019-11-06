@@ -119,12 +119,13 @@ class FI2010(DataAgent):
 
   @classmethod
   def divide(cls, lob_set, k_list, first_name, second_name):
-    assert isinstance(lob_set, SequenceSet) and lob_set.size == 5
+    assert isinstance(lob_set, SequenceSet) and lob_set.size <= 5
     if isinstance(k_list, int): k_list = [k_list] * lob_set.size
     first_features, second_features = [], []
     first_targets, second_targets = [], []
     # Separate each stock
     len_per_day_per_stock = lob_set[cls.LEN_PER_DAY_PER_STOCK]
+    assert len(len_per_day_per_stock) == lob_set.size
     for stock, (k, lob, move) in enumerate(
         zip(k_list, lob_set.features, lob_set.targets)):
       lengths = len_per_day_per_stock[stock]
