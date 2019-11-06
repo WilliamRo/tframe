@@ -106,6 +106,8 @@ class Quantity(object):
       self._quantity = q
       if self._tf_summ_method is not None:
         raise AssertionError('!! tf_summ_method is provided but not used')
+      if self._np_summ_method is not None:
+        raise AssertionError('!! np_summ_method is provided but not used')
       return q
 
     self._quantities = q
