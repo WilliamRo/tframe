@@ -105,7 +105,7 @@ class Quantity(object):
     if len(q.shape) == 0:
       self._quantity = q
       if self._tf_summ_method is not None:
-        raise AssertionError('!! tf_summ_method is not provided but not used')
+        raise AssertionError('!! tf_summ_method is provided but not used')
       return q
 
     self._quantities = q
