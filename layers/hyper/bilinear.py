@@ -32,8 +32,7 @@ class Bilinear(HyperBase):
     self.dim1 = checker.check_positive_integer(dim1)
     self.dim2 = checker.check_positive_integer(dim2)
     self.constraint = None
-    if max_norm is not None:
-      assert max_norm > 0
+    if max_norm is not None and max_norm > 0:
       self.constraint = tf.keras.constraints.max_norm(max_norm, axis=0)
 
 
