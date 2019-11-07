@@ -82,9 +82,11 @@ class KernelBase(object):
     # Get regularizer if necessary
     regularizer = None
     if hub.use_global_regularizer: regularizer = hub.get_global_regularizer()
+    # Get constraint if necessary
+    constraint = hub.get_global_constraint()
     # Get weights
     weights = tf.get_variable(name, shape, dtype=dtype, initializer=initializer,
-                              regularizer=regularizer)
+                              regularizer=regularizer, constraint=constraint)
     # If weight dropout is positive, dropout and return
     if self.weight_dropout > 0:
       return linker.dropout(weights, self.weight_dropout, rescale=True)

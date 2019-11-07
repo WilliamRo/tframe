@@ -2,7 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
 from .flag import Flag
+from tframe.utils.arg_parser import Parser
 
 
 class TrainerConfigs(object):
@@ -66,6 +68,8 @@ class TrainerConfigs(object):
   global_l2_penalty = Flag.float(0.0, 'Global l2 penalty', is_key=None)
 
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
+  global_constraint = Flag.string(
+    None, 'Global constraint. Currently only used in kernel_base', is_key=None)
   reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
                             is_key=None)
 
@@ -88,6 +92,15 @@ class TrainerConfigs(object):
     if not self.use_global_regularizer: return None
     from tframe import regularizers
     return regularizers.get(self.regularizer)
+
+  def get_global_constraint(self):
+    if self.global_constraint in [None, '']: return None
+    p = Parser.parse(self.global_constraint)
+    if p.name in ['max_norm']:
+      max_value = p.get_arg(float, default=2.0)
+      axis = p.get_kwarg('axis', int, default=0)
+      return tf.keras.constraints.max_norm(max_value=max_value, axis=axis)
+    else: KeyError('Unknown constraint name `{}`'.format(p.name))
 
   def smooth_out_trainer_configs(self):
     pass
