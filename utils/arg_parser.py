@@ -7,6 +7,16 @@ from collections import OrderedDict
 
 
 class Parser(object):
+  """USAGE
+     p = Parser.parse('max_norm:3.0;axis=1')
+
+     print(p.get_arg(float))
+  >> 3.0
+
+     print(p.get_kwarg('axis', int))
+  >> 1
+
+  """
 
   def __init__(self, *args, ignore_in_suffix=(), **kwargs):
     self.name = None
@@ -67,7 +77,7 @@ class Parser(object):
     self.name = name_and_args[0]
     # Parse args
     if len(name_and_args) == 1: return
-    self._parse_arg_list(name_and_args[1].split(','))
+    self._parse_arg_list(re.split('[,;]', name_and_args[1]))
 
 
   def _parse_arg_list(self, args):
