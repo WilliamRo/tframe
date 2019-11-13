@@ -28,14 +28,17 @@ class _Conv(Layer):
   abbreviation = 'conv'
 
   @init_with_graph
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, expand_last_dim=False, **kwargs):
     # IDEs such as pycharm should be able to find the noumenon's para infos
     self.noumenon = super(Function, self)
     self.noumenon.__init__(*args, **kwargs)
+    self.expand_last_dim = expand_last_dim
 
   @single_input
   def _link(self, input_=None, **kwargs):
     assert isinstance(input_, tf.Tensor)
+    # Expand last dimension if necessary
+    if self.expand_last_dim: input_ = tf.expand_dims(input_, -1)
     # TODO: too violent ?
     output = self.noumenon.__call__(input_, scope=self.full_name)
     # self.neuron_scale = get_scale(output)
@@ -113,6 +116,7 @@ class Conv2D(_Conv, _Conv2D):
                bias_constraint=None,
                trainable=True,
                name=None,
+               expand_last_dim=False,
                **kwargs):
     _Conv.__init__(
       self,
@@ -132,6 +136,7 @@ class Conv2D(_Conv, _Conv2D):
       kernel_constraint=kernel_constraint,
       bias_constraint=bias_constraint,
       trainable=trainable,
+      expand_last_dim=expand_last_dim,
       name=name, **kwargs)
     self.neuron_scale = _get_neuron_scale(self.filters, self.kernel_size)
 
