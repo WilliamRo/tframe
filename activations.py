@@ -7,6 +7,7 @@ import six
 import tensorflow as tf
 
 from tframe.utils import checker
+from tframe.utils.arg_parser import Parser
 
 
 def relu(input_):
@@ -26,7 +27,7 @@ def relu(input_):
 def leaky_relu(input_, **kwargs):
   if input_.dtype in [tf.complex64, tf.complex128]:
     raise TypeError('leaky-relu currently does not support complex input')
-  leak = kwargs.get('leak', 0.2)
+  leak = kwargs.get('leak', 0.1)
   return tf.maximum(input_, input_ * leak, name='lrelu')
 
 
@@ -51,25 +52,26 @@ def sigmoid(input_, **kwargs):
 
 
 def get(identifier, **kwargs):
-  if callable(identifier):
-    return identifier
+  # Sanity check
+  assert len(kwargs) == 0
+  # Return identifier directly if it is callable
+  if callable(identifier): return identifier
   elif isinstance(identifier, six.string_types):
-    identifier = identifier.lower()
+    # Parse identifier
+    p = Parser.parse(identifier)
+    identifier = p.name.lower()
     if identifier in ['relu']: return relu
     elif identifier in ['lrelu', 'leakyrelu', 'leaky-relu']:
-      return lambda x: leaky_relu(x, **kwargs)
+      leak = p.get_arg(float, default=0.1)
+      return lambda x: leaky_relu(x, leak=leak)
     elif identifier in ['softmax']: return softmax
     elif identifier in ['cumax']: return cumax
     elif identifier in ['sigmoid']: return lambda x: sigmoid(x, **kwargs)
     else:
       # Try to find activation in tf.nn
-      activation = tf.nn.__dict__.get(identifier, None)
+      activation = getattr(tf, identifier, None)
       if activation is None:
         raise ValueError('Can not resolve {}'.format(identifier))
       return activation
   else:
     raise TypeError('identifier must be callable or a string')
-
-
-if __name__ == "__main__":
-  activation = get('softmax')

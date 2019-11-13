@@ -7,6 +7,7 @@ import six
 import tensorflow as tf
 
 import tframe as tfr
+from tframe.utils.arg_parser import Parser
 from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
 
@@ -21,12 +22,13 @@ from tframe import pedia
 
 class Activation(Layer):
   """"""
-  def __init__(self, identifier, set_logits=False, **kwargs):
-    self._id = identifier
-    self.abbreviation = (identifier if isinstance(identifier, six.string_types)
+  def __init__(self, identifier, set_logits=False):
+    p = Parser.parse(identifier)
+    self._id = p.name
+    self.abbreviation = (p.name if isinstance(identifier, six.string_types)
                          else identifier.__name__)
     self.full_name = self.abbreviation
-    self._activation = activations.get(identifier, **kwargs)
+    self._activation = activations.get(identifier)
     self._set_logits = set_logits
 
   @single_input
@@ -43,8 +45,9 @@ class Activation(Layer):
     return Activation('relu')
 
   @staticmethod
-  def LeakyReLU():
-    return Activation('lrelu')
+  def LeakyReLU(leak):
+    assert isinstance(leak, float) and leak > 0
+    return Activation('lrelu:{}'.format(leak))
 
 
 class Dropout(Layer):
