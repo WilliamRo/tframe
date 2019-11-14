@@ -399,7 +399,8 @@ class Recurrent(Model, RNet):
     fetches_dict = context.tensors_to_export
     if len(fetches_dict) == 0: return tensors
     results = trainer.model.evaluate(
-      list(fetches_dict.values()), trainer.validation_set[:num])
+      list(fetches_dict.values()), trainer.validation_set[:num],
+      suppress_n_to_one=True)
 
     # TODO: should be refactored
     if isinstance(trainer.validation_set, SequenceSet):
@@ -427,7 +428,8 @@ class Recurrent(Model, RNet):
 
   # region : Abstract Implementations
 
-  def _evaluate_batch(self, fetch_list, data_batch, **kwargs):
+  def _evaluate_batch(
+      self, fetch_list, data_batch, suppress_n_to_one=False, **kwargs):
     # Sanity check
     assert isinstance(fetch_list, list)
     checker.check_fetchable(fetch_list)
@@ -464,7 +466,8 @@ class Recurrent(Model, RNet):
       #
       assert output.shape[0] == data_batch.size
       output = [y[:l] if l is not None else y for y, l in zip(output, al)]
-      if data_batch.n_to_one: output = [s[-1] for s in output]
+      if data_batch.n_to_one and not suppress_n_to_one:
+        output = [s[-1] for s in output]
       outputs.append(output)
 
     return outputs

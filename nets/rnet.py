@@ -687,11 +687,11 @@ class RNet(Net):
       assert isinstance(pre_states, tf.Tensor)
       assert len(pre_states.shape) == len(states.shape) == 2
       # each entry has a shape of [batch_size, 1]
-      splitted_states = tf.split(states, states.shape[1], axis=1)
+      split_states = tf.split(states, states.shape[1], axis=1)
       # output has shape [batch_size, pre_s_size, s_size]
       # i.e. the output is a standard Jacobian
       return tf.stack(
-        [tf.gradients(s, pre_states)[0] for s in splitted_states], axis=2)
+        [tf.gradients(s, pre_states)[0] for s in split_states], axis=2)
     else:
       assert isinstance(states, (tuple, list))
       assert isinstance(pre_states, (tuple, list))

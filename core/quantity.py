@@ -137,11 +137,15 @@ class Quantity(object):
     # If q is a scalar, return directly
     if len(q.shape) == 0: return q
 
+    # TODO: since this method works only for export tensors like dL/dS,
+    #       last only logic is most likely to be suppressed. Otherwise,
+    #       NaN issue will occur e.g. in export_dl_ds_stat process
     # Extract result in last time step for RNN output
-    if self._last_only:
-      # In single step calculation, q does not have num_step dimension
-      assert len(q.shape) > 0
-      q = q[-1]
+    # if self._last_only:
+    #   # In single step calculation, q does not have num_step dimension
+    #   assert len(q.shape) > 0
+    #   q = q[-1]
+
     if self._tf_summ_method is None:
       raise TypeError('!! summ_method should be provided')
     q = self._tf_summ_method(q)

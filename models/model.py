@@ -589,7 +589,7 @@ class Model(object):
     return self.agent.launch_model(overwrite)
 
   def evaluate(self, fetches, data, batch_size=None, postprocessor=None,
-               verbose=False, num_steps=None):
+               verbose=False, num_steps=None, suppress_n_to_one=False):
     """
     Evaluate tensors based on data
     TODO: note that if num_steps != -1, outputs from a same sequence may be
@@ -633,7 +633,8 @@ class Model(object):
       #                            [s2_1, s2_2, ..., s2_N], ...]  <= fetches[1]
       #           N is the batch_size, and each sk_i is a numpy array
       batch_outputs = self._evaluate_batch(
-        fetches, data_batch, num_steps=num_steps)
+        fetches, data_batch, num_steps=num_steps,
+        suppress_n_to_one=suppress_n_to_one)
       assert isinstance(batch_outputs, list)
       assert len(batch_outputs) == len(outputs)
 
