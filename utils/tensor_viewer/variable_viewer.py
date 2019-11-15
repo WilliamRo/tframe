@@ -141,7 +141,7 @@ class VariableViewer(Frame):
 
     if isinstance(target, VariableWithView): target.display(self)
     else:
-      variable = target[self.index]
+      variable = np.squeeze(target[self.index])
       if len(variable.shape) == 1: self._plot_array(variable, target)
       else: self._show_image(variable, target, key)
 
