@@ -672,34 +672,53 @@ class RNet(Net):
   # region : Export dL/dx
 
   def _calc_dL_dS_prev(self, loss, pre_states):
+    """dS in dL/dS must be an integral whole"""
     assert isinstance(loss, tf.Tensor)
-    dL_dS = []
-    for state in pre_states:
-      # state is a single tensor or a list of tensors
-      checker.check_type(state, tf.Tensor)
-      dL_dS.append(tuple(tf.gradients(loss, state)))
+    dL_dS = tf.gradients(loss, ravel_nested_stuff(pre_states))
+    assert isinstance(dL_dS, (tuple, list))
+    if len(dL_dS) > 1: dL_dS = [tf.concat(dL_dS, axis=-1)]
     return tuple(dL_dS)
 
+    # dL_dS = []
+    # for state in pre_states:
+    #   # state is a single tensor or a list of tensors
+    #   checker.check_type(state, tf.Tensor)
+    #   dL_dS.append(tuple(tf.gradients(loss, state)))
+    # return tuple(dL_dS)
+
   def _calc_dS_dS_prev(self, states, pre_states):
+    # Ravel states and pre_states
+    assert isinstance(states, (tuple, list))
+    assert isinstance(pre_states, (tuple, list))
+    states = ravel_nested_stuff(states)
+    pre_states = ravel_nested_stuff(pre_states)
+
+    # Split states for calculating Jacobian later
+    split_states = []
+    for s in states: split_states += tf.split(s, s.shape[1], axis=-1)
+    return (tf.stack(
+      [tf.concat(tf.gradients(s, pre_states), axis=-1) for s in split_states],
+      axis=-1),)
+
     # states & pre_states can be tuples/lists or tensors
-    if isinstance(states, tf.Tensor):
-      # states.shape is [batch_size, state_size].
-      assert isinstance(pre_states, tf.Tensor)
-      assert len(pre_states.shape) == len(states.shape) == 2
-      # each entry has a shape of [batch_size, 1]
-      split_states = tf.split(states, states.shape[1], axis=1)
-      # output has shape [batch_size, pre_s_size, s_size]
-      # i.e. the output is a standard Jacobian
-      return tf.stack(
-        [tf.gradients(s, pre_states)[0] for s in split_states], axis=2)
-    else:
-      assert isinstance(states, (tuple, list))
-      assert isinstance(pre_states, (tuple, list))
-      assert len(states) == len(pre_states)
-      results = []
-      for s, pre_s in zip(states, pre_states):
-        results.append(self._calc_dS_dS_prev(s, pre_s))
-      return tuple(results)
+    # if isinstance(states, tf.Tensor):
+    #   # states.shape is [batch_size, state_size].
+    #   assert isinstance(pre_states, tf.Tensor)
+    #   assert len(pre_states.shape) == len(states.shape) == 2
+    #   # each entry has a shape of [batch_size, 1]
+    #   split_states = tf.split(states, states.shape[1], axis=1)
+    #   # output has shape [batch_size, pre_s_size, s_size]
+    #   # i.e. the output is a standard Jacobian
+    #   return tf.stack(
+    #     [tf.gradients(s, pre_states)[0] for s in split_states], axis=2)
+    # else:
+    #   assert isinstance(states, (tuple, list))
+    #   assert isinstance(pre_states, (tuple, list))
+    #   assert len(states) == len(pre_states)
+    #   results = []
+    #   for s, pre_s in zip(states, pre_states):
+    #     results.append(self._calc_dS_dS_prev(s, pre_s))
+    #   return tuple(results)
 
   # endregion : Export dL/dx
 
