@@ -38,19 +38,37 @@ class Mogrifier(LSTM):
     self._rounds = checker.check_positive_integer(rounds, allow_zero=True)
     self._lower_rank = lower_rank
 
+
+  @property
+  def _scale_tail(self):
+    k_str = 'k{}'.format(self._lower_rank) if self._lower_rank else ''
+    return '(R{}{}-{})'.format(self._rounds, k_str, self._state_size)
+
+
   def _mogrify(self, x, h):
     for i in range(self._rounds):
-      if i % 2 == 0:
-        # update x
-        pass
-      else:
-        # update h
-        pass
+      if i % 2 == 0: x = self._gate_input(h, x, i)
+      else: h = self._gate_input(x, h, i)
     return x, h
 
+
   def _gate_input(self, evidence, target, i):
+    dim_e = self.get_dimension(evidence)
+    dim_t = self.get_dimension(target)
+    k = self._lower_rank
     with tf.variable_scope('round_{}'.format(i + 1)):
-      pass
+      # Get weights
+      if k is None:
+        W = self._get_variable('weights', [dim_e , dim_t])
+      else:
+        W1 = self._get_variable('weights_1', [dim_e, k])
+        W2 = self._get_variable('weights_2', [k, dim_t])
+        W = W1 @ W2
+      # Calculate gate
+      gate = 2 * tf.sigmoid(evidence @ W)
+      # Return
+      return tf.multiply(gate, target)
+
 
   def _link(self, pre_states, x, **kwargs):
     # Check and unpack previous states
@@ -60,6 +78,8 @@ class Mogrifier(LSTM):
     x, h = self._mogrify(x, h)
     # Get gates and g
     f, i, o, g = self._get_fiog_fast(x, h)
+    # Apply recurrent dropout if necessary
+    if self._dropout_rate > 0: g = self.dropout(g, self._dropout_rate)
     # Calculate new_c
     new_c = tf.add(tf.multiply(f, c), tf.multiply(i, g), 'new_c')
     # Calculate new_h

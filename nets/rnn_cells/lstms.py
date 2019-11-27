@@ -56,6 +56,9 @@ class LSTM(CellBase):
     if self.lottery_activated:f, i, o, g = self._get_fiog(x, h)
     else: f, i, o, g = self._get_fiog_fast(x, h)
 
+    # - Update state
+    # Apply recurrent dropout if necessary
+    if self._dropout_rate > 0: g = self.dropout(g, self._dropout_rate)
     # Calculate new_c
     new_c = tf.add(tf.multiply(f, c), tf.multiply(i, g), 'new_c')
     # Calculate new_h
