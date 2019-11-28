@@ -166,7 +166,7 @@ class DataSet(TFRData):
           # e.g. PTB
           M, N, p = self.size, batch_size, hub.overlap_pct if training else 0
           assert 0 <= p < 1
-          L = M/((N - 1)*(1 - p) + 1)
+          L = int(M/((N - 1)*(1 - p) + 1))
           round_len = int(np.ceil(L / num_steps))
 
     round_len = int(round_len)
