@@ -402,7 +402,9 @@ class RNet(Net):
 
   @staticmethod
   def _get_placeholder(name, size):
-    return tf.placeholder(dtype=hub.dtype, shape=(None, size), name=name)
+    if isinstance(size, (list, tuple)): shape = tuple([None] + list(size))
+    else: shape = (None, checker.check_positive_integer(size))
+    return tf.placeholder(dtype=hub.dtype, shape=shape, name=name)
 
   def _distribute_last_tensors(self):
     assert self.is_root
