@@ -69,11 +69,14 @@ class GRU(CellBase):
     # - Calculate s_bar
     s_bar = self._get_s_bar(x, prev_s, use_reset_gate=self._use_reset_gate)
 
-    # - Update state
-    if self._dropout_rate > 0: s_bar = self.dropout(s_bar, self._dropout_rate)
+    # - Do GAST
+    new_s = self._gast(prev_s, s_bar, update_gate=z)
 
-    with tf.name_scope('update_state'): new_s = tf.add(
-      tf.multiply(z, prev_s), tf.multiply(tf.subtract(1., z), s_bar))
+    # # - Update state
+    # if self._dropout_rate > 0: s_bar = self.dropout(s_bar, self._dropout_rate)
+    #
+    # with tf.name_scope('update_state'): new_s = tf.add(
+    #   tf.multiply(z, prev_s), tf.multiply(tf.subtract(1., z), s_bar))
 
     # Zoneout if necessary
     if self._zoneout_rate > 0:

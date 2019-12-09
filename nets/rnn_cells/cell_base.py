@@ -72,10 +72,23 @@ class CellBase(RNet, RNeuroBase):
       s = r * s
     return self.dense_rn(x, s, 's_bar', self._activation, output_dim=output_dim)
 
-  def _zoneout(self, new_s, prev_s, ratio):
+  def _gast(self, pre_s, s_bar, update_gate=None, forget_gate=None):
+    """Gated Additive State Transition."""
+    assert not all([update_gate is None, forget_gate is None])
+    # Couple gates if necessary
+    if forget_gate is None: forget_gate = tf.subtract(1.0, update_gate)
+    elif update_gate is None: update_gate = tf.subtract(1.0, forget_gate)
+    # Apply recurrent dropout without memory loss if necessary
+    if self._dropout_rate > 0: s_bar = self.dropout(s_bar, self._dropout_rate)
+    # Update states
+    with tf.name_scope('GAST'): return tf.add(
+        tf.multiply(forget_gate, pre_s), tf.multiply(update_gate, s_bar))
+
+  @classmethod
+  def _zoneout(cls, new_s, prev_s, ratio):
     def zo(n_s, p_s, r):
       if r == 0: return n_s
-      assert self.get_dimension(n_s) == self.get_dimension(p_s) and 0 < r < 1
+      assert cls.get_dimension(n_s) == cls.get_dimension(p_s) and 0 < r < 1
       seed = tf.random_uniform(tf.shape(n_s), 0, 1)
       z = tf.cast(tf.less(seed, r), hub.dtype)
       result = z * p_s + (1. - z) * n_s
@@ -87,4 +100,5 @@ class CellBase(RNet, RNeuroBase):
     outputs = [zo(n_s, p_s, r) for n_s, p_s, r in zip(new_s, prev_s, ratio)]
     if len(outputs) == 1: return outputs[0]
     else: return tuple(outputs)
+
 
