@@ -9,6 +9,9 @@ from tframe.nets.rnn_cells.cell_base import CellBase
 
 
 class Conveyor(CellBase):
+  """
+  TODO: to be deprecated. Use the more general api--tape--instead.
+  """
 
   net_name = 'conveyor'
 
