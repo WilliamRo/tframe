@@ -59,10 +59,15 @@ class NeuronArray(NeuroBase):
       checker.check_type(input_list, tf.Tensor)
       # Concatenation is forbidden when LN is on
       if all([len(input_list) > 1,
-              self._layer_normalization, self._normalize_each_psi]):
+              self._layer_normalization,
+              self._normalize_each_psi]):
         for x in input_list: self.add_kernel(x)
-      else: self.add_kernel(
-        tf.concat(input_list, axis=1) if len(input_list) > 1 else input_list[0])
+      else:
+        # Concatenate to speed up calculation if necessary
+        if len(input_list) > 1: x = tf.concat(input_list, axis=-1)
+        else: x = input_list[0]
+        # Add kernel
+        self.add_kernel(x)
 
     # Make sure psi_kernel is not empty
     assert self.psi_kernels

@@ -97,6 +97,8 @@ class PsiKernel(KernelBase):
 
   def dense(self):
     W = self._get_weights('W', shape=[self.input_dim, self.num_neurons])
+    rank = len(self.input_.shape)
+    if rank > 2: return tf.tensordot(self.input_, W, [[rank - 1], [0]])
     return self.input_ @ W
 
   def multiplicative(self, seed, fd):
