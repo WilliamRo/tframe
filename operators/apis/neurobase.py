@@ -96,6 +96,11 @@ class NeuroBase(object):
   def dropout(input_, dropout_rate):
     return linker.dropout(input_, dropout_rate)
 
+  @staticmethod
+  def layer_normalize(x):
+    layer_norm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+    return layer_norm(x)
+
   # endregion : Public Methods
 
   # region : Library
