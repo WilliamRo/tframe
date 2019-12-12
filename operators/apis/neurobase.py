@@ -97,9 +97,47 @@ class NeuroBase(object):
     return linker.dropout(input_, dropout_rate)
 
   @staticmethod
-  def layer_normalize(x):
-    layer_norm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-    return layer_norm(x)
+  def layer_normalize(
+      x, axis=-1, epsilon=1e-3, center=True, scale=True,
+      beta_initializer='zeros', gamma_initializer='ones'):
+    """Layer normalization for single axis"""
+    # Check axis
+    x_shape = x.shape.as_list()
+    ndims = len(x_shape)
+    assert isinstance(axis, int)
+    if axis < 0: axis += ndims
+    assert 0 <= axis < ndims
+    # Get gamma and beta
+    gamma, beta = None, None
+    param_shape = [x_shape[axis]]
+    if scale: gamma = tf.get_variable(
+      name='gamma',
+      shape=param_shape,
+      dtype=hub.dtype,
+      initializer=initializers.get(gamma_initializer),
+      trainable=True)
+    if center: beta = tf.get_variable(
+      name='beta',
+      shape=param_shape,
+      dtype=hub.dtype,
+      initializer=initializers.get(beta_initializer),
+      trainable=True)
+
+    # Calculate the moments on the last axis (layer activations).
+    mean, variance = tf.nn.moments(x, axis, keep_dims=True)
+
+    # Broadcast gamma and beta
+    broadcast_shape = [1] * ndims
+    broadcast_shape[axis] = x_shape[axis]
+    def _broadcast(v):
+      if v is not None and len(v.shape) != ndims and axis != ndims - 1:
+        return tf.reshape(v, broadcast_shape)
+      return v
+    scale, offset = _broadcast(gamma), _broadcast(beta)
+
+    # Compute layer normalization using the batch_normalization function
+    return tf.nn.batch_normalization(
+      x, mean, variance, offset=offset, scale=scale, variance_epsilon=epsilon)
 
   # endregion : Public Methods
 
