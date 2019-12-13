@@ -175,7 +175,7 @@ class DataSet(TFRData):
 
   def gen_batches(self, batch_size, shuffle=False, is_training=False):
     """Yield batches of data with the specific size"""
-    round_len = self.get_round_length(batch_size)
+    round_len = self.get_round_length(batch_size, training=is_training)
     if batch_size == -1: batch_size = self.size
 
     # Generate batches
