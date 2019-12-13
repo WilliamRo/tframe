@@ -75,7 +75,7 @@ class GamRHN(CellBase, GAM, HyperKernel):
     self._reset_counter() # important
 
     # - Write to GAM
-    gam, hw = self._write(gam, x, output)
+    gam, hw = self._write(gam, x, output, dropout=self._gam_dropout)
 
     # - Highway
     for i in range(self._num_layers):
