@@ -28,6 +28,7 @@ class ModelConfigs(object):
   actype2 = Flag.string(None, 'Activation type 2', is_key=None)
   use_bias = Flag.boolean(True, 'Whether to use bias', is_key=None)
   use_batchnorm = Flag.boolean(False, 'Whether to use batch norm', is_key=None)
+  use_layernorm = Flag.boolean(False, 'Whether to use layer norm', is_key=None)
 
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   fc_dims = Flag.whatever(None, '...')
@@ -63,8 +64,10 @@ class ModelConfigs(object):
            'net.extra_loss')
 
   dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
-  input_dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
-  output_dropout = Flag.float(0.0, 'Dropout rate', is_key=None)
+  input_dropout = Flag.float(0.0, 'Input dropout rate', is_key=None)
+  output_dropout = Flag.float(0.0, 'Output dropout rate', is_key=None)
+  spatial_dropout = Flag.float(0.0, 'Spatial dropout rate', is_key=None)
+  temporal_dropout = Flag.float(0.0, 'Temporal dropout rate', is_key=None)
   forward_dropout = Flag.boolean(
     False, 'Whether to use forward dropout', is_key=None)
 

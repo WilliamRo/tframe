@@ -52,4 +52,12 @@ class AdvancedConfigs(object):
 
   # endregion : Dynamic Evaluation
 
+  # region : Attention Related
+
+  pos_encode = Flag.string(None, 'Type of positional encoding', is_key=None)
+  spatial_heads = Flag.integer(None, 'Number of spatial heads', is_key=None)
+  temporal_heads = Flag.integer(None, 'Number of temporal heads', is_key=None)
+
+  # endregion : Attention Related
+
 
