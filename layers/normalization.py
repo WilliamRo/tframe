@@ -2,11 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.ops import init_ops
-from tensorflow.python.layers import utils
+
+from tframe.operators.apis.neurobase import NeuroBase
 
 from .layer import Layer
 from .layer import single_input
@@ -131,7 +131,35 @@ class BatchNormalization(Layer):
     return output
 
 
+class LayerNormalization(Layer):
 
+  full_name = 'layernorm'
+  abbreviation = 'ln'
+
+  def __init__(self,
+               axis=-1,
+               center=True,
+               scale=True,
+               beta_initializer='zeros',
+               gamma_initializer='ones',
+               epsilon=1e-3):
+    self.axis = axis
+    self.center = center
+    self.scale = scale
+    self.beta_initializer = initializers.get(beta_initializer)
+    self.gamma_initializer = initializers.get(gamma_initializer)
+    self.epsilon = epsilon
+
+  @single_input
+  def _link(self, x):
+    return NeuroBase.layer_normalize(
+      x=x,
+      axis=self.axis,
+      center=self.center,
+      scale=self.scale,
+      beta_initializer=self.beta_initializer,
+      gamma_initializer=self.gamma_initializer,
+      epsilon=self.epsilon)
 
 
 
