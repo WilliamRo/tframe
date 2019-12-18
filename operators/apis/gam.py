@@ -23,8 +23,7 @@ class GAM(Groups, RNeuroBase):
     # Prepare duplicating matrix and summarizing matrix
     self.D = None
     self.S = None
-    # Do not init till link, otherwise D and S will be put into a different
-    #   graph
+    # Do not init till link, otherwise D and S will be put into different graphs
     # self._init_const_matrices()
     # Be careful of inappropriate increment by while-free building
     # Use reset_counters at the beginning of _link
