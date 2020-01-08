@@ -109,7 +109,7 @@ class PsiKernel(KernelBase):
     if rank > 2: return tf.tensordot(self.input_, W, [[rank - 1], [0]])
     return self.input_ @ W
 
-  def sparse_sog(self):
+  def sparse_sog(self, axis, group_size):
     """Given x of shape (bs, dim_x)
        y = x @ (W_bar \odot C)
        where W_bar and C has shape (dim_x, dim_y), and
@@ -121,10 +121,7 @@ class PsiKernel(KernelBase):
         -> kernel_base.kwargs['axis]
     So does `group_size`
     """
-    # Get key attributes
-    assert 'axis' in self.kwargs and 'group_size' in self.kwargs
-    axis = self.kwargs.get('axis')
-    S = self.kwargs.get('group_size')
+    S = group_size
     # Check dim and calculate N (num_groups)
     dim_to_be_partitioned = self.input_dim if axis == 0 else self.num_neurons
     assert dim_to_be_partitioned % S == 0
