@@ -33,7 +33,8 @@ def finalize(th, model, add_output_layer=True):
     model.add(Dense(num_neurons=th.num_classes, prune_frac=0.1))
     model.add(Activation('softmax'))
   # Build model
-  model.build(th.get_optimizer(), metric=['loss', 'accuracy'],
+  # model.build(th.get_optimizer(), metric=['loss', 'accuracy'],
+  model.build(th.get_optimizer(), metric=['accuracy', 'loss'],
               batch_metric='accuracy', eval_metric='accuracy')
   return model
 
