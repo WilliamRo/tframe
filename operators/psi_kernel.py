@@ -129,6 +129,7 @@ class PsiKernel(KernelBase):
 
     # Prepare weight matrix W_bar
     W_bar = self._get_weights('W_bar', shape=[self.input_dim, self.num_neurons])
+    if S == 1: return self.input_ @ W_bar
     # .. make sure inputs are vectors
     assert len(self.input_.shape) == 2
     # .. create connection matrix C according to axis
