@@ -64,6 +64,7 @@ class PsiKernel(KernelBase):
     elif identifier in ('mul', 'multiplicative'): return self.multiplicative
     elif identifier in ('row_mask', 'hyper16'): return self.row_mask
     elif identifier in ('elect', 'election'): return self.elect
+    elif identifier in ('sparse_sog', 'sparsog'): return None
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
 
   def _layer_normalization(self, a):
@@ -75,21 +76,28 @@ class PsiKernel(KernelBase):
 
   @staticmethod
   def layer_normalization(a, gain_initializer, use_bias=False):
-    # use_bias is forced to be False for now
+    from tframe.operators.apis.neurobase import NeuroBase
+
     assert not use_bias
-
-    # Get gain
     gain_initializer = initializers.get(gain_initializer)
-    gain_shape = [1, linker.get_dimension(a)]
-    gain = tf.get_variable(
-      'gain', shape=gain_shape, dtype=hub.dtype, initializer=gain_initializer)
+    return NeuroBase.layer_normalize(
+      a, axis=1, center=False, gamma_initializer=gain_initializer)
 
-    # Get mean and standard deviation
-    mu, variance = tf.nn.moments(a, axes=1, keep_dims=True)
-    sigma = tf.sqrt(variance + hub.variance_epsilon)
-    # Normalize and rescale
-    a = gain * (a - mu) / sigma
-    return a
+    # # use_bias is forced to be False for now
+    # assert not use_bias
+    #
+    # # Get gain
+    # gain_initializer = initializers.get(gain_initializer)
+    # gain_shape = [1, linker.get_dimension(a)]
+    # gain = tf.get_variable(
+    #   'gain', shape=gain_shape, dtype=hub.dtype, initializer=gain_initializer)
+    #
+    # # Get mean and standard deviation
+    # mu, variance = tf.nn.moments(a, axes=1, keep_dims=True)
+    # sigma = tf.sqrt(variance + hub.variance_epsilon)
+    # # Normalize and rescale
+    # a = gain * (a - mu) / sigma
+    # return a
 
   # endregion : Static Methods
 
