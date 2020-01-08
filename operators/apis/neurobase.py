@@ -57,7 +57,7 @@ class NeuroBase(object):
     """A neuron group can differentiate to produce a neuron array which shares
       part of attributes in NeuroBase.
       
-      A more elegant way is letting NeuroBase and NeuronArray inheriting from
+      A more elegant way is letting NeuroBase and NeuronArray inherit from
       a same parent class. But the developer does not want to do this for now.
       
       TODO: this is a bad designed and should be refactored to be more elegant
@@ -142,6 +142,20 @@ class NeuroBase(object):
   # endregion : Public Methods
 
   # region : Library
+
+  def sparse_sog(self, num_neurons, group_size, x, scope, activation=None,
+                 axis=0, is_gate=False, **kwargs):
+    # Sanity check
+    assert isinstance(x, tf.Tensor) and axis in (0, 1)
+    dim_to_be_partitioned = self.get_dimension(x) if axis == 0 else num_neurons
+    assert dim_to_be_partitioned % group_size == 0
+    # Set default activation for gate operator
+    if activation is None and is_gate: activation = tf.sigmoid
+    # Initiate neuron array
+    na = self.differentiate(num_neurons, scope, activation, **kwargs)
+    na.add_kernel(
+      x, suffix='x', kernel_key='sparse_sog', group_size=group_size, axis=axis)
+    return na()
 
   def dense_v2(self, num_neurons, scope, *inputs, activation=None,
                num_or_size_splits=None, is_gate=False, **kwargs):

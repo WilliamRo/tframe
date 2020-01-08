@@ -64,7 +64,7 @@ class PsiKernel(KernelBase):
     elif identifier in ('mul', 'multiplicative'): return self.multiplicative
     elif identifier in ('row_mask', 'hyper16'): return self.row_mask
     elif identifier in ('elect', 'election'): return self.elect
-    elif identifier in ('sparse_sog', 'sparsog'): return None
+    elif identifier in ('sparse_sog', 'sparsog'): return self.sparse_sog
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
 
   def _layer_normalization(self, a):
@@ -109,6 +109,49 @@ class PsiKernel(KernelBase):
     if rank > 2: return tf.tensordot(self.input_, W, [[rank - 1], [0]])
     return self.input_ @ W
 
+  def sparse_sog(self):
+    """Given x of shape (bs, dim_x)
+       y = x @ (W_bar \odot C)
+       where W_bar and C has shape (dim_x, dim_y), and
+       C = \eta_{SxN}(C_bar, axis), \eta is the operator of softmax over groups
+
+    `axis` may be passed from
+        SparseSOG(..., axis, ...) -> neuro_base.sparse_sog(..., axis, ...)
+        -> neural_array.add_kernel(..., axis=axis) -> PsiKernel(..., axis=axis)
+        -> kernel_base.kwargs['axis]
+    So does `group_size`
+    """
+    # Get key attributes
+    assert 'axis' in self.kwargs and 'group_size' in self.kwargs
+    axis = self.kwargs.get('axis')
+    S = self.kwargs.get('group_size')
+    # Check dim and calculate N (num_groups)
+    dim_to_be_partitioned = self.input_dim if axis == 0 else self.num_neurons
+    assert dim_to_be_partitioned % S == 0
+    N = dim_to_be_partitioned // S
+
+    # Prepare weight matrix W_bar
+    W_bar = self._get_weights('W_bar', shape=[self.input_dim, self.num_neurons])
+    # .. make sure inputs are vectors
+    assert len(self.input_.shape) == 2
+    # .. create connection matrix C according to axis
+    # .. (While shape_C can be determined by 1 line of code, readability is
+    #     of more importance)
+    if axis == 0:
+      assert S * N == self.input_dim
+      shape_C = [S, self.num_neurons * N]
+    elif axis == 1:
+      assert S * N == self.num_neurons
+      shape_C = [self.input_dim * N, S]
+    else: raise AssertionError('`axis` must be either 0 or 1')
+    C_tilde = self._get_weights('C_tilde', shape=shape_C)
+    C_bar = tf.nn.softmax(C_tilde, axis=axis, name='C_bar')
+    C = tf.reshape(C_bar, shape=[self.input_dim, self.num_neurons], name='C')
+    # assert all(tf.reduce_sum(C, axis) == N)
+    W = tf.multiply(W_bar, C, name='W')
+    # Calculate output and return
+    return tf.matmul(self.input_, W)
+
   def multiplicative(self, seed, fd):
     """Generate weights using seed. Theoretically,
 
@@ -137,7 +180,6 @@ class PsiKernel(KernelBase):
     a = ((x @ Wxf) * (seed @ Wsf)) @ Wfy
     return a
 
-
   def row_mask(self, seed, seed_weight_initializer):
     """Generate weights with rows being masked.
        y = (diag(row_mask) @ W) @ x
@@ -157,7 +199,6 @@ class PsiKernel(KernelBase):
     x = self.input_
     a = (seed @ Wsy) * (x @ Wxy)
     return a
-
 
   def elect(self, groups, votes):
     """Given a vector with group specification, one representative will be
