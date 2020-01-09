@@ -199,7 +199,7 @@ def masked_neurons(x,
 
 # endregion : Unit with mask
 
-# region : Misc
+# region : Utils
 
 def get_variable(name, shape, initializer='glorot_uniform'):
   initializer = initializers.get(initializer)
@@ -221,7 +221,7 @@ def get_dimension(tensor):
   # assert len(shape_list) == 2
   return shape_list[-1]
 
-# endregion : Misc
+# endregion : Utils
 
 # region : Operations
 
