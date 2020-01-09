@@ -141,6 +141,10 @@ class ModelConfigs(object):
 
   max_norm = Flag.float(None, 'Max norm constraint on variables', is_key=None)
 
+  group_size = Flag.integer(None, 'Group size in SOG activation', is_key=None)
+  axis = Flag.integer(None, 'Parameter axis, may be used in many methods',
+                      is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True

@@ -66,6 +66,8 @@ class TrainerConfigs(object):
     False, 'Whether to use global regularizer', is_key=None)
   global_l1_penalty = Flag.float(0.0, 'Global l1 penalty', is_key=None)
   global_l2_penalty = Flag.float(0.0, 'Global l2 penalty', is_key=None)
+  l1_penalty = Flag.float(0.0, 'l1 penalty', is_key=None)
+  l2_penalty = Flag.float(0.0, 'l2 penalty', is_key=None)
 
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
   global_constraint = Flag.string(
