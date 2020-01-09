@@ -47,6 +47,8 @@ class SparseSOG(HyperBase):
       activation = '->act'
       if isinstance(self._activation_string, str):
         activation = '->' + self._activation_string
+    if self._group_size == 1:
+      return '({})'.format(self._num_neurons) + activation
     return '({}|P{}-S{})'.format(
       self._num_neurons, 'IO'[self._axis], self._group_size) + activation
 
