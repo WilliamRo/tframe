@@ -164,6 +164,8 @@ class Context(object):
     self.add_to_list_collection(self._LOSSES_LIST, loss)
 
   def add_var_to_export(self, name, var):
+    # Set default name if not provided
+    if name is None: name = 'var{}'.format(len(self.variables_to_export) + 1)
     assert isinstance(name, str)
     self.add_to_dict_collection(self._VARIABLE_EXPORT_DICT, name, var)
 
