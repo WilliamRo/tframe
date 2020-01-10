@@ -69,6 +69,10 @@ class TrainerConfigs(object):
   l1_penalty = Flag.float(0.0, 'l1 penalty', is_key=None)
   l2_penalty = Flag.float(0.0, 'l2 penalty', is_key=None)
 
+  saturation_penalty = Flag.float(None, 'Saturation penalty', is_key=None)
+  encourage_saturation = Flag.boolean(
+    True, 'Whether to encourage saturation', is_key=None)
+
   regularizer = Flag.string('l2', 'Regularizer', name='reg', is_key=None)
   global_constraint = Flag.string(
     None, 'Global constraint. Currently only used in kernel_base', is_key=None)
