@@ -75,7 +75,9 @@ class Model(object):
       self, self._loss, self._train_step, self._train_step_summary,
       name='Update-group')
 
+    # Slots for exporting np values to note
     self.grads_slot = NestedTensorSlot(self, 'Gradients')
+    self.general_tensor_slot = NestedTensorSlot(self, 'General-Tensor')
 
     # Private attributes
     self._default_net = None  # TODO to be removed

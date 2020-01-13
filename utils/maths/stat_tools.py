@@ -7,7 +7,8 @@ import numpy as np
 
 
 class Statistic(object):
-  def __init__(self, max_length=None, keep_acc=True, keep_abs_acc=False):
+  def __init__(self, max_length=None, keep_acc=True, keep_abs_acc=False,
+               reduce_1st_dim=False):
     if max_length is not None: checker.check_positive_integer(max_length)
     self._max_length = max_length
     self._keep_acc = checker.check_type(keep_acc, bool)
@@ -16,6 +17,7 @@ class Statistic(object):
     self._value_count = 0
     self._accumulator = 0
     self._abs_accumulator = 0
+    self._reduce_1st_dim = checker.check_type(reduce_1st_dim, bool)
 
   @property
   def last_value(self):
@@ -34,13 +36,18 @@ class Statistic(object):
 
   @property
   def running_average(self):
-    return np.average(self._value_list, axis=0)
+    values = self._value_list
+    if self._reduce_1st_dim: values = np.concatenate(values)
+    return np.average(values, axis=0)
 
   @property
   def running_abs_average(self):
-    return np.average(np.abs(self._value_list), axis=0)
+    values = self._value_list
+    if self._reduce_1st_dim: values = np.concatenate(values)
+    return np.average(np.abs(values), axis=0)
 
   def record(self, value):
+    # Check type
     assert np.isscalar(value) or isinstance(value, np.ndarray)
     # Take down the new coming scalar
     self._value_list.append(value)
@@ -48,9 +55,15 @@ class Statistic(object):
         len(self._value_list) > self._max_length):
       self._value_list.pop(0)
     # Update global statistic
-    self._value_count += 1
-    if self._keep_acc: self._accumulator += value
-    if self._keep_abs_acc: self._abs_accumulator += np.abs(value)
+    # (values with shape [batch_size, dim] should be treated carefully)
+    if not self._reduce_1st_dim:
+      self._value_count += 1
+      if self._keep_acc: self._accumulator += value
+      if self._keep_abs_acc: self._abs_accumulator += np.abs(value)
+    else:
+      self._value_count += len(value)
+      if self._keep_acc: self._accumulator += np.sum(value, axis=0)
+      if self._keep_abs_acc: self._accumulator += np.sum(np.abs(value), axis=0)
 
   def set_max_length(self, val):
     checker.check_positive_integer(val)

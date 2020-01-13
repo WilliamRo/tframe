@@ -124,6 +124,11 @@ class Predictor(Feedforward, Recurrent):
       self.grads_slot.plug(context.monitor.grad_ops_list)
       self._update_group.add(self.grads_slot)
 
+    # Monitor general tensors (currently only activation is included)
+    if hub.export_activations:
+      self.general_tensor_slot.plug(context.monitor.tensor_fetches)
+      self._update_group.add(self.general_tensor_slot)
+
     # Initialize metric
     if metric is not None:
       checker.check_type_v2(metric, (str, Quantity))

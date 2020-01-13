@@ -287,6 +287,8 @@ class Net(Function):
 
       # Call each child
       output = f(pioneer)
+      if self.is_root and hub.export_activations:
+        context.monitor.register_tensor_stats(output, reduce_1st_dim=True)
 
       if self._inter_type == pedia.cascade: pioneer = output
       else: output_list.append(output)
@@ -499,6 +501,7 @@ class Net(Function):
   # region : Build-in extractors
 
   def variable_extractor(self):
+    """"""
     get_key = lambda v: '/'.join(v.name.split('/')[1:])
     def add_to_dict(v): context.variables_to_export[get_key(v)] = v
 

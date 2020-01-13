@@ -464,6 +464,17 @@ class Trainer(object):
     loss_slot = loss_slots[0]
     self.batch_loss_stat.record(loss_dict[loss_slot])
 
+    # Record grads if necessary
+    # <monitor_grad_step_03: fetch and record>
+    if self.th.monitor_weight_grads:
+      grads = loss_dict.pop(self.model.grads_slot)
+      context.monitor.record_grads(grads)
+
+    # Record other tensors
+    if self.th.export_activations:
+      tensors = loss_dict.pop(self.model.general_tensor_slot)
+      context.monitor.record_tensors(tensors)
+
     # Check NaN
     if self.th.terminate_on_nan:
       for val in loss_dict.values():
@@ -473,12 +484,6 @@ class Trainer(object):
           self.model.agent.take_notes(msg)
           self.th.force_terminate = True
           break
-
-    # Record grads if necessary
-    # <monitor_grad_step_03: fetch and record>
-    if self.th.monitor_weight_grads:
-      grads = loss_dict.pop(self.model.grads_slot)
-      context.monitor.record(grads)
 
     return loss_dict
 
@@ -573,6 +578,7 @@ class Trainer(object):
     assert isinstance(tensor_dict, dict)
 
     base_on_exemplars = len(tensor_dict) > 0
+    # Compromise to avoid widget conflict in tensor_viewer
     def _add_to_dict(key, value):
       if base_on_exemplars:
         for exemplar_dict in tensor_dict.values():
@@ -586,9 +592,15 @@ class Trainer(object):
       for key, value in zip(v_fetches_dict.keys(), results):
         _add_to_dict(key, value)
 
+    # :: Add numpy arrays that stored in monitor
     # Add grads stats if necessary
     if self.th.export_weight_grads:
       for key, value in context.monitor.grad_dict.items():
+        _add_to_dict(key, value)
+
+    # Add general stats
+    if self.th.export_activations:
+      for key, value in context.monitor.stats_dict.items():
         _add_to_dict(key, value)
 
     return tensor_dict
