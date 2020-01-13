@@ -8,11 +8,13 @@ from matplotlib.ticker import FuncFormatter
 from tframe.utils.tensor_viewer.plugin import Plugin, VariableWithView
 
 
+prefix = 'weights_'
+
 def modifier(v_dict):
   assert isinstance(v_dict, OrderedDict)
   new_dict = OrderedDict()
   for key, values in v_dict.items():
-    s = re.search(r'(?<=weights_)\d+', key)
+    s = re.search(r'(?<=' + prefix + r')\d+', key)
     if s is None: continue
     new_key = key + '_hist'
     new_dict[new_key] = VariableWithView(values, view=view)
