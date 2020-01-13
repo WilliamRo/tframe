@@ -37,6 +37,7 @@ class NoteConfigs(object):
   calculate_mean = Flag.boolean(False, '...')
 
   export_sparse_weights = Flag.boolean(False, '...')
+  export_activations = Flag.boolean(False, '...')
 
   export_dl_dx = Flag.boolean(False, '...')
   export_dl_ds_stat = Flag.boolean(False, '...')

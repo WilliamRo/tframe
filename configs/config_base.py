@@ -78,6 +78,8 @@ class Config(
   developer_code = Flag.string('', 'Code for developers to debug', is_key=None)
   verbose_config = Flag.string('', 'String for configuring verbosity')
 
+  stats_max_length = Flag.integer(20, 'Maximum length a Statistic can keep')
+
   def __init__(self, as_global=False):
     # Try to register flags into tensorflow
     if not self.__class__.registered:
@@ -211,6 +213,7 @@ class Config(
     if self.prune_on and self.pruning_iterations > 0:
       self.overwrite = False
     if self.export_weight_grads:
+      # TODO: These 2 configs could be merged as one
       self.monitor_weight_grads = True
 
   def get_attr(self, name):
