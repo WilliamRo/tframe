@@ -76,6 +76,8 @@ class Config(
   delta = Flag.float(0.0, 'Delta', is_key=None)
 
   developer_code = Flag.string('', 'Code for developers to debug', is_key=None)
+  developer_args = Flag.string(
+    '', 'Args for developers to develop', is_key=None)
   verbose_config = Flag.string('', 'String for configuring verbosity')
 
   stats_max_length = Flag.integer(20, 'Maximum length a Statistic can keep')
