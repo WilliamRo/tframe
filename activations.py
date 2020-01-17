@@ -51,6 +51,25 @@ def sigmoid(input_, **kwargs):
   return (high - low) * sig + low
 
 
+def sog(x, groups_size):
+  """Softmax over groups. All groups share the same group size."""
+  # Sanity check
+  assert isinstance(x, tf.Tensor)
+  x_shape = x.shape.as_list()
+  assert len(x_shape) == 2
+  num_neurons = x_shape[-1]
+  S = checker.check_positive_integer(groups_size)
+  assert num_neurons % S == 0
+
+  # Reshape neurons
+  x_reshaped = tf.reshape(x, shape=[-1, S])
+  # Apply softmax over each group
+  a = tf.nn.softmax(x_reshaped, axis=-1)
+  # Reshape back
+  outputs = tf.reshape(a, shape=[-1, num_neurons])
+  return outputs
+
+
 def get(identifier, **kwargs):
   # Sanity check
   assert len(kwargs) == 0
