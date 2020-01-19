@@ -10,6 +10,8 @@ from tframe import checker, context, linker
 from tframe.core.quantity import Quantity
 
 
+# region : Private
+
 _epsilon = 1e-10
 
 def _flatten(tensor):
@@ -41,6 +43,9 @@ def _reshape_labels(labels, num_classes=None):
   if num_classes is not None: labels = tf.one_hot(labels, num_classes)
   return labels
 
+# endregion : Private
+
+# region : Major Losses
 
 def sigmoid_cross_entropy(labels, outputs):
   # Calculate average cross-entropy
@@ -124,6 +129,30 @@ def tf_seq_loss_summ(x):
 def np_seq_loss_summ(x):
   assert len(x.shape) == 2
   return np.mean(np.sum(x, axis=1))
+
+# endregion : Major Losses
+
+# region : Auxiliary Losses
+
+def saturate_loss(tensor, mu=0.5, encourage_saturation=True):
+  # TODO: this method is still being developed. DO NOT USE WITHOUT GUIDE
+  # Each entry in tensor should be in range [0, 1], which should be guaranteed
+  # ... by users
+  checker.check_type(tensor, tf.Tensor)
+  assert 0 < mu < 1
+  # Encourage saturation
+  if encourage_saturation:
+    # Calculate distance to saturation
+    left = tensor[tf.less(tensor, mu)]
+    right = tensor[tf.greater(tensor, 0.5)]
+    return tf.norm(left) - tf.norm(right)
+  else:
+    # Calculate distance to unsaturation
+    degree = tf.abs(tensor - mu)
+  # Calculate loss using reduce mean
+  return tf.reduce_mean(degree)
+
+# endregion : Auxiliary Losses
 
 
 def get(identifier, last_only=False, **kwargs):

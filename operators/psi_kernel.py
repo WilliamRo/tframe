@@ -2,10 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import tensorflow as tf
 
 from tframe import checker
+from tframe import context
 from tframe import hub
 from tframe import linker
 from tframe import initializers
@@ -147,6 +147,23 @@ class PsiKernel(KernelBase):
     C = tf.reshape(C_bar, shape=[self.input_dim, self.num_neurons], name='C')
     # assert all(tf.reduce_sum(C, axis) == N)
     W = tf.multiply(W_bar, C, name='W')
+    # Codes for exporting weights
+    if hub.export_sparse_weights:
+      context.add_var_to_export('connection', C)
+    # Encourage saturation
+    if hub.saturation_penalty is not None and hub.saturation_penalty > 0:
+      from tframe.losses import saturate_loss
+      sta_loss = saturate_loss(C)
+      context.add_loss_tensor(sta_loss)
+      # TODO: STILL DEVELOPING
+      # from tframe.losses import saturate_loss
+      # sta_loss = saturate_loss(C, mu=1/S) * hub.saturation_penalty
+      # vips = tf.reduce_max(C_bar, axis=axis)
+      # right_loss = tf.reduce_mean(1. - vips)
+      # left = C_bar[tf.less(C_bar, 1 / S)]
+      # left_loss = tf.reduce_mean(left)
+      # sta_loss = (left_loss + right_loss) * hub.saturation_penalty
+      # context.add_loss_tensor(sta_loss)
     # Calculate output and return
     return tf.matmul(self.input_, W)
 
