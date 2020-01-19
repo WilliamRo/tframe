@@ -288,7 +288,8 @@ class Net(Function):
       # Call each child
       output = f(pioneer)
       if self.is_root and hub.export_activations:
-        context.monitor.register_tensor_stats(output, reduce_1st_dim=True)
+        context.monitor.register_tensor(
+          output, reduce_1st_dim=True, name='activation')
 
       if self._inter_type == pedia.cascade: pioneer = output
       else: output_list.append(output)

@@ -125,7 +125,7 @@ class Predictor(Feedforward, Recurrent):
       self._update_group.add(self.grads_slot)
 
     # Monitor general tensors (currently only activation is included)
-    if hub.export_activations:
+    if hub.export_activations and context.monitor.tensor_fetches:
       self.general_tensor_slot.plug(context.monitor.tensor_fetches)
       self._update_group.add(self.general_tensor_slot)
 

@@ -111,9 +111,11 @@ class Context(object):
     collection = self.get_collection_by_key(name, True, list)
     collection.append(val)
 
-  def add_to_dict_collection(self, name, key, val, atomic=True):
+  def add_to_dict_collection(self, name, key, val):
     collection = self.get_collection_by_key(name, True, dict)
-    if atomic: assert key not in collection.keys()
+    # Check key
+    if key in collection.keys(): key += '_{}'.format(
+      2 + len([k for k in collection.keys() if key + '_' in k]))
     collection[key] = val
 
   def add_collection(self, key, val):
@@ -163,9 +165,7 @@ class Context(object):
     checker.check(len(loss.shape) == 0, 'Input tensor must be a scalar')
     self.add_to_list_collection(self._LOSSES_LIST, loss)
 
-  def add_var_to_export(self, name, var, auto_index=False):
-    # Set auto index if necessary
-    if auto_index: name += '_{}'.format(len(self.variables_to_export) + 1)
+  def add_var_to_export(self, name, var):
     assert isinstance(name, str)
     self.add_to_dict_collection(self._VARIABLE_EXPORT_DICT, name, var)
 

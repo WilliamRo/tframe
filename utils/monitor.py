@@ -14,6 +14,11 @@ from .maths.stat_tools import Statistic
 
 class Monitor(object):
   """Monitor is originally developed for monitoring gradients.
+     For monitoring neuron activations, an activation filter must be registered.
+     An activation filter takes a tf.Tensor as input and returns
+     0: ignore this tensor
+     1: register as Type I (into _tensor_stats_dict)
+     2: register as Type II (into context.variables_to_export)
   """
 
   def __init__(self):
@@ -35,8 +40,8 @@ class Monitor(object):
   @property
   def tensor_fetches(self):
     fetches = list(self._tensor_stats_dict.keys())
-    if len(fetches) == 0:
-      raise AssertionError('No general tensor fetches found in monitor')
+    # if len(fetches) == 0:
+    #   raise AssertionError('No general tensor fetches found in monitor')
     return fetches
 
   @property
@@ -89,24 +94,28 @@ class Monitor(object):
   # region : Methods for monitoring general tensors
 
   def register_activation_filter(self, act_filter):
-    """There should be only 1 activation filter"""
+    """There should be only 1 activation filter."""
     assert self._activation_filter is None
     assert callable(act_filter)
     self._activation_filter = act_filter
 
-  def register_tensor_stats(
-      self, tensor, reduce_1st_dim=False, keep_acc=False, keep_abs_acc=False):
+  def register_tensor(
+      self, tensor, name='tensor',
+      reduce_1st_dim=False, keep_acc=False, keep_abs_acc=False):
     if not callable(self._activation_filter):
       raise ValueError(
         'context.monitor.register_activation filter should be called before'
         ' building model when options like th.export_activations are set to '
         'True')
     assert isinstance(tensor, tf.Tensor)
-    if self._activation_filter(tensor):
+    # Determine to ignore or register tensor into the corresponding dict
+    if self._activation_filter(tensor) in (False, '0', 0): return
+    if self._activation_filter(tensor) in (1, '1'):
       assert tensor not in self._tensor_stats_dict
       self._tensor_stats_dict[tensor] = Statistic(
         max_length=tfr.hub.stats_max_length, keep_acc=keep_acc,
         keep_abs_acc=keep_abs_acc, reduce_1st_dim=reduce_1st_dim)
+    else: tfr.context.add_tensor_to_export(name, tensor)
 
   def register_stats(self, tensors):
     """stats will be exported to note in Trainer._get_variables_to_export
