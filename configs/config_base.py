@@ -117,6 +117,13 @@ class Config(
   def config_strings(self):
     return sorted(['{}: {}'.format(k, v) for k, v in self.key_options.items()])
 
+  @property
+  def developer_options(self):
+    if not self.developer_args: return None
+    from tframe.utils.arg_parser import Parser
+    parser = Parser.parse(self.developer_args)
+    return parser
+
   # endregion : Properties
 
   # region : Override
