@@ -471,7 +471,7 @@ class Trainer(object):
       context.monitor.record_grads(grads)
 
     # Record other tensors
-    if self.th.export_activations:
+    if self.model.general_tensor_slot.activated:
       tensors = loss_dict.pop(self.model.general_tensor_slot)
       context.monitor.record_tensors(tensors)
 
