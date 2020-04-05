@@ -19,7 +19,7 @@ def get_container(th, flatten=False):
     model.add(Flatten())
     # Register extractor and researcher
     model.register_extractor(mn_du.MNIST.connection_heat_map_extractor)
-    monitor.register_researcher(mn_du.MNIST.flatten_researcher)
+    monitor.register_grad_researcher(mn_du.MNIST.flatten_researcher)
   return model
 
 

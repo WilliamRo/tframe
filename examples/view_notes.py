@@ -8,6 +8,7 @@ for _ in range(DIR_DEPTH + 1):
 from tframe.utils.summary_viewer.main_frame import SummaryViewer
 from tframe import local
 from tframe.utils.tensor_viewer.plugins import lottery
+from tframe.utils.tensor_viewer.plugins import activation_sparsity
 
 
 default_inactive_flags = (
@@ -58,7 +59,8 @@ while True:
       default_inactive_criteria=default_inactive_criteria,
       flags_to_ignore=flags_to_ignore,
     )
-    viewer.register_plugin(lottery.plugin)
+    # viewer.register_plugin(lottery.plugin)
+    viewer.register_plugin(activation_sparsity.plugin)
     viewer.show()
 
   except Exception as e:

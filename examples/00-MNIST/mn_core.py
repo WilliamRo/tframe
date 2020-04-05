@@ -9,7 +9,9 @@ for _ in range(DIR_DEPTH + 1):
 from tframe import console, SaveMode
 from tframe.trainers import SmartTrainerHub
 from tframe import Classifier
+from tframe import monitor
 
+import mn_ad as ad
 import mn_du as du
 
 
@@ -61,6 +63,10 @@ th.evaluate_test_set = True
 
 
 def activate(export_false=False):
+  # Register activation filter
+  if th.export_activations:
+    monitor.register_activation_filter(ad.act_type_ii_filter)
+
   # Load data
   train_set, val_set, test_set = du.load_data(th.data_dir)
 

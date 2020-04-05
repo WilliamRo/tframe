@@ -9,6 +9,7 @@ try:
   from PIL import Image as Image_
   from PIL import ImageTk
 
+  from tframe.utils import janitor
   from tframe.utils.note import Note
   from tframe.utils.tensor_viewer import key_events
   from tframe.utils.tensor_viewer.context import Context
@@ -44,7 +45,7 @@ class TensorViewer(Viewer):
     self._global_refresh()
 
     # Set plugin (beta) (This line should be put before set_note)
-    self._plugins = kwargs.get('plugins', [])
+    self._plugins = janitor.wrap(kwargs.get('plugins', []))
 
     # If note or note_path is provided, try to load it
     if note is not None or note_path is not None:

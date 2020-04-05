@@ -5,6 +5,16 @@ from __future__ import print_function
 import numpy as np
 
 
+def wrap(obj, obj_type=None, wrap_as=list):
+  """Wrap obj into list."""
+  assert wrap_as in (list, tuple)
+  if not isinstance(obj, wrap_as): obj = wrap_as([obj])
+  if obj_type is not None:
+    from tframe import checker
+    obj = checker.check_type_v2(obj, obj_type)
+  return obj
+
+
 def recover_seq_set_outputs(outputs, seq_set):
   """Outputs of tframe batch evaluation are messed up.
      This method will help.

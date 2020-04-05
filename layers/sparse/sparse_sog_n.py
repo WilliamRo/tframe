@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tframe import context
 from tframe import checker
 from tframe import hub as th
 from tframe.activations import sog
@@ -70,6 +71,9 @@ class SparseSOG(HyperBase):
       head = self.dense_v2(self._head_size, 'head', x)
       net_gate = self.dense_v2(self._num_neurons, 'seed', head)
     gate = sog(net_gate, self._group_size)
+
+    # Export gates if necessary
+    if th.export_gates: context.add_tensor_to_export('sog_gate', gate)
 
     # Apply gate
     y = tf.multiply(y_bar, gate, 'y')

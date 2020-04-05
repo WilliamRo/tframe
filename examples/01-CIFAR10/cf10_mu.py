@@ -20,7 +20,7 @@ def get_container(th, flatten=False):
   assert isinstance(th, Config)
   model = Classifier(mark=th.mark)
   model.add(Input(sample_shape=th.input_shape))
-  if th.centralize_data: model.add(Normalize(mu=th.data_mean))
+  if th.centralize_data: model.add(Normalize(mu=th.data_mean, sigma=255.))
   if flatten: model.add(Flatten())
   return model
 
@@ -32,7 +32,7 @@ def finalize(th, model):
   # model.add(Dense(num_neurons=th.num_classes))
   model.add(Activation('softmax'))
   # Build model
-  model.build(metric=['loss', 'accuracy'], batch_metric='accuracy',
+  model.build(metric=['accuracy', 'loss'], batch_metric='accuracy',
               eval_metric='accuracy')
   return model
 
@@ -61,7 +61,7 @@ def multinput(th):
   model.add(Linear(output_dim=th.num_classes))
 
   # Build model
-  model.build(metric=['loss', 'accuracy'], batch_metric='accuracy',
+  model.build(metric=['accuracy', 'loss'], batch_metric='accuracy',
               eval_metric='accuracy')
 
   return model
