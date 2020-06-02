@@ -140,7 +140,7 @@ class DataSet(TFRData):
     # If item is index array
     f = lambda x: self._get_subset(x, item)
 
-    data_set = DataSet(data_dict=self._apply(f), name=self.name + '(slice)')
+    data_set = type(self)(data_dict=self._apply(f), name=self.name + '(slice)')
     return self._finalize(data_set, item)
 
   # endregion : Overriden Methods
