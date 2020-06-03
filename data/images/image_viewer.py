@@ -31,9 +31,17 @@ class ImageViewer(object):
   """
   MIN_WIDTH = 260
   MIN_HEIGHT = 260
+  MAX_WIDTH = 1200
+  MAX_HEIGHT = 800
 
   def __init__(self, dataset=None, **kwargs):
     self.kwargs = kwargs
+
+    # Basic settings
+    self._force_center = kwargs.get('force_center', False)
+
+    # Horizontal list
+    self._horizontal_list = kwargs.get('horizontal_list', ['features'])
 
     # Variables
     self.filename = None
@@ -55,6 +63,7 @@ class ImageViewer(object):
 
     # Data set
     self._cursor = 0
+    self._horizontal_cursor = 0
     self.data_set = None
     self.labels = None
     self.set_data(dataset)
@@ -148,13 +157,22 @@ class ImageViewer(object):
 
   # region : Private Methods
 
-  def _set_cursor(self, index=None, step=None):
+  def _set_cursor(self, index=None, step=None, horizontal=False):
     assert isinstance(self.data_set, DataSet)
-    if step is not None:
-      assert step in (-1, 1)
-      index = self._cursor + step
-    assert index is not None
-    self._cursor = np.mod(index, self.data_set.size)
+    # Check step and index
+    assert any([index is not None, step is not None])
+    if step is not None: assert step in (-1, 1) and index is None
+    # Temporal code TODO: please refactor this method
+    if horizontal:
+      if len(self._horizontal_list) == 1: return False
+      if step: index = self._horizontal_cursor + step
+      self._horizontal_cursor = np.mod(index, len(self._horizontal_list))
+    else:
+      if step: index = self._cursor + step
+      self._cursor = np.mod(index, self.data_set.size)
+    # Notify the invoker whether the cursor has been changed
+    cursor_changed = True
+    return cursor_changed
 
   def _create_layout(self):
     # Form properties
@@ -190,6 +208,10 @@ class ImageViewer(object):
       flag = self._move_cursor(1)
     elif event.keysym == 'k':
       flag = self._move_cursor(-1)
+    elif event.keysym == 'l':
+      flag = self._move_cursor(1, horizontal=True)
+    elif event.keysym == 'h':
+      flag = self._move_cursor(-1, horizontal=True)
     elif event.keysym == 'quoteleft':
       console.show_status('Widgets sizes:')
       for k in self.__dict__.keys():
@@ -220,14 +242,15 @@ class ImageViewer(object):
     # If needed, refresh image viewer
     if flag: self.refresh()
 
-  def _move_cursor(self, step):
+  def _move_cursor(self, step, horizontal=False):
+    # Currently step is constrained
     assert step in [-1, 1]
+    # If flag is True, refresh after moving cursor
     flag = False
     if self.data_set is not None:
       assert isinstance(self.data_set, DataSet)
       if self.data_set.size == 0: return False
-      self._set_cursor(step=step)
-      flag = True
+      flag = self._set_cursor(step=step, horizontal=horizontal)
     return flag
 
   def refresh(self):
@@ -251,21 +274,46 @@ class ImageViewer(object):
     if self.data_set is not None:
       assert isinstance(self.data_set, DataSet)
       cursor = self._cursor
+      name = self._horizontal_list[self._horizontal_cursor]
       info = ''
       if self.labels is not None:
         label = self.labels[cursor]
         label = self._get_class_string(label)
         info = 'Label: {}'.format(label)
-      self.image_info.config(fg='Black', text='[{} / {}] {}'.format(
-        cursor + 1, self.data_set.size, info))
+      self.image_info.config(fg='Black', text='{} [{} / {}] {}'.format(
+        name, cursor + 1, self.data_set.size, info))
     else:
       self.image_info.config(text='No data set found', fg='grey')
+
+  def _fit_size(self, shape):
+    def _keep_ratio(val, inp_ind):
+      return int(np.round(1.0 * val / shape[inp_ind] * shape[1 - inp_ind]))
+    # Check MIN size
+    h, w = shape[:2]
+    if w < self.MIN_WIDTH:
+      w = self.MIN_WIDTH
+      h = _keep_ratio(w, 1)
+    if h < self.MIN_HEIGHT:
+      h = self.MIN_HEIGHT
+      w = _keep_ratio(h, 0)
+
+    # Check MAX size
+    if w > self.MAX_WIDTH:
+      w = self.MAX_WIDTH
+      h = _keep_ratio(w, 1)
+    if h > self.MAX_HEIGHT:
+      h = self.MAX_HEIGHT
+      w = _keep_ratio(h, 0)
+
+    return w, h
 
   def _update_image(self):
     if self.data_set is not None:
       assert isinstance(self.data_set, DataSet)
-      cursor = self._cursor
-      image = np.squeeze(self.data_set.features[cursor])
+      # Load image
+      image = np.squeeze(
+        self.data_set[self._horizontal_list[self._horizontal_cursor]]
+        [self._cursor])
       # For grey scale images, remove their last dimension
       if image.shape[-1] == 1: image = image.reshape(image.shape[:-1])
       if not self.sample_can_be_displayed:
@@ -280,8 +328,7 @@ class ImageViewer(object):
 
       # Adjust canvas size
       shape = image.shape
-      width = max(shape[1], self.MIN_WIDTH)
-      height = int(np.round(1.0 * width / shape[1] * shape[0]))
+      width, height = self._fit_size(shape)
       self.canvas.config(width=width, height=height)
       self.image_height = height
       self.image_width = width
@@ -292,6 +339,7 @@ class ImageViewer(object):
       self.photo = ImageTk.PhotoImage(image=image)
 
       self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
+      if self._force_center: self._move_to_center()
     else:
       self.canvas.config(bg='light grey')
 
