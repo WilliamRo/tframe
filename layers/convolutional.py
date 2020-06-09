@@ -44,6 +44,12 @@ class _Conv(Layer):
     # self.neuron_scale = get_scale(output)
     return output
 
+  def get_layer_string(self, scale, full_name=False):
+    result = super().get_layer_string(scale, full_name)
+    activation = getattr(self, 'input_activation', None)
+    if isinstance(activation, str): result += '->{}'.format(activation)
+    return result
+
   def __call__(self, *args, **kwargs):
     return Layer.__call__(self, *args, **kwargs)
 
@@ -52,7 +58,7 @@ class _Conv(Layer):
 #  classes below
 
 class Conv1D(_Conv, _Conv1D):
-  full_name = 'convolutional1d'
+  full_name = 'conv1d'
   abbreviation = 'conv1d'
 
   def __init__(self, filters,
@@ -93,10 +99,11 @@ class Conv1D(_Conv, _Conv1D):
       trainable=trainable,
       name=name, **kwargs)
     self.neuron_scale = _get_neuron_scale(self.filters, self.kernel_size)
+    self.input_activation = activation
 
 
 class Conv2D(_Conv, _Conv2D):
-  full_name = 'convolutional2d'
+  full_name = 'conv2d'
   abbreviation = 'conv2d'
 
   def __init__(self, filters,
@@ -107,7 +114,7 @@ class Conv2D(_Conv, _Conv2D):
                dilation_rate=(1, 1),
                activation=None,
                use_bias=True,
-               kernel_initializer=None,
+               kernel_initializer='glorot_uniform',
                bias_initializer=tf.zeros_initializer(),
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -139,10 +146,11 @@ class Conv2D(_Conv, _Conv2D):
       expand_last_dim=expand_last_dim,
       name=name, **kwargs)
     self.neuron_scale = _get_neuron_scale(self.filters, self.kernel_size)
+    self.input_activation = activation
 
 
 class Deconv2D(_Conv, _Deconv2D):
-  full_name = 'deconvolutional2d'
+  full_name = 'deconv2d'
   abbreviation = 'deconv2d'
 
   def __init__(self, filters,
@@ -182,6 +190,7 @@ class Deconv2D(_Conv, _Deconv2D):
       name=name,
       **kwargs)
     self.neuron_scale = _get_neuron_scale(self.filters, self.kernel_size)
+    self.input_activation = activation
 
 
 if __name__ == '__main__':

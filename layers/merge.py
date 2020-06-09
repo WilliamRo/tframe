@@ -4,8 +4,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe import console
-from tframe.layers.layer import Layer, single_input
+from tframe import console, checker
+from tframe.layers.layer import Layer, single_input, Function
 from tframe.utils import get_scale
 
 
@@ -16,7 +16,7 @@ class Concatenate(Layer):
   def __init__(self, *definitions, axis=-1):
     if len(definitions) == 0:
       console.warning_with_pause('Nothing to be concatenated.')
-    self.definitions = definitions
+    self.definitions = checker.check_type(definitions, Function)
     self.axis = axis
 
   @single_input
