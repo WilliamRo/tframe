@@ -74,7 +74,8 @@ def check_type(inputs, type_tuples):
   """
   if isinstance(inputs, list): inputs = tuple(inputs)
   if not isinstance(type_tuples, (tuple, list)): type_tuples = (type_tuples,)
-  if not isinstance(inputs, tuple):
+  inputs_are_tuple = isinstance(inputs, tuple)
+  if not inputs_are_tuple:
     inputs = (inputs,)
     type_tuples = (type_tuples,)
   if len(inputs) > 1 and len(type_tuples) == 1:
@@ -89,7 +90,7 @@ def check_type(inputs, type_tuples):
       raise TypeError('!! Object {} must be an instance of {}'.format(
         obj, type_tuple))
   # Return inputs
-  if len(inputs) == 1: return inputs[0]
+  if len(inputs) == 1 and not inputs_are_tuple: return inputs[0]
   else: return inputs
 
 
