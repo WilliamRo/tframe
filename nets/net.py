@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe import console
@@ -111,6 +112,7 @@ class Net(Function):
     """A list of structure strings with format
        Layer (type)           Output Shape           Params #
     Currently only work for sequential model
+    TODO: refactoring is needed
     """
     from tframe.nets.rnet import RNet
     widths = [33, 24, 20]
@@ -133,7 +135,11 @@ class Net(Function):
     for child in self.children:
       if isinstance(child, Layer):
         # Try to find variable in child
-        variables = [v for v in self.var_list if child.group_name in v.name]
+        # TODO: to be fixed
+        # variables = [v for v in self.var_list if child.group_name in v.name]
+        variables = [
+          v for v in self.var_list
+          if child.group_name == v.name.split('/')[self._level + 1]]
         num, dense_num = stark.get_params_num(variables, consider_prune=True)
         # Generate a row
         cols = [self._get_layer_string(child, True, True),
@@ -153,6 +159,9 @@ class Net(Function):
       # Accumulate total_params and dense_total_params
       total_params += num
       dense_total += dense_num
+
+    # Check total params
+    assert total_params == sum([np.prod(v.shape) for v in self.var_list])
 
     if self.is_root:
       # Head
