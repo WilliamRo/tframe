@@ -154,6 +154,8 @@ def set_logging_level(level):
 
 
 def suppress_logging():
+  import logging
+  logging.getLogger('tensorflow').disabled = True
   set_logging_level(2)
 
 
