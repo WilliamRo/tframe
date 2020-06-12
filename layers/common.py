@@ -35,9 +35,9 @@ class Activation(Layer):
   def _link(self, inputs, **kwargs):
     """Group name of Activation layer is decided not in calling
        Function.__call__ but calling self._activation"""
-    if self._id == 'softmax' or self._set_logits:
-      tfr.context.set_logits_tensor(inputs)
     outputs = self._activation(inputs)
+    if self._id == 'softmax' or self._set_logits:
+      tfr.context.set_logits_tensor(outputs, inputs)
     return outputs
 
   @staticmethod

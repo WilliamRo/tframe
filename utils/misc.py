@@ -6,6 +6,7 @@ import numpy as np
 import inspect
 import datetime
 import math
+from .np_tools import get_ravel_indices
 
 import tensorflow as tf
 
@@ -66,19 +67,32 @@ def get_name_by_levels(name, levels):
 
 
 def convert_to_one_hot(labels, num_classes):
+  assert num_classes > 1
+  # Convert labels to numpy array with last dim larger than 1
   labels = np.array(labels)
-  if len(labels.shape) < 2 or (len(labels.shape) == 2 and labels.shape[1] == 1):
-    sample_num = labels.shape[0]
-    one_hot = np.zeros(shape=[sample_num, num_classes])
-    one_hot[range(sample_num), labels.flatten()] = 1
-  else:
-    one_hot = labels
-
-  if len(one_hot.shape) != 2:
-    raise ValueError('!! Input labels has an illegal dimension {}'.format(
-      len(labels.shape)))
-
+  if np.max(labels) == 1: return labels
+  if labels.shape[-1] == 1: labels = labels.squeeze(axis=-1)
+  # Prepare zeros
+  label_shape = list(labels.shape)
+  one_hot = np.zeros(shape=label_shape + [num_classes])
+  indices = get_ravel_indices(labels) + (labels.ravel(),)
+  one_hot[indices] = 1
   return one_hot
+
+  # Remove the routines below when this method has been proved robust
+  # labels = np.array(labels)
+  # if len(labels.shape) < 2 or (len(labels.shape) == 2 and labels.shape[1] == 1):
+  #   sample_num = labels.shape[0]
+  #   one_hot = np.zeros(shape=[sample_num, num_classes])
+  #   one_hot[range(sample_num), labels.flatten()] = 1
+  # else:
+  #   one_hot = labels
+  #
+  # if len(one_hot.shape) != 2:
+  #   raise ValueError('!! Input labels has an illegal dimension {}'.format(
+  #     len(labels.shape)))
+  #
+  # return one_hot
 
 
 def convert_to_dense_labels(one_hot):

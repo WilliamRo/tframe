@@ -82,6 +82,7 @@ class MetricsManager(object):
   @property
   def RAR_string(self):
     """e.g. 0.676 => L1(2)->0.678 => L0(3->0.680)"""
+    if self.rar0 is None: return 'No RAR info'
     rs = ' => '.join([
       'L{}({}){}'.format(lv, len(scalars), '->{:.3f}'.format(scalars[-1])
       if len(scalars) > 0 else '') for lv, scalars in self._RAR.items()])

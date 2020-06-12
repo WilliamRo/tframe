@@ -3,8 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+
 import tframe as tfr
 from .quantity import Quantity
+from .function import Function
 
 
 class Slot(object):
@@ -204,3 +206,44 @@ class VariableSlot(TensorSlot):
 
   def assign(self, value):
     self._model.session.run(tf.assign(self._op, value))
+
+
+class OutputSlot(TensorSlot):
+
+  def __init__(self, model, f, loss=None, loss_coef=1.0, name='output',
+               target_key=None, last_only=False):
+    from tframe import losses  # TODO: refactor this line
+    # Sanity check
+    assert isinstance(f, Function)
+    assert isinstance(loss_coef, float) and loss_coef > 0
+    # Currently this class should not appear in RNN codes
+    assert not last_only
+    # Call parent's constructor
+    super().__init__(model, name=name)
+    # Other attributes
+    self.function = f
+    self.loss_coef = loss_coef
+    self.loss_quantity = losses.get(loss, last_only=last_only) if loss else None
+    self.target_key = target_key
+    self.target_slot = TensorSlot(model, '{}_slot'.format(name))
+    self.loss_slot = TensorSlot(model, '{}_loss_slot'.format(name))
+
+  @property
+  def injection_flag(self):
+    return self.loss_quantity is not None and self.loss_coef > 0
+
+  def auto_plug(self):
+    super().plug(self.function.output_tensor)
+    if not self.loss_quantity: return None
+    # Generate loss tensor for error injection
+    assert isinstance(self.target_key, str)
+    target_tensor = tf.placeholder(
+      tfr.hub.dtype, self.shape_list, name=self.target_key)
+    # in model.py -> _get_default_feed_dict method, this placeholder will be
+    #   matched with corresponding value in data via target_key
+    self.target_slot.plug(target_tensor, collection=tfr.pedia.default_feed_dict)
+    loss_tensor = tf.multiply(
+      self.loss_quantity(self.target_slot.tensor, self.tensor), self.loss_coef)
+    self.loss_slot.plug(loss_tensor, quantity_def=self.loss_quantity,
+                        collection=tfr.pedia.injection_loss)
+    return loss_tensor

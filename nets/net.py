@@ -18,6 +18,7 @@ from tframe import pedia
 from tframe import hub
 from tframe.utils import stark
 from tframe.core.decorators import with_graph_if_has
+from tframe.core.slots import OutputSlot
 
 
 class Net(Function):
@@ -55,6 +56,8 @@ class Net(Function):
 
     # Tensor extractor
     self._tensor_extractors = []
+
+    self._output_slots = []
 
   # region : Properties
 
@@ -94,13 +97,23 @@ class Net(Function):
     return f
 
   @property
+  def output_slots(self):
+    results = self._output_slots
+    for child in self.children:
+      if isinstance(child, Net): results += child.output_slots
+    assert isinstance(results, list)
+    return results
+
+  @property
   def input_tensor(self):
     if self.input_ is None: raise ValueError('!! Input not found')
     return self.input_.place_holder
 
   @property
   def logits_tensor(self):
-    return context.logits_tensor
+    tensors = list(context.logits_tensor_dict.values())
+    assert len(tensors) == 1
+    return tensors[0]
 
   @property
   def is_root(self):
@@ -363,7 +376,15 @@ class Net(Function):
 
     return net
 
-  def add(self, f=None, inter_type=pedia.cascade, return_net=False):
+  def add(self,
+          f=None,
+          inter_type=pedia.cascade,
+          return_net=False,
+          as_output=False,
+          output_name=None,
+          loss_identifier=None,
+          target_key=None,
+          loss_coef=1.0):
     """Add a net or a layer in to this model
     :param f: \in (Net, Layer)
     :param inter_type: inter-connection type
@@ -393,6 +414,16 @@ class Net(Function):
       # Otherwise add this layer to last Net of self.children
       container = self.add_to_last_net(f, only_cascade=True)
     else: raise ValueError('!! Object added to a Net must be a Layer or a Net')
+
+    # Register output slot if necessary
+    def _handle_error_injection():
+      """This is a compromise"""
+      if not as_output: return
+      assert self.is_root
+      self._output_slots.append(OutputSlot(
+        self, f, loss=loss_identifier, loss_coef=loss_coef, name=output_name,
+        target_key=target_key, last_only=False))
+    _handle_error_injection()
 
     if return_net: return container
     else: return f
@@ -469,6 +500,18 @@ class Net(Function):
         console.supplement(loss_tensor.name, level=2)
       console.split()
     return result
+
+  def _gen_injection_loss(self):
+    loss_tensors = []
+    for slot in self.output_slots:
+      assert isinstance(slot, OutputSlot)
+      # Do auto plug
+      loss_tensor = slot.auto_plug()
+      if loss_tensor is not None: loss_tensors.append(loss_tensor)
+    if not loss_tensors: return None
+    loss_tensor_sum = tf.add_n(loss_tensors, name='injection_loss')
+    console.show_status('{} loss injected'.format(len(loss_tensors)))
+    return loss_tensor_sum
 
   # endregion: Private Methods
 

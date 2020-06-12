@@ -23,6 +23,7 @@ gather_indices = 'gather_indices'
 Generator = 'Generator'
 
 invisible = 'do_not_show'
+injection_loss = 'INJECTION_LOSS'
 is_training = 'is_training'
 
 keep_prob = 'keep_prob'

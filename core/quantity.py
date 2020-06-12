@@ -89,7 +89,7 @@ class Quantity(object):
     assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
     # Replace output with logits if necessary
     # logits will be registered when softmax layer is being linked
-    logits = tfr.context.logits_tensor
+    logits = tfr.context.logits_tensor_dict.get(output, None)
     if self._use_logits and output is not logits:
       if logits is None: tfr.console.warning(
         'Logits are supposed to be used in calculating {} '

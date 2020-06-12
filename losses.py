@@ -50,7 +50,8 @@ def _reshape_labels(labels, num_classes=None):
 def sigmoid_cross_entropy(labels, outputs):
   # Calculate average cross-entropy
   with tf.name_scope('binary_cross_entropy'):
-    if context.logits_tensor is not None:
+    use_logits = outputs in context.logits_tensor_dict.values()
+    if use_logits:
       # assert outputs is context.logits_tensor
       return tf.nn.sigmoid_cross_entropy_with_logits(
         labels=labels, logits=outputs + _epsilon)
@@ -60,7 +61,7 @@ def sigmoid_cross_entropy(labels, outputs):
 
 
 def cross_entropy(labels, outputs):
-  use_logits = context.logits_tensor is not None
+  use_logits = outputs in context.logits_tensor_dict.values()
   # Calculate average cross-entropy
   with tf.name_scope('cross_entropy'):
     # TODO: to be refactored
@@ -87,7 +88,7 @@ def weighted_cross_entropy(labels, logits):
   """
   from tframe import hub as th
   assert len(th.class_weights) == th.num_classes
-  use_logits = context.logits_tensor is not None
+  use_logits = logits in context.logits_tensor_dict.values()
   # Calculate weighted cross-entropy
   with tf.name_scope('weighted_cross_entropy'):
     if use_logits:

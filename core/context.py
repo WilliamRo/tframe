@@ -41,7 +41,7 @@ class Context(object):
 
     # Global variables
     self.metric_name = 'Metric'  # TODO: who will use it?
-    self.logits_tensor = None
+    self.logits_tensor_dict = {}
     self.reuse_dict = OrderedDict()
 
     # pruner will be initiated in the early stage of model building
@@ -152,7 +152,7 @@ class Context(object):
        to ensure tensors inside while_loop are correctly handle.
     """
     self._center_od_.clear()
-    self.logits_tensor = None
+    self.logits_tensor_dict = {}
     # Clear pruner
     if self.pruner is not None: self.pruner.clear()
 
@@ -177,9 +177,8 @@ class Context(object):
 
   # region : MISC
 
-  def set_logits_tensor(self, tensor):
-    assert self.logits_tensor is None
-    self.logits_tensor = tensor
+  def set_logits_tensor(self, output, logits):
+    self.logits_tensor_dict[output] = logits
 
   # endregion : MISC
 

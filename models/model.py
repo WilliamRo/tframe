@@ -57,7 +57,13 @@ class Model(object):
     self.agent = Agent(self)
 
     # Define slots
+    # 2020-6-10 | William |
+    #   outputs should be a Group which is more general for error injection
+    #   tframe 2.0 should be using such way to describe a Model
     self._outputs = TensorSlot(self)
+
+    # Compromising way to enable additional error injection
+    self._forms_for_injection = []
 
     self._metrics_manager = MetricsManager(self)
 

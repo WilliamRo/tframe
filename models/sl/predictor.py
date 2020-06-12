@@ -92,6 +92,9 @@ class Predictor(Feedforward, Recurrent):
     # Get loss quantity before building
     self.loss_quantity = losses.get(loss, last_only)
     # This is for calculating loss inside a while-loop
+    # 2020-6-10 | William |
+    #   this line is solely used for visualizing gradients
+    #   thus does not affect error injection in RNNs
     context.loss_function = self.loss_quantity.function
 
     # Call parent's build method to link network
@@ -115,6 +118,11 @@ class Predictor(Feedforward, Recurrent):
       # .. regularization loss is included
       if self.extra_loss is not None:
         loss_tensor = tf.add(loss_tensor, self.extra_loss)
+      # Add additional injected loss if necessary
+      injection_loss = self._gen_injection_loss()
+      if injection_loss is not None:
+        loss_tensor = tf.add(loss_tensor, injection_loss)
+
       # Plug in
       self.loss.plug(loss_tensor, quantity_def=self.loss_quantity)
 
@@ -169,7 +177,7 @@ class Predictor(Feedforward, Recurrent):
     else:
       assert isinstance(val_targets, str)
       val_target_tensor = tf.placeholder(
-        hub.dtype, self.outputs.shape_list, name=val_targets)
+        hub.dtype, self.outputs.shape_list, name='val_targets')
       self._val_targets.plug(
         val_target_tensor, collection=pedia.default_feed_dict)
 
