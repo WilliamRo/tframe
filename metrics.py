@@ -111,23 +111,29 @@ def rms_error_ratio(truth, output):
 
 # region : Quantities
 
+def cohens_kappa():
+  "Cohen's kappa for classdification tasks"
+  num_classes = tfr.hub.num_classes
+  assert isinstance(num_classes, int) and num_classes > 1
+  def tf_summ_method(tensor):
+    assert isinstance(tensor, tf.Tensor)
+    shape = tensor.shape.as_list()
+    assert shape[-1] == 2
+    if not len(shape) == 2: tensor = tf.reshape(tensor, [-1, 2])
+    return tf.constant(-1.0)
+  def np_summ_method(x):
+    from sklearn.metrics import cohen_kappa_score
+    # Check input x
+    assert isinstance(x, np.ndarray) and x.shape[-1] == 2
+    if not len(x.shape) == 2: x = x.reshape(-1, 2)
+    return cohen_kappa_score(x[:, 0], x[:, 1])
+  return Quantity(Quantity.concate_dense_label_pred, tf_summ_method,
+                  np_summ_method, name='Kappa', lower_is_better=False)
+
 def f1_score():
   """F1 score for classification tasks"""
   num_classes = tfr.hub.num_classes
   assert isinstance(num_classes, int) and num_classes > 1
-  def kernel(label, pred):
-    # Convert labels and outputs to 2-D dense tensors
-    tensors = [label, pred]
-    for i, tensor in enumerate(tensors):
-      shape = tensor.shape.as_list()
-      # Convert one-hot/distribution to dense if necessary
-      if shape[-1] > 1:
-        tensor = tf.argmax(tensor, -1, output_type=tf.int32)
-        tensor = tf.expand_dims(tensor, -1)
-      # Put tensor back to list
-      tensors[i] = tensor
-    # Concatenate for summary
-    return tf.concat(tensors, axis=-1, name='label_pred')
   def tf_summ_method(tensor):
     assert isinstance(tensor, tf.Tensor)
     shape = tensor.shape.as_list()
@@ -165,8 +171,8 @@ def f1_score():
       F1 = 2 * precision * recall / (precision + recall)
       F1s.append(F1)
     return np.mean(F1s)
-  return Quantity(
-    kernel, tf_summ_method, np_summ_method, name='F1', lower_is_better=False)
+  return Quantity(Quantity.concate_dense_label_pred, tf_summ_method,
+                  np_summ_method, name='F1', lower_is_better=False)
 
 # endregion : Quantities
 
@@ -193,6 +199,7 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       lower_is_better = False
       name = 'Accuracy'
     elif identifier in ['f1', 'f1_score']: return f1_score()
+    elif identifier in ['kappa']: return cohens_kappa()
     elif identifier in ['generalized_accuracy', 'gen_acc']:
       kernel, tf_summ_method = generalized_accuracy, tf.reduce_mean
       lower_is_better = False

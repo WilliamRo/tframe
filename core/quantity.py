@@ -184,6 +184,25 @@ class Quantity(object):
       q = np.concatenate(val_list[i*size:(i+1)*size], axis=0)
       console.supplement('{:.3f}'.format(self.np_summ_method(q)))
 
+  # region : Default Kernels
+
+  @staticmethod
+  def concate_dense_label_pred(label, pred):
+    # Convert labels and outputs to 2-D dense tensors
+    tensors = [label, pred]
+    for i, tensor in enumerate(tensors):
+      shape = tensor.shape.as_list()
+      # Convert one-hot/distribution to dense if necessary
+      if shape[-1] > 1:
+        tensor = tf.argmax(tensor, -1, output_type=tf.int32)
+        tensor = tf.expand_dims(tensor, -1)
+      # Put tensor back to list
+      tensors[i] = tensor
+    # Concatenate for summary
+    return tf.concat(tensors, axis=-1, name='label_pred')
+
+  # endregion : Default Kernels
+
 
 
 
