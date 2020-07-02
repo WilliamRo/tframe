@@ -191,6 +191,8 @@ class SequenceSet(DataSet):
         # When batch_size == 1, num_steps can be any integer
         round_len = sum([np.ceil(L / (num_steps if num_steps > 0 else L))
                          for L in self.structure])
+      elif num_steps < 0 and self.n_to_one:
+        round_len = np.ceil(self.size / batch_size)
       else:
         # When batch_size > 1, num_steps can be any integer (which is not
         # .. supported previously)
@@ -277,6 +279,14 @@ class SequenceSet(DataSet):
         seq_batch = seq_batch.padded_stack
         # At this point, seq_batch is a DataSet with active_length being
         #   not None
+
+      # Updated on 2020/7/2 for irregular sequence set with n_to_one is True
+      # TODO:
+      if self.n_to_one:
+        seq_batch.should_reset_state = True
+        yield seq_batch
+        counter += 1
+        continue
 
       # seq_batch.shape = (batches, steps, *shape)
       # Use DataSet's gen_rnn_batches method to yield batches
