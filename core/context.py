@@ -173,6 +173,23 @@ class Context(object):
     assert isinstance(name, str)
     self.add_to_dict_collection(self._TENSORS_EXPORT_DICT, name, tensor)
 
+  def get_logits(self, output):
+    """Currently RNNs do not support logits
+       Logits will be used in (1) here (2) net (3) quantities
+    """
+    logits = self.logits_tensor_dict.get(output, None)
+    # TODO: This is a compromise for RNN with single logits tensor
+    if logits is None and len(self.logits_tensor_dict) == 1:
+      logits = list(self.logits_tensor_dict.values())[0]
+    return logits
+
+  def set_rnn_logits(self, logits):
+    # TODO: This is a compromise for RNN with single logits tensor
+    # After running this, logits can be properly found in quantity.__call__
+    assert len(self.logits_tensor_dict) == 1
+    key = list(self.logits_tensor_dict.keys())[0]
+    self.logits_tensor_dict[key] = logits
+
   # endregion : Collection short cuts
 
   # region : MISC

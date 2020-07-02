@@ -111,7 +111,9 @@ class Net(Function):
 
   @property
   def logits_tensor(self):
+    """This property should be visited only by RNNs"""
     tensors = list(context.logits_tensor_dict.values())
+    if len(tensors) == 0: return None
     assert len(tensors) == 1
     return tensors[0]
 
