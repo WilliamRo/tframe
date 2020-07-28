@@ -196,6 +196,25 @@ class Context(object):
 
   def set_logits_tensor(self, output, logits):
     self.logits_tensor_dict[output] = logits
+  # region : Public Static Methods
+
+  @staticmethod
+  def open_input_port(name, input_shape, dtype=None, add_batch_dim=True):
+    """Create and add an input placeholder into the default tf collection.
+    TODO: the placeholder should be added to a model-related collection."""
+    from tframe import hub, pedia  # TODO refactor this
+    # Sanity check
+    assert isinstance(input_shape, (tuple, list))
+    if add_batch_dim: input_shape = [None] + list(input_shape)
+    if dtype is None: dtype = hub.dtype
+    input_ = tf.placeholder(dtype=dtype, shape=input_shape, name=name)
+    # Add to collection
+    tf.add_to_collection(pedia.default_feed_dict, input_)
+    # Return placeholder
+    return input_
+
+  # endregion : Public Static Methods
+
 
   # endregion : MISC
 

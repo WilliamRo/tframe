@@ -130,6 +130,7 @@ class Net(Function):
     TODO: refactoring is needed
     """
     from tframe.nets.rnet import RNet
+    from tframe.nets.customized_net import CustomizedNet
     widths = [33, 24, 20]
     indent = 3
 
@@ -160,7 +161,7 @@ class Net(Function):
         cols = [self._get_layer_string(child, True, True),
                 child.output_shape_str, get_num_string(num, dense_num)]
         add_to_rows(cols)
-      elif isinstance(child, RNet):
+      elif isinstance(child, (RNet, CustomizedNet)):
         num, dense_num = child.params_num
         cols = [child.structure_string(), child.output_shape_str,
                 get_num_string(num, dense_num)]
