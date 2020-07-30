@@ -9,22 +9,34 @@ from tframe.layers.layer import Layer, single_input, Function
 from tframe.utils import get_scale
 
 
-class Concatenate(Layer):
-  full_name = 'concatenate'
-  abbreviation = 'concat'
+class ShortCut(Layer):
+  full_name = 'shortcut'
+  abbreviation = 'shortcut'
 
-  def __init__(self, *definitions, axis=-1):
+  class Mode:
+    SUM = 'sum'
+    CONCATE = 'concate'
+
+  def __init__(self, *definitions, axis=-1, mode='concate'):
     if len(definitions) == 0:
       console.warning_with_pause('Nothing to be concatenated.')
     self.definitions = checker.check_type(definitions, Function)
     self.axis = axis
+    # Check model
+    assert mode in (self.Mode.SUM, self.Mode.CONCATE)
+    self.mode = mode
+    self.full_name = mode
+    self.abbreviation = mode
 
   @single_input
   def _link(self, input_, **kwargs):
     assert isinstance(input_, tf.Tensor)
     if len(self.definitions) == 0: return input_
     tensors = [input_] + [f.output_tensor for f in self.definitions]
-    return tf.concat(tensors, axis=self.axis)
+    # Merge
+    if self.mode == self.Mode.CONCATE: return tf.concat(tensors, axis=self.axis)
+    elif self.mode == self.Mode.SUM: return tf.add_n(tensors)
+    else: raise NotImplementedError
 
 
 class ConcatenateForGAN(Layer):
