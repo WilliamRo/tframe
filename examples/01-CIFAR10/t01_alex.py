@@ -14,12 +14,10 @@ def model(th):
   assert isinstance(th, m.Config)
   model = m.get_container(th, flatten=False)
 
-  model.add(m.Conv2D(64, kernel_size=3, strides=1))
-  model.add(m.Activation('relu'))
+  model.add(m.Conv2D(64, kernel_size=3, strides=1, activation='relu'))
   model.add(m.MaxPool2D(2, strides=2))
 
-  model.add(m.Conv2D(192, kernel_size=3, strides=1))
-  model.add(m.Activation('relu'))
+  model.add(m.Conv2D(192, kernel_size=3, strides=1, activation='relu'))
   model.add(m.MaxPool2D(2, strides=2))
 
   for filters in (384, 256, 256):

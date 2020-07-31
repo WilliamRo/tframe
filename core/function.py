@@ -14,6 +14,13 @@ class Function(object):
   linked = False
   output_tensor = None
 
+  output_id = None  # this attribute is for shortcut
+
+  @property
+  def output_id_str(self):
+    if not self.output_id: return ''
+    return '[{}]'.format(self.output_id)
+
   @property
   def output_shape_str(self):
     tensor = self.output_tensor
@@ -61,4 +68,8 @@ class Function(object):
 
   def _link(self, *inputs, **kwargs):
     raise NotImplementedError('_link method not implemented')
+
+  def set_output_id(self):
+    from tframe import context
+    self.output_id = context.get_next_output_id()
 

@@ -10,8 +10,11 @@ from tframe.configs.config_base import Config
 from tframe.layers.common import Dropout
 from tframe.layers.normalization import BatchNormalization
 from tframe.layers.convolutional import Conv2D
-from tframe.layers.pooling import MaxPool2D
+from tframe.layers.pooling import MaxPool2D, AveragePooling2D
 from tframe.layers.highway import LinearHighway
+from tframe.layers.merge import ShortCut
+
+from tframe.nets.resnet import ResidualNet
 
 from tframe.layers.hyper.dense import Dense
 
