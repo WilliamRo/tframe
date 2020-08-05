@@ -9,22 +9,74 @@ from tframe.layers.layer import Layer, single_input, Function
 from tframe.utils import get_scale
 
 
-class Concatenate(Layer):
-  full_name = 'concatenate'
-  abbreviation = 'concat'
+class ShortCut(Layer):
+  full_name = 'shortcut'
+  abbreviation = 'shortcut'
 
-  def __init__(self, *definitions, axis=-1):
+  is_nucleus = False
+
+  class Mode:
+    SUM = 'sum'
+    CONCATE = 'concate'
+
+  def get_layer_string(self, scale, full_name=False):
+    result = super().get_layer_string(scale, full_name)
+    result += '({})'.format(','.join(self.transformation_str_list))
+    return result
+
+  @property
+  def transformation_str_list(self):
+    result = []
+    for f, t_list in zip(self.definitions, self._transforms):
+      result.append(
+        '->'.join([f.output_id_str] + [t.group_name for t in t_list]))
+    return result
+
+  def __init__(self, *definitions, axis=-1, mode='concate', transforms=None):
     if len(definitions) == 0:
-      console.warning_with_pause('Nothing to be concatenated.')
+      console.warning_with_pause('Nothing to be merged.')
     self.definitions = checker.check_type(definitions, Function)
+    for f in self.definitions: f.set_output_id()
     self.axis = axis
+    # Check mode
+    assert mode in (self.Mode.SUM, self.Mode.CONCATE)
+    self.mode = mode
+    self.full_name = mode
+    self.abbreviation = mode
+    # Check transforms
+    if transforms is not None:
+      assert isinstance(transforms, list)
+      assert len(transforms) == len(self.definitions)
+      for t in transforms: checker.check_type(t, Function)
+    self._transforms = transforms
 
   @single_input
   def _link(self, input_, **kwargs):
     assert isinstance(input_, tf.Tensor)
     if len(self.definitions) == 0: return input_
-    tensors = [input_] + [f.output_tensor for f in self.definitions]
-    return tf.concat(tensors, axis=self.axis)
+    # Get tensor list to merge
+    tensors = [input_]
+    if self._transforms is None:
+      tensors += [f.output_tensor for f in self.definitions]
+    else:
+      for i, (f, t_list) in enumerate(zip(self.definitions, self._transforms)):
+        y = f.output_tensor
+        for j, t in enumerate(t_list):
+          with tf.variable_scope('{}-{}'.format(i, j)): y = t(y)
+        tensors.append(y)
+    # Merge
+    if self.mode == self.Mode.CONCATE: return tf.concat(tensors, axis=self.axis)
+    elif self.mode == self.Mode.SUM: return tf.add_n(tensors)
+    else: raise NotImplementedError
+
+  def add_transformation(self, f, branch_id=0):
+    assert isinstance(f, Function)
+    if getattr(f, 'is_nucleus', False): self.is_nucleus = True
+    # Initialize self._transform if necessary
+    if self._transforms is None:
+      self._transforms = [[] for _ in self.definitions]
+    # Add f into transformation list
+    self._transforms[branch_id].append(f)
 
 
 class ConcatenateForGAN(Layer):

@@ -8,29 +8,27 @@ from tframe.utils.misc import date_string
 # -----------------------------------------------------------------------------
 # Define model here
 # -----------------------------------------------------------------------------
-model_name = 'alex'
-id = 3
+model_name = 'residual'
+id = 2
 def model(th):
   assert isinstance(th, m.Config)
   model = m.get_container(th, flatten=False)
 
-  model.add(m.Conv2D(64, kernel_size=3, strides=1, activation='relu'))
+  model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
   model.add(m.MaxPool2D(2, strides=2))
 
-  model.add(m.Conv2D(192, kernel_size=3, strides=1, activation='relu'))
+  h = model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
   model.add(m.MaxPool2D(2, strides=2))
 
-  for filters in (384, 256, 256):
-    model.add(m.Conv2D(filters, kernel_size=3))
-    model.add(m.Activation('relu'))
+  model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
+  sc = m.ShortCut(h, mode=m.ShortCut.Mode.SUM)
+  sc.add_transformation(m.Conv2D(32, kernel_size=3, strides=2))
+  sc.add_transformation(m.Conv2D(32, kernel_size=3, strides=1))
+  model.add(sc)
+  model.add(m.MaxPool2D(2, strides=2))
 
-  model.add(m.MaxPool2D(3, strides=2))
   model.add(m.Flatten())
-
-  for dim in (2048, 2048):
-    if th.dropout > 0: model.add(m.Dropout(1. - th.dropout))
-    model.add(m.Linear(dim))
-    model.add(m.Activation('relu'))
+  model.add(m.Dense(128))
 
   return m.finalize(th, model)
 

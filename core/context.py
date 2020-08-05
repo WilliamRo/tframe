@@ -60,6 +60,9 @@ class Context(object):
     # Optimizer list for resurrection
     self.tf_optimizer = None
 
+    # Counter for shortcuts
+    self._short_cut_counter = 0
+
   # region : Properties
 
   @property
@@ -102,6 +105,10 @@ class Context(object):
   # endregion : Properties
 
   # region : Public Methods
+
+  def get_next_output_id(self):
+    self._short_cut_counter += 1
+    return self._short_cut_counter
 
   def has_collection(self, key):
     assert isinstance(key, str)
@@ -155,6 +162,8 @@ class Context(object):
     self.logits_tensor_dict = {}
     # Clear pruner
     if self.pruner is not None: self.pruner.clear()
+    # Clear shortcut counter
+    self._short_cut_counter = 0
 
   # endregion : Public Methods
 
