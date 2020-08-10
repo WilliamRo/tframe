@@ -18,13 +18,16 @@ class Parser(object):
 
   """
 
-  def __init__(self, *args, ignore_in_suffix=(), **kwargs):
+  def __init__(self, *args, splitter='=', ignore_in_suffix=(), **kwargs):
     self.name = None
     self.arg_list = list(args)
     self.arg_dict = OrderedDict(kwargs)
     if not isinstance(ignore_in_suffix, (tuple, list)):
       ignore_in_suffix = (ignore_in_suffix,)
     self.ignore_in_suffix = ignore_in_suffix
+    # Check splitter
+    assert isinstance(splitter, str) and len(splitter) == 1
+    self.splitter = splitter
 
 
   def __getitem__(self, key):
@@ -84,7 +87,7 @@ class Parser(object):
     assert isinstance(args, (tuple, list)) and len(args) > 0
     val = None
     for arg in args:
-      kv_list = arg.split('=')
+      kv_list = arg.split(self.splitter)
       assert len(kv_list) > 0
       if len(kv_list) > 2:
         raise AssertionError('!! Can not resolve `{}`'.format(arg))
@@ -98,13 +101,16 @@ class Parser(object):
 
 
   @staticmethod
-  def parse(arg_string, *args, ignore_in_suffix=(), **kwargs):
-    p = Parser(*args, ignore_in_suffix=ignore_in_suffix, **kwargs)
+  def parse(arg_string, *args, splitter='=', ignore_in_suffix=(), **kwargs):
+    p = Parser(
+      *args, splitter=splitter, ignore_in_suffix=ignore_in_suffix, **kwargs)
     p.parse_arg_string(arg_string)
     return p
 
 
 if __name__ == '__main__':
-  p = Parser.parse('raw:save=True', ignore_in_suffix='save')
-  print(p.filename_suffix)
-  print(p.get_kwarg('save', bool))
+  p = Parser.parse('bayers:low>1;high>10.1', splitter='>')
+  print(p.name)
+  print(p.get_kwarg('low', float))
+  print(p.get_kwarg('high', float))
+  print(p.get_kwarg('type', str, default='float'))
