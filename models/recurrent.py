@@ -66,7 +66,8 @@ class Recurrent(Model, RNet):
     with tf.name_scope('OuterWhileLoop'):
       if self.loss_in_loop:
         input_placeholder = (input_placeholder, self._mascot)
-      self._while_loop_free_output = self(pre_outputs, input_placeholder)
+      self._while_loop_free_output = self(
+        pre_outputs, input_placeholder, pseudo=True)
 
     # Plug targets tensor into targets slot if necessary
     if self.loss_in_loop:

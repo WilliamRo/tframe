@@ -203,7 +203,7 @@ class RNet(Net):
       result_tuple += self._calc_dS_dS_prev(states, pre_states),
 
     # Run build-in extractors
-    self.variable_extractor()
+    if not kwargs.get('pseudo', False): self.variable_extractor()
 
     return result_tuple
 
