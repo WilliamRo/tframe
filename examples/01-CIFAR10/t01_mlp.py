@@ -53,7 +53,7 @@ def main(_):
   # ---------------------------------------------------------------------------
   # 3. trainer setup
   # ---------------------------------------------------------------------------
-  th.epoch = 1000
+  th.epoch = 1
   th.batch_size = 64
   th.validation_per_round = 5
 
@@ -67,6 +67,7 @@ def main(_):
 
   th.clip_threshold = 10.0
   th.reset_optimizer_after_resurrection = False
+  th.summary = True
 
   # ---------------------------------------------------------------------------
   # 4. summary and note setup

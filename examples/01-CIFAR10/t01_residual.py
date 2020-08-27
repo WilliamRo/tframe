@@ -15,17 +15,42 @@ def model(th):
   model = m.get_container(th, flatten=False)
 
   model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
-  model.add(m.MaxPool2D(2, strides=2))
-
-  h = model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
-  model.add(m.MaxPool2D(2, strides=2))
+  h1 = model.add(m.MaxPool2D(2, strides=2))
 
   model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
-  sc = m.ShortCut(h, mode=m.ShortCut.Mode.SUM)
-  sc.add_transformation(m.Conv2D(32, kernel_size=3, strides=2))
-  sc.add_transformation(m.Conv2D(32, kernel_size=3, strides=1))
+  h2 = model.add(m.MaxPool2D(2, strides=2))
+
+  sc = m.ShortCut(h1, h2, mode=m.ShortCut.Mode.SUM)
+  sc.add_transformation(m.Conv2D(32, kernel_size=3, strides=2), 0)
+  sc.add_transformation(m.Conv2D(32, kernel_size=3, strides=1), 1)
   model.add(sc)
+
+  # model.add(m.ShortCut(h2, h1, mode=m.ShortCut.Mode.SUM, transforms=[
+  #   [m.Conv2D(32, kernel_size=3, strides=1),
+  #    m.Conv2D(32, kernel_size=3, strides=1)],
+  #   [m.Conv2D(32, kernel_size=3, strides=2)],
+  # ]))
+
+  model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
   model.add(m.MaxPool2D(2, strides=2))
+
+  # model.add(m.ShortCut(h, h1, mode=m.ShortCut.Mode.SUM, transforms=[
+  #   [m.Conv2D(32, kernel_size=3, strides=2)],
+  #   [m.Conv2D(32, kernel_size=3, strides=2)]]))
+
+
+  # model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
+  # h1 = model.add(m.MaxPool2D(2, strides=2))
+  #
+  # h = model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
+  # model.add(m.MaxPool2D(2, strides=2))
+  #
+  # model.add(m.Conv2D(32, kernel_size=3, strides=1, activation='relu'))
+  #
+  #
+  # model.add(m.ShortCut(h, h1, mode=m.ShortCut.Mode.SUM, transforms=[
+  #   [m.Conv2D(32, kernel_size=3, strides=2)],
+  #   [m.Conv2D(32, kernel_size=3, strides=2)]]))
 
   model.add(m.Flatten())
   model.add(m.Dense(128))

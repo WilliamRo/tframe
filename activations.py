@@ -72,7 +72,7 @@ def sog(x, groups_size):
 
 def get(identifier, **kwargs):
   # Sanity check
-  assert len(kwargs) == 0
+  # assert len(kwargs) == 0
   # Return identifier directly if it is callable
   if callable(identifier): return identifier
   elif isinstance(identifier, six.string_types):

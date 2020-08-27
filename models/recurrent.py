@@ -354,7 +354,10 @@ class Recurrent(Model, RNet):
       grad_name = '||dS/dS{}||'.format(grad_index)
       # Pretend that dsds has batch size 1
       dsds = tf.stack([dsds])
-      od[grad_name] = tf.norm(dsds, axis=[-2, -1])
+      # TODO: if ord=2, the output shape will be (?, ?) instead of (1, ?)
+      jac_norm = tf.norm(dsds, ord=2, axis=[-2, -1])
+      jac_norm = tf.reshape(jac_norm, shape=(1, -1))
+      od[grad_name] = jac_norm
 
     return od
 

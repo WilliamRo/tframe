@@ -213,6 +213,7 @@ class VariableViewer(Frame):
     if self.log_scale:
       self.subplot.set_ylim(max(np.min(pool), 1e-17), np.max(pool))
     # self.subplot.set_title('Title')
+    self.subplot.set_title('{:.3f}-{:.3f}'.format(min(array), max(array)))
 
   def _create_layout(self):
     # Create figure canvas
