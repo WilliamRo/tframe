@@ -182,9 +182,9 @@ class NeuroBase(object):
     :return: a tensor of shape [batch_size, output_dim] if split option if off
     """
     na = self.differentiate(output_dim, scope, activation, **kwargs)
-    if not self.lottery_activated: output = na(x)
+    if not self.lottery_activated and not na.being_etched: output = na(x)
     else:
-      assert not na.being_etched
+      # assert not na.being_etched
       na.add_kernel(x, suffix='x', prune_frac=self._prune_frac)
       output = na()
     # Split if necessary
@@ -272,9 +272,9 @@ class RNeuroBase(NeuroBase):
     na = self.differentiate(
       output_dim, scope, activation, is_gate=is_gate, **kwargs)
     # If don't need to prune
-    if not self.lottery_activated: output = na(x, s)
+    if not self.lottery_activated and not na.being_etched: output = na(x, s)
     else:
-      assert not na.being_etched
+      # assert not na.being_etched
       # Add x and s separately
       na.add_kernel(x, suffix='x', prune_frac=self._x_prune_frac)
       na.add_kernel(s, suffix='s', prune_frac=self._s_prune_frac)

@@ -85,8 +85,12 @@ class ModelConfigs(object):
   etch_on = Flag.boolean(False, 'Whether to activate weights etching')
   prune_on = Flag.boolean(False, 'Whether lottery option is activated. '
                                  'Should only be set in smooth_out ...')
+  etch_warm_up_rounds = Flag.integer(
+    0, 'Warm-up rounds for etching', is_key=None)
   pruning_rate_fc = Flag.float(
     0.0, 'Pruning rate for fully connected layers', is_key=None)
+  etch_rate_fc = Flag.float(
+    0.0, 'Etch rate for fully connected layers', is_key=None)
   pruning_iterations = Flag.integer(0, 'Pruning iterations', is_key=None)
   weights_fraction = Flag.float(None, 'Master weights fraction', is_key=None)
   weights_mask_on = Flag.boolean(False, 'Whether to use pruner')

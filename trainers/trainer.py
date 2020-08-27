@@ -351,7 +351,7 @@ class Trainer(object):
         if not self.is_online: assert np.isscalar(self.th.round_progress)
         self._save_model(inter_cut=True, progress=self.th.round_progress)
       # Etch
-      self._etch()
+      if rnd > self.th.etch_warm_up_rounds: self._etch()
       # Probe
       self._run_probe()
       # Take notes
