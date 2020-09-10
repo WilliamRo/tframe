@@ -43,6 +43,10 @@ class RNNConfigs(object):
   act_memory = Flag.boolean(True, 'Whether to activate memory', is_key=None)
   with_peepholes = Flag.boolean(False, 'Whether to add peepholes in LSTM',
                                 is_key=None)
+  output_activation = Flag.boolean(
+    True, 'Whether to use output activation (especially in LSTM)', is_key=None)
+  couple_gates = Flag.boolean(
+    False, 'Whether to couple alpha and beta gates', is_key=None)
 
   # AMU configs
   num_units = Flag.integer(0, 'Units# used in AMU model', is_key=None)

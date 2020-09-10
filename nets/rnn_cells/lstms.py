@@ -24,10 +24,12 @@ class LSTM(CellBase):
       activation='tanh',
       weight_initializer='xavier_normal',
       use_bias=True,
+      couple_fi=False,
       cell_bias_initializer='zeros',
       input_bias_initializer='zeros',
       output_bias_initializer='zeros',
       forget_bias_initializer='zeros',
+      use_output_activation=True,
       **kwargs):
     # Call parent's constructor
     CellBase.__init__(self, activation, weight_initializer,
@@ -38,6 +40,10 @@ class LSTM(CellBase):
     self._input_bias_initializer = initializers.get(input_bias_initializer)
     self._output_bias_initializer = initializers.get(output_bias_initializer)
     self._forget_bias_initializer = initializers.get(forget_bias_initializer)
+
+    self._couple_fi = checker.check_type(couple_fi, bool)
+    self._use_output_activation = checker.check_type(
+      use_output_activation, bool)
 
 
   @property
@@ -62,7 +68,8 @@ class LSTM(CellBase):
     # Calculate new_c
     new_c = tf.add(tf.multiply(f, c), tf.multiply(i, g), 'new_c')
     # Calculate new_h
-    new_h = tf.multiply(o, tf.tanh(new_c))
+    new_c_tilde = tf.tanh(new_c) if self._use_output_activation else new_c
+    new_h = tf.multiply(o, new_c_tilde)
 
     # Register gates and return
     self._gate_dict['input_gate'] = i
@@ -74,8 +81,9 @@ class LSTM(CellBase):
   def _get_fiog(self, x, h):
     f = self.neurons(x, h, is_gate=True, scope='f',
                      bias_initializer=self._forget_bias_initializer)
-    i = self.neurons(x, h, is_gate=True, scope='i',
-                     bias_initializer=self._input_bias_initializer)
+    if self._couple_fi: i = tf.subtract(1.0, f)
+    else: i = self.neurons(x, h, is_gate=True, scope='i',
+                           bias_initializer=self._input_bias_initializer)
     o = self.neurons(x, h, is_gate=True, scope='o',
                      bias_initializer=self._output_bias_initializer)
     g = self.neurons(x, h, scope='g', activation=self._activation,
@@ -85,12 +93,15 @@ class LSTM(CellBase):
 
   def _get_fiog_fast(self, x, h):
     # Calculate net inputs
-    net_f, net_i, net_o, net_g = self.neurons(
-      x, h, scope='net_inputs', num_or_size_splits=4, use_bias=False)
+    if self._couple_fi: net_f, net_o, net_g = self.neurons(
+        x, h, scope='net_inputs', num_or_size_splits=3, use_bias=False)
+    else: net_f, net_i, net_o, net_g = self.neurons(
+        x, h, scope='net_inputs', num_or_size_splits=4, use_bias=False)
 
     # Get f, i, o, g
     f = self._activate(net_f, self._forget_bias_initializer, 'f')
-    i = self._activate(net_i, self._input_bias_initializer, 'i')
+    if self._couple_fi: i = tf.subtract(1.0, f)
+    else: i = self._activate(net_i, self._input_bias_initializer, 'i')
     o = self._activate(net_o, self._output_bias_initializer, 'o')
     g = self._activate(net_g, self._bias_initializer, 'g')
     return f, i, o, g
