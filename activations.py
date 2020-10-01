@@ -86,6 +86,7 @@ def get(identifier, **kwargs):
     elif identifier in ['softmax']: return softmax
     elif identifier in ['cumax']: return cumax
     elif identifier in ['sigmoid']: return lambda x: sigmoid(x, **kwargs)
+    elif identifier in ['retanh', 'relutanh']: return lambda x: relu(tf.tanh(x))
     else:
       # Try to find activation in tf.nn
       activation = getattr(tf, identifier, None)
