@@ -272,7 +272,9 @@ class RNeuroBase(NeuroBase):
     na = self.differentiate(
       output_dim, scope, activation, is_gate=is_gate, **kwargs)
     # If don't need to prune
-    if not self.lottery_activated and not na.being_etched: output = na(x, s)
+    if not any([self.lottery_activated, na.being_etched,
+                hub.force_to_use_pruner]):
+      output = na(x, s)
     else:
       # assert not na.being_etched
       # Add x and s separately

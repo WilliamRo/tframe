@@ -29,6 +29,7 @@ class InputTypes(EnumPro):
 class SaveMode(EnumPro):
   NAIVE = 'naive'
   ON_RECORD = 'on_record'
+  NOT_SAVE = 'not_save'
 
 
 if __name__ == '__main__':

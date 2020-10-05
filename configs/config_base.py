@@ -224,6 +224,8 @@ class Config(
     if self.export_weight_grads:
       # TODO: These 2 configs could be merged as one
       self.monitor_weight_grads = True
+    if self.etch_on:
+      self.monitor_weight_grads = True
 
   def get_attr(self, name):
     return object.__getattribute__(self, name)

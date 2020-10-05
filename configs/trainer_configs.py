@@ -14,6 +14,7 @@ class TrainerConfigs(object):
   train = Flag.boolean(True, 'Whether this is a training task')
   smart_train = Flag.boolean(False, 'Whether to use smart trainer', is_key=None)
   save_model = Flag.boolean(True, 'Whether to save model during training')
+  save_model_in_the_beginning = Flag.boolean(False, '...')
   save_model_at_the_end = Flag.boolean(False, '...')
   overwrite = Flag.boolean(False, 'Whether to overwrite records')
   summary = Flag.boolean(False, 'Whether to write summary')

@@ -60,4 +60,11 @@ class AdvancedConfigs(object):
 
   # endregion : Attention Related
 
+  # region : Etching
+
+  force_to_use_pruner = Flag.boolean(
+    False, 'Used in neurobase.py -> dense_rn; model.py; kernel_base.py')
+
+  # endregion : Etching
+
 

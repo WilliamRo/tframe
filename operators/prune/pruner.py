@@ -6,6 +6,7 @@ from collections import OrderedDict
 import numpy as np
 
 import tframe as tfr
+from tframe.enums import SaveMode
 
 from tframe.operators.prune.etches.etch_kernel import EtchKernel
 
@@ -162,7 +163,7 @@ class Pruner(object):
            TRAINABLE NEURAL NETWORKS. 2018
     """
     # pruning should start from best model if save_model is on
-    if tfr.hub.save_model:
+    if tfr.hub.save_model and tfr.hub.save_mode == SaveMode.ON_RECORD:
       tfr.console.show_status('Loading best model to prune ...')
       self._model.agent.load()
 

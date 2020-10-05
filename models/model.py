@@ -216,7 +216,8 @@ class Model(object):
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
     # Initialize pruner if necessary
-    if any([hub.prune_on, hub.weights_mask_on, hub.etch_on]):
+    if any([hub.prune_on, hub.weights_mask_on, hub.etch_on,
+            hub.force_to_use_pruner]):
       # import here to prevent circular import (temporarily)
       from tframe.operators.prune.pruner import Pruner
       tfr.context.pruner = Pruner(self)

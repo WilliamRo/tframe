@@ -91,7 +91,8 @@ class KernelBase(object):
     if self.weight_dropout > 0:
       return linker.dropout(weights, self.weight_dropout, rescale=True)
     # If no mask is needed to be created, return weight variable directly
-    if not any([self.prune_is_on, self.being_etched]): return weights
+    if not any([self.prune_is_on, self.being_etched, hub.force_to_use_pruner]):
+      return weights
     # Register, context.pruner should be created in early model.build
     assert context.pruner is not None
     # Merged lottery logic into etch logic

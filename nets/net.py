@@ -177,7 +177,8 @@ class Net(Function):
       dense_total += dense_num
 
     # Check total params
-    # assert total_params == sum([np.prod(v.shape) for v in self.var_list])
+    if not (hub.prune_on or hub.etch_on):
+      assert total_params == sum([np.prod(v.shape) for v in self.var_list])
 
     if self.is_root:
       # Head

@@ -87,6 +87,8 @@ class ModelConfigs(object):
                                  'Should only be set in smooth_out ...')
   etch_warm_up_rounds = Flag.integer(
     0, 'Warm-up rounds for etching', is_key=None)
+  etch_warm_up_steps = Flag.integer(
+    0, 'Warm-up steps for etching', is_key=None)
   pruning_rate_fc = Flag.float(
     0.0, 'Pruning rate for fully connected layers', is_key=None)
   etch_rate_fc = Flag.float(

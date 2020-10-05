@@ -197,6 +197,7 @@ class Trainer(object):
 
     # Train with graph
     with self.session.as_default():
+      if self.th.save_model_in_the_beginning: self._save_model()
       rounds = self._outer_loop()
 
     # :: After training
@@ -351,8 +352,9 @@ class Trainer(object):
       if self._validate_model(rnd) and self._save_model_when_record_appears:
         if not self.is_online: assert np.isscalar(self.th.round_progress)
         self._save_model(inter_cut=True, progress=self.th.round_progress)
-      # Etch
-      if rnd > self.th.etch_warm_up_rounds: self._etch()
+      # Etch (i begins from 0, while rnd begins from 1)
+      if self.is_online and i >= self.th.etch_warm_up_steps: self._etch()
+      elif rnd > self.th.etch_warm_up_rounds: self._etch()
       # Probe
       self._run_probe()
       # Take notes
