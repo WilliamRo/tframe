@@ -62,7 +62,7 @@ class GDU(CellBase, Distributor, DynamicWeights):
 
   def _get_sog_activation(self, x, s, configs, scope, name):
     assert isinstance(configs, (list, tuple)) and len(configs) > 0
-    net_u = self.neurons(x, s, scope=scope)
+    net_u = self.dense_rn(x, s, scope=scope)
     u = linker.softmax_over_groups(net_u, configs, name)
     return u
 
@@ -78,7 +78,7 @@ class GDU(CellBase, Distributor, DynamicWeights):
     # - Calculate s_bar
     if self._use_reset_gate:
       s_bar = self.neurons_with_reset_gate(x, prev_s, self._reset_who)
-    else: s_bar = self.neurons(
+    else: s_bar = self.dense_rn(
       x, prev_s, activation=self._activation, scope='s_bar')
 
     # - Update state
