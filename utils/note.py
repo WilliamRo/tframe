@@ -160,3 +160,17 @@ class Note(object):
     self._check_dict(self._tensors, l)
 
   # endregion : Private Methods
+
+  # region : Plot Utils
+
+  @staticmethod
+  def filter(notes, sorted_by=None, descend=False, **configs):
+    # Filter
+    for k, v in configs.items(): notes = [n for n in notes if n.configs[k] == v]
+    # Sort if necessary
+    if sorted_by:
+      notes = sorted(notes, key=lambda n: n.configs[sorted_by], reverse=descend)
+    # Return
+    return notes
+
+  # endregion : Plot Utils

@@ -202,10 +202,13 @@ class Trainer(object):
 
     # :: After training
     self._end_training(rounds)
-    self._handle_notes()
 
     # Prune and save if necessary
     if self.th.prune_on: context.pruner.prune_and_save_lottery18()
+
+    # Notes should be exported at the end
+    self._handle_notes()
+
 
   # region : Before training
 
