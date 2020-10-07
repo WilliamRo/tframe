@@ -99,9 +99,10 @@ class Pruner(object):
     self._update_kernels(ops, feed_dict)
     # Show prune result
     curr_frac = self.weights_fraction
-    tfr.console.show_status(
-      'Weights fraction decreased from {:.2f} to {:.2f}'.format(
-        prev_frac, curr_frac), prompt)
+    if abs(curr_frac - prev_frac) > 0.006:
+      tfr.console.show_status(
+        'Weights fraction decreased from {:.2f} to {:.2f}'.format(
+          prev_frac, curr_frac), prompt)
 
   @staticmethod
   def extractor(*args):
@@ -140,7 +141,8 @@ class Pruner(object):
       assert isinstance(knl, EtchKernel)
       knl.weights_buffer = w_buffer
       knl.mask_buffer = m_buffer
-    tfr.console.show_status('Weights and mask buffers fetched.', prompt)
+    if not tfr.hub.etch_quietly:
+      tfr.console.show_status('Weights and mask buffers fetched.', prompt)
 
   def _update_kernels(self, ops, feed_dict):
     assert isinstance(ops, list) and isinstance(feed_dict, dict)

@@ -356,7 +356,8 @@ class Trainer(object):
         if not self.is_online: assert np.isscalar(self.th.round_progress)
         self._save_model(inter_cut=True, progress=self.th.round_progress)
       # Etch (i begins from 0, while rnd begins from 1)
-      if self.is_online and i >= self.th.etch_warm_up_steps: self._etch()
+      if self.is_online:
+        if i >= self.th.etch_warm_up_steps: self._etch()
       elif rnd > self.th.etch_warm_up_rounds: self._etch()
       # Probe
       self._run_probe()
@@ -475,6 +476,9 @@ class Trainer(object):
     if self.th.monitor_weight_grads:
       grads = loss_dict.pop(self.model.grads_slot)
       context.monitor.record_grads(grads)
+
+    # TODO: beta
+    if self.th.monitor_weight_flips: context.monitor.record_weights()
 
     # Record other tensors
     if self.model.general_tensor_slot.activated:
@@ -683,6 +687,9 @@ class Trainer(object):
     if self.th.prune_on and self.counter == 1:
       for k, v in val_dict.items():
         self.model.agent.put_down_criterion(k.name + '-0', v)
+    if self.th.etch_on:
+      self.model.agent.put_down_criterion(
+        'Weight Fraction', context.pruner.weights_fraction)
 
     # Validate test set if necessary TODO: BETA
     if self.th.validate_test_set:
@@ -758,7 +765,7 @@ class TrainerHub(Config):
   match_cycle = Flag.integer(0, 'Match cycle for RL')
 
   etch_per_round = Flag.integer(0, 'Etch per round')
-  etch_cycle = Flag.integer(0, 'Etch cycle')
+  etch_cycle = Flag.integer(0, 'Etch cycle', is_key=None)
 
   early_stop = Flag.boolean(False, 'Early stop option', is_key=None)
   record_gap = Flag.float(0.0, 'Minimum improvement')

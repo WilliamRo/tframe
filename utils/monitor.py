@@ -33,6 +33,10 @@ class Monitor(object):
     self._weight_grad_dict = collections.OrderedDict()
     self._grad_researchers = []
 
+    # TODO: beta
+    self._weight_flip_dict = collections.OrderedDict()
+    self._weight_flip_count = collections.OrderedDict()
+
   # region : Properties
 
   # region : Properties for general tensors
@@ -153,6 +157,9 @@ class Monitor(object):
       self._weights_list.append(w)
       self._weight_grad_dict[w] = Statistic(
         max_length=tfr.hub.stats_max_length, keep_abs_acc=True)
+      # TODO: BETA
+      if tfr.hub.monitor_weight_flips:
+        self._weight_flip_dict[w] = Statistic(max_length=2, keep_abs_acc=False)
 
   def register_loss(self, loss):
     """Currently tensors inside while_loop are not considered.
@@ -182,6 +189,35 @@ class Monitor(object):
     return self._weight_grad_dict[weights]
 
   # endregion : Methods for monitoring weight gradients
+
+  # region : Methods for monitoring weight s
+
+  def record_weights(self):
+    """This method will be only called in train.update_model.
+       Weights statistics will be recorded.
+    """
+    weights = tfr.context.trainer.model.agent.session.run(self._weights_list)
+    for w, current_w in zip(self._weights_list, weights):
+      s = self._weight_flip_dict[w]
+      assert isinstance(s, Statistic)
+      last_w = s.last_value
+      s.record(current_w)
+      if last_w is None: continue
+      # Calculate flip matrix and update flip matrices
+      flips = current_w * last_w < 0
+      alpha, beta = tfr.hub.flip_alpha, tfr.hub.flip_beta
+      assert 0 <= alpha <=1 and 0 <= beta <=1
+      self._weight_flip_count[w] = (
+          beta * self.get_weight_flip_count(w) + alpha * flips)
+
+  def get_weight_flip_count(self, weights):
+    assert weights in self._weight_flip_dict
+    if weights not in self._weight_flip_count:
+      count = np.zeros(shape=weights.shape.as_list(), dtype=int)
+      self._weight_flip_count[weights] = count
+    return self._weight_flip_count[weights]
+
+  # endregion : Methods for monitoring weights
 
   # endregion : Public Methods
 

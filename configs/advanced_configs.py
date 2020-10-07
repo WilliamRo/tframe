@@ -64,6 +64,13 @@ class AdvancedConfigs(object):
 
   force_to_use_pruner = Flag.boolean(
     False, 'Used in neurobase.py -> dense_rn; model.py; kernel_base.py')
+  etch_quietly = Flag.boolean(True, 'Whether to etch quietly')
+  max_flip = Flag.float(None, 'Max flip momentum', is_key=None)
+  init_flip = Flag.float(None, 'Initial flips', is_key=None)
+  flip_beta = Flag.float(1.0, 'Flip momentum decay coef', is_key=None)
+  flip_alpha = Flag.float(1.0, 'Flip momentum add coef', is_key=None)
+  flip_irreversible = Flag.boolean(
+    True, 'Whether to forbid regrowth in flip prune', is_key=None)
 
   # endregion : Etching
 
