@@ -631,6 +631,8 @@ class Trainer(object):
     scalars = OrderedDict()
     scalars['Loss'] = self.batch_loss_stat.running_average
     self.metrics_manager.update_scalar_dict(scalars)
+    if self.th.etch_on:
+      scalars['Weight Fraction'] = context.pruner.weights_fraction
 
     # - Tensors
     tensors = self._get_tensors_to_export()
