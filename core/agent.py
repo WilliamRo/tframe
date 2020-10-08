@@ -204,6 +204,12 @@ class Agent(object):
     self._model.launched = True
     self.take_notes('Model launched')
 
+    # Force re-initialize all weights in pruner (to examine rewind op)
+    if hub.force_initialize:
+      self._session.run([w.initializer for w in context.pruner.weights_list])
+      console.show_status(
+        'All weights registered to Pruner has been re-initialized.')
+
     # Handle structure detail here
     self._model.handle_structure_detail()
 

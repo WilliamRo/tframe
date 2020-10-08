@@ -28,6 +28,10 @@ class Pruner(object):
   # region : Properties
 
   @property
+  def weights_list(self):
+    return [k.weights for k in self._dense_kernels]
+
+  @property
   def th(self): return tfr.hub
 
   @property
