@@ -168,6 +168,7 @@ class Pruner(object):
        [1] Frankle, etc. THE LOTTERY TICKET HYPOTHESIS: FINDING SPARSE,
            TRAINABLE NEURAL NETWORKS. 2018
     """
+    if tfr.hub.forbid_lottery_saving: return
     # pruning should start from best model if save_model is on
     if tfr.hub.save_model and tfr.hub.save_mode == SaveMode.ON_RECORD:
       tfr.console.show_status('Loading best model to prune ...')

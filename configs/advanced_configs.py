@@ -74,6 +74,8 @@ class AdvancedConfigs(object):
 
   force_initialize = Flag.boolean(
     False, 'This flag is used for examine lottery rewind', is_key=None)
+  forbid_lottery_saving = Flag.boolean(
+    False, 'This flag is also used for examine lottery rewind', is_key=None)
 
   # endregion : Etching
 

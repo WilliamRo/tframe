@@ -24,7 +24,8 @@ class DataConfigs(object):
   bits = Flag.integer(
     2, 'Can be used in k-bit temporal order problem', is_key=None)
 
-  test_directly = Flag.boolean(False, 'Whether to use validation set')
+  test_directly = Flag.boolean(
+    False, 'Whether to use validation set', is_key=None)
   num_words = Flag.integer(0, 'Words number in data set like IMDB', is_key=None)
   max_len = Flag.integer(None, 'Max sequence length. e.g. max_len in IMDB seqs',
                          is_key=None)
