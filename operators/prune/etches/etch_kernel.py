@@ -81,6 +81,8 @@ class EtchKernel(MaskedWeights):
       from tframe.operators.prune.etches.cola import Cola as Kernel
     elif key == 'lottery':
       from tframe.operators.prune.etches.lottery import Lottery as Kernel
+    elif key == 'eraser':
+      from tframe.operators.prune.etches.eraser import Eraser as Kernel
     else: raise ValueError('!! Unknown etch Kernel `{}`'.format(key))
 
     return lambda weights: Kernel(weights, **configs)
