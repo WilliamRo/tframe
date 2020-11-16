@@ -2,6 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+# Ignore FutureWarnings before import tensorflow
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 from . import pedia
 from .enums import *
 
