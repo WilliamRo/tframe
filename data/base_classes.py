@@ -247,19 +247,7 @@ class DataAgent(object):
 
   @staticmethod
   def _check_path(*paths, create_path=True):
-    assert len(paths) > 0
-    if len(paths) == 1:
-      paths = DataAgent._split_path(paths[0])
-      if paths[0] in ['.', '']: paths.pop(0)
-      if paths[-1] == '': paths.pop(-1)
-    path = ""
-    for p in paths:
-      if len(path) > 0 and path[-1] == ':': path = '{}/{}'.format(path, p)
-      else: path = os.path.join(path, p)
-      if not os.path.exists(path) and create_path:
-        os.mkdir(path)
-    # Return path
-    return path
+    return local.check_path(*paths, create_path=create_path)
 
   @staticmethod
   def _show_data_sets_info(data_sets):
