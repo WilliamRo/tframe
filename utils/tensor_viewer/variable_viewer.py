@@ -11,6 +11,7 @@ if matplotlib.get_backend() != 'module://backend_interagg':
   matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import tkinter as tk
 from tkinter import ttk
@@ -146,6 +147,8 @@ class VariableViewer(Frame):
       else: self._show_image(variable, target, key)
 
     # Tight layout
+    # TODO: This line may cause the overlap of colorbar and the corresponding
+    #  images
     self.figure.tight_layout()
 
     # Draw update on canvas
@@ -192,7 +195,8 @@ class VariableViewer(Frame):
     title += ', min={:.2f}, max={:.2f}'.format(np.min(image), np.max(image))
     if not self.for_export:
       self.subplot.set_title(title)
-      self.subplot.set_aspect('equal', adjustable='box-forced', anchor='C')
+      # self.subplot.set_aspect('equal', adjustable='datalim', anchor='C')
+      self.subplot.set_aspect('auto', anchor='C')
     if self.for_export:
       self.subplot.set_aspect('auto')
       # self.subplot.set_xlabel('time step')
@@ -276,7 +280,11 @@ class VariableViewer(Frame):
       im = self.subplot.imshow(variable, **kwargs)
       # Create color bar
       # if self._color_bar is not None: self._color_bar.remove()
-      self._color_bar = self.figure.colorbar(im, ax=self.subplot)
+      # self._color_bar = self.figure.colorbar(im, ax=self.subplot)
+      divider = make_axes_locatable(self.subplot)
+      cax2 = divider.append_axes('right', size='5%', pad=0.05)
+      self._color_bar = self.figure.colorbar(im, cax=cax2)
+
     return im
 
   def _annotate_heat_map(self, im, data, valfmt='{x:.2f}',
