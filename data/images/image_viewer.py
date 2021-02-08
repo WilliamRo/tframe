@@ -117,7 +117,9 @@ class ImageViewer(object):
       self._set_cursor(0)
       # For DataSet like MNIST and CIFAR-XXX
       if self.data_set.targets is not None:
-        if len(self.data_set.targets.shape) == 2:
+        if len(self.data_set.targets.shape) == 1:
+          self.labels = self.data_set.targets
+        elif len(self.data_set.targets.shape) == 2:
           self.labels = misc.convert_to_dense_labels(
             self.data_set.targets).flatten()
       # Consider DataSets in image segmentation tasks

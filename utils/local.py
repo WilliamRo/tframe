@@ -9,7 +9,9 @@ import six
 import tensorflow as tf
 
 import tframe as tfr
+
 from . import console
+from fnmatch import fnmatch
 
 
 def check_path(*paths, create_path=True, is_file_path=False):
@@ -206,7 +208,19 @@ def re_find_single(pattern, file_name=None):
   return matched[0]
 
 
-
-
+def walk(root_path, type_filter=None, pattern=None):
+  """Find all required contents under the given path"""
+  # Sanity check
+  assert os.path.exists(root_path)
+  paths = [os.path.join(root_path, p) for p in os.listdir(root_path)]
+  # Filter path
+  if type_filter in ('file',): type_filter = os.path.isfile
+  elif type_filter in ('folder', 'dir'): type_filter = os.path.isdir
+  else: assert type_filter is None
+  if callable(type_filter): paths = list(filter(type_filter, paths))
+  # Filter pattern
+  if pattern is not None:
+    paths = list(filter(lambda p: fnmatch(p, pattern), paths))
+  return paths
 
 

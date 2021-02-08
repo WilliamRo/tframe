@@ -9,7 +9,7 @@ import numpy as np
 
 def gan_grid_plot(samples, show=False, h=None, w=None,
                      wspace=0.03, hspace=0.03):
-  # Check samples' shape to make sure they can be shown in plt
+  # Check samples' shape to make sure they can be shown in pyplt
   if samples.shape[-1] == 1:
     samples = samples.reshape(samples.shape[:-1])
 

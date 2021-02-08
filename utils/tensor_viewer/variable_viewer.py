@@ -225,7 +225,7 @@ class VariableViewer(Frame):
     self.figure.set_facecolor('white')
     self.subplot = self.figure.add_subplot(111, autoscale_on=True)
     self.ax2 = self.subplot.twinx()
-    # plt.sca(self.subplot)
+    # pyplt.sca(self.subplot)
     # ... (modify style)
     self.figure_canvas = FigureCanvasTkAgg(self.figure, self)
     try: self.figure_canvas.show()
