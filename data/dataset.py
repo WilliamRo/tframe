@@ -307,10 +307,14 @@ class DataSet(TFRData):
   # region : Public Methods
 
   def split(self, *sizes, names=None, over_classes=False, random=False):
-    """If over_classes is True, sizes are for each group"""
+    """If over_classes is True, sizes are for each group, and this works only
+       for uniform dataset.
+    """
     # Sanity check
     if len(sizes) == 0: raise ValueError('!! split sizes not specified')
     elif len(sizes) == 1 and isinstance(sizes[0], (list, tuple)):
+      # in case this method is used like split([-1, 100, 100])
+      #   instead of split(-1, 100, 100)
       sizes = sizes[0]
     if names is not None:
       if not isinstance(names, (tuple, list)):
@@ -375,6 +379,7 @@ class DataSet(TFRData):
       cursor += size
 
     return data_sets
+
 
   def refresh_groups(self, target_key='targets'):
     # Sanity check

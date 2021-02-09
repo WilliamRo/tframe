@@ -22,8 +22,10 @@ class IrregularImageSet(DataSet):
   @DataSet.features.setter
   def features(self, val):
     if val is not None:
-      if isinstance(val, list): self.data_dict[self.FEATURES] = val
-      else: raise TypeError('!! Unsupported feature type {}'.format(type(val)))
+      if isinstance(val, (list, np.ndarray)):
+        self.data_dict[self.FEATURES] = val
+      else:
+        raise TypeError('!! Unsupported feature type {}'.format(type(val)))
 
   @property
   def representative(self):

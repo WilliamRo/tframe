@@ -41,6 +41,7 @@ class Config(
     './records', 'The root directory where the records should be put',
     name='job-dir')
   data_dir = Flag.string('', 'The data directory')
+  raw_data_dir = Flag.string(None, 'Raw data directory')
 
   dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=None)
   tb_port = Flag.integer(6006, 'Tensorboard port number')
