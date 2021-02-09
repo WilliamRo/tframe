@@ -27,6 +27,8 @@ class ShortCut(Layer):
   @property
   def transformation_str_list(self):
     result = []
+    if self._transforms is None:
+      return [f.output_id_str for f in self.definitions]
     for f, t_list in zip(self.definitions, self._transforms):
       result.append(
         '->'.join([f.output_id_str] + [t.group_name for t in t_list]))
