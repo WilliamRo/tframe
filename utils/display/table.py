@@ -17,7 +17,7 @@ class Table(object):
     self._buffer = []
 
   @property
-  def content(self): return '\n' + '\n'.join(self._buffer)
+  def content(self): return '\n'.join(self._buffer)
 
   @property
   def tab(self): return ' ' * self._tab
@@ -25,6 +25,8 @@ class Table(object):
   @property
   def hline_width(self):
     return sum(self._widths) + self._tab * (self.columns - 1) + 2 * self._margin
+
+  def __str__(self): return self.content
 
   def print(self, string):
     if self._buffered: self._buffer.append(string)

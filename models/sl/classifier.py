@@ -14,6 +14,7 @@ from tframe.core import TensorSlot, Group
 from tframe.layers import Activation
 from tframe.models.sl.predictor import Predictor
 from tframe.utils import console
+from tframe.utils.maths.confusion_matrix import ConfusionMatrix
 from tframe import DataSet
 from tframe.data.base_classes import TFRData
 import tframe.utils.misc as misc
@@ -33,12 +34,14 @@ class Classifier(Predictor):
     # self._evaluation_group = Group(self, self._metric, self._probabilities,
     #                                name='evaluation group')
 
+
   @with_graph
   def build(self, optimizer=None, loss='cross_entropy', metric='accuracy',
             batch_metric=None, eval_metric=None, **kwargs):
     Predictor.build(
       self, optimizer=optimizer, loss=loss, metric=metric,
       batch_metric=batch_metric, eval_metric=eval_metric, **kwargs)
+
 
   def _build(self, optimizer=None, metric=None, **kwargs):
     # TODO: ... do some compromise
@@ -56,9 +59,26 @@ class Classifier(Predictor):
     # Plug tensor into probabilities slot
     self._probabilities.plug(self.outputs.tensor)
 
+
+  @with_graph
+  def classify(self, data, batch_size=None, extractor=None,
+               return_probs=False, verbose=False):
+    probs = self.evaluate(
+      self._probabilities.tensor, data, batch_size, extractor, verbose=verbose)
+    if return_probs: return probs
+
+    # TODO: make clear data shape here and add comments
+    if self.input_type is InputTypes.RNN_BATCH:
+      preds = [np.argmax(p, axis=-1) for p in probs]
+    else: preds = np.argmax(probs, axis=-1)
+
+    return preds
+
+
   @with_graph
   def evaluate_model(self, data, batch_size=None, extractor=None,
                      export_false=False, **kwargs):
+    """This method is a mess."""
     # If not necessary, use Predictor's evaluate_model method
     metric_is_accuracy = self.eval_metric.name.lower() == 'accuracy'
     if not export_false or not metric_is_accuracy:
@@ -80,6 +100,7 @@ class Classifier(Predictor):
     # Show accuracy
     console.supplement('Accuracy on {} is {:.3f}%'.format(data.name, accuracy))
 
+    # TODO: the code block below should be removed
     # export_false option is valid for images only
     if export_false and accuracy < 100.0:
       assert self.input_type is InputTypes.BATCH
@@ -110,16 +131,63 @@ class Classifier(Predictor):
     # Return accuracy
     return accuracy
 
+
   @with_graph
-  def classify(self, data, batch_size=None, extractor=None,
-               return_probs=False, verbose=False):
-    probs = self.evaluate(
-      self._probabilities.tensor, data, batch_size, extractor, verbose=verbose)
-    if return_probs: return probs
+  def evaluate_pro(self, data_set, batch_size=None, verbose=False, **kwargs):
+    """Evaluate model and give results calculated based on TP, TN, FP, and FN.
+    'extractor' is not considered cuz the developer forgot what is this used
+    for.
+    :param data_set: an instance of dataset contains at least features
+    :param batch_size: set this value if your (G)RAM is not big enough to
+                       handle the whole dataset
+    :param verbose: whether to show status or progress bar stuff
+    :param kwargs: other options which will be recognized by PyCharm
+    """
+    # Get options
+    show_confusion_matrix = kwargs.get('show_confusion_matrix', False)
+    show_class_detail = kwargs.get('show_class_detail', False)
+    export_false = kwargs.get('export_false', False)
+    top_k = kwargs.get('export_top_k', 3)
 
-    if self.input_type is InputTypes.RNN_BATCH:
-      preds = [np.argmax(p, axis=-1) for p in probs]
-    else: preds = np.argmax(probs, axis=-1)
+    # Check data_set before get model prediction
+    assert self.input_type is InputTypes.BATCH
+    assert isinstance(data_set, DataSet)
+    assert data_set.features is not None and data_set.targets is not None
 
-    return preds
+    # -------------------------------------------------------------------------
+    #  Calculate predicted classes and corresponding probabilities
+    # -------------------------------------------------------------------------
+    probs = self.classify(
+      data_set, batch_size, return_probs=True, verbose=verbose)
+    # This provides necessary information for image viewer presentation
+    # i.e., the sorted probabilities for each class
+    probs_sorted = np.fliplr(np.sort(probs, axis=-1))
+    class_sorted = np.fliplr(np.argsort(probs, axis=-1))
+    preds = class_sorted[:, 0]
+    truths = np.ravel(data_set.dense_labels)
+
+    # Produce confusion matrix
+    cm = ConfusionMatrix(
+      num_classes=data_set.num_classes,
+      class_names=data_set.properties.get(pedia.classes, None))
+    cm.fill(preds, truths)
+
+    # Print evaluation results
+    if show_confusion_matrix:
+      console.show_info('Confusion Matrix:')
+      console.write_line(cm.matrix_table(cell_width=9))
+    console.show_info('Evaluation Result:')
+    console.write_line(cm.make_table(
+      decimal=4, class_details=show_class_detail))
+
+    # Visualize false set if specified
+    if export_false:
+      indices = np.argwhere(preds != truths).flatten()
+      false_set = data_set[indices]
+      false_set.properties[pedia.predictions] = preds[indices]
+      false_set.properties[pedia.top_k_label] = class_sorted[indices, :top_k]
+      false_set.properties[pedia.top_k_prob] = probs_sorted[indices, :top_k]
+      return cm, false_set
+    else: return cm
+
 

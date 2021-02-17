@@ -28,6 +28,9 @@ class TrainerConfigs(object):
     False, 'Whether to evaluate validation set after training')
   evaluate_test_set = Flag.boolean(
     False, 'Whether to evaluate test set after training')
+  early_stop_metric = Flag.string(None, 'Early-stop metric', is_key=None)
+  batch_metric = Flag.string(None, 'Batch metric during training')
+  eval_metric = Flag.string(None, 'Metric for evaluation')
 
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
   val_batch_size = Flag.integer(None, 'Batch size in batch validation')
