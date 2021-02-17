@@ -72,3 +72,24 @@ class AveragePooling2D(Layer, AveragePooling2D_):
   def __call__(self, *args, **kwargs):
     return Layer.__call__(self, *args, **kwargs)
 
+
+class GlobalAveragePooling2D(Layer):
+
+  full_name = 'globalavgpool2d'
+  abbreviation = 'gap2d'
+
+  @init_with_graph
+  def __init__(self, data_format='channels_last', **kwargs):
+    self._data_format = data_format
+    self._kwargs = kwargs
+
+  @single_input
+  def _link(self, input_, **kwargs):
+    assert isinstance(input_, tf.Tensor)
+    shape = input_.shape.as_list()
+    assert len(shape) == 4
+    output = tf.layers.average_pooling2d(
+      input_, pool_size=shape[1:3], strides=(1, 1),
+      data_format=self._data_format)
+    return output
+
