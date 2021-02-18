@@ -73,10 +73,10 @@ class ConfusionMatrix(object):
       [total] * self.num_classes))
 
     # Calculate performance measures for each class
-    self.precisions = self.TPs / (self.TPs + self.FPs)
-    self.recalls = self.TPs / (self.TPs + self.FNs)
-    self.F1s = 2 * self.precisions * self.recalls / (
-        self.precisions + self.recalls)
+    self.precisions = self.TPs / np.maximum(self.TPs + self.FPs, 1)
+    self.recalls = self.TPs / np.maximum(self.TPs + self.FNs, 1)
+    self.F1s = 2 * self.precisions * self.recalls / np.maximum(
+        self.precisions + self.recalls, 1)
 
     # Calculate overall performance measures
     values = (self.precisions, self.recalls, self.F1s)
