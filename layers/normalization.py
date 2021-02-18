@@ -56,6 +56,19 @@ class BatchNormalization(Layer):
        scope"""
     # region : Get input shape and validation check
 
+    if True:
+      is_training = tf.get_collection(pedia.is_training)[0]
+      output = tf.layers.batch_normalization(
+        input_, axis=self.axis, momentum=self.momentum, epsilon=self.epsilon,
+        center=self.center, scale=self.scale,
+        beta_initializer=self.beta_initializer,
+        gamma_initializer=self.gamma_initializer,
+        moving_mean_initializer=self.moving_mean_initializer,
+        moving_variance_initializer=self.moving_var_initializer,
+        training=is_training, reuse=self.linked)
+      return output
+
+    # TODO(william): try to fixed the code below
     assert isinstance(input_, tf.Tensor)
     input_shape = input_.get_shape().as_list()
     input_shape = tensor_shape.TensorShape(input_shape)
