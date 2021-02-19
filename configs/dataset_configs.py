@@ -10,6 +10,8 @@ class DataConfigs(object):
   train_size = Flag.integer(0, 'Size of training set')
   val_size = Flag.integer(0, 'Size of validation set')
   test_size = Flag.integer(0, 'Size of test set')
+  val_config = Flag.string(None, 'Config string for val_set', is_key=None)
+  test_config = Flag.string(None, 'Config string for test_set', is_key=None)
   sequence_length = Flag.integer(0, 'Sequence length', is_key=None)
   fixed_length = Flag.boolean(True, 'Whether to fix sequence length.'
                                     'used in AP, etc', is_key=None)
