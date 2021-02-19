@@ -39,6 +39,7 @@ class Table(object):
   def dhline(self): self.print('=' * self.hline_width)
 
   def specify_format(self, *fmts, align=None):
+    if len(fmts) == 0: fmts = [None] * self.columns
     assert len(fmts) == self.columns
     self._col_fmt = ['{}' if f in (None, '') else f for f in fmts]
     if align is not None:
