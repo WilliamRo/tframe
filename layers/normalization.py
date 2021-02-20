@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from tensorflow.python.ops import init_ops
 
+import tframe as tfr
 from tframe.operators.apis.neurobase import NeuroBase
 
 from .layer import Layer
@@ -36,7 +37,8 @@ class BatchNormalization(Layer):
                beta_initializer=init_ops.zeros_initializer(),
                gamma_initializer=init_ops.ones_initializer(),
                moving_mean_initializer=init_ops.zeros_initializer(),
-               moving_var_initializer=init_ops.ones_initializer()):
+               moving_var_initializer=init_ops.ones_initializer(),
+               use_tf_bn=False):
     self.axis = axis
     self.momentum = momentum
     self.epsilon = epsilon
@@ -50,26 +52,30 @@ class BatchNormalization(Layer):
     self.beta = None
     self.gamma = None
 
+    self._use_tf_bn = use_tf_bn
+
+
   @single_input
-  def _link(self, input_, **kwargs):
+  def _link(self, input_:tf.Tensor, **kwargs):
     """Since fullname is defined, linking will be done inside a variable 
        scope"""
+
+    # Get is_training placeholder
+    assert len(tf.get_collection(pedia.is_training)) == 1
+    is_training = tf.get_collection(pedia.is_training)[0]
+
+    # Use tensorflow batch normalization layer if required
+    if self._use_tf_bn: return tf.layers.batch_normalization(
+      input_, axis=self.axis, momentum=self.momentum, epsilon=self.epsilon,
+      center=self.center, scale=self.scale,
+      beta_initializer=self.beta_initializer,
+      gamma_initializer=self.gamma_initializer,
+      moving_mean_initializer=self.moving_mean_initializer,
+      moving_variance_initializer=self.moving_var_initializer,
+      training=is_training, reuse=self.linked)
+
     # region : Get input shape and validation check
 
-    if True:
-      is_training = tf.get_collection(pedia.is_training)[0]
-      output = tf.layers.batch_normalization(
-        input_, axis=self.axis, momentum=self.momentum, epsilon=self.epsilon,
-        center=self.center, scale=self.scale,
-        beta_initializer=self.beta_initializer,
-        gamma_initializer=self.gamma_initializer,
-        moving_mean_initializer=self.moving_mean_initializer,
-        moving_variance_initializer=self.moving_var_initializer,
-        training=is_training, reuse=self.linked)
-      return output
-
-    # TODO(william): try to fixed the code below
-    assert isinstance(input_, tf.Tensor)
     input_shape = input_.get_shape().as_list()
     input_shape = tensor_shape.TensorShape(input_shape)
     if not input_shape.ndims:
@@ -95,8 +101,6 @@ class BatchNormalization(Layer):
 
     # endregion : Get input shape and validation check
 
-    is_training = tf.get_collection(pedia.is_training)[0]
-
     # Get parameters shape (only support most common use-case currently)
     if len(self.axis) != 1:
       raise ValueError('!! Single axis batch norm is supported only currently')
@@ -107,35 +111,44 @@ class BatchNormalization(Layer):
                       if i not in self.axis]
     batch_mean, batch_variance = tf.nn.moments(input_, reduction_axes)
 
-    # Create an ExponentialMovingAverage object
-    ema = tf.train.ExponentialMovingAverage(decay=self.momentum)
+    # If this layer has been linked before, reuse the variables
+    if self.linked: tf.get_variable_scope().reuse_variables()
 
-    # Create the shadow variables and add an ops to maintain moving averages
-    # for mean and variance
-    ema_apply_op = ema.apply([batch_mean, batch_variance])
+    def _get_variable(name, initializer, trainable=True):
+      return tf.get_variable(
+        name, param_shape, tfr.hub.dtype, initializer, trainable=trainable)
+
+    # Create un-trainable variables for moving mean and var
+    moving_mean = _get_variable(
+      'moving_mean', self.moving_mean_initializer, False)
+    moving_var = _get_variable(
+      'moving_var', self.moving_var_initializer, False)
+
+    # Create update op for moving_(mean|var)
+    update_moving_average = lambda ma, v: tf.assign(
+      ma, self.momentum * ma + (1 - self.momentum) * v)
+
+    # DO NOT CREATE 'update_ops' HERE in tensorflow 1.14.0
+
     def mean_var_with_update():
-      with tf.control_dependencies([ema_apply_op]):
+      # IMPORTANT NOTE:
+      #   update_ops should be created inside tf.cond, otherwise this op will
+      #   be executed unconditionally !!!!!!!
+      update_ops = [update_moving_average(moving_mean, batch_mean),
+                    update_moving_average(moving_var, batch_variance)]
+      sentry = tf.assert_equal(
+        is_training, True, message='Update moving average while not training')
+      with tf.control_dependencies(update_ops + [sentry]):
         return tf.identity(batch_mean), tf.identity(batch_variance)
 
+    # Get mean variance according to is_training
     mean, variance = tf.cond(
-      is_training, mean_var_with_update,
-      lambda: (ema.average(batch_mean), ema.average(batch_variance)))
-
-    # If this layer has been linked before, reuse the variables
-    if self.center and self.beta is not None or (
-          self.scale and self.gamma is not None):
-      tf.get_variable_scope().reuse_variables()
+      is_training, mean_var_with_update, lambda: (moving_mean, moving_var))
 
     # Get variable
-    if self.center:
-      self.beta = tf.get_variable(
-        'beta', shape=param_shape, dtype=tf.float32,
-        initializer=self.beta_initializer , trainable=True)
+    if self.center: self.beta = _get_variable('beta', self.beta_initializer)
 
-    if self.scale:
-      self.gamma = tf.get_variable(
-        'gamma', shape=param_shape, dtype=tf.float32,
-        initializer=self.gamma_initializer, trainable=True)
+    if self.scale: self.gamma = _get_variable('gamma', self.gamma_initializer)
 
     # Output
     output = tf.nn.batch_normalization(
