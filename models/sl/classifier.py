@@ -175,7 +175,7 @@ class Classifier(Predictor):
     # Print evaluation results
     if show_confusion_matrix:
       console.show_info('Confusion Matrix:')
-      console.write_line(cm.matrix_table(cell_width=9))
+      console.write_line(cm.matrix_table(kwargs.get('cell_width', None)))
     console.show_info('Evaluation Result:')
     console.write_line(cm.make_table(
       decimal=4, class_details=show_class_detail))
