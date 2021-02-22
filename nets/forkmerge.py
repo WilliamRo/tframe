@@ -43,7 +43,7 @@ class ForkMerge(Net):
       _rows, num, dense_num = child.structure_detail
       # Add indentation to each layer
       for i, row in enumerate(_rows):
-        prefix = ' ' * 2 if i > 0 else '=>'
+        prefix = ' ' * 3 if i > 0 else '=> '
         _rows[i][0] = prefix + row[0]
       # Accumulate stuff
       rows += _rows
@@ -62,9 +62,9 @@ class ForkMerge(Net):
 
 
   def structure_string(self, detail=True, scale=True):
-    return ', '.join(
+    return '{}({})'.format(self.name, ', '.join(
       [child.structure_string(detail, scale) for child in self.children] +
-      [self.merge_layer.get_layer_string(False, False)])
+      [self.merge_layer.get_layer_string(False, False)]))
 
 
   def add_to_branch(self, branch_key, layer):
