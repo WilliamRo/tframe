@@ -64,6 +64,11 @@ class DataConfigs(object):
     None, 'Length of sub-sequence used in seq_set.get_round_len or '
           'gen_rnn_batches', is_key=None)
 
+  # Data augmentation options
+  augmentation = Flag.boolean(False, 'Whether to augment data', is_key=None)
+  aug_config = Flag.string(
+    None, 'Configuration for data augmentation', is_key=None)
+
   @property
   def sample_among_sequences(self):
     if self.sub_seq_len in [None, 0]: return False
