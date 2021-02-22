@@ -48,15 +48,17 @@ class Layer(Function):
     return ''
 
   def get_layer_string(self, scale, full_name=False):
-    result = (self.abbreviation if not full_name
-              else self.output_id_str + self.full_name)
+    result = self.abbreviation if not full_name else self.full_name
     if scale: result += self.structure_tail
-    return result
+    output_id_str = ('' if self.output_id_str == ''
+                     else '->' + self.output_id_str)
+    return result + output_id_str
 
   # Override
   def set_output_id(self):
     from tframe import context
-    self.output_id = context.get_next_output_id()
+    if self.output_id is None:
+      self.output_id = context.get_next_output_id()
 
 
 def single_input(_link):

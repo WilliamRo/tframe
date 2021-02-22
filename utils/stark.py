@@ -42,4 +42,11 @@ def _get_params_num_single(variable, consider_prune=False):
   if consider_prune: return size, size
   else: return size
 
+def get_num_string(num, dense_num):
+  if num == 0: num_str = ''
+  elif tfr.hub.prune_on or tfr.hub.etch_on:
+    num_str = '{} ({:.1f}%)'.format(num, 100.0 * num / dense_num)
+  else: num_str = str(num)
+  return num_str
+
 # endregion : Pruner-related

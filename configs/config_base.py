@@ -10,25 +10,27 @@ import tframe as tfr
 from tframe import pedia
 
 from .flag import Flag
-from .model_configs import ModelConfigs
-from .trainer_configs import TrainerConfigs
-from .note_configs import NoteConfigs
-from .rnn_configs import RNNConfigs
-from .monitor_configs import MonitorConfigs
+from .advanced_configs import AdvancedConfigs
 from .cloud_configs import CloudConfigs
 from .dataset_configs import DataConfigs
-from .advanced_configs import AdvancedConfigs
+from .display_configs import DisplayConfig
+from .model_configs import ModelConfigs
+from .monitor_configs import MonitorConfigs
+from .note_configs import NoteConfigs
+from .rnn_configs import RNNConfigs
+from .trainer_configs import TrainerConfigs
 
 
 class Config(
-  ModelConfigs,
-  TrainerConfigs,
-  NoteConfigs,
-  RNNConfigs,
-  MonitorConfigs,
+  AdvancedConfigs,
   CloudConfigs,
   DataConfigs,
-  AdvancedConfigs,
+  DisplayConfig,
+  ModelConfigs,
+  MonitorConfigs,
+  NoteConfigs,
+  TrainerConfigs,
+  RNNConfigs,
 ):
   registered = False
 

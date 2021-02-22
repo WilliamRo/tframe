@@ -6,19 +6,18 @@ import numpy as np
 import tensorflow as tf
 
 from tframe import console
-from tframe.core import Function
 from tframe import context
+from tframe import hub
+from tframe import pedia
+from tframe.core import Function
+from tframe.core.decorators import with_graph_if_has
+from tframe.core.slots import OutputSlot
 from tframe.layers.layer import Layer
 from tframe.layers import Input
 from tframe.utils import shape_string
-import tframe.utils.format_string as fs
-from tframe.utils.string_tools import merger
-
-from tframe import pedia
-from tframe import hub
 from tframe.utils import stark
-from tframe.core.decorators import with_graph_if_has
-from tframe.core.slots import OutputSlot
+from tframe.utils.display.table import Table
+from tframe.utils.string_tools import merger
 
 
 class Net(Function):
@@ -127,47 +126,35 @@ class Net(Function):
     """A list of structure strings with format
        Layer (type)           Output Shape           Params #
     Currently only work for sequential model
-    TODO: refactoring is needed
+    TODO: refactoring is badly needed
     """
     from tframe.nets.rnet import RNet
     from tframe.nets.customized_net import CustomizedNet
-    widths = [33, 24, 20]
+    widths = hub.structure_detail_widths
     indent = 3
 
+    # rows is a list of lists of 3 cols
     rows = []
-    add_to_rows = lambda cols: rows.append(fs.table_row(cols, widths))
+    # TODO: the line below should be removed is things are settled down
+    # add_to_rows = lambda cols: rows.append(fs.table_row(cols, widths))
+
     # Dense total will be used when model weights are pruned
     total_params, dense_total = 0, 0
     if self.is_root:
-      add_to_rows(['input', shape_string(self.input_.sample_shape), ''])
-
-    def get_num_string(num, dense_num):
-      if num == 0: num_str = ''
-      elif hub.prune_on or hub.etch_on:
-        num_str = '{} ({:.1f}%)'.format(num, 100.0 * num / dense_num)
-      else: num_str = str(num)
-      return num_str
+      rows.append(['input', shape_string(self.input_.sample_shape), ''])
 
     for child in self.children:
       if isinstance(child, Layer):
-        # Try to find variable in child
-        # TODO: to be fixed
-        # variables = [v for v in self.var_list if child.group_name in v.name]
-        variables = [
-          v for v in self.var_list
-          if child.group_name == v.name.split('/')[self._level + 1]]
-        num, dense_num = stark.get_params_num(variables, consider_prune=True)
-        # Generate a row
-        cols = [self._get_layer_string(child, True, True),
-                child.output_shape_str, get_num_string(num, dense_num)]
-        add_to_rows(cols)
+        _row, num, dense_num = self._get_layer_detail(child)
+        rows.append(_row)
       elif isinstance(child, (RNet, CustomizedNet)):
         num, dense_num = child.params_num
         cols = [child.structure_string(), child.output_shape_str,
-                get_num_string(num, dense_num)]
-        add_to_rows(cols)
+                stark.get_num_string(num, dense_num)]
+        rows.append(cols)
       elif isinstance(child, Net):
         _rows, num, dense_num = child.structure_detail
+        # TODO
         rows += _rows
       else:
         raise TypeError('!! unknown child type {}'.format(type(child)))
@@ -181,27 +168,32 @@ class Net(Function):
       assert total_params == sum([np.prod(v.shape) for v in self.var_list])
 
     if self.is_root:
-      # Head
-      detail = ''
-      add_with_indent = lambda d, c: d + ' ' * indent + c + '\n'
-      width = sum(widths)
-      detail = add_with_indent(detail, '-' * width)
-      detail = add_with_indent(
-        detail, fs.table_row(['Layers', 'Output Shape', 'Params #'], widths))
-      detail = add_with_indent(detail, '=' * width)
-      # Content
+      headers = ['Layers', 'Output Shape', 'Params #']
+      # Decide cell widths
+      widths = [max(len(h), max([len(r[i]) for r in rows]))
+                for i, h in enumerate(headers)]
+      # Put all these stuff into a table
+      t = Table(*widths, margin=0, tab=9, buffered=True, indent=indent)
+      t.specify_format(align='llr')
+      t.print_header(*headers)
       for i, row in enumerate(rows):
-        if i > 0:
-          detail = add_with_indent(detail, '-' * width)
-        detail = add_with_indent(detail, row)
-      # Summary
-      detail = add_with_indent(detail, '=' * width)
-      detail = add_with_indent(
-        detail, 'Total params: {}'.format(
-          get_num_string(total_params, dense_total)))
-      detail += ' ' * indent + '-' * width
-      return detail, total_params, dense_total
+        t.print_row(*row)
+        # Draw line
+        t.hline() if i != len(rows) - 1 else t.dhline()
+      t.print_with_margin('Total params: {}'.format(
+        stark.get_num_string(total_params, dense_total)))
+      t.hline()
+      return t.content, total_params, dense_total
     else: return rows, total_params, dense_total
+
+  def _get_layer_detail(self, layer):
+    variables = [v for v in self.var_list
+                 if layer.group_name == v.name.split('/')[self._level + 1]]
+    num, dense_num = stark.get_params_num(variables, consider_prune=True)
+    # Generate a row
+    row = [self._get_layer_string(layer, True, True),
+           layer.output_shape_str, stark.get_num_string(num, dense_num)]
+    return row, num, dense_num
 
   def _get_layer_string(self, f, scale, full_name=False):
     assert isinstance(f, Layer)
@@ -219,13 +211,7 @@ class Net(Function):
 
     # Check interconnection type
     next_net, next_layer = ' => ', ' -> '
-    if self._inter_type not in (pedia.cascade,
-                                self.RECURRENT) or self.is_branch:
-      if self._inter_type in [pedia.sum, pedia.prod, pedia.concat]:
-        result += self._inter_type
-      if self.is_branch: result += 'branch'
-      else: next_layer, next_net = ', ', ', '
-      result += '('
+    if self.is_branch: result += 'branch('
 
     # Add children
     str_list, next_token = [], None
@@ -244,12 +230,8 @@ class Net(Function):
     result += next_token.join(str_list)
 
     # Check is_branch flag
-    if self.is_branch:
-      result += ' -> output'
+    if self.is_branch: result += ' -> output)'
 
-    # Check interconnection type
-    if self._inter_type not in (pedia.cascade,
-                                self.RECURRENT) or self.is_branch: result += ')'
     # Add output scale
     if self.is_root and not self._inter_type == pedia.fork:
       result += ' => output[{}]'.format(self.output_shape_str)
@@ -324,13 +306,6 @@ class Net(Function):
     if self._inter_type == self.FORK:
       output = output_list
       self.branch_outputs = output
-    elif self._inter_type == self.SUM:
-      output = tf.add_n(output_list)
-    elif self._inter_type == self.PROD:
-      output = output_list.pop()
-      for tensor in output_list: output *= tensor
-    elif self._inter_type == self.CONCAT:
-      output = tf.concat(output_list, axis=-1)
     elif self._inter_type != self.CASCADE:
       raise TypeError('!! Unknown net inter type {}'.format(self._inter_type))
 
@@ -377,12 +352,18 @@ class Net(Function):
     if not self.is_root: raise ValueError('Branches can only added to the root')
     net = Net(name='branch', is_branch=True)
     self.add(net)
-
     return net
+
+  def add_forkmerge(self, merge_method, name='forkmerge'):
+    from .forkmerge import ForkMerge
+    fm = ForkMerge(name=name, merge_layer=merge_method)
+    self.add(fm)
+    return fm
 
   def add(self,
           f=None,
           inter_type=pedia.cascade,
+          name=None,
           return_net=False,
           as_output=False,
           output_name=None,
@@ -396,10 +377,14 @@ class Net(Function):
     """
     # If add an empty net
     if f is None:
-      name = self._get_new_name(inter_type)
+      # TODO: inter_type add/concat/prod is deprecated
+      #       use add_forkmerge instead
+      name = self._get_new_name(inter_type) if name is None else name
       net = Net(name, level=self._level + 1, inter_type=inter_type)
       self.children.append(net)
       return net
+    # Forbid adding nets of type other than 'cascade' using this method
+    assert inter_type == pedia.cascade
 
     # If add a function to this net
     container = self
@@ -410,7 +395,7 @@ class Net(Function):
           self._inter_type not in (self.CASCADE, self.RECURRENT)):
       # Net should be added directly into self.children of any net
       # Layer should be added directly into self.children for non-cascade nets
-      container = self._save_add(f)
+      container = self._safe_add(f)
     elif isinstance(f, Layer):
       # If layer is a nucleus or the 1st layer added into this Net
       if f.is_nucleus or len(self.children) == 0:
@@ -437,7 +422,7 @@ class Net(Function):
 
   # region : Private Methods
 
-  def _save_add(self, f):
+  def _safe_add(self, f):
     # TODO: avoid name scope conflict when add layers to non-cascade nets
     name = self._get_new_name(f)
     net = self
@@ -591,3 +576,4 @@ class Net(Function):
     # TODO: register masked_weights and sparse weights
 
   # endregion : Build-in extractors
+
