@@ -16,6 +16,7 @@ from tframe import local
 class TFRData(object):
   """Abstract class defining APIs for data set classes used in tframe"""
   EXTENSION = 'dummy'
+  EXTENSIONS = None
 
   NUM_CLASSES = 'NUM_CLASSES'
   DENSE_LABELS = 'DENSE_LABELS'
@@ -122,7 +123,8 @@ class TFRData(object):
       filename = tmp_path
 
     extension = filename.split('.')[-1]
-    if extension != cls.EXTENSION:
+    extensions = [cls.EXTENSION] if not cls.EXTENSIONS else cls.EXTENSIONS
+    if extension not in extensions:
       raise TypeError('!! {} can not load .{} file'.format(
         cls.__name__, extension))
     with open(filename, 'rb') as input_:
