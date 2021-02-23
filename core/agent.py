@@ -335,7 +335,9 @@ class Agent(object):
     if graph is not None:
       assert isinstance(graph, tf.Graph)
       self._graph = graph
-    else: self._graph = tf.Graph()
+    else:
+      self._graph = tf.get_default_graph()
+      # self._graph = tf.Graph()
     # Initialize graph variables
     with self.graph.as_default():
       self._is_training = tf.placeholder(
