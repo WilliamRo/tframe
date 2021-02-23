@@ -471,17 +471,21 @@ class Net(Function):
   def _get_extra_loss(self):
     loss_tensor_list = context.loss_tensor_list
     assert isinstance(loss_tensor_list, list)
+
+    # (1) Add customized losses
     customized_loss = self._get_customized_loss()
     if customized_loss:
       loss_tensor_list += customized_loss
-    # Add regularizer losses
+
+    # (2) Add regularizer losses
     loss_tensor_list += tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-    # Add loss tensor list
+
+    # Add-up all extra losses
     if loss_tensor_list:
       result = tf.add_n(loss_tensor_list, 'extra_loss')
     else: result = None
 
-    # Show loss list
+    # Show loss list (usually for debugging)
     if hub.show_extra_loss_info and loss_tensor_list:
       console.show_info('Extra losses:')
       for loss_tensor in loss_tensor_list:

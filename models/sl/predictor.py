@@ -107,6 +107,7 @@ class Predictor(Feedforward, Recurrent):
 
     # Define loss. Some tensorflow apis only support calculating logits
     with tf.name_scope('Loss'):
+      # (1) main loss
       loss_tensor = self.loss_quantity(
         self._targets.tensor, self.outputs.tensor)
 
@@ -114,11 +115,11 @@ class Predictor(Feedforward, Recurrent):
       if hub.summary:
         tf.add_to_collection(pedia.train_step_summaries,
                              tf.summary.scalar('loss_sum', loss_tensor))
-      # Try to add extra loss which is calculated by the corresponding net
-      # .. regularization loss is included
+      # (2) Try to add extra loss which is calculated by the corresponding net.
+      #     regularization loss is included.
       if self.extra_loss is not None:
         loss_tensor = tf.add(loss_tensor, self.extra_loss)
-      # Add additional injected loss if necessary
+      # (3) Add additional injected loss if necessary
       injection_loss = self._gen_injection_loss()
       if injection_loss is not None:
         loss_tensor = tf.add(loss_tensor, injection_loss)
