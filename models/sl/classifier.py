@@ -76,12 +76,25 @@ class Classifier(Predictor):
 
 
   @with_graph
-  def evaluate_model(self, data, batch_size=None, extractor=None,
-                     export_false=False, **kwargs):
+  def evaluate_model(self, data, batch_size=None, extractor=None, **kwargs):
     """This method is a mess."""
+    if hub.take_down_confusion_matrix:
+      # TODO: (william) please refactor this method
+      cm = self.evaluate_pro(
+        data, batch_size, verbose=kwargs.get('verbose', False),
+        show_class_detail=True, show_confusion_matrix=True)
+      # Take down confusion matrix
+      from tframe import context
+      agent = context.trainer.model.agent
+      agent.take_notes('Confusion Matrix on {}:'.format(data.name), False)
+      agent.take_notes('\n' + cm.matrix_table().content)
+      agent.take_notes('Evaluation Result on {}:'.format(data.name), False)
+      agent.take_notes('\n' + cm.make_table().content)
+      return cm.accuracy
+
     # If not necessary, use Predictor's evaluate_model method
     metric_is_accuracy = self.eval_metric.name.lower() == 'accuracy'
-    if not export_false or not metric_is_accuracy:
+    if not metric_is_accuracy:
       result = super().evaluate_model(data, batch_size, **kwargs)
       if metric_is_accuracy: result *= 100
       return result
@@ -99,34 +112,6 @@ class Classifier(Predictor):
 
     # Show accuracy
     console.supplement('Accuracy on {} is {:.3f}%'.format(data.name, accuracy))
-
-    # TODO: the code block below should be removed
-    # export_false option is valid for images only
-    if export_false and accuracy < 100.0:
-      assert self.input_type is InputTypes.BATCH
-      assert isinstance(data, DataSet)
-      assert data.features is not None and data.targets is not None
-      top_k = hub.export_top_k if hub.export_top_k > 0 else 3
-
-      probs = self.classify(data, batch_size, extractor, return_probs=True)
-      probs_sorted = np.fliplr(np.sort(probs, axis=-1))
-      class_sorted = np.fliplr(np.argsort(probs, axis=-1))
-      preds = class_sorted[:, 0]
-
-      false_indices = np.argwhere(results == 0).flatten()
-      false_preds = preds[false_indices]
-
-      probs_sorted = probs_sorted[false_indices, :top_k]
-      class_sorted = class_sorted[false_indices, :top_k]
-      false_set = data[false_indices]
-
-      false_set.properties[pedia.predictions] = false_preds
-      false_set.properties[pedia.top_k_label] = class_sorted
-      false_set.properties[pedia.top_k_prob] = probs_sorted
-
-      from tframe.data.images.image_viewer import ImageViewer
-      vr = ImageViewer(false_set)
-      vr.show()
 
     # Return accuracy
     return accuracy

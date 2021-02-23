@@ -69,6 +69,9 @@ class NoteConfigs(object):
   export_var_alpha = Flag.boolean(
     False, 'Vars list: (1) coef in sig_curve;')
 
+  take_down_confusion_matrix = Flag.boolean(
+    False, 'Whether to take down confusion matrix after evaluation')
+
 
   def smooth_out_note_configs(self):
     if self.use_default_s_in_dy_ds: self.export_dy_ds = True
