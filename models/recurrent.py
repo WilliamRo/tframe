@@ -185,7 +185,7 @@ class Recurrent(Model, RNet):
     losses = []
     if context.loss_tensor_list:
       losses.append(tf.reduce_sum(results.pop(0)))
-    if callable(context.customed_outer_loss_f_net):
+    if callable(context.customized_outer_loss_f_net):
       customized_losses = self._get_customized_loss(outer=True)
       if hub.show_extra_loss_info:
         print(':: {} outer losses added.'.format(len(customized_losses)))

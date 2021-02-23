@@ -460,8 +460,8 @@ class Net(Function):
     return get_name()
 
   def _get_customized_loss(self, outer=False):
-    f = (context.customed_outer_loss_f_net if outer
-         else context.customed_loss_f_net)
+    f = (context.customized_outer_loss_f_net if outer
+         else context.customized_loss_f_net)
     if callable(f):
       loss_list = f(self)
       assert isinstance(loss_list, list)

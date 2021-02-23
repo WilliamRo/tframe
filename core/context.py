@@ -32,8 +32,8 @@ class Context(object):
     self.monitor = Monitor()
 
     # Nailed attributes
-    self.customed_loss_f_net = None
-    self.customed_outer_loss_f_net = None
+    self.customized_loss_f_net = None
+    self.customized_outer_loss_f_net = None
 
     # Loss function (will be set only in Predictor.build and be used in
     #   RNet._link)
