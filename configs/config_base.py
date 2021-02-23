@@ -176,7 +176,7 @@ class Config(
   # region : Public Methods
 
   @staticmethod
-  def decimal_str(num, decimals):
+  def decimal_str(num, decimals=3):
     assert np.isscalar(num)
     assert isinstance(decimals, int) and decimals > 0
     fmt = '{:.' + str(decimals) + 'f}'
