@@ -182,7 +182,12 @@ class Helper(object):
         raise KeyError(
           '!! Failed to set `{}`  since it has not been registered'.format(
             flag_name))
-      configs[flag_name] = value
+      # TODO: Allowing tuple as constraint key in this way is not elegant as
+      #       the corresponding option in value list must be registered
+      if isinstance(value, (tuple, list)):
+        if str(configs[flag_name]) not in [str(v) for v in value]:
+          configs[flag_name] = value[0]
+      else: configs[flag_name] = value
 
     for condition, constraint in self.constraints.items():
       assert isinstance(constraint, dict)
