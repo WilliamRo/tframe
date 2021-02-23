@@ -354,9 +354,11 @@ class Net(Function):
     self.add(net)
     return net
 
-  def add_forkmerge(self, merge_method, name='forkmerge'):
+  def add_forkmerge(self, merge_method, name='forkmerge', **kwargs):
     from .forkmerge import ForkMerge
-    fm = ForkMerge(name=name, merge_layer=merge_method)
+    stop_gradient_at = kwargs.get('stop_gradient_at', [])
+    fm = ForkMerge(name=name, merge_layer=merge_method,
+                   stop_gradient_at=stop_gradient_at)
     self.add(fm)
     return fm
 

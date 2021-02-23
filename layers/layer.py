@@ -51,7 +51,7 @@ class Layer(Function):
     result = self.abbreviation if not full_name else self.full_name
     if scale: result += self.structure_tail
     output_id_str = ('' if self.output_id_str == ''
-                     else '->' + self.output_id_str)
+                     else ':=' + self.output_id_str)
     return result + output_id_str
 
   # Override

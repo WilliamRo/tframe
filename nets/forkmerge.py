@@ -29,6 +29,7 @@ class ForkMerge(Net):
     if isinstance(merge_layer, Layer): self.merge_layer = merge_layer
     else: self.merge_layer = Merge(merge_layer, **kwargs)
     self._branch_dict = {}
+    self._stop_gradient_keys = kwargs.get('stop_gradient_at', [])
     self._kwargs = kwargs
 
 
@@ -78,7 +79,9 @@ class ForkMerge(Net):
 
 
   def _link(self, x:tf.Tensor, **kwargs):
-    output_list = [net(x) for net in self.children]
+    x_stop = tf.stop_gradient(x)
+    output_list = [net(x_stop) if key in self._stop_gradient_keys else net(x)
+                   for key, net in self._branch_dict.items()]
     return self.merge_layer(output_list)
 
 

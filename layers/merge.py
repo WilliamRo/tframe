@@ -19,10 +19,9 @@ class ShortCut(Layer):
     SUM = 'sum'
     CONCATE = 'concate'
 
-  def get_layer_string(self, scale, full_name=False):
-    result = super().get_layer_string(scale, full_name)
-    result += '({})'.format(','.join(self.transformation_str_list))
-    return result
+  @property
+  def structure_tail(self):
+    return '({})'.format(','.join(self.transformation_str_list))
 
   @property
   def transformation_str_list(self):
