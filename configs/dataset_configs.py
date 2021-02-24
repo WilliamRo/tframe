@@ -68,6 +68,7 @@ class DataConfigs(object):
   augmentation = Flag.boolean(False, 'Whether to augment data', is_key=None)
   aug_config = Flag.string(
     None, 'Configuration for data augmentation', is_key=None)
+  pad_mode = Flag.string(None, 'Padding option for image padding', is_key=None)
 
   @property
   def sample_among_sequences(self):

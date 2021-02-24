@@ -33,7 +33,9 @@ def pad_or_crop(a, axis, size, crop_mode='center',
     pw2 = size - shape[axis] - pw1
     pad_width = [[0, 0] for _ in shape]
     pad_width[axis] = [pw1, pw2]
-    return np.pad(a, pad_width, mode=pad_mode, constant_values=constant_val)
+    configs = {
+      'constant_values': constant_val} if pad_mode == 'constant' else {}
+    return np.pad(a, pad_width, mode=pad_mode, **configs)
 
 
 if __name__ == '__main__':
