@@ -16,6 +16,7 @@ import tframe.utils.misc as misc
 
 try:
   import tkinter as tk
+  from matplotlib import cm
   from tkinter import filedialog
   from PIL import Image as Image_
   from PIL import ImageTk
@@ -335,8 +336,11 @@ class ImageViewer(object):
       self.image_height = height
       self.image_width = width
       # Draw image
-      mode = 'RGB' if len(shape) == 3 else None
-      image = Image_.fromarray(image, mode)
+      color_map = self.kwargs.get('color_map', None)
+      if len(shape) < 3 and color_map is not None:
+        assert callable(color_map)
+        image = Image_.fromarray(np.uint8(color_map(image) * 255))
+      else: image = Image_.fromarray(image, 'RGB')
       image = image.resize((width, height))
       self.photo = ImageTk.PhotoImage(image=image)
 
