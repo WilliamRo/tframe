@@ -21,6 +21,9 @@ class Note(object):
     self._configs = OrderedDict()
     self._criteria = OrderedDict()
 
+    # Variables for analysis
+    self.misc = {}
+
   # region : Properties
 
   # region : For TensorViewer

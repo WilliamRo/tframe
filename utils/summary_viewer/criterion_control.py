@@ -48,6 +48,8 @@ class CriterionControl(BaseControl):
 
     self.find_max_btn = ttk.Button(self.label_frame, cursor='hand2')
     self.find_min_btn = ttk.Button(self.label_frame, cursor='hand2')
+    self.avg_btn = ttk.Button(self.label_frame, cursor='hand2')
+    self.med_btn = ttk.Button(self.label_frame, cursor='hand2')
     self.detail_button = ttk.Button(self.label_frame, cursor='hand2')
 
     self._create_layout()
@@ -85,7 +87,7 @@ class CriterionControl(BaseControl):
     assert isinstance(panel, centre.ConfigPanel)
     return panel
 
-  # endregin : Friends and ancestors
+  # endregion : Friends and ancestors
 
   # endregion : Properties
 
@@ -95,23 +97,24 @@ class CriterionControl(BaseControl):
     if not self._show: side = tk.LEFT
     self.pack(side=side, fill=fill, expand=expand)
 
-  def refresh(self, min_max_btn_enabled):
+  def refresh(self, find_btn_enabled):
     values = self.value_list
-    fmt = '  Avg: {},  Range: [{}, {}]'
+    fmt = ' [{}, {}] Avg: {}, Med: {}'
     if len(values) > 0:
       to_str = self.to_str
-      min_v, max_v = min(values), max(values)
-      p0, p1, p2 = to_str(np.mean(values)), to_str(min_v), to_str(max_v)
-    else: p0, p1, p2 = ('--',) * 3
+      val_strs = [to_str(f(values)) for f in (min, max, np.mean, np.median)]
+    else: val_strs = ['--'] * 4
 
-    self.statistic_label.config(text=fmt.format(p0, p1, p2))
+    self.statistic_label.config(text=fmt.format(*val_strs))
 
     # Enable/Disable buttons
     set_btn = lambda btn, enabled: btn.configure(
       state=tk.NORMAL if enabled else tk.DISABLED)
 
-    set_btn(self.find_min_btn, min_max_btn_enabled)
-    set_btn(self.find_max_btn, min_max_btn_enabled)
+    set_btn(self.find_min_btn, find_btn_enabled)
+    set_btn(self.find_max_btn, find_btn_enabled)
+    set_btn(self.avg_btn, find_btn_enabled)
+    set_btn(self.med_btn, find_btn_enabled)
     set_btn(self.detail_button, len(values) > 0)
 
   # endregion : Public Methods
@@ -145,30 +148,22 @@ class CriterionControl(BaseControl):
     self.detail_button.configure(command=self._on_detail_btn_click)
     self.detail_button.pack(side=tk.RIGHT)
 
-    # (4) Find max & min button
+    # (4) MIN/MAX/AVG/MED buttons
     f_btn_style = self.set_style(self.WidgetNames.TButton, 'fd', width=4)
-    self.find_min_btn.configure(
-      text='FMI', style=f_btn_style,
-      command=lambda: self._on_group_search_btn_click(0, 0, self.find_min_btn))
-    self.find_min_btn.bind(
-      '<Button-2>', lambda _: self.criteria_panel.move_between_groups(
-        1, self.find_min_btn))
-    self.find_min_btn.bind(
-      '<Button-3>', lambda _: self._on_group_search_btn_click(
-        0, -1, self.find_min_btn))
+    def set_search_btn(btn, text, ni, gi):
+      btn.configure(text=text, style=f_btn_style,
+                    command=lambda: self._on_group_search_btn_click(ni, gi, btn))
+      btn.bind(
+        '<Button-2>', lambda _: self.criteria_panel.move_between_groups(1, btn))
+      btn.bind(
+        '<Button-3>', lambda _: self._on_group_search_btn_click(
+          ni, -1 - gi * 1, btn))
+      btn.pack(side=tk.RIGHT)
 
-    self.find_max_btn.configure(
-      text='FMA', style=f_btn_style,
-      command=lambda: self._on_group_search_btn_click(
-        -1, -1, self.find_max_btn))
-    self.find_max_btn.bind(
-      '<Button-2>', lambda _: self.criteria_panel.move_between_groups(
-        1, self.find_max_btn))
-    self.find_max_btn.bind(
-      '<Button-3>', lambda _: self._on_group_search_btn_click(
-        -1, 0, self.find_max_btn))
-    self.find_max_btn.pack(side=tk.RIGHT)
-    self.find_min_btn.pack(side=tk.RIGHT)
+    set_search_btn(self.med_btn, 'MED', -1, -1)
+    set_search_btn(self.avg_btn, 'AVG', -1, -1)
+    set_search_btn(self.find_max_btn, 'MAX', -1, -1)
+    set_search_btn(self.find_min_btn, 'MIN', 0, 0)
 
     # (9) Label frame
     self.label_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -218,8 +213,17 @@ class CriterionControl(BaseControl):
     groups = self.criteria_panel.groups_for_sorting
     num_groups = len(groups)
     assert num_groups > 0
+    # Sort members in each group
     for g in groups: g.sort(key=lambda n: n.criteria[self.name])
-    groups.sort(key=lambda notes: notes[note_index].criteria[self.name])
+    # Sort groups
+    min_or_max = lambda notes: notes[note_index].criteria[self.name]
+    key = {self.find_min_btn: min_or_max,
+           self.find_max_btn: min_or_max,
+           self.avg_btn: lambda notes: np.mean(
+             [n.criteria[self.name] for n in notes]),
+           self.med_btn: lambda notes: np.median(
+             [n.criteria[self.name] for n in notes])}[button]
+    groups.sort(key=key)
 
     # Set note and refresh corresponding stuff
     note = groups[group_index][note_index]
