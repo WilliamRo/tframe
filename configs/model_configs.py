@@ -30,6 +30,11 @@ class ModelConfigs(object):
   use_batchnorm = Flag.boolean(False, 'Whether to use batch norm', is_key=None)
   use_layernorm = Flag.boolean(False, 'Whether to use layer norm', is_key=None)
 
+  activation = Flag.string(None, 'Activation', is_key=None)
+  strides = Flag.integer(None, 'Strides', is_key=None)
+  padding = Flag.string(None, 'Padding', is_key=None)
+  kernel_size = Flag.integer(None, 'Kernel size', is_key=None)
+
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   fc_dims = Flag.whatever(None, '...')
   num_blocks = Flag.integer(-1, 'Block number in model', is_key=None)
