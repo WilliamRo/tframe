@@ -250,6 +250,9 @@ class Agent(object):
 
   # region : For SummaryViewer
 
+  def add_to_note_misc(self, key, val):
+    self._note.misc[key] = val
+
   def put_down_configs(self, th):
     assert isinstance(th, Config)
     self._note.put_down_configs(th.key_options)
