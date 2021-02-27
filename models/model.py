@@ -556,6 +556,10 @@ class Model(object):
     if hub.show_structure_detail:
       print('.. Structure detail:\n{}'.format(detail))
 
+    if hub.export_structure_detail:
+      self.agent.take_notes('Structure detail:', False)
+      self.agent.take_notes(detail, False)
+
   def get_trainable_variables(self, f=None):
     if f is None: f = lambda _: True
     variables = [v for v in tf.trainable_variables() if f(v)]
