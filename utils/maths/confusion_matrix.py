@@ -157,6 +157,17 @@ class ConfusionMatrix(object):
     return table
 
 
+  def sklearn_plot(self, **kwargs):
+    """Plot confusion matrix using sklearn package"""
+    from sklearn.metrics import ConfusionMatrixDisplay
+    import matplotlib.pyplot as plt
+    cm = self.confusion_matrix
+    assert isinstance(cm, np.ndarray)
+    disp = ConfusionMatrixDisplay(cm.transpose(), self.class_names)
+    disp.plot(cmap=plt.cm.Blues, **kwargs)
+    plt.show()
+
+
 if __name__ == '__main__':
   cm = ConfusionMatrix(3, class_names=('Goose', 'Cat', 'Dog'))
   truths = [0] * 6 + [1] * 10 + [2] * 9
@@ -166,3 +177,4 @@ if __name__ == '__main__':
   cm.fill(preds, truths)
   print(cm.matrix_table())
   print(cm.make_table())
+  cm.sklearn_plot()
