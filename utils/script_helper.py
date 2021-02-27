@@ -148,15 +148,17 @@ class Helper(object):
         if params_string in history: continue
         history.append(params_string)
         console.show_status(
-          'Loading task ...', '[Run {}/{}-{}]'.format(
-            run_id + 1, times, len(history) + 1))
+          'Loading task ...', '[Run {}/{}][{}]'.format(
+            run_id + 1, times, len(history)))
         console.show_info('Hyper-parameters:')
         for k, v in hyper_dict.items():
           console.supplement('{}: {}'.format(k, v))
         if not rehearsal:
           call([self._python_cmd, self.module_name] + params_list)
           print()
+      # End of the run
       if rehearsal: return
+
 
   # endregion : Public Methods
 
