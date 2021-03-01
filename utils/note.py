@@ -2,9 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import pickle
 import numpy as np
 from collections import OrderedDict
+
+from tframe.utils.file_tools import io_utils
 
 
 class Note(object):
@@ -118,15 +119,17 @@ class Note(object):
     assert isinstance(line, str)
     self._lines.append(line)
 
-  def save(self, file_name):
+  def save(self, file_path):
     self._check_before_dump()
-    with open(file_name, 'wb') as f:
-      pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+    io_utils.save(file_path)
+    # with open(file_path, 'wb') as f:
+    #   pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
   @staticmethod
-  def load(file_name):
-    with open(file_name, 'rb') as f:
-      return pickle.load(f)
+  def load(file_path):
+    return io_utils.load(file_path)
+    # with open(file_name, 'rb') as f:
+    #   return pickle.load(f)
 
   # endregion : Public Methods
 
