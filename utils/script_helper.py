@@ -9,10 +9,14 @@ from collections import OrderedDict
 
 from tframe import checker
 from tframe import console
+from tframe.utils.note import Note
 from tframe.utils.local import re_find_single
 from tframe.utils.misc import date_string
+from tframe.utils.file_tools.imp import import_from_path
 from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
+
+from tframe.alchemy.pot import Pot
 
 flags, flag_names = None, None
 
@@ -52,9 +56,14 @@ class Helper(object):
   true = True
   false = False
 
+  BAYESIAN = 'BAYESIAN'
+  GRID_SEARCH = 'GRID_SEARCH'
+
   def __init__(self, module_name=None):
     self.module_name = module_name
     self._check_module()
+
+    self.pot = Pot()
 
     self.common_parameters = OrderedDict()
     self.hyper_parameters = OrderedDict()
@@ -62,13 +71,20 @@ class Helper(object):
 
     self._python_cmd = 'python' if os.name == 'nt' else 'python3'
 
-    # System argv info
+    # System argv info. 'sys_keys' will be filled by _register_sys_argv.
+    # Any config registered by Helper.register method with 1st arg in
+    #  this list will be ignored. That is, system args have the highest priority
     self.sys_keys = []
-    self._sys_runs = None
-    self._add_script_suffix = None
+    self._sys_runs = None           # (1)
+    self._add_script_suffix = None  # (2)
+    self._scroll = None             # (3)
     self._register_sys_argv()
 
   # region : Properties
+
+  @property
+  def hyper_parameter_keys(self):
+    return self.pot.hyper_parameter_keys
 
   @property
   def command_head(self):
@@ -78,7 +94,7 @@ class Helper(object):
   @property
   def param_keys(self):
     # Add keys from hyper-parameters
-    keys = list(self.hyper_parameters.keys())
+    keys = self.hyper_parameter_keys
     # Add keys from common-parameters
     keys += list(self.common_parameters.keys())
     return keys
@@ -93,10 +109,11 @@ class Helper(object):
   # region : Public Methods
 
   def constrain(self, conditions, constraints):
-    checker.check_type(conditions, dict)
-    checker.check_type(constraints, dict)
-    key = tuple([(k, v) for k, v in conditions.items()])
-    self.constraints[key] = constraints
+    # Make sure hyper-parameter keys have been registered.
+    for key in list(conditions.keys()) + list(constraints.keys()):
+      if key not in flag_names: raise KeyError(
+          '!! Failed to set `{}`  since it has not been registered'.format(key))
+    self.pot.constrain(conditions, constraints)
 
   @staticmethod
   def register_flags(config_class):
@@ -110,7 +127,8 @@ class Helper(object):
     if len(val) == 1 and isinstance(val[0], (tuple, list)): val = val[0]
 
     if isinstance(val, (list, tuple)) and len(val) > 1:
-      self.hyper_parameters[flag_name] = val
+      self.pot.register_category(flag_name, val)
+      # self.hyper__parameters[flag_name] = val   # TODO: deprecated
     else:
       if isinstance(val, (list, tuple)): val = val[0]
       self.common_parameters[flag_name] = val
@@ -119,46 +137,49 @@ class Helper(object):
   def set_python_cmd_suffix(self, suffix='3'):
     self._python_cmd = 'python{}'.format(suffix)
 
-  def run(self, times=1, save=False, mark='', rehearsal=False):
+  def run(self, times=1, save=False, mark='', rehearsal=False, method='grid'):
+    """Run script using the given 'method'. This method is compatible with
+       old version of tframe script_helper, and should be deprecated in the
+       future.
+    """
+    # :: Check options passed by system arguments
+    # Check sys_runs
     if self._sys_runs is not None:
       times = checker.check_positive_integer(self._sys_runs)
       console.show_status('Run # set to {}'.format(times))
-    # Set the corresponding flags if save
-    if save:
-      self.common_parameters['save_model'] = True
+    # Set the corresponding flags if save. Here 'save' option is a short-cut
+    # of doing 's.register('save_model', True)'
+    if save: self.common_parameters['save_model'] = True
+    # Set scroll for pot
+    # method = method if self._scroll is None else self._scroll
+    # > currently freeze method to 'grid' which will make 'run' method equal to
+    #   'grid_search'.
+    assert method == 'grid'
+
+    # Show section
+    console.section('Script Information')
+    # Hyper-parameter info will be showed when scroll is set
+    self.pot.set_scroll(method, times=times)
     # Show parameters
     self._show_parameters()
+
     # Begin iteration
-    counter = 0
-    for run_id in range(times):
-      history = []
-      for hyper_dict in self._hyper_parameter_dicts():
-        # Set counter here
-        counter += 1
-        # Grand self._add_script_suffix the highest priority
-        if self._add_script_suffix is not None: save = self._add_script_suffix
-        if save: self.common_parameters['script_suffix'] = '_{}{}'.format(
-          mark, counter)
-
-        params = self._get_all_configs(hyper_dict)
-        self._apply_constraints(params)
-
-        params_list = self._get_config_strings(params)
-        params_string = ' '.join(params_list)
-        if params_string in history: continue
-        history.append(params_string)
-        console.show_status(
-          'Loading task ...', '[Run {}/{}][{}]'.format(
-            run_id + 1, times, len(history)))
-        console.show_info('Hyper-parameters:')
-        for k, v in hyper_dict.items():
-          console.supplement('{}: {}'.format(k, v))
-        if not rehearsal:
-          call([self._python_cmd, self.module_name] + params_list)
-          print()
-      # End of the run
-      if rehearsal: return
-
+    for i, config_dict in enumerate(self.pot.scroll.combinations()):
+      # Handle script suffix option
+      if self._add_script_suffix is not None:
+        save = self._add_script_suffix
+      if save:
+        self.common_parameters['script_suffix'] = '_{}{}'.format(mark, i + 1)
+      # Show hyper-parameters
+      console.show_info('Hyper-parameters:')
+      for k, v in config_dict.items():
+        console.supplement('{}: {}'.format(k, v), level=2)
+      # Run process if not rehearsal
+      if rehearsal: continue
+      console.split()
+      call([self._python_cmd, self.module_name] + self._get_config_strings(
+        config_dict))
+      print()
 
   # endregion : Public Methods
 
@@ -170,36 +191,6 @@ class Helper(object):
       console.show_status('GPU ID set to {}'.format(value))
     if flag_name == 'gather_summ_name':
       console.show_status('Notes will be gathered to `{}`'.format(value))
-
-  def _apply_constraints(self, configs):
-    assert isinstance(configs, dict)
-
-    def _satisfy(condition):
-      assert isinstance(condition, tuple) and len(condition) > 0
-      for key, values in condition:
-        if not isinstance(values, (tuple, list)): values = values,
-        if key not in configs.keys():
-          return False
-        elif configs[key] not in values:
-          return False
-      return True
-
-    def _set_flag(flag_name, value):
-      if flag_name not in flag_names:
-        raise KeyError(
-          '!! Failed to set `{}`  since it has not been registered'.format(
-            flag_name))
-      # TODO: Allowing tuple as constraint key in this way is not elegant as
-      #       the corresponding option in value list must be registered
-      if isinstance(value, (tuple, list)):
-        if str(configs[flag_name]) not in [str(v) for v in value]:
-          configs[flag_name] = value[0]
-      else: configs[flag_name] = value
-
-    for condition, constraint in self.constraints.items():
-      assert isinstance(constraint, dict)
-      if _satisfy(condition):
-        for key, value in constraint.items(): _set_flag(key, value)
 
   @staticmethod
   def _get_config_string(flag_name, val):
@@ -230,52 +221,105 @@ class Helper(object):
       raise AssertionError(
         '!! module {} does not exist'.format(self.module_name))
 
-  def _hyper_parameter_dicts(self, keys=None):
-    """Provide a generator of hyper-parameters for running"""
-    if keys is None: keys = list(self.hyper_parameters.keys())
-    if len(keys) == 0:
-      yield OrderedDict()
-    else:
-      for val in self.hyper_parameters[keys[0]]:
-        configs = OrderedDict()
-        configs[keys[0]] = val
-        for cfg_dict in self._hyper_parameter_dicts(keys[1:]):
-          configs.update(cfg_dict)
-          yield configs
-
   def _show_parameters(self):
-    console.section('Parameters')
     def _show_config(name, od):
       assert isinstance(od, OrderedDict)
       if len(od) == 0: return
       console.show_info(name)
-      for k, v in od.items(): console.supplement('{}: {}'.format(k, v), level=2)
+      for k, v in od.items():
+        console.supplement('{}: {}'.format(k, v), level=2)
+
     _show_config('Common Settings', self.common_parameters)
-    _show_config('Hyper Parameters', self.hyper_parameters)
-    _show_config('Constraints', self.constraints)
-    print()
+    # Hyper parameters and constraints will be showed by Scroll
+    # _show_config('Constraints', self.constraints)
 
   def _register_sys_argv(self):
+    """When script 'sX_YYYY.py' is launched using command line tools, system
+       arguments other than tframe flags are allowed. These arguments, like
+       tframe flags arguments passed via command line, also have the highest
+       priority that will overwrite the corresponding arguments (if any) defined
+       in related python modules.
+    """
+    # Check each system arguments
     for s in sys.argv[1:]:
       assert isinstance(s, str)
-      # Check format
+      # Check format (pattern: --flag_name=value)
       r = re.fullmatch(r'--([\w_]+)=([-\w./,+:;]+)', s)
       if r is None: raise AssertionError(
         'Can not parse argument `{}`'.format(s))
+      # Parse key and value
       k, v = r.groups()
       assert isinstance(v, str)
       val_list = re.split(r'[,/]', v)
+      # (1) Number of runs (take effect when method is grid search)
       if k in ('run', 'runs'):
         assert len(val_list) == 1
         self._sys_runs = checker.check_positive_integer(int(val_list[0]))
         continue
+      # (2) Whether to save model. If set to true, script_suffix will be set
+      #     as common parameter and run number will be automatically appended
+      #     to model mark to ensure model created by this script_helper
+      #     do not have the same mark
       if k in ('save', 'brand'):
         assert len(val_list) == 1
         option = val_list[0]
         assert option.lower() in ('true', 'false')
         self._add_script_suffix = option.lower() == 'true'
         continue
+      # (3) Running method, can be grid, goose, bayesian, etc.
+      if k in ('method', 'scroll'):
+        assert len(val_list) == 1
+        self._scroll = val_list[0]
+        continue
+      # Register key in common way
       self.register(k, *val_list)
       self.sys_keys.append(k)
 
   # endregion : Private Methods
+
+  # region: Search Engine
+
+  def _get_summary(self):
+    """This method knows the location of summary files."""
+    # Find summary file name
+    key = 'gather_summ_name'
+    assert key in self.common_parameters
+    summ_file_name = self.common_parameters[key]
+    # Get root_path
+    task = import_from_path(self.module_name)
+    task.update_job_dir(task.id, task.model_name)
+    root_path = task.core.th.job_dir
+    # Get summary path
+    summ_path = os.path.join(root_path, summ_file_name)
+    # Load notes if exists
+    if os.path.exists(summ_path): return Note.load(summ_path)
+    else: return []
+
+
+  def search(self, criterion, greater_is_better, max_search_time=1000,
+             expectation=None, method='goose', **kwargs):
+    """Search hyper-parameters
+
+    :param criterion: criterion key for HP search. Should be found in each
+                      note of summary list
+    :param greater_is_better: whether higher criterion is preferred
+    :param kwargs: other arguments
+    :param max_search_time: maximum search time
+    :param expectation: if given, searching will be stopped if expectation has
+                        been met
+    :param method: search method
+    :return: best criterion
+    """
+    # Show status
+    console.section(
+      'Searching hyper-parameters using {} engine'.format(method))
+
+    # Set
+
+    # TODO: Scaffold =======================================================
+    notes = self._get_summary()
+
+    console.show_status('Done.')
+
+
+  # endregion: Search Engine
