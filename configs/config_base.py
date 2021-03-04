@@ -2,9 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys, os
 import numpy as np
-from collections import OrderedDict
 import tensorflow as tf
+from collections import OrderedDict
 
 import tframe as tfr
 from tframe import pedia
@@ -174,6 +175,14 @@ class Config(
   # endregion : Override
 
   # region : Public Methods
+
+  def config_dir(self, dir_depth=2):
+    """This method should be called only in XX_core.py module for setting
+       default job_dir and data_dir.
+    """
+    self.job_dir = os.path.join(sys.path[dir_depth - 1])
+    self.data_dir = os.path.join(self.job_dir, 'data')
+    tfr.console.show_status('Job directory set to `{}`'.format(self.job_dir))
 
   @staticmethod
   def decimal_str(num, decimals=3):

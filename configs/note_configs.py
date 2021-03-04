@@ -14,7 +14,7 @@ class NoteConfigs(object):
 
   export_note = Flag.boolean(False, 'Whether to take notes')
   gather_note = Flag.boolean(
-    False, 'If set to True, agent will gather information in a default way'
+    True, 'If set to True, agent will gather information in a default way'
           ' when export_note flag is set to True')
 
   note_cycle = Flag.integer(0, 'Note cycle')

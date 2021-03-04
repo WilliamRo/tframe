@@ -753,7 +753,7 @@ class TrainerHub(Config):
   max_iterations = Flag.integer(None, 'Max inner iterations')
   batch_size = Flag.integer(1, 'Batch size', is_key=None)
   num_steps = Flag.integer(None, 'Number of time steps', is_key=None)
-  shuffle = Flag.boolean(False, 'Whether to shuffle', is_key=None)
+  shuffle = Flag.boolean(True, 'Whether to shuffle', is_key=None)
 
   print_cycle = Flag.integer(0, 'Print cycle')
   validate_cycle = Flag.integer(0, 'Validate cycle')
