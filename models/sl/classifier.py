@@ -3,21 +3,17 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
 
 from tframe import hub
 from tframe import pedia
 from tframe import InputTypes
 
 from tframe.core.decorators import with_graph
-from tframe.core import TensorSlot, Group
-from tframe.layers import Activation
+from tframe.core import TensorSlot
 from tframe.models.sl.predictor import Predictor
 from tframe.utils import console
 from tframe.utils.maths.confusion_matrix import ConfusionMatrix
 from tframe import DataSet
-from tframe.data.base_classes import TFRData
-import tframe.utils.misc as misc
 
 from tframe.models.feedforward import Feedforward
 from tframe.trainers.metric_slot import MetricSlot
@@ -176,3 +172,23 @@ class Classifier(Predictor):
     else: return cm
 
 
+  def evaluate_image_sets(
+      self, *data_sets, visualize_last_false_set=False, **kwargs):
+    """Evaluate image datasets. This method is a generalization of what usually
+       appears in the `core` module of an image classification task. """
+    from tframe.data.images.image_viewer import ImageViewer
+
+    configs = {'show_class_detail': True, 'show_confusion_matrix': True}
+    configs.update(kwargs)
+
+    for i, data_set in enumerate(data_sets):
+      if i == len(data_sets) - 1 and visualize_last_false_set:
+        _, false_set = self.evaluate_pro(
+          data_set, batch_size=hub.eval_batch_size,
+          export_false=visualize_last_false_set, export_top_k=hub.export_top_k,
+          **configs)
+        # Visualize false set
+        viewer = ImageViewer(false_set)
+        viewer.show()
+      else:
+        self.evaluate_pro(data_set, batch_size=hub.eval_batch_size, **configs)

@@ -41,8 +41,19 @@ def _rotate(x: np.ndarray, bg=0):
   return np.rot90(x, np.random.choice(4, 1)[0], axes=[1, 2])
 
 
-def _flip(x: np.ndarray, bg=0):
-  assert x.shape[1] == x.shape[2]
-  for axis in (1, 2):
-    if np.random.choice([True, False], 1)[0]: x = np.flip(x, axis=axis)
+def _flip(x: np.ndarray, horizontal=True, vertical=True, p=0.5):
+  """Randomly flip image batch.
+
+  :param x: images with shape (batch_size, H, W[, C])
+  :param horizontal: whether to do flip horizontally
+  :param vertical: whether to do flip vertically
+  :param p: probability to do flip
+  :return: flipped image batch
+  """
+  assert 0 < p < 1 and any([horizontal, vertical])
+  def _rand_flip(axis):
+    mask = np.random.choice([True, False], size=x.shape[0], p=[p, 1 - p])
+    x[mask] = np.flip(x[mask], axis=axis)
+  if horizontal: _rand_flip(2)
+  if vertical: _rand_flip(1)
   return x

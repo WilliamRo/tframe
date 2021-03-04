@@ -10,9 +10,6 @@ class Parser(object):
   """USAGE
      p = Parser.parse('max_norm:3.0;axis=1')
 
-     print(p.get_arg(float))
-  >> 3.0
-
      print(p.get_kwarg('axis', int))
   >> 1
 
@@ -39,21 +36,20 @@ class Parser(object):
   def filename_suffix(self):
     name = self.name if self.name else 'noname'
     suffix = ''
-    if len(self.arg_list) > 0: suffix += self.arg_list[0]
-    if len(self.arg_dict) > 0:
-      for k, v in self.arg_dict.items():
-        if k in self.ignore_in_suffix: continue
-        if suffix is not '': suffix += ','
-        suffix += '{}={}'.format(k, v)
+    if len(self.arg_list) > 0: suffix += ','.join(self.arg_list)
+    if len(self.arg_dict) > 0: suffix += ','.join(
+      ['{}={}'.format(k, v) for k, v in self.arg_dict.items()
+       if k not in self.ignore_in_suffix])
     if suffix is not '': suffix = '({})'.format(suffix)
     return name + suffix
 
 
-  def get_arg(self, dtype=str, default=None):
-    if len(self.arg_list) == 0 and default is not None: return default
-    assert len(self.arg_list) == 1
-    arg = self.arg_list[0]
-    return dtype(arg)
+  # Deprecated
+  # def get_arg(self, dtype=str, default=None):
+  #   if len(self.arg_list) == 0 and default is not None: return default
+  #   assert len(self.arg_list) == 1
+  #   arg = self.arg_list[0]
+  #   return dtype(arg)
 
 
   def get_kwarg(self, key, dtype=str, default=None):
@@ -85,19 +81,20 @@ class Parser(object):
 
   def _parse_arg_list(self, args):
     assert isinstance(args, (tuple, list)) and len(args) > 0
-    val = None
+    # val = None
     for arg in args:
       kv_list = arg.split(self.splitter)
       assert len(kv_list) > 0
       if len(kv_list) > 2:
         raise AssertionError('!! Can not resolve `{}`'.format(arg))
       if len(kv_list) == 1:
-        if val is not None:
-          raise ValueError('!! There are too many non-kw args')
-        val = kv_list[0]
-        continue
-      self.arg_dict[kv_list[0]] = kv_list[1]
-    if val is not None: self.arg_list = [val]
+        self.arg_list.append(kv_list[0])
+        # if val is not None:
+        #   raise ValueError('!! There are too many non-kw args')
+        # val = kv_list[0]
+        # continue
+      else: self.arg_dict[kv_list[0]] = kv_list[1]
+    # if val is not None: self.arg_list = [val]
 
 
   @staticmethod
@@ -109,7 +106,7 @@ class Parser(object):
 
 
 if __name__ == '__main__':
-  p = Parser.parse('bayers:low>1;high>10.1', splitter='>')
+  p = Parser.parse('bayers:low=1;high=10.1', splitter='=')
   print(p.name)
   print(p.get_kwarg('low', float))
   print(p.get_kwarg('high', float))
