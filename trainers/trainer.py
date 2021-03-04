@@ -774,7 +774,7 @@ class TrainerHub(Config):
   patience = Flag.integer(
     20, 'Tolerance of idle rounds(or iterations) when early stop is on',
     is_key=None)
-  save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
+  save_mode = Flag.enum(SaveMode.ON_RECORD, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']")
   warm_up_thres = Flag.integer(1, 'Warm up threshold', is_key=None)
   warm_up = Flag.boolean(False, 'Whether to warm up')
