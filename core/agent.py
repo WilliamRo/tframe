@@ -19,6 +19,7 @@ from tframe.utils import Note
 from tframe.utils.local import check_path, clear_paths, write_file
 from tframe.utils.local import save_checkpoint, load_checkpoint
 from tframe.utils.file_tools import io_utils
+from tframe.utils.string_tools import get_time_string
 
 from tframe.core.decorators import with_graph
 
@@ -323,10 +324,7 @@ class Agent(object):
       content = f.readlines()
       f.seek(0)
       f.truncate()
-      if take_down_time:
-        time_str = time.strftime('[{}-{}-%d %H:%M:%S]'.format(
-          time.strftime('%Y')[2:], time.strftime('%B')[:3]))
-        line = '[{}] {}'.format(time_str, line)
+      if take_down_time: line = '[{}] {}'.format(get_time_string(), line)
       f.write(line + '\n')
       f.write('-' * 79 + '\n')
       f.writelines(content)

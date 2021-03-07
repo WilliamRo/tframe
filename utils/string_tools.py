@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import time
+
 
 def merger(str_list):
   assert isinstance(str_list, list) and len(str_list) > 0
@@ -26,4 +28,9 @@ def merger(str_list):
     if i == len(str_list) - 1: archive()
 
   return merged
+
+
+def get_time_string():
+  return time.strftime('[{}-{}-%d %H:%M:%S]'.format(
+    time.strftime('%Y')[2:], time.strftime('%B')[:3]))
 

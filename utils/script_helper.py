@@ -4,19 +4,22 @@ from __future__ import print_function
 
 import os, sys
 import re
-from subprocess import call
+import time
+from subprocess import run
 from collections import OrderedDict
 
-from tframe import checker
 from tframe import console
 from tframe.utils.note import Note
 from tframe.utils.local import re_find_single
 from tframe.utils.misc import date_string
 from tframe.utils.file_tools.imp import import_from_path
+from tframe.utils.string_tools import get_time_string
+from tframe.utils.file_tools.io_utils import safe_open
 from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
 from tframe.alchemy.pot import Pot
+from tframe.alchemy.scrolls import get_argument_keys
 
 flags, flag_names = None, None
 
@@ -35,7 +38,7 @@ register_flags(SmartTrainerHub)
 def check_flag_name(method):
   def wrapper(obj, flag_name, *args, **kwargs):
     assert isinstance(obj, Helper)
-    if flag_name in obj.sys_keys: return
+    if flag_name in obj.sys_flags: return
     # Make sure flag_name is not in parameter list of obj
     if flag_name in obj.param_keys:
       raise ValueError('!! Key `{}` has already been set'.format(flag_name))
@@ -59,28 +62,42 @@ class Helper(object):
   BAYESIAN = 'BAYESIAN'
   GRID_SEARCH = 'GRID_SEARCH'
 
+  class CONFIG_KEYS(object):
+    add_script_suffix = 'add_script_suffix'
+    strategy = 'strategy'
+    criterion = 'criterion'
+    greater_is_better = 'greater_is_better'
+
   def __init__(self, module_name=None):
     self.module_name = module_name
     self._check_module()
 
-    self.pot = Pot()
+    self.pot = Pot(self._get_summary)
 
     self.common_parameters = OrderedDict()
     self.hyper_parameters = OrderedDict()
     self.constraints = OrderedDict()
 
     self._python_cmd = 'python' if os.name == 'nt' else 'python3'
+    self._root_path = None
 
     # System argv info. 'sys_keys' will be filled by _register_sys_argv.
     # Any config registered by Helper.register method with 1st arg in
     #  this list will be ignored. That is, system args have the highest priority
-    self.sys_keys = []
-    self._sys_runs = None           # (1)
-    self._add_script_suffix = None  # (2)
-    self._scroll = None             # (3)
+    # USE SYS_CONFIGS WITH DATA TYPE CONVERSION!
+    self.sys_flags = []
+    self.config_dict = OrderedDict()
+    self._init_config_dict()
     self._register_sys_argv()
 
   # region : Properties
+
+  @property
+  def configs(self):
+    od = OrderedDict()
+    for k, v in self.config_dict.items():
+      if v is not None: od[k] = v
+    return od
 
   @property
   def hyper_parameter_keys(self):
@@ -89,7 +106,7 @@ class Helper(object):
   @property
   def command_head(self):
     return ['python', self.module_name] + [
-      self._get_config_string(k, v) for k, v in self.common_parameters.items()]
+      self._get_hp_string(k, v) for k, v in self.common_parameters.items()]
 
   @property
   def param_keys(self):
@@ -103,6 +120,20 @@ class Helper(object):
   def default_summ_name(self):
     script_name = re_find_single(r's\d+_\w+(?=.py)')
     return '{}_{}'.format(date_string(), script_name)
+
+  @property
+  def summ_file_name(self):
+    key = 'gather_summ_name'
+    assert key in self.common_parameters
+    return self.common_parameters[key]
+
+  @property
+  def root_path(self):
+    if self._root_path is not None: return self._root_path
+    task = import_from_path(self.module_name)
+    task.update_job_dir(task.id, task.model_name)
+    self._root_path = task.core.th.job_dir
+    return self.root_path
 
   # endregion : Properties
 
@@ -120,70 +151,99 @@ class Helper(object):
     register_flags(config_class)
 
   @check_flag_name
-  def register(self, flag_name, *val):
+  def register(self, flag_name, *val, hp_type=None, scale='uniform'):
     """Flag value can not be a tuple or a list"""
-    if flag_name in self.sys_keys: return
+    if flag_name in self.sys_flags: return
     assert len(val) > 0
     if len(val) == 1 and isinstance(val[0], (tuple, list)): val = val[0]
 
     if isinstance(val, (list, tuple)) and len(val) > 1:
-      self.pot.register_category(flag_name, val)
-      # self.hyper__parameters[flag_name] = val   # TODO: deprecated
+      self.pot.register_category(flag_name, val, hp_type, scale)
     else:
       if isinstance(val, (list, tuple)): val = val[0]
       self.common_parameters[flag_name] = val
       self._show_flag_if_necessary(flag_name, val)
 
+  def configure(self, **kwargs):
+    for k, v in kwargs.items():
+      assert not isinstance(v, (tuple, list, set))
+      if k not in self.config_dict:
+        raise KeyError('!! Unknown system config `{}`'.format(k))
+      # Set only when the corresponding config has not been set by
+      #   system arguments
+      if self.config_dict[k] is None: self.config_dict[k] = v
+
   def set_python_cmd_suffix(self, suffix='3'):
     self._python_cmd = 'python{}'.format(suffix)
 
-  def run(self, times=1, save=False, mark='', rehearsal=False, method='grid'):
-    """Run script using the given 'method'. This method is compatible with
+  def run(self, strategy='grid', rehearsal=False,  **kwargs):
+    """Run script using the given 'strategy'. This method is compatible with
        old version of tframe script_helper, and should be deprecated in the
-       future.
-    """
-    # :: Check options passed by system arguments
-    # Check sys_runs
-    if self._sys_runs is not None:
-      times = checker.check_positive_integer(self._sys_runs)
-      console.show_status('Run # set to {}'.format(times))
-    # Set the corresponding flags if save. Here 'save' option is a short-cut
-    # of doing 's.register('save_model', True)'
-    if save: self.common_parameters['save_model'] = True
-    # Set scroll for pot
-    # method = method if self._scroll is None else self._scroll
-    # > currently freeze method to 'grid' which will make 'run' method equal to
-    #   'grid_search'.
-    assert method == 'grid'
-
+       future. """
     # Show section
     console.section('Script Information')
+    # Show pot configs
+    self._show_dict('Pot Configurations', self.configs)
     # Hyper-parameter info will be showed when scroll is set
-    self.pot.set_scroll(method, times=times)
-    # Show parameters
-    self._show_parameters()
+    self.configure(**kwargs)
+    # Do some auto configuring, e.g., set greater_is_better based on the given
+    #   criterion
+    self._auto_config()
+    self.pot.set_scroll(self.configs.get('strategy', strategy), **self.configs)
+    # Show common parameters
+    self._show_dict('Common Settings', self.common_parameters)
 
     # Begin iteration
-    for i, config_dict in enumerate(self.pot.scroll.combinations()):
-      # Handle script suffix option
-      if self._add_script_suffix is not None:
-        save = self._add_script_suffix
-      if save:
-        self.common_parameters['script_suffix'] = '_{}{}'.format(mark, i + 1)
+    for i, hyper_params in enumerate(self.pot.scroll.combinations()):
       # Show hyper-parameters
       console.show_info('Hyper-parameters:')
-      for k, v in config_dict.items():
+      for k, v in hyper_params.items():
         console.supplement('{}: {}'.format(k, v), level=2)
       # Run process if not rehearsal
       if rehearsal: continue
       console.split()
-      call([self._python_cmd, self.module_name] + self._get_config_strings(
-        config_dict))
-      print()
+      # Export log if necessary
+      if self.pot.logging_is_needed: self._export_log()
+      # Run
+      self._run_process(hyper_params, i)
 
   # endregion : Public Methods
 
   # region : Private Methods
+
+  def _init_config_dict(self):
+    """Config keys include that specified in self.CONFIG_KEYS and
+       the primary arguments in the constructor of sub-classes of Scroll"""
+    assert isinstance(self.config_dict, OrderedDict)
+    # Add all keys specified in CONFIG_KEYS
+    key_list = [k for k in self.CONFIG_KEYS.__dict__ if k[:2] != '__']
+    # Get add keys from scroll classes
+    key_list += get_argument_keys()
+    # Initialize these configs as None
+    # key_list may contain duplicated keys, which is OK
+    for key in key_list: self.config_dict[key] = None
+
+  def _auto_config(self):
+    # Try to automatically set greater_is_better
+    if self.CONFIG_KEYS.greater_is_better not in self.configs:
+      criterion = self.config_dict[self.CONFIG_KEYS.criterion]
+      if isinstance(criterion, str):
+        criterion = criterion.lower()
+        if any(['accuracy' in criterion, 'f1' in criterion]):
+          self.config_dict[self.CONFIG_KEYS.greater_is_better] = True
+        elif any(['loss' in criterion, 'cross_entropy' in criterion]):
+          self.config_dict[self.CONFIG_KEYS.greater_is_better] = False
+
+  def _run_process(self, hyper_params, index):
+    assert isinstance(hyper_params, dict)
+    # Handle script suffix option
+    if self.configs.get('add_script_suffix', False):
+      self.common_parameters['script_suffix'] = '_{}'.format(index + 1)
+    # Run
+    configs = self._get_all_configs(hyper_params)
+    cmd = [self._python_cmd, self.module_name] + self._get_hp_strings(configs)
+    run(cmd)
+    print()
 
   @staticmethod
   def _show_flag_if_necessary(flag_name, value):
@@ -193,13 +253,13 @@ class Helper(object):
       console.show_status('Notes will be gathered to `{}`'.format(value))
 
   @staticmethod
-  def _get_config_string(flag_name, val):
+  def _get_hp_string(flag_name, val):
     return '--{}={}'.format(flag_name, val)
 
   @staticmethod
-  def _get_config_strings(config_dict):
+  def _get_hp_strings(config_dict):
     assert isinstance(config_dict, dict)
-    return [Helper._get_config_string(key, val) for key, val in
+    return [Helper._get_hp_string(key, val) for key, val in
             config_dict.items()]
 
   def _get_all_configs(self, hyper_dict):
@@ -221,17 +281,13 @@ class Helper(object):
       raise AssertionError(
         '!! module {} does not exist'.format(self.module_name))
 
-  def _show_parameters(self):
-    def _show_config(name, od):
-      assert isinstance(od, OrderedDict)
-      if len(od) == 0: return
-      console.show_info(name)
-      for k, v in od.items():
-        console.supplement('{}: {}'.format(k, v), level=2)
-
-    _show_config('Common Settings', self.common_parameters)
-    # Hyper parameters and constraints will be showed by Scroll
-    # _show_config('Constraints', self.constraints)
+  @staticmethod
+  def _show_dict(name, od):
+    assert isinstance(od, OrderedDict)
+    if len(od) == 0: return
+    console.show_info(name)
+    for k, v in od.items():
+      console.supplement('{}: {}'.format(k, v), level=2)
 
   def _register_sys_argv(self):
     """When script 'sX_YYYY.py' is launched using command line tools, system
@@ -239,6 +295,8 @@ class Helper(object):
        tframe flags arguments passed via command line, also have the highest
        priority that will overwrite the corresponding arguments (if any) defined
        in related python modules.
+
+       TODO: this method should be refactored
     """
     # Check each system arguments
     for s in sys.argv[1:]:
@@ -251,75 +309,71 @@ class Helper(object):
       k, v = r.groups()
       assert isinstance(v, str)
       val_list = re.split(r'[,/]', v)
-      # (1) Number of runs (take effect when method is grid search)
-      if k in ('run', 'runs'):
+      # Check system configurations
+      if k in self.config_dict:
         assert len(val_list) == 1
-        self._sys_runs = checker.check_positive_integer(int(val_list[0]))
+        self.config_dict[k] = val_list[0]
         continue
-      # (2) Whether to save model. If set to true, script_suffix will be set
-      #     as common parameter and run number will be automatically appended
-      #     to model mark to ensure model created by this script_helper
-      #     do not have the same mark
-      if k in ('save', 'brand'):
-        assert len(val_list) == 1
-        option = val_list[0]
-        assert option.lower() in ('true', 'false')
-        self._add_script_suffix = option.lower() == 'true'
-        continue
-      # (3) Running method, can be grid, goose, bayesian, etc.
-      if k in ('method', 'scroll'):
-        assert len(val_list) == 1
-        self._scroll = val_list[0]
-        continue
+
       # Register key in common way
       self.register(k, *val_list)
-      self.sys_keys.append(k)
+      self.sys_flags.append(k)
 
   # endregion : Private Methods
 
-  # region: Search Engine
+  # region: Search Engine Related
 
   def _get_summary(self):
     """This method knows the location of summary files."""
-    # Find summary file name
-    key = 'gather_summ_name'
-    assert key in self.common_parameters
-    summ_file_name = self.common_parameters[key]
-    # Get root_path
-    task = import_from_path(self.module_name)
-    task.update_job_dir(task.id, task.model_name)
-    root_path = task.core.th.job_dir
     # Get summary path
-    summ_path = os.path.join(root_path, summ_file_name)
+    summ_path = os.path.join(self.root_path, self.summ_file_name)
     # Load notes if exists
-    if os.path.exists(summ_path): return Note.load(summ_path)
+    if os.path.exists(summ_path):
+      return [self._handle_hp_alias(n) for n in Note.load(summ_path)]
     else: return []
 
+  @staticmethod
+  def _handle_hp_alias(note):
+    """TODO: this method is a compromise for HP alias, such as `lr`"""
+    alias_dict = {'learning_rate': 'lr'}
+    for name, alias in alias_dict.items():
+      if name in note.configs:
+        note.configs[alias] = note.configs.pop(name)
+    return note
 
-  def search(self, criterion, greater_is_better, max_search_time=1000,
-             expectation=None, method='goose', **kwargs):
-    """Search hyper-parameters
+  def configure_engine(self, **kwargs):
+    """This method is used for providing argument specifications in smart IDEs
+       such as PyCharm"""
+    kwargs.get('acq_optimizer', None)
+    kwargs.get('acquisition', None)
+    kwargs.get('add_script_suffix', None)
+    kwargs.get('criterion', None)
+    kwargs.get('expectation', None)
+    kwargs.get('greater_is_better', None)
+    kwargs.get('initial_point_generator', None)
+    kwargs.get('n_initial_points', None)
+    kwargs.get('prior', None)
+    kwargs.get('strategy', None)
+    kwargs.get('times', None)
+    self.configure(**kwargs)
 
-    :param criterion: criterion key for HP search. Should be found in each
-                      note of summary list
-    :param greater_is_better: whether higher criterion is preferred
-    :param kwargs: other arguments
-    :param max_search_time: maximum search time
-    :param expectation: if given, searching will be stopped if expectation has
-                        been met
-    :param method: search method
-    :return: best criterion
-    """
-    # Show status
-    console.section(
-      'Searching hyper-parameters using {} engine'.format(method))
+  def _export_log(self):
+    # Determine filename
+    log_path = os.path.join(
+      self.root_path, '{}_log.txt'.format(self.pot.scroll.name))
+    # Get log from scroll
+    engine_logs = self.pot.scroll.get_log()
+    # Create if not exist
+    with safe_open(log_path, 'a'): pass
+    # Write log at the beginning
+    with safe_open(log_path, 'r+') as f:
+      content = f.readlines()
+      f.seek(0)
+      f.truncate()
+      f.write('[{}] summ: {}, scroll: {} \n'.format(
+        get_time_string(), self.summ_file_name, self.pot.scroll.name))
+      for line in engine_logs: f.write('  {}\n'.format(line))
+      f.write('-' * 79)
+      f.writelines(content)
 
-    # Set
-
-    # TODO: Scaffold =======================================================
-    notes = self._get_summary()
-
-    console.show_status('Done.')
-
-
-  # endregion: Search Engine
+  # endregion: Search Engine Related

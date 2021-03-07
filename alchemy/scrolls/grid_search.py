@@ -11,9 +11,9 @@ class GridSearch(Scroll):
   name = 'Grid Search'
   valid_HP_types = (CategoricalHP,)
 
-  def __init__(self, hyper_params, constraints, times=1, **_):
+  def __init__(self, hyper_params, constraints, times=1, **kwargs):
     # Call parent's constructor
-    super(GridSearch, self).__init__(hyper_params, constraints)
+    super(GridSearch, self).__init__(hyper_params, constraints, **kwargs)
     # Specific variables
     assert isinstance(times, int) and times > 0
     self.times = times

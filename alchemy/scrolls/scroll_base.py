@@ -11,13 +11,41 @@ class Scroll(object):
   name = 'Scroll'
   valid_HP_types = ()
 
-  def __init__(self, hyper_params, constraints):
+  enable_hp_types = False
+  logging_is_needed = False
+
+  def __init__(self, hyper_params, constraints, observation_fetcher=None,
+               greater_is_better=None, **kwargs):
     # Set hyper-parameters
     self.hyper_params = OrderedDict()
     self.set_search_space(hyper_params)
     # Set constraint
     self.constraints = OrderedDict()
     self.set_constraints(constraints)
+    # Set observation_fetcher
+    self._observation_fetcher = observation_fetcher
+    self._greater_is_better = greater_is_better
+    # Save key word arguments
+    self.kwargs = kwargs
+    # Buffer
+    self.seen_previously = []
+    self.log_strings = []
+
+  # region: Properties
+
+  @property
+  def observation_fetcher(self):
+    if not callable(self._observation_fetcher): raise AssertionError(
+      '!! The observation_fetcher has not been appropriately set.')
+    return self._observation_fetcher
+
+  @property
+  def greater_is_better(self):
+    if not isinstance(self._greater_is_better, bool): raise AssertionError(
+      '!! Whether greater criterion is better is unknown.')
+    return self._greater_is_better
+
+  # endregion: Properties
 
   def combinations(self):
     """A generator emitting hyper-parameter combinations.
@@ -27,8 +55,11 @@ class Scroll(object):
   def set_search_space(self, hyper_params):
     assert isinstance(hyper_params, list)
     if len(hyper_params) == 0: return
+    # Find appropriate HP type if different types are allowed
+    if self.enable_hp_types:
+      hyper_params = [hp.seek_myself() for hp in hyper_params]
     # Show hyper-parameters setting
-    console.show_info('Hyper Parameters')
+    console.show_info('Hyper Parameters -> {}'.format(self.name))
     for hp in hyper_params:
       assert isinstance(hp, HyperParameter)
       assert isinstance(hp, self.valid_HP_types)
@@ -76,3 +107,37 @@ class Scroll(object):
           if isinstance(val, (set, tuple, list)):
             assert configs[key] in val
           else: configs[key] = val
+
+  def is_better(self, a, b):
+    if self.greater_is_better: return a > b
+    return a < b
+
+  def get_new_x_y(self, key_format='value'):
+    # Check input
+    assert key_format in ('value', 'dict', 'hp_dict', 'hyper_parameter_dict')
+    # Get new observations
+    new_observations = [
+      ob for ob in self.observation_fetcher() if ob not in self.seen_previously]
+    # Extent observation buffer
+    self.seen_previously.extend(new_observations)
+    # Get new_x_y
+    if key_format != 'value': return new_observations
+    return [(list(hp_dict.values()), c) for hp_dict, c in new_observations]
+
+  def log(self, s):
+    assert isinstance(s, str)
+    self.log_strings.append(s)
+
+  def get_log(self, empty_buffer=True):
+    logs = self.log_strings
+    if empty_buffer: self.log_strings = []
+    return logs
+
+  def _value_list_to_config(self, values):
+    assert isinstance(values, (tuple, list))
+    od = OrderedDict()
+    for k, v in zip(self.hyper_params.keys(), values): od[k] = v
+    return od
+
+
+
