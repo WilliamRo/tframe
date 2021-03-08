@@ -94,6 +94,8 @@ class CategoricalHP(HyperParameter):
     return '{}'.format(self.choices)
 
   def within(self, value):
+    if self.hp_type in (int, float):
+      return min(self.choices) <= value <= max(self.choices)
     return value in self.choices
 
   def _binary_to_vector_list(self, val):
