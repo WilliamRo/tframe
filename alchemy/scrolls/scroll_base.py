@@ -34,6 +34,15 @@ class Scroll(object):
   # region: Properties
 
   @property
+  def details(self):
+    return self.name
+
+  @property
+  def best_criterion(self):
+    ys = [t[1] for t in self.seen_previously]
+    return sorted(ys)[-1 if self.greater_is_better else 0]
+
+  @property
   def observation_fetcher(self):
     if not callable(self._observation_fetcher): raise AssertionError(
       '!! The observation_fetcher has not been appropriately set.')

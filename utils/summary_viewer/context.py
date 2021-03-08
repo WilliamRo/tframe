@@ -150,7 +150,7 @@ class Context(object):
           if not isinstance(value, str) and len(str(value)) > 15:
             # For float value
             if isinstance(value, float):
-              value = '{:.2f}'.format(value)
+              value = '{:.5f}'.format(value)
               note.configs[k] = value
             else:
               m = re.match(r"<class '([\w]+.)+([\w]+)'>", str(type(value)))

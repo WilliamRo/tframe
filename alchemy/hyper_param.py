@@ -7,6 +7,8 @@ class HyperParameter(object):
 
   def __init__(self, name):
     self.name = name
+    self.hp_type = None
+    self.scale = None
 
   @property
   def option_str(self):
@@ -76,14 +78,14 @@ class CategoricalHP(HyperParameter):
 
   token = 'C'
 
-  def __init__(self, name, choices, hp_type=None, scale='uniform'):
+  def __init__(self, name, choices, hp_type=None, scale=None):
     # Call parent's constructor
     super().__init__(name)
     # Specific variables
     assert isinstance(choices, (list, tuple)) and len(choices) > 1
     self.choices = choices
     # If hp_type is set, this HP can be transformed to the corresponding type
-    assert hp_type in (int, float, None) and scale in ('uniform', 'log')
+    assert hp_type in (int, float, None) and scale in ('uniform', 'log', None)
     self.hp_type = hp_type
     self.scale = scale
 
@@ -113,9 +115,10 @@ class CategoricalHP(HyperParameter):
 
   def seek_myself(self):
     if self.hp_type is None: return self
+    scale = 'uniform' if self.scale is None else self.scale
     assert all([isinstance(c, self.hp_type) for c in self.choices])
     HPClass = {int: IntegerHP, float: FloatHP}[self.hp_type]
-    return HPClass(self.name, min(self.choices), max(self.choices), self.scale)
+    return HPClass(self.name, min(self.choices), max(self.choices), scale)
 
 
 class BooleanHP(CategoricalHP):

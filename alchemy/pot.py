@@ -37,12 +37,24 @@ class Pot(object):
   # region: Methods for HP registration and constraints setting
   # These method will be called by ScriptHelper before running
 
-  def register_category(self, name, values, hp_type=None, scale='uniform'):
+  def register_category(self, name, values, hp_type=None, scale=None):
     if all([len(values) == 2,
             set(values) in ({True, False}, {'true', 'false'})]):
       self.hyper_params.append(BooleanHP(name))
     else:
       self.hyper_params.append(CategoricalHP(name, values, hp_type, scale))
+
+  def set_hp_properties(self, name, hp_type=None, scale=None):
+    """This method is used to preserve the configs specified in sXX_YYY.py.
+    If HP properties is passed through sys args, properties set in sXX_YYY.py
+    will be ignored. If sys args do not specify HP properties, sXX_YYY.py
+    property specification will take effect. """
+    hp_list = [hp for hp in self.hyper_params if hp.name == name]
+    assert len(hp_list) == 1
+    hp = hp_list[0]
+    assert isinstance(hp, HyperParameter)
+    if hp.hp_type is None: hp.hp_type = hp_type
+    if hp.scale is None: hp.scale = scale
 
   def register_range(self, name, v_min, v_max, val_type=int, scale='uniform'):
     assert val_type in (int, float)

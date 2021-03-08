@@ -151,15 +151,17 @@ class Helper(object):
     register_flags(config_class)
 
   @check_flag_name
-  def register(self, flag_name, *val, hp_type=None, scale='uniform'):
+  def register(self, flag_name, *val, hp_type=None, scale=None):
     """Flag value can not be a tuple or a list"""
-    if flag_name in self.sys_flags: return
     assert len(val) > 0
     if len(val) == 1 and isinstance(val[0], (tuple, list)): val = val[0]
 
     if isinstance(val, (list, tuple)) and len(val) > 1:
-      self.pot.register_category(flag_name, val, hp_type, scale)
+      if flag_name in self.sys_flags:
+        self.pot.set_hp_properties(flag_name, hp_type, scale)
+      else: self.pot.register_category(flag_name, val, hp_type, scale)
     else:
+      if flag_name in self.sys_flags: return
       if isinstance(val, (list, tuple)): val = val[0]
       self.common_parameters[flag_name] = val
       self._show_flag_if_necessary(flag_name, val)
@@ -370,10 +372,10 @@ class Helper(object):
       content = f.readlines()
       f.seek(0)
       f.truncate()
-      f.write('[{}] summ: {}, scroll: {} \n'.format(
-        get_time_string(), self.summ_file_name, self.pot.scroll.name))
+      f.write('{} summ: {}, scroll: {} \n'.format(
+        get_time_string(), self.summ_file_name, self.pot.scroll.details))
       for line in engine_logs: f.write('  {}\n'.format(line))
-      f.write('-' * 79)
+      f.write('-' * 79 + '\n')
       f.writelines(content)
 
   # endregion: Search Engine Related

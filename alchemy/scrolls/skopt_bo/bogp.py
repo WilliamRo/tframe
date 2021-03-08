@@ -1,12 +1,12 @@
 import numpy as np
+import time
 
-import skopt
 from skopt import Optimizer
 from skopt.space import Real, Integer, Categorical
 
 from tframe import console
 from tframe.alchemy.scrolls.scroll_base import Scroll
-from tframe.alchemy.hyper_param import BooleanHP, CategoricalHP, FloatHP
+from tframe.alchemy.hyper_param import CategoricalHP, FloatHP
 from tframe.alchemy.hyper_param import HyperParameter, IntegerHP
 
 
@@ -43,10 +43,18 @@ class Bayesian(Scroll):
     self._fill_dimension_list()
 
     # Initialize a skopt optimizer
+    self.n_initial_points = n_initial_points
+    self.acq_optimizer = acq_optimizer
     self.optimizer = Optimizer(self.dimensions, prior, acq_func=acquisition,
                                n_initial_points=n_initial_points,
                                initial_point_generator=initial_point_generator,
                                acq_optimizer=acq_optimizer)
+
+  @property
+  def details(self):
+    return '{} (init: {}, prior: {}, acq: {}, acq_opt: {})'.format(
+      self.name, self.n_initial_points, self.prior, self.acquisition,
+      self.acq_optimizer)
 
   # region: Private Methods
 
@@ -87,12 +95,17 @@ class Bayesian(Scroll):
 
       # Tell and ask
       if len(xs) > 0:
+        tic = time.time()
+        # Observe
         self.optimizer.tell(xs, ys, fit=True)
-        self.log('{} new observations have been told.'.format(len(xs)))
-        self.log('ys: {}'.format(ys))
+        detail = ' | Observed {}: {}'.format(len(xs), ', '.join(
+          ['({}) {:.3f}'.format(i + 1, y) for i, y in enumerate(ys)]))
+        detail += ' | BEST: {:.3f}'.format(self.best_criterion)
+        detail += ' | fit time: {:.2f} sec'.format(time.time() - tic)
+        self.log_strings[-1] += detail
       next_x = self.optimizer.ask()
       next_config = self._value_list_to_config(next_x)
-      self.log('Next config sampled: {}'.format(next_config))
+      self.log('Next config: {}'.format(next_config))
       # Convert next_x to config and return
       yield next_config
 
