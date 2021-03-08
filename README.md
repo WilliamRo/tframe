@@ -63,11 +63,11 @@ s.register('augmentation', s.true_and_false)
 #s.configure_engine(strategy='skopt', criterion='Test accuracy')
 s.run()
 ```
-Running this directly will launch a grid-searching for the hyperparameters specified in the above code.
-The time needed for finding a good hyperparameter combination is prohibitive when too many hyperparameters are involved. 
+Running this directly will launch a grid-searching process for the hyperparameters specified in the above code.
+The time needed for finding a good hyperparameter combination will be prohibitive when too many hyperparameters are involved. 
 Thus a machine learning based hyperparameter seaching engine is needed. 
-Following the designing philosophy of tframe, the usage of this engine is designed to be theoretically concisest.
-Based on the grid-search code, simplely add one line before `s.run()`:
+Following the designing philosophy of tframe, the usage of this engine is designed to be theoretically concisest:
+based on the grid-search code, simplely add one line before `s.run()`:
 ```Python
 s.configure_engine(strategy='skopt', criterion='Test accuracy')
 ```

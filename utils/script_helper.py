@@ -15,6 +15,7 @@ from tframe.utils.misc import date_string
 from tframe.utils.file_tools.imp import import_from_path
 from tframe.utils.string_tools import get_time_string
 from tframe.utils.file_tools.io_utils import safe_open
+from tframe.utils.organizer.task_tools import update_job_dir
 from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
@@ -137,7 +138,7 @@ class Helper(object):
   def root_path(self):
     if self._root_path is not None: return self._root_path
     task = import_from_path(self.module_name)
-    task.update_job_dir(task.id, task.model_name)
+    update_job_dir(task.id, task.model_name)
     self._root_path = task.core.th.job_dir
     return self.root_path
 
