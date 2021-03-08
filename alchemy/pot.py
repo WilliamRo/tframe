@@ -114,16 +114,15 @@ class Pot(object):
       # Every note in the note list must contain the criterion
       if self.criterion not in note.criteria: raise AssertionError(
         '!! Every note must contain the criterion `{}`'.format(self.criterion))
-      # This note will be ignored if it does not contain all the
-      #  information in self.hyper_params
-      if not all([key in note.configs
-                  for key in self.hyper_parameter_keys]): continue
+      # This note will be ignored if it does not contain all the information
+      #  in self.hyper_params or the config value is not within the range
+      if not all([hp.name in note.configs and hp.within(note.configs[hp.name])
+                  for hp in self.hyper_params]): continue
       # Gather observation
       od = OrderedDict()
       # self.scroll.hyper_params.values() may have been found themselves
       for hp in self.scroll.hyper_params.values():
         assert isinstance(hp, HyperParameter)
-        # TODO: what if `not hp.within(note.configs[hp.key])`
         od[hp] = note.configs[hp.name]
       # Organize the observation list as a list of tuples
       observations.append((od, note.criteria[self.criterion]))

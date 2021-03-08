@@ -20,7 +20,9 @@ class ModelConfigs(object):
     None, 'Architecture string for parsing', is_key=None)
   identifier = Flag.string(
     '', 'Model identifier, used in summary viewer', is_key=None)
-  learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
+  learning_rate = Flag.float(
+    None, 'Learning rate', name='lr', is_key=None, hp_scale='log')
+  lr = learning_rate  # Compromise
   momentum = Flag.float(0.9, 'Momentum', is_key=None)
   weight_initializer = Flag.string(None, 'Weight initializer', is_key=None)
   bias_initializer = Flag.float(None, 'Bias initializer', is_key=None)

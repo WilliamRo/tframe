@@ -64,6 +64,7 @@ class Helper(object):
 
   class CONFIG_KEYS(object):
     add_script_suffix = 'add_script_suffix'
+    auto_set_hp_properties = 'auto_set_hp_properties'
     strategy = 'strategy'
     criterion = 'criterion'
     greater_is_better = 'greater_is_better'
@@ -128,6 +129,11 @@ class Helper(object):
     return self.common_parameters[key]
 
   @property
+  def shadow_th(self):
+    task = import_from_path(self.module_name)
+    return task.core.th
+
+  @property
   def root_path(self):
     if self._root_path is not None: return self._root_path
     task = import_from_path(self.module_name)
@@ -178,7 +184,7 @@ class Helper(object):
   def set_python_cmd_suffix(self, suffix='3'):
     self._python_cmd = 'python{}'.format(suffix)
 
-  def run(self, strategy='grid', rehearsal=False,  **kwargs):
+  def run(self, strategy='grid', rehearsal=False, **kwargs):
     """Run script using the given 'strategy'. This method is compatible with
        old version of tframe script_helper, and should be deprecated in the
        future. """
@@ -226,6 +232,7 @@ class Helper(object):
     for key in key_list: self.config_dict[key] = None
 
   def _auto_config(self):
+    if self.configs.get(self.CONFIG_KEYS.strategy, 'grid') == 'grid': return
     # Try to automatically set greater_is_better
     if self.CONFIG_KEYS.greater_is_better not in self.configs:
       criterion = self.config_dict[self.CONFIG_KEYS.criterion]
@@ -235,6 +242,10 @@ class Helper(object):
           self.config_dict[self.CONFIG_KEYS.greater_is_better] = True
         elif any(['loss' in criterion, 'cross_entropy' in criterion]):
           self.config_dict[self.CONFIG_KEYS.greater_is_better] = False
+
+    # Try to set hyper-parameters' properties
+    if self.configs.get(self.CONFIG_KEYS.auto_set_hp_properties, True):
+      self.auto_set_hp_properties()
 
   def _run_process(self, hyper_params, index):
     assert isinstance(hyper_params, dict)
@@ -349,6 +360,7 @@ class Helper(object):
     kwargs.get('acq_optimizer', None)
     kwargs.get('acquisition', None)
     kwargs.get('add_script_suffix', None)
+    kwargs.get('auto_set_hp_properties', None)
     kwargs.get('criterion', None)
     kwargs.get('expectation', None)
     kwargs.get('greater_is_better', None)
@@ -377,5 +389,25 @@ class Helper(object):
       for line in engine_logs: f.write('  {}\n'.format(line))
       f.write('-' * 79 + '\n')
       f.writelines(content)
+
+  def auto_set_hp_properties(self):
+    """Set the properties of hyper-parameters automatically"""
+    from tframe.alchemy.hyper_param import HyperParameter
+    from tframe.configs.flag import Flag
+
+    HubClass = type(self.shadow_th)
+    for hp in self.pot.hyper_params:
+      assert isinstance(hp, HyperParameter)
+      # Find the corresponding flag in th
+      flag = getattr(HubClass, hp.name)
+      assert isinstance(flag, Flag)
+      if hp.hp_type is None and flag.hp_type is not None:
+        hp.hp_type = flag.hp_type
+        console.show_status(
+          '{}.hp_type set to {}'.format(hp.name, hp.hp_type), '[AutoSet]')
+      if hp.scale is None and flag.hp_scale is not None:
+        hp.scale = flag.hp_scale
+        console.show_status(
+          '{}.scale set to {}'.format(hp.name, hp.scale), '[AutoSet]')
 
   # endregion: Search Engine Related

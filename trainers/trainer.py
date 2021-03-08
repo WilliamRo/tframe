@@ -751,7 +751,7 @@ class TrainerHub(Config):
 
   epoch = Flag.integer(1, 'Epoch number to train', is_key=None)
   max_iterations = Flag.integer(None, 'Max inner iterations')
-  batch_size = Flag.integer(1, 'Batch size', is_key=None)
+  batch_size = Flag.integer(1, 'Batch size', is_key=None, hp_scale='log')
   num_steps = Flag.integer(None, 'Number of time steps', is_key=None)
   shuffle = Flag.boolean(True, 'Whether to shuffle', is_key=None)
 

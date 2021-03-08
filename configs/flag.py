@@ -36,6 +36,12 @@ class Flag(object):
     self._value = default_value
     self._frozen = False
 
+    # Attributes for HP searching engine
+    self.hp_type = kwargs.get('hp_type', None)
+    self.hp_scale = kwargs.get('hp_scale', None)
+    legal_scale = ('log', 'log-uniform', 'uniform', None)
+    assert self.hp_scale in legal_scale
+
   # region : Properties
 
   @property
@@ -104,14 +110,16 @@ class Flag(object):
                 is_key=is_key)
 
   @classmethod
-  def integer(cls, default_value, description, name=None, is_key=False):
+  def integer(cls, default_value, description, name=None, is_key=False,
+              hp_scale='uniform'):
     return Flag(default_value, description, flags.DEFINE_integer, name,
-                is_key=is_key)
+                is_key=is_key, hp_type=int, hp_scale=hp_scale)
 
   @classmethod
-  def float(cls, default_value, description, name=None, is_key=False):
+  def float(cls, default_value, description, name=None, is_key=False,
+            hp_scale='uniform'):
     return Flag(default_value, description, flags.DEFINE_float, name,
-                is_key=is_key)
+                is_key=is_key, hp_type=float, hp_scale=hp_scale)
 
   @classmethod
   def list(cls, default_value, description, name=None):

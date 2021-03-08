@@ -21,7 +21,7 @@ class Bayesian(Scroll):
   def __init__(self, hyper_params, constraints, observation_fetcher,
                prior='gp', acquisition='gp_hedge', times=None, expectation=None,
                n_initial_points=5, initial_point_generator='random',
-               acq_optimizer='lbfgs', **kwargs):
+               acq_optimizer='auto', **kwargs):
     """TODO list:
        - export logs
        - k(T(x_i), T(x_j))
@@ -45,10 +45,12 @@ class Bayesian(Scroll):
     # Initialize a skopt optimizer
     self.n_initial_points = n_initial_points
     self.acq_optimizer = acq_optimizer
-    self.optimizer = Optimizer(self.dimensions, prior, acq_func=acquisition,
-                               n_initial_points=n_initial_points,
+
+    self.optimizer = Optimizer(self.dimensions, prior,
+                               acq_func=self.acquisition,
+                               n_initial_points=self.n_initial_points,
                                initial_point_generator=initial_point_generator,
-                               acq_optimizer=acq_optimizer)
+                               acq_optimizer=self.acq_optimizer)
 
   @property
   def details(self):
@@ -57,6 +59,11 @@ class Bayesian(Scroll):
       self.acq_optimizer)
 
   # region: Private Methods
+
+  def _check_acq_optimizer(self):
+    """This method is not used for now"""
+    if all([isinstance(d, Categorical) for d in self.dimensions]):
+      self.acq_optimizer = 'sampling'
 
   def _fill_dimension_list(self):
     """Transform tframe hyper-parameters to skopt dimensions"""

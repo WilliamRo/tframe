@@ -33,11 +33,11 @@ class FloatHP(HyperParameter):
 
   token = 'F'
 
-  def __init__(self, name, v_min, v_max, scale='uniform'):
+  def __init__(self, name, v_min, v_max, scale=None):
     # Call parent's constructor
     super().__init__(name)
     # Specific variables
-    legal_scales = ('uniform', 'log', 'log-uniform')
+    legal_scales = ('uniform', 'log', 'log-uniform', None)
     assert scale in legal_scales
     if scale == legal_scales[1]: scale = legal_scales[2]
     self.scale = scale
@@ -64,7 +64,7 @@ class IntegerHP(FloatHP):
 
   token = 'I'
 
-  def __init__(self, name, v_min, v_max, scale='uniform'):
+  def __init__(self, name, v_min, v_max, scale=None):
     assert all([isinstance(v, int) for v in (v_min, v_max)])
     # Call parent's constructor
     super().__init__(name, v_min, v_max, scale)
