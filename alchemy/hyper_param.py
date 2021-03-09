@@ -85,7 +85,8 @@ class CategoricalHP(HyperParameter):
     assert isinstance(choices, (list, tuple)) and len(choices) > 1
     self.choices = choices
     # If hp_type is set, this HP can be transformed to the corresponding type
-    assert hp_type in (int, float, None) and scale in ('uniform', 'log', None)
+    assert all([hp_type in (int, float, None, list, tuple),
+                scale in ('uniform', 'log', 'log-uniform', None)])
     self.hp_type = hp_type
     self.scale = scale
 
@@ -116,7 +117,7 @@ class CategoricalHP(HyperParameter):
     return np.argmax(vector)
 
   def seek_myself(self):
-    if self.hp_type is None: return self
+    if self.hp_type in (None, list, tuple): return self
     scale = 'uniform' if self.scale is None else self.scale
     assert all([isinstance(c, self.hp_type) for c in self.choices])
     HPClass = {int: IntegerHP, float: FloatHP}[self.hp_type]
