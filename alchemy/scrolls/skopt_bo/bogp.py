@@ -103,6 +103,8 @@ class Bayesian(Scroll):
       # Tell and ask
       if len(xs) > 0:
         tic = time.time()
+        # If greater_is_better, reverse the sign
+        if self.greater_is_better: ys = [-y for y in ys]
         # Observe
         self.optimizer.tell(xs, ys, fit=True)
         detail = ' | Observed {}: {}'.format(len(xs), ', '.join(
