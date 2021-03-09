@@ -358,7 +358,11 @@ class Helper(object):
   def configure_engine(self, **kwargs):
     """This method is used for providing argument specifications in smart IDEs
        such as PyCharm"""
+    kwargs.get('acq_kappa', None)
+    kwargs.get('acq_n_points', None)
+    kwargs.get('acq_n_restarts_optimizer', None)
     kwargs.get('acq_optimizer', None)
+    kwargs.get('acq_xi', None)
     kwargs.get('acquisition', None)
     kwargs.get('add_script_suffix', None)
     kwargs.get('auto_set_hp_properties', None)

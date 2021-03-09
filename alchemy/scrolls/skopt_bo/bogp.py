@@ -21,7 +21,8 @@ class Bayesian(Scroll):
   def __init__(self, hyper_params, constraints, observation_fetcher,
                prior='gp', acquisition='gp_hedge', times=None, expectation=None,
                n_initial_points=5, initial_point_generator='random',
-               acq_optimizer='auto', **kwargs):
+               acq_optimizer='auto', acq_n_points=10000, acq_xi=0.01,
+               acq_n_restarts_optimizer=5, acq_kappa=1.96, **kwargs):
     """TODO list:
        - export logs
        - k(T(x_i), T(x_j))
@@ -45,18 +46,32 @@ class Bayesian(Scroll):
     # Initialize a skopt optimizer
     self.n_initial_points = n_initial_points
     self.acq_optimizer = acq_optimizer
+    self.acq_n_points = acq_n_points
+    self.acq_xi = acq_xi
+    self.acq_kappa = acq_kappa
+    self.acq_n_restarts_optimizer = acq_n_restarts_optimizer
+
+    acq_optimizer_kwargs = {
+      "n_points": acq_n_points,
+      "n_restarts_optimizer": acq_n_restarts_optimizer}
+    acq_func_kwargs = {"xi": acq_xi, "kappa": acq_kappa}
 
     self.optimizer = Optimizer(self.dimensions, prior,
                                acq_func=self.acquisition,
                                n_initial_points=self.n_initial_points,
                                initial_point_generator=initial_point_generator,
-                               acq_optimizer=self.acq_optimizer)
+                               acq_optimizer=self.acq_optimizer,
+                               acq_func_kwargs=acq_func_kwargs,
+                               acq_optimizer_kwargs=acq_optimizer_kwargs)
 
   @property
   def details(self):
-    return '{} (init: {}, prior: {}, acq: {}, acq_opt: {})'.format(
-      self.name, self.n_initial_points, self.prior, self.acquisition,
-      self.acq_optimizer)
+    return '{} ({})'.format(self.name, ', '.join([
+      '{}: {}'.format(k, v) for k, v in {
+        'n_init': self.n_initial_points, 'prior': self.prior,
+        'acq': self.acquisition, 'acq_opt': self.acq_optimizer,
+        'acq_xi': self.acq_xi, 'acq_kappa': self.acq_kappa,
+        'acq_n_points': self.acq_n_points}.items()]))
 
   # region: Private Methods
 
@@ -104,9 +119,9 @@ class Bayesian(Scroll):
       if len(xs) > 0:
         tic = time.time()
         # If greater_is_better, reverse the sign
-        if self.greater_is_better: ys = [-y for y in ys]
+        ys_to_tell = [-y for y in ys] if self.greater_is_better else ys
         # Observe
-        self.optimizer.tell(xs, ys, fit=True)
+        self.optimizer.tell(xs, ys_to_tell, fit=True)
         detail = ' | Observed {}: {}'.format(len(xs), ', '.join(
           ['({}) {:.3f}'.format(i + 1, y) for i, y in enumerate(ys)]))
         detail += ' | BEST: {:.3f}'.format(self.best_criterion)
