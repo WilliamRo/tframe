@@ -9,6 +9,8 @@ from tframe.alchemy.scrolls.scroll_base import Scroll
 from tframe.alchemy.hyper_param import CategoricalHP, FloatHP
 from tframe.alchemy.hyper_param import HyperParameter, IntegerHP
 
+from .estimators import get_base_estimator
+
 
 class Bayesian(Scroll):
 
@@ -56,7 +58,12 @@ class Bayesian(Scroll):
       "n_restarts_optimizer": acq_n_restarts_optimizer}
     acq_func_kwargs = {"xi": acq_xi, "kappa": acq_kappa}
 
-    self.optimizer = Optimizer(self.dimensions, prior,
+    # Get estimator
+    base_est = prior
+    if isinstance(prior, str) and prior.lower() == 'gp':
+      base_est = get_base_estimator(prior, self.dimensions)
+    # Create optimizer
+    self.optimizer = Optimizer(self.dimensions, base_est,
                                acq_func=self.acquisition,
                                n_initial_points=self.n_initial_points,
                                initial_point_generator=initial_point_generator,

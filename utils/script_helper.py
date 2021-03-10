@@ -173,6 +173,11 @@ class Helper(object):
       self.common_parameters[flag_name] = val
       self._show_flag_if_necessary(flag_name, val)
 
+  @check_flag_name
+  def set_hp_property(self, name, hp_type, scale=None):
+    assert name in self.pot.hyper_parameter_keys
+    self.pot.set_hp_properties(name, hp_type, scale)
+
   def configure(self, **kwargs):
     for k, v in kwargs.items():
       assert not isinstance(v, (tuple, list, set))
