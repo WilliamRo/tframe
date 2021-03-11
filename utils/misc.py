@@ -25,7 +25,7 @@ def shape_string(input_):
   if isinstance(input_, tf.Tensor):
     shapes = [get_scale(input_)]
   else:
-    assert isinstance(input_, list) and len(input_) > 0
+    assert isinstance(input_, (list, tuple)) and len(input_) > 0
     if isinstance(input_[0], tf.Tensor):
       shapes = [get_scale(tensor) for tensor in input_]
     elif not isinstance(input_[0], list):

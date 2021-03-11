@@ -130,13 +130,10 @@ class Net(Function):
     """
     from tframe.nets.rnet import RNet
     from tframe.nets.customized_net import CustomizedNet
-    widths = hub.structure_detail_widths
     indent = 3
 
     # rows is a list of lists of 3 cols
     rows = []
-    # TODO: the line below should be removed is things are settled down
-    # add_to_rows = lambda cols: rows.append(fs.table_row(cols, widths))
 
     # Dense total will be used when model weights are pruned
     total_params, dense_total = 0, 0
