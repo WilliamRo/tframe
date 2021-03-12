@@ -79,8 +79,10 @@ class GlobalAveragePooling2D(Layer):
   abbreviation = 'gap2d'
 
   @init_with_graph
-  def __init__(self, data_format='channels_last', **kwargs):
+  def __init__(self, data_format='channels_last', flatten=True, **kwargs):
     self._data_format = data_format
+    assert data_format == 'channels_last'
+    self._flatten = flatten
     self._kwargs = kwargs
 
   @single_input
@@ -91,5 +93,6 @@ class GlobalAveragePooling2D(Layer):
     output = tf.layers.average_pooling2d(
       input_, pool_size=shape[1:3], strides=(1, 1),
       data_format=self._data_format)
+    output = tf.reshape(output, shape=[-1, output.shape.as_list()[-1]])
     return output
 

@@ -85,21 +85,66 @@ class Merge(Layer):
   PROD = pedia.prod
   SUM = pedia.sum
   CONCAT = pedia.concat
+  CONCAT_SUM = 'concat-sum'
 
   def __init__(self, merge_method, **kwargs):
+    """This layer class provides some build-in merge method, including
+    those listed in the class variables with capitalized names. When using
+    `CONCAT_SUM` method, one needs to specify `sum_indices`. Other tensors
+    will be concatenated first and added to those within `sum_indices`.
+    Currently a more general design is not needed."""
     self.full_name, self.abbreviation = merge_method, merge_method
     self.merge_method = merge_method
+    # Attributes for CONCAT method
+    self._axis = kwargs.get('axis', -1)
+    # Attributes for `CONCAT-SUM` method
+    self._sum_indices = kwargs.get('sum_indices', (0,))
+    if isinstance(self._sum_indices, int):
+      self._sum_indices = (self._sum_indices,)
+    if merge_method == self.CONCAT_SUM:
+      self.full_name += '({})'.format(','.join(self._sum_indices))
+    # Store other keyword arguments
     self.kwargs = kwargs
 
-  def _link(self, input_list, **kwargs):
+  def _link(self, *input_list, **kwargs):
+    # Check input_list
+    assert len(input_list) > 0
+    if len(input_list) == 1: input_list = input_list[0]
+    assert isinstance(input_list, (list, tuple)) and len(input_list) > 1
+
+    # Merge according to specification
     if self.merge_method == self.SUM: return tf.add_n(input_list)
     elif self.merge_method == self.CONCAT:
-      return tf.concat(input_list, axis=self.kwargs.get('axis', -1))
+      return tf.concat(input_list, axis=self._axis)
     elif self.merge_method == self.PROD:
       output = input_list.pop()
       for tensor in input_list: output *= tensor
       return output
+    elif self.merge_method == self.CONCAT_SUM:
+      assert len(input_list) > 2
+      assert 0 < len(self._sum_indices) <= len(input_list) - 2
+      y = tf.concat([x for i, x in enumerate(input_list)
+                     if i not in self._sum_indices], axis=self._axis)
+      inputs = [x for i, x in enumerate(input_list) if i in self._sum_indices]
+      inputs.append(y)
+      return tf.add_n(inputs)
     else: raise KeyError('!! Unknown merge method {}'.format(self.merge_method))
+
+  @classmethod
+  def Sum(cls):
+    return Merge(cls.SUM)
+
+  @classmethod
+  def Prod(cls):
+    return Merge(cls.PROD)
+
+  @classmethod
+  def Concat(cls, axis=-1):
+    return Merge(cls.CONCAT, axis=axis)
+
+  @classmethod
+  def ConcatSum(cls, sum_indices=(0,)):
+    return Merge(cls.CONCAT_SUM, sum_indices=sum_indices)
 
 
 class ConcatenateForGAN(Layer):

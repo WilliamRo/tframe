@@ -34,6 +34,7 @@ class Net(Function):
   def __init__(self, name, level=0, inter_type=pedia.cascade,
                is_branch=False, **kwargs):
     """Instantiate Net, a name must be given
+       TODO: deprecate inter_type
        :param level: level 0 indicates the trunk
        :param inter_type: \in {cascade, fork, sum, prod, concat}
     """
@@ -337,8 +338,9 @@ class Net(Function):
     if len(self.children) == 0:
       raise AssertionError('!! This net does not have children')
     last_net = self.children[-1]
-    if isinstance(last_net, RNet) or (only_cascade and
-                                      last_net._inter_type != self.CASCADE):
+    if type(last_net) is not Net:
+    # if isinstance(last_net, RNet) or (only_cascade and
+    #                                   last_net._inter_type != self.CASCADE):
       last_net = self._add_new_subnet(layer)
 
     assert isinstance(last_net, Net)

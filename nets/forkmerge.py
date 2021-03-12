@@ -94,33 +94,44 @@ class ForkMerge(Net):
 
 class ForkMergeDAG(Net):
   """A more general fork-merge neural module that allows the structure between
-     input and output operation to be any DAG, similar to what has been used
-     in NAS-X01 serial papers. """
+  input and output operation to be any DAG, similar to what has been used
+  in NAS-X01 serial papers. """
 
-  def __init__(self, vertices, edges, name='DAG', transform=None,
-               transform_kwargs=None, **kwargs):
+  def __init__(self, vertices, edges, name='DAG', **kwargs):
     """A neural network module with one input and one output. The internal
-    structure is represented as a DAG. Concatenation is used for merging
-    inputs for multiple predecessors. One exception is the shortcut between
-    module input and output, where the module input will be added to the
-    merged tensor from other internal branches after necessary transformation.
+    structure is represented as a DAG. For vertices accepting multiple inputs,
+    a merge layer must be provided. Otherwise, concatenation layers will be
+    used as default. Using this class, one needs to consider very carefully
+    how the tensor shape changes and make sure the subgraph can be built
+    properly.
 
     SYNTAX:
     -------
+      # Initiate a classifier
       model = Classifier('GooNet')
       model.add(Input(shape=...))
 
+      # Add FMDAG
       fm_dag = ForkMergeDAG(
-        [Conv2D(3x3), MaxPool2D(3x3), Conv2D(3x3), Conv2D(1x1), Conv2D(3x3)],
-        edges='100111;10000;1000;100;10;1', name='DAG Example')
+        [m.Conv2D(filters, 3, activation='relu'),    # 1
+         m.MaxPool2D(3, 1),                          # 2
+         m.Conv2D(filters ,3, activation='relu'),    # 3
+         m.Conv2D(filters, 1, activation='relu'),    # 4
+         [m.Merge.Concat(), m.Conv2D(filters, 3)],   # 5
+         m.Merge.Concat()],                          # 6 (output vertex)
+        edges='1;01;001;1000;10011;100001', name='DAG Example')
+      model.add(fm_dag)
+
+      # Add some more layers
+      ...
+
+      # Check model by rehearsal
+      model.rehearse(export_graph=True)
 
     :param vertices: list or tuple, each entry can be a Function or
                      list/tuple of Functions
     :param edges: a string or matrix (upper triangular) representing graph edge
     :param name: network name
-    :param transform: shortcut transformation, if not provided, default
-                      layer for transformation will be used
-    :param transform_kwargs: keyword arguments for shortcut transformation
     :param kwargs: other keyword arguments
     """
     # Call parent's initializer
@@ -130,16 +141,10 @@ class ForkMergeDAG(Net):
     self.edges = edges
     self.adj_mat = None
     self._init_graph()
-    # Transformation
-    if transform is not None: assert isinstance(transform, Function)
-    self.transform = transform
-    if transform_kwargs is None: transform_kwargs = {}
-    self.transform_kwargs = transform_kwargs
 
     # Buffers
     self._predecessor_dict = {}
     self._front_vertices = []
-    self._merged_dict = {}
 
 
   @property
@@ -156,7 +161,9 @@ class ForkMergeDAG(Net):
         row, num, dense_num = self._get_layer_detail(func)
         _rows = [row]
       elif isinstance(func, Net):
-        assert False  # Ban this option for now
+        # Ban this option for now
+        raise AssertionError(
+          '!! Currently adding net to ForkMergeDAG is not supported.')
         _rows, num, dense_num = func.structure_detail
       else: raise TypeError('!! Unknown function type `{}`'.format(type(func)))
 
@@ -177,6 +184,9 @@ class ForkMergeDAG(Net):
       total_params += num
       dense_total += dense_num
 
+    # Add shortcut notation [*]
+    if self.adj_mat[0, -1]: rows[-1][0] = '[*]' + rows[-1][0]
+
     # Return
     return rows, total_params, dense_total
 
@@ -188,25 +198,26 @@ class ForkMergeDAG(Net):
     for vertex in self.vertices:
       if not isinstance(vertex, (list, tuple)): vertex = [vertex]
       for f in vertex: assert isinstance(f, Function)
+      # Each vertex is organized as a list/tuple of Functions
       vertices.append(vertex)
     # Set vertices back
     self.vertices = vertices
 
-    mat_size = len(self.vertices) + 2
+    mat_size = len(self.vertices) + 1
     mat_shape = (mat_size, mat_size)
     # Check edges and formalize adjacent matrix
     if isinstance(self.edges, str):
       # Parse edge string
-      rows = self.edges.split(';')
-      # (1) check row number
-      assert len(rows) == mat_size - 1
+      columns = self.edges.split(';')
+      # (1) check column number
+      assert len(columns) == mat_size - 1
       self.adj_mat = np.zeros(shape=mat_shape, dtype=np.bool)
-      for i, row in enumerate(rows):
-        # (2) each row should represent an upper-triangular matrix row
-        assert isinstance(row, str) and len(row) == mat_size - i - 1
-        for j, c in enumerate(row):
-          assert c in '01'
-          self.adj_mat[i, j + i + 1] = c == '1'
+      for j, col in enumerate(columns):
+        # (2) each column should represent an upper-triangular matrix column
+        assert isinstance(col, str) and len(col) == j + 1
+        for i, r in enumerate(col):
+          assert r in '01'
+          self.adj_mat[i, j + 1] = r == '1'
     else:
       assert isinstance(self.edges, np.ndarray)
       self.adj_mat = self.edges.astype(dtype=np.bool)
@@ -224,10 +235,8 @@ class ForkMergeDAG(Net):
   def _link(self, input_:tf.Tensor, **kwargs):
     # Output tensors of each vertex
     outputs = [input_]
-    output_layers = {}
     for j, funcs in enumerate(self.vertices):
-      # Add funcs to children list
-      for f in funcs: self.add(f)
+      assert isinstance(funcs, list)
 
       # Get input tensors according to adjacent matrix
       #    in|vertices |out
@@ -247,31 +256,33 @@ class ForkMergeDAG(Net):
       if predecessors: self._predecessor_dict[funcs[0]] = predecessors
       # Add input
       if self.adj_mat[0, j + 1]: self._front_vertices.append(funcs[0])
-      # Merge tensor
-      x, _ = self._internal_merge(input_tensors)
-      # Feed merged tensor to function
-      for f in funcs: x = f(x)
-      outputs.append(x)
-      output_layers[x] = f
 
-    # Final merge
-    input_tensors = [tensor for i, tensor in enumerate(outputs)
-                     if self.adj_mat[i, -1] and i != 0]
-    y, internal_final_layer = self._internal_merge(input_tensors)
-    if internal_final_layer is not None:
-      self._predecessor_dict[internal_final_layer] = [
-        fs[-1] for i, fs in enumerate(self.vertices) if self.adj_mat[i + 1, -1]]
-      self.add(internal_final_layer)
-    else:
-      assert len(input_tensors) == 1
-      internal_final_layer = output_layers[input_tensors[0]]
+      # Apply auto-merge logic if necessary
+      if len(input_tensors) > 1 and not isinstance(funcs[0], Merge):
+        funcs.insert(0, Merge.Concat())
+
+      # Feed input_tensor(s) to funcs
+      x = input_tensors
+      for f in funcs:
+        # Add funcs to children list for structure details
+        self.add(f)
+        # Call function
+        x = f(x)
+
+      outputs.append(x)
 
     # Clear predecessor_dict for conciser structure detail
-    for i, f in enumerate(self.children):
+    for i, f in enumerate(self.children[:-1]):
       if f not in self._predecessor_dict: continue
       preds = self._predecessor_dict[f]
       if len(preds) == 1 and preds[0] is self.children[i - 1]:
         self._predecessor_dict.pop(f)
+
+    # Return the result from the output vertex
+    return outputs[-1]
+
+
+"""Deprecated code
 
     if not self.adj_mat[0, -1]: return y
     # Add shortcut if specified
@@ -314,22 +325,32 @@ class ForkMergeDAG(Net):
     if transform_layer is not None:
       self._predecessor_dict[sum_merge_layer].append(transform_layer)
     return y
-
-
-  def _internal_merge(self, inputs):
+    
+    # Final merge
+    input_tensors = [tensor for i, tensor in enumerate(outputs)
+                     if self.adj_mat[i, -1] and i != 0]
+    y, internal_final_layer = self._merge(input_tensors, Merge.CONCAT)
+    if internal_final_layer is not None:
+      self._predecessor_dict[internal_final_layer] = [
+        fs[-1] for i, fs in enumerate(self.vertices) if self.adj_mat[i + 1, -1]]
+      self.add(internal_final_layer)
+    else:
+      assert len(input_tensors) == 1
+      internal_final_layer = output_layers[input_tensors[0]]
+      
+      
+  def _merge(self, inputs, method=Merge.CONCAT):
     assert isinstance(inputs, list) and len(inputs) > 0
     if len(inputs) == 1: return inputs[0], None
     # Roughly make sure all tensors in inputs can be concatenated
     assert all([len(x.shape) == len(inputs[0].shape) for x in inputs])
+
     # Use concatenation to merge
-    key = tuple(inputs)
-    # Check merged_dict to avoid duplicated merge operation
-    if key in self._merged_dict: return self._merged_dict[key]
-    merge_layer = Merge(Merge.CONCAT)
+    merge_layer = Merge(method)
     merged_tensor = merge_layer(inputs)
-    self._merged_dict[key] = merged_tensor
     return merged_tensor, merge_layer
 
+"""
 
 
 
