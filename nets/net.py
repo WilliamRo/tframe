@@ -183,18 +183,18 @@ class Net(Function):
       return t.content, total_params, dense_total
     else: return rows, total_params, dense_total
 
-  def _get_layer_detail(self, layer):
+  def _get_layer_detail(self, layer, suffix=''):
     variables = [v for v in self.var_list
                  if layer.group_name == v.name.split('/')[self._level + 1]]
     num, dense_num = stark.get_params_num(variables, consider_prune=True)
     # Generate a row
-    row = [self._get_layer_string(layer, True, True),
+    row = [self._get_layer_string(layer, True, True, suffix),
            layer.output_shape_str, stark.get_num_string(num, dense_num)]
     return row, num, dense_num
 
-  def _get_layer_string(self, f, scale, full_name=False):
+  def _get_layer_string(self, f, scale, full_name=False, suffix=''):
     assert isinstance(f, Layer)
-    return f.get_layer_string(scale, full_name)
+    return f.get_layer_string(scale, full_name, suffix)
 
   def structure_string(self, detail=True, scale=True):
     # Get functions to be added to structure string

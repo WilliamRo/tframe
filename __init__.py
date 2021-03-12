@@ -25,6 +25,8 @@ from .import models
 from .models import Predictor
 from .models import Classifier
 
+from .utils.organizer import mu
+
 from .trainers.smartrainer import SmartTrainerHub as DefaultHub
 
 import numpy as np

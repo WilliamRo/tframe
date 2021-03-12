@@ -44,10 +44,11 @@ class _Conv(Layer):
     # self.neuron_scale = get_scale(output)
     return output
 
-  def get_layer_string(self, scale, full_name=False):
-    result = super().get_layer_string(scale, full_name)
+  def get_layer_string(self, scale, full_name=False, suffix=''):
     activation = getattr(self, 'input_activation', None)
-    if isinstance(activation, str): result += '->{}'.format(activation)
+    if isinstance(activation, str):
+      suffix += '->{}'.format(activation)
+    result = super().get_layer_string(scale, full_name, suffix)
     return result
 
   def __call__(self, *args, **kwargs):

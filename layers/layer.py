@@ -47,18 +47,13 @@ class Layer(Function):
       return '({})'.format(ns_str)
     return ''
 
-  def get_layer_string(self, scale, full_name=False):
+  def get_layer_string(self, scale, full_name=False, suffix=''):
     result = self.abbreviation if not full_name else self.full_name
     if scale: result += self.structure_tail
-    output_id_str = ('' if self.output_id_str == ''
-                     else ':=' + self.output_id_str)
-    return result + output_id_str
-
-  # Override
-  def set_output_id(self):
-    from tframe import context
-    if self.output_id is None:
-      self.output_id = context.get_next_output_id()
+    result += suffix
+    if self.output_id is not None:
+      result += ':=' + self.output_id_str
+    return result
 
 
 def single_input(_link):

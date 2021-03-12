@@ -542,8 +542,11 @@ class Model(object):
 
   def handle_structure_detail(self):
     detail, total_params, dense_total = '', 0, 0
-    if hasattr(self, 'structure_detail'):
-      detail, total_params, dense_total = self.structure_detail
+    d_t_d = getattr(self, 'structure_detail', None)
+    if d_t_d: detail, total_params, dense_total = d_t_d
+    # if hasattr(self, 'structure_detail'):
+    #   detail, total_params, dense_total = self.structure_detail
+
     # Maybe take some notes
     params_str = 'Total params: {}'.format(total_params)
     hub.total_params = int(total_params)

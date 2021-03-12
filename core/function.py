@@ -18,7 +18,8 @@ class Function(object):
 
   @property
   def output_id_str(self):
-    if not self.output_id: return ''
+    # if not self.output_id: return ''
+    if not self.output_id: self.set_output_id()
     return '[{}]'.format(self.output_id)
 
   @property
@@ -71,5 +72,5 @@ class Function(object):
 
   def set_output_id(self):
     from tframe import context
-    self.output_id = context.get_next_output_id()
-
+    if self.output_id is None:
+      self.output_id = context.get_next_output_id()
