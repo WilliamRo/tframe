@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe import console, checker, pedia
@@ -103,6 +104,8 @@ class Merge(Layer):
       self._sum_indices = (self._sum_indices,)
     if merge_method == self.CONCAT_SUM:
       self.full_name += '({})'.format(','.join(self._sum_indices))
+
+    self.max_trim = kwargs.get('max_trim', 0)
     # Store other keyword arguments
     self.kwargs = kwargs
 
@@ -111,6 +114,9 @@ class Merge(Layer):
     assert len(input_list) > 0
     if len(input_list) == 1: input_list = input_list[0]
     assert isinstance(input_list, (list, tuple)) and len(input_list) > 1
+
+    # Slice if necessary
+    input_list = self._check_input_list(input_list)
 
     # Merge according to specification
     if self.merge_method == self.SUM: return tf.add_n(input_list)
@@ -130,21 +136,49 @@ class Merge(Layer):
       return tf.add_n(inputs)
     else: raise KeyError('!! Unknown merge method {}'.format(self.merge_method))
 
-  @classmethod
-  def Sum(cls):
-    return Merge(cls.SUM)
+  def _check_input_list(self, input_list):
+    # Make sure each input has the same shape length
+    shapes = [x.shape.as_list() for x in input_list]
+    if not all([len(shape) == len(shapes[0]) for shape in shapes]):
+      raise AssertionError('!! tensors to be merged must have a same rank')
+
+    # TODO: some more checks should be done
+    if self.merge_method not in (self.SUM, self.PROD): return input_list
+    dims = [shape[self._axis] for shape in shapes]
+    min_dim = min(dims)
+    deltas = [d - min_dim for d in dims]
+    if not any(deltas): return input_list
+
+    # Try to automatically truncate overlong tensors
+    if max(deltas) > self.max_trim: raise ValueError(
+      '!! Failed to merge tensors because of unequal dimension of the'
+      ' corresponding axis which can not be truncated automatically.')
+
+    # Truncate overlong tensors
+    begin, size = [[i] * len(shapes[0]) for i in (0, 1)]
+    size[self._axis] = min_dim
+    for i, delta in enumerate(deltas):
+      if delta == 0: continue
+      input_list[i] =tf.slice(input_list[i], begin, size)
+
+    self.full_name += '[t]'
+    return input_list
 
   @classmethod
-  def Prod(cls):
-    return Merge(cls.PROD)
+  def Sum(cls, **kwargs):
+    return Merge(cls.SUM, **kwargs)
 
   @classmethod
-  def Concat(cls, axis=-1):
-    return Merge(cls.CONCAT, axis=axis)
+  def Prod(cls, **kwargs):
+    return Merge(cls.PROD, **kwargs)
 
   @classmethod
-  def ConcatSum(cls, sum_indices=(0,)):
-    return Merge(cls.CONCAT_SUM, sum_indices=sum_indices)
+  def Concat(cls, axis=-1, **kwargs):
+    return Merge(cls.CONCAT, axis=axis, **kwargs)
+
+  @classmethod
+  def ConcatSum(cls, sum_indices=(0,), **kwargs):
+    return Merge(cls.CONCAT_SUM, sum_indices=sum_indices, **kwargs)
 
 
 class ConcatenateForGAN(Layer):

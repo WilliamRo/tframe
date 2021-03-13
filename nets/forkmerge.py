@@ -97,7 +97,8 @@ class ForkMergeDAG(Net):
   input and output operation to be any DAG, similar to what has been used
   in NAS-X01 serial papers. """
 
-  def __init__(self, vertices, edges, name='DAG', **kwargs):
+  def __init__(self, vertices, edges, input_projections=None,
+               name='DAG', max_trim=None, **kwargs):
     """A neural network module with one input and one output. The internal
     structure is represented as a DAG. For vertices accepting multiple inputs,
     a merge layer must be provided. Otherwise, concatenation layers will be
@@ -131,7 +132,11 @@ class ForkMergeDAG(Net):
     :param vertices: list or tuple, each entry can be a Function or
                      list/tuple of Functions
     :param edges: a string or matrix (upper triangular) representing graph edge
+    :param input_projections: projection function applied to DAG input tensor
+                              for each vertex
     :param name: network name
+    :param max_trim: argument passed to Merge layers for truncate unaligned
+                     tensors
     :param kwargs: other keyword arguments
     """
     # Call parent's initializer
@@ -140,7 +145,10 @@ class ForkMergeDAG(Net):
     self.vertices = vertices
     self.edges = edges
     self.adj_mat = None
+    self.input_projections = input_projections
     self._init_graph()
+
+    self.max_trim = max_trim
 
     # Buffers
     self._predecessor_dict = {}
@@ -185,7 +193,8 @@ class ForkMergeDAG(Net):
       dense_total += dense_num
 
     # Add shortcut notation [*]
-    if self.adj_mat[0, -1]: rows[-1][0] = '[*]' + rows[-1][0]
+    if self.adj_mat[0, -1] and not self.input_projections[-1]:
+      rows[-1][0] = '[*]' + rows[-1][0]
 
     # Return
     return rows, total_params, dense_total
@@ -207,17 +216,7 @@ class ForkMergeDAG(Net):
     mat_shape = (mat_size, mat_size)
     # Check edges and formalize adjacent matrix
     if isinstance(self.edges, str):
-      # Parse edge string
-      columns = self.edges.split(';')
-      # (1) check column number
-      assert len(columns) == mat_size - 1
-      self.adj_mat = np.zeros(shape=mat_shape, dtype=np.bool)
-      for j, col in enumerate(columns):
-        # (2) each column should represent an upper-triangular matrix column
-        assert isinstance(col, str) and len(col) == j + 1
-        for i, r in enumerate(col):
-          assert r in '01'
-          self.adj_mat[i, j + 1] = r == '1'
+      self.adj_mat = self.parse_edge_str(self.edges, mat_size)
     else:
       assert isinstance(self.edges, np.ndarray)
       self.adj_mat = self.edges.astype(dtype=np.bool)
@@ -230,6 +229,23 @@ class ForkMergeDAG(Net):
       all([np.sum(self.adj_mat[i, :]) > 0 for i in range(mat_size - 1)]), # out
     ]): raise AssertionError('!! Adjacent matrix {} is illegal'.format(
       self.adj_mat))
+
+    # Check input projections
+    if self.input_projections is None:
+      self.input_projections = [[]] * len(self.vertices)
+      return
+    assert isinstance(self.input_projections, (tuple, list))
+    assert len(self.input_projections) == len(self.vertices)
+    projections = []
+    for j, p in enumerate(self.input_projections):
+      if not self.adj_mat[0, j + 1] or p is None: p = []
+      elif isinstance(p, (tuple, list)):
+        if len(p) > 0: assert all([isinstance(f, Layer) for f in p])
+        p = list(p)
+      elif isinstance(p, Layer): p = [p]
+      else: raise TypeError('!! Illegal projection `{}`'.format(p))
+      projections.append(p)
+    self.input_projections = projections
 
 
   def _link(self, input_:tf.Tensor, **kwargs):
@@ -250,12 +266,29 @@ class ForkMergeDAG(Net):
       #    [ |         |+]]
       input_tensors = [
         t for i, t in enumerate(outputs) if self.adj_mat[i, j + 1]]
+
+      # Apply input projection if necessary
+      proj_flag = input_ in input_tensors and self.input_projections[j]
+      if proj_flag:
+        layers = self.input_projections[j]
+        x = input_
+        for layer in layers:
+          # Add before link, otherwise variable may be shared
+          self.add(layer)
+          x = layer(x)
+        # Set tensors back
+        input_tensors[0] = x
+        # Set layers[0] as front vertices
+        self._front_vertices.append(layers[0])
+
       # Take down predecessors for structure details
       predecessors = [fs[-1] for i, fs in enumerate(self.vertices)
                       if self.adj_mat[i + 1, j + 1]]
+      if proj_flag: predecessors.append(self.input_projections[j][-1])
       if predecessors: self._predecessor_dict[funcs[0]] = predecessors
       # Add input
-      if self.adj_mat[0, j + 1]: self._front_vertices.append(funcs[0])
+      if self.adj_mat[0, j + 1] and not proj_flag:
+        self._front_vertices.append(funcs[0])
 
       # Apply auto-merge logic if necessary
       if len(input_tensors) > 1 and not isinstance(funcs[0], Merge):
@@ -280,6 +313,27 @@ class ForkMergeDAG(Net):
 
     # Return the result from the output vertex
     return outputs[-1]
+
+
+  @staticmethod
+  def parse_edge_str(edge_spec, mat_size):
+    """Parse a string representing an upper triangular matrix. The string
+    should list each column of the upper triangular part of the matrix in order.
+    E.g., 1;01;001;1000;10011;100001
+    """
+    assert isinstance(edge_spec, str)
+    columns = edge_spec.split(';')
+    # (1) check column number
+    assert len(columns) == mat_size - 1
+    adj_mat = np.zeros(shape=[mat_size, mat_size], dtype=np.bool)
+    for j, col in enumerate(columns):
+      # (2) each column should represent an upper-triangular matrix column
+      assert isinstance(col, str) and len(col) == j + 1
+      for i, r in enumerate(col):
+        assert r in '01'
+        adj_mat[i, j + 1] = r == '1'
+
+    return adj_mat
 
 
 """Deprecated code
