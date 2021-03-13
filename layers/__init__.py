@@ -18,6 +18,8 @@ from .convolutional import Deconv2D
 
 from .normalization import BatchNormalization
 
+from .merge import Merge
+
 from .pooling import AveragePooling2D
 from .pooling import GlobalAveragePooling2D
 from .pooling import MaxPool2D

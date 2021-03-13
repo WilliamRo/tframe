@@ -10,6 +10,7 @@ from .conv_net import ConvNet
 
 
 class AlexNet(ConvNet):
+  """TODO: this class is still under development. DO NOT USE IT FOR NOW"""
 
   def __init__(self, archi_string='96-256-', kernel_size=5,
                strides=2, padding='valid', activation='tanh'):

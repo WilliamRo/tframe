@@ -103,7 +103,8 @@ class Merge(Layer):
     if isinstance(self._sum_indices, int):
       self._sum_indices = (self._sum_indices,)
     if merge_method == self.CONCAT_SUM:
-      self.full_name += '({})'.format(','.join(self._sum_indices))
+      self.full_name += ('-{}'.format(
+        ','.join(self._sum_indices) if len(self._sum_indices) > 1 else 0))
 
     self.max_trim = kwargs.get('max_trim', 0)
     # Store other keyword arguments
@@ -113,7 +114,8 @@ class Merge(Layer):
     # Check input_list
     assert len(input_list) > 0
     if len(input_list) == 1: input_list = input_list[0]
-    assert isinstance(input_list, (list, tuple)) and len(input_list) > 1
+    if not (isinstance(input_list, (list, tuple)) and len(input_list) > 1):
+      raise ValueError('!! Illegal input tensors flow into merge layer.')
 
     # Slice if necessary
     input_list = self._check_input_list(input_list)

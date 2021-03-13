@@ -98,7 +98,7 @@ class ForkMergeDAG(Net):
   in NAS-X01 serial papers. """
 
   def __init__(self, vertices, edges, input_projections=None,
-               name='DAG', max_trim=None, **kwargs):
+               name='DAG', max_trim=None, auto_merge=False, **kwargs):
     """A neural network module with one input and one output. The internal
     structure is represented as a DAG. For vertices accepting multiple inputs,
     a merge layer must be provided. Otherwise, concatenation layers will be
@@ -137,6 +137,7 @@ class ForkMergeDAG(Net):
     :param name: network name
     :param max_trim: argument passed to Merge layers for truncate unaligned
                      tensors
+    :param auto_merge: option to merge multiple inputs automatically
     :param kwargs: other keyword arguments
     """
     # Call parent's initializer
@@ -149,6 +150,7 @@ class ForkMergeDAG(Net):
     self._init_graph()
 
     self.max_trim = max_trim
+    self.auto_merge = auto_merge
 
     # Buffers
     self._predecessor_dict = {}
@@ -268,7 +270,7 @@ class ForkMergeDAG(Net):
         t for i, t in enumerate(outputs) if self.adj_mat[i, j + 1]]
 
       # Apply input projection if necessary
-      proj_flag = input_ in input_tensors and self.input_projections[j]
+      proj_flag = input_ in input_tensors and self.input_projections[j] != []
       if proj_flag:
         layers = self.input_projections[j]
         x = input_
@@ -281,18 +283,23 @@ class ForkMergeDAG(Net):
         # Set layers[0] as front vertices
         self._front_vertices.append(layers[0])
 
+      # Apply auto-merge logic if necessary
+      if len(input_tensors) > 1 and not isinstance(funcs[0], Merge):
+        if not self.auto_merge: raise ValueError(
+          '!! Multiple input tensors flow into non-merge layer')
+        merge_layer = Merge.Concat()
+        funcs.insert(0, merge_layer)
+
       # Take down predecessors for structure details
       predecessors = [fs[-1] for i, fs in enumerate(self.vertices)
                       if self.adj_mat[i + 1, j + 1]]
-      if proj_flag: predecessors.append(self.input_projections[j][-1])
+      # Projection is only applied to the first input tensor, thus
+      #  it should be put at the first place of predecessors
+      if proj_flag: predecessors.insert(0, self.input_projections[j][-1])
       if predecessors: self._predecessor_dict[funcs[0]] = predecessors
       # Add input
       if self.adj_mat[0, j + 1] and not proj_flag:
         self._front_vertices.append(funcs[0])
-
-      # Apply auto-merge logic if necessary
-      if len(input_tensors) > 1 and not isinstance(funcs[0], Merge):
-        funcs.insert(0, Merge.Concat())
 
       # Feed input_tensor(s) to funcs
       x = input_tensors

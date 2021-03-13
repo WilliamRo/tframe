@@ -6,10 +6,11 @@ import tensorflow as tf
 
 from tframe.core.function import Function
 from tframe.core.decorators import init_with_graph
+
+from tframe.layers.common import Activation
 from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
-
-# from tframe.utils import get_scale
+from tframe.layers.normalization import BatchNormalization
 
 from tensorflow.python.layers.convolutional import Conv1D as _Conv1D
 from tensorflow.python.layers.convolutional import Conv2D as _Conv2D
@@ -28,7 +29,11 @@ class _Conv(Layer):
   abbreviation = 'conv'
 
   @init_with_graph
-  def __init__(self, *args, expand_last_dim=False, **kwargs):
+  def __init__(self, *args, use_batchnorm=False, expand_last_dim=False,
+               **kwargs):
+    self.input_activation = kwargs.get('activation', None)
+    if use_batchnorm: kwargs['activation'] = None
+    self.use_batchnorm = use_batchnorm
     # IDEs such as pycharm should be able to find the noumenon's para infos
     self.noumenon = super(Function, self)
     self.noumenon.__init__(*args, **kwargs)
@@ -42,12 +47,17 @@ class _Conv(Layer):
     # TODO: too violent ?
     output = self.noumenon.__call__(input_, scope=self.full_name)
     # self.neuron_scale = get_scale(output)
-    return output
+
+    if not self.use_batchnorm: return output
+    output = BatchNormalization()(output)
+    if not self.input_activation: return output
+    return Activation(self.input_activation)(output)
 
   def get_layer_string(self, scale, full_name=False, suffix=''):
     activation = getattr(self, 'input_activation', None)
-    if isinstance(activation, str):
-      suffix += '->{}'.format(activation)
+    use_batchnorm = getattr(self, 'use_batchnorm', False)
+    if use_batchnorm: suffix += '->bn'
+    if isinstance(activation, str): suffix += '->{}'.format(activation)
     result = super().get_layer_string(scale, full_name, suffix)
     return result
 
@@ -100,7 +110,6 @@ class Conv1D(_Conv, _Conv1D):
       trainable=trainable,
       name=name, **kwargs)
     self.neuron_scale = _get_neuron_scale(self.filters, self.kernel_size)
-    self.input_activation = activation
 
 
 class Conv2D(_Conv, _Conv2D):
@@ -147,7 +156,6 @@ class Conv2D(_Conv, _Conv2D):
       expand_last_dim=expand_last_dim,
       name=name, **kwargs)
     self.neuron_scale = _get_neuron_scale(self.filters, self.kernel_size)
-    self.input_activation = activation
 
 
 class Deconv2D(_Conv, _Deconv2D):
@@ -191,7 +199,6 @@ class Deconv2D(_Conv, _Deconv2D):
       name=name,
       **kwargs)
     self.neuron_scale = _get_neuron_scale(self.filters, self.kernel_size)
-    self.input_activation = activation
 
 
 if __name__ == '__main__':

@@ -163,7 +163,9 @@ class Net(Function):
 
     # Check total params
     if not (hub.prune_on or hub.etch_on):
-      assert total_params == sum([np.prod(v.shape) for v in self.var_list])
+      var_list_params = sum([np.prod(v.shape) for v in self.var_list])
+      if not total_params == var_list_params:
+        raise AssertionError('!! total params do not match')
 
     if self.is_root:
       headers = ['Layers', 'Output Shape', 'Params #']
