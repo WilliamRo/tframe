@@ -159,6 +159,15 @@ class ModelConfigs(object):
   axis = Flag.integer(None, 'Parameter axis, may be used in many methods',
                       is_key=None)
 
+  # NAS related
+  filters = Flag.integer(None, 'Number of filters/channels used in CNNs',
+                         is_key=None)
+  vertices = Flag.string(None, 'Vertices list used in DAG architecture',
+                         is_key=None)
+  adj_matrix = Flag.string(None, 'Adjacent matrix of a DAG', is_key=None)
+  num_stacks = Flag.integer(None, 'Number of module stacks', is_key=None)
+  module_per_stack = Flag.integer(None, 'Module per stack', is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True
