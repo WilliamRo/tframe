@@ -164,7 +164,7 @@ class ImageViewer(object):
     assert isinstance(self.data_set, DataSet)
     # Check step and index
     assert any([index is not None, step is not None])
-    if step is not None: assert step in (-1, 1) and index is None
+    if step is not None: assert index is None
     # Temporal code TODO: please refactor this method
     if horizontal:
       if len(self._horizontal_list) == 1: return False
@@ -203,6 +203,7 @@ class ImageViewer(object):
 
   def _on_key_press(self, event):
     assert isinstance(event, tk.Event)
+    big_step = max(self.data_set.size // 10, 1)
 
     flag = False
     if event.keysym == 'Escape':
@@ -211,6 +212,10 @@ class ImageViewer(object):
       flag = self._move_cursor(1)
     elif event.keysym == 'k':
       flag = self._move_cursor(-1)
+    elif event.keysym == 'J':
+      flag = self._move_cursor(big_step)
+    elif event.keysym == 'K':
+      flag = self._move_cursor(-big_step)
     elif event.keysym == 'l':
       flag = self._move_cursor(1, horizontal=True)
     elif event.keysym == 'h':
@@ -246,8 +251,6 @@ class ImageViewer(object):
     if flag: self.refresh()
 
   def _move_cursor(self, step, horizontal=False):
-    # Currently step is constrained
-    assert step in [-1, 1]
     # If flag is True, refresh after moving cursor
     flag = False
     if self.data_set is not None:

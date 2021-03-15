@@ -421,6 +421,26 @@ class DataSet(TFRData):
       groups.append(samples)
     self.properties[self.GROUPS] = groups
 
+
+  def get_types(self, *class_indices, target_is_onehot=False):
+    """Get specific types of data"""
+    indices = []
+    for i in class_indices: indices.extend(self.groups[i])
+    data_set = self[indices]
+    # Set corresponding properties
+    data_set.properties[self.NUM_CLASSES] = len(class_indices)
+    # data_set is in one-hot format
+    if target_is_onehot:
+      data_set.targets = data_set.targets[:, np.array(class_indices)]
+    # Set group names
+    if pedia.classes in data_set.properties:
+      group_names = data_set.properties[pedia.classes]
+      data_set.properties[pedia.classes] = [
+        group_names[i] for i in class_indices]
+    # Refresh groups
+    data_set.refresh_groups()
+    return data_set
+
   # endregion : Public Methods
 
   # region : Private Methods
