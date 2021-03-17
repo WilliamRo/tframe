@@ -277,16 +277,10 @@ class Model(object):
     if not self._loss.activated:
       raise AssertionError('!! loss has not been activated yet')
     with tf.name_scope('Optimizer'):
-      if optimizer is None:
-        optimizer = hub.get_optimizer()
-        console.show_status(
-          'Optimizer defined in trainer hub initialized.', '++')
+      if optimizer is None: console.show_status(
+        'Optimizer defined in trainer hub initialized.', '++')
 
-      # TODO: BETA
-      if hub.use_rtrl:
-        raise AssertionError('use_rtrl option has been deprecated')
-        from tframe.optimizers.rtrl_opt import RealTimeOptimizer
-        optimizer = RealTimeOptimizer(self, optimizer)
+      optimizer = hub.get_optimizer(optimizer)
 
       self._optimizer = optimizer
       self.set_train_step(var_list)
@@ -296,8 +290,8 @@ class Model(object):
       self._optimizer.minimize(self._loss.op, var_list=var_list))
 
   def reset_optimizer(self):
-    from tframe.optimizers.clip_opt import GradientClipOptimizer
-    assert isinstance(self._optimizer, GradientClipOptimizer)
+    from tframe.optimizers.optimizer import Optimizer
+    assert isinstance(self._optimizer, Optimizer)
     self.session.run(self._optimizer.reset_tf_optimizer)
     console.show_status('TensorFlow optimizer has been reset.')
 

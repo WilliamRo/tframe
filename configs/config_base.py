@@ -249,33 +249,13 @@ class Config(
     return flag
 
   def get_optimizer(self, optimizer=None):
-    from tframe import context
-    from tframe.optimizers.clip_opt import GradientClipOptimizer
+    """Get tframe optimizer (based on tensorflow optimizer). """
+    from tframe.optimizers.optimizer import Optimizer
+
     if optimizer is None:
-      assert self.optimizer is not None and self.learning_rate is not None
-      optimizer = self.get_tf_optimizer()
-    context.tf_optimizer = optimizer
-
-    if self.clip_threshold > 0:
-      assert self.clip_method in ('norm', 'value', 'global_norm', 'avg_norm')
-      optimizer = GradientClipOptimizer(
-        optimizer, self.clip_threshold, method=self.clip_method)
-    if not self.save_train_opt_vars:
-      if not isinstance(optimizer, tf.train.Optimizer):
-        assert isinstance(optimizer, GradientClipOptimizer)
-        tf_opt = optimizer._tf_optimizer
-      else: tf_opt = optimizer
-      assert isinstance(tf_opt, tf.train.Optimizer)
-      # TODO: may be not safe to do this
-      tf_opt._name = pedia.train_opt
-    return optimizer
-
-  def get_tf_optimizer(self):
-    if self.optimizer in ['adam', tf.train.AdamOptimizer]:
-      return tf.train.AdamOptimizer(
-        learning_rate=self.learning_rate,
-        beta1=self.beta1, beta2=self.beta2, epsilon=self.adam_epsilon)
-    return self.optimizer(self.learning_rate)
+      assert not any([self.optimizer is None, self.learning_rate is None])
+      optimizer = self.optimizer
+    return Optimizer.get_optimizer(optimizer)
 
   # endregion : Public Methods
 

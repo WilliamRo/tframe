@@ -400,12 +400,12 @@ class Trainer(object):
     # Decay learning rate if necessary
     if self.th.lr_decay < 1.0:
       assert self.th.lr_decay > 0
-      self.th.clip_lr_multiplier *= self.th.lr_decay
+      self.th.opt_lr_multiplier *= self.th.lr_decay
       if self.th.reset_optimizer_after_resurrection:
         self.model.reset_optimizer()
       self.model.set_train_step()
       console.show_status('Learning rate decayed to {:.6f}'.format(
-        self.th.learning_rate * self.th.clip_lr_multiplier))
+        self.th.learning_rate * self.th.opt_lr_multiplier))
 
   # endregion : During training
 
