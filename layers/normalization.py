@@ -54,6 +54,12 @@ class BatchNormalization(Layer):
 
     self._use_tf_bn = use_tf_bn
 
+    # Apply global momentum and epsilon if necessary
+    if tfr.hub.bn_momentum is not None:
+      self.momentum = tfr.hub.bn_momentum
+    if tfr.hub.bn_epsilon is not None:
+      self.epsilon = tfr.hub.bn_epsilon
+
 
   @single_input
   def _link(self, input_:tf.Tensor, **kwargs):
