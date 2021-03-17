@@ -72,15 +72,15 @@ class ConvNet(object):
     spec = spec.lower()
 
     # Find layers
-    if spec == 'conv1x1':
+    if spec in ('conv1x1', 'c1'):
       return cls.conv_bn_relu(filters, 1, use_batchnorm, **kwargs)
-    elif spec == 'conv3x3':
+    elif spec in ('conv3x3', 'c3'):
       return cls.conv_bn_relu(filters, 3, use_batchnorm, **kwargs)
-    elif spec == 'maxpool3x3':
+    elif spec in ('maxpool3x3', 'm3'):
       return [MaxPool2D(pool_size=(3, 3), strides=1, **kwargs)]
-    elif spec == 'bottlenetconv3x3':
+    elif spec in ('bottlenetconv3x3', 'b3'):
       return cls.bottle_net(filters, 3, use_batchnorm, **kwargs)
-    elif spec == 'bottlenetconv5x5':
+    elif spec in ('bottlenetconv5x5', 'b5'):
       return cls.bottle_net(filters, 5, use_batchnorm, **kwargs)
     else: raise KeyError('!! Can not parse `{}`'.format(spec))
 

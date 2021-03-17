@@ -1,6 +1,7 @@
 import numpy as np
-import tensorflow as tf
+# Put this line before importing tensorflow to get rid of future warnings
 from tframe import console
+import tensorflow as tf
 
 
 console.suppress_logging()

@@ -28,12 +28,12 @@ class NAS101(ConvNet):
   CONV3X3 = 'conv3x3'
   MAXPOOL3X3 = 'maxpool3x3'
 
-  typical_vertices = (CONV3X3, MAXPOOL3X3, CONV3X3, CONV1X1, CONV3X3)
+  typical_vertices = 'conv3x3,maxpool3x3,conv3x3,conv1x1,conv3x3'
   typical_edges = '1;01;001;1000;10011;100001'
 
   def __init__(self, vertices=typical_vertices, edges=typical_edges,
                num_stacks=3, stem_channels=128, cells_per_stack=3,
-               use_batchnorm=True, **kwargs):
+               use_batchnorm=True, input_projection=True, **kwargs):
     self.vertices = vertices
     self.edges = edges
     # Make sure the graph is legal
@@ -44,14 +44,15 @@ class NAS101(ConvNet):
     self.num_stacks = num_stacks
     self.stem_channels = stem_channels
     self.use_batchnorm = use_batchnorm
+    self.input_projection = input_projection
     self.cells_per_stack = cells_per_stack
     self.kwargs = kwargs
 
 
-  def _get_cell(self, filters):
+  def _get_cell(self, input_channels, output_channels):
     """Get cell according to the specification."""
     # Calculate channel number for each vertex
-    n_channels = self.back_prop_channels(filters, self.adj_matrix)
+    n_channels = self.back_prop_channels(output_channels, self.adj_matrix)
     # Calculate in degree for each vertex
     in_degrees = np.sum(self.adj_matrix, axis=0)[1:]
     assert in_degrees[-1] > 1
@@ -78,6 +79,11 @@ class NAS101(ConvNet):
     input_projections = [[] for _ in vertices]
     for j, layers in enumerate(vertices):
       if not self.adj_matrix[0, j + 1]: continue
+      # Do not add projection unless it will cause building error
+      if not self.input_projection and any([
+        not isinstance(layers[0], Merge),
+        input_channels == output_channels]): continue
+      # Add input projection
       input_projections[j] = self.conv_bn_relu(
         n_channels[j], 1, self.use_batchnorm)
 
@@ -93,16 +99,18 @@ class NAS101(ConvNet):
     # Add stem
     layers.extend(self.conv_bn_relu(self.stem_channels, 3))
     # Add stacks
-    channels = self.stem_channels
+    output_channels = self.stem_channels
     for i in range(self.num_stacks):
+      input_channels = output_channels
       # Down sample except in first cell
       if i > 0:
         layers.append(MaxPool2D(2, 2))
         # Double channel number
-        channels *= 2
+        output_channels *= 2
 
       for _ in range(self.cells_per_stack):
-        layers.append(self._get_cell(channels))
+        layers.append(self._get_cell(input_channels, output_channels))
+        input_channels = output_channels
 
     # Add global average pooling layer
     layers.append(GlobalAveragePooling2D())
@@ -114,9 +122,9 @@ class NAS101(ConvNet):
     """Do basic check for graph. Note that no prune procedure is involved.
     If the input graph contains extraneous vertices, error will be raised in
     ForkMergeDAG instance. """
-    # Check vertices
-    legal_vertices = (self.CONV1X1, self.CONV3X3, self.MAXPOOL3X3)
-    assert all([v in legal_vertices for v in self.vertices])
+    # Parse vertices if necessary
+    if isinstance(self.vertices, str):
+      self.vertices = self.vertices.split(',')
     # :: Check edges
     assert isinstance(self.edges, str)
     forward_specs = self.edges.split(';')
@@ -136,7 +144,7 @@ class NAS101(ConvNet):
     NAS-101 paper."""
     assert isinstance(matrix, np.ndarray) and len(matrix.shape) == 2
     n_vertices = matrix.shape[0] - 2
-    assert n_vertices > 1
+    assert n_vertices > 0
 
     n_channels = [0] * n_vertices
     n_branches = np.sum(matrix[1:, -1])
@@ -161,6 +169,13 @@ class NAS101(ConvNet):
     # Sanity check and return
     n_channels.append(n_output_channel)
     return n_channels
+
+
+  class Shelf(object):
+    class CIFAR10(object):
+      NAS101Best = ('conv3x3,maxpool3x3,conv3x3,conv1x1,conv3x3',
+                    '1;01;001;1000;10011;100001')
+
 
 
 

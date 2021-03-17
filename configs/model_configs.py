@@ -167,6 +167,8 @@ class ModelConfigs(object):
   adj_matrix = Flag.string(None, 'Adjacent matrix of a DAG', is_key=None)
   num_stacks = Flag.integer(None, 'Number of module stacks', is_key=None)
   module_per_stack = Flag.integer(None, 'Module per stack', is_key=None)
+  input_projection = Flag.boolean(
+    None, 'Whether to use input projection', is_key=None)
 
 
   def smooth_out_model_configs(self):
