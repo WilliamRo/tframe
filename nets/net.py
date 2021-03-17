@@ -480,8 +480,13 @@ class Net(Function):
     if customized_loss:
       loss_tensor_list += customized_loss
 
-    # (2) Add regularizer losses
-    loss_tensor_list += tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    # (2) Add regularized losses
+    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    loss_tensor_list.extend(reg_losses)
+    # (2-A) Add global l2 loss
+    if hub.global_l2_penalty > 0:
+      loss_tensor_list.append(hub.global_l2_penalty * tf.add_n(
+        [tf.nn.l2_loss(v) for v in self.var_list if v.trainable]))
 
     # Add-up all extra losses
     if loss_tensor_list:
