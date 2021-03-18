@@ -45,6 +45,14 @@ class ConfusionMatrix(object):
             if self._class_names is None else self._class_names)
 
 
+  @staticmethod
+  def calculate_PRF(TP, FP, FN):
+    precision = TP / np.maximum(TP + FP, 1)
+    recall = TP / np.maximum(TP + FN, 1)
+    F1 = 2 * precision * recall / np.maximum(precision + recall, 1)
+    return precision, recall, F1
+
+
   def fill(self, preds, truths):
     # Sanity check
     if not isinstance(preds, np.ndarray): preds = np.array(preds)
@@ -73,10 +81,8 @@ class ConfusionMatrix(object):
       [total] * self.num_classes))
 
     # Calculate performance measures for each class
-    self.precisions = self.TPs / np.maximum(self.TPs + self.FPs, 1)
-    self.recalls = self.TPs / np.maximum(self.TPs + self.FNs, 1)
-    self.F1s = 2 * self.precisions * self.recalls / np.maximum(
-        self.precisions + self.recalls, 1)
+    self.precisions, self.recalls, self.F1s = self.calculate_PRF(
+      self.TPs, self.FPs, self.FNs)
 
     # Calculate overall performance measures
     values = (self.precisions, self.recalls, self.F1s)
@@ -94,7 +100,8 @@ class ConfusionMatrix(object):
     self.confusion_matrix = cm
 
 
-  def make_table(self, class_details=True, decimal=3, tab=2, margin=1):
+  def make_table(self, class_details=True, decimal=3, tab=2, margin=1,
+                 groups=None):
     """Produce a sklearn style table. Format:
 
       Table 1: Example Table
@@ -129,7 +136,31 @@ class ConfusionMatrix(object):
     table.print_row('Weighted Avg', self.weighted_precision,
                     self.weighted_recall, self.weighted_F1, self.total)
     table.hline()
+    # Add group information if required
+    if groups:
+      for row in self.merge(groups): table.print_row(*row)
+      table.hline()
     return table
+
+
+  def merge(self, groups):
+    assert isinstance(groups, (tuple, list))
+    if not isinstance(groups[0], (tuple, list)): groups = [groups]
+    results = []
+    cm = self.confusion_matrix
+    for indices in groups:
+      assert isinstance(indices, (tuple, list))
+      assert all([isinstance(i, int) and i >= 0 for i in indices])
+      assert len(indices) == len(set(indices))
+      n = '/'.join([self.class_names[i] for i in indices])
+      ind = np.array(indices)
+      TP = np.sum(cm[ind][:, ind])
+      FP = np.sum(cm[ind]) - TP
+      FN = np.sum(cm[:, ind]) - TP
+      p, r, f = self.calculate_PRF(TP, FP, FN)
+      s = np.sum(self.support[ind])
+      results.append((n, p ,r, f, s))
+    return results
 
 
   def matrix_table(self, cell_width=None):
@@ -176,5 +207,5 @@ if __name__ == '__main__':
            0, 0, 0, 2, 2, 2, 2, 2, 2]
   cm.fill(preds, truths)
   print(cm.matrix_table())
-  print(cm.make_table())
-  cm.sklearn_plot()
+  print(cm.make_table(groups=(1, 2)))
+  # cm.sklearn_plot()
