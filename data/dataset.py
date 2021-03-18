@@ -53,6 +53,12 @@ class DataSet(TFRData):
   # region : Properties
 
   @property
+  def target_is_onehot(self):
+    if not isinstance(self.targets, np.ndarray): return False
+    if not len(self.targets.shape) == 2: return False
+    return self.targets.shape[1] == self.num_classes
+
+  @property
   def gather_indices(self):
     assert isinstance(self.active_length, (list, tuple))
     return [[i, al - 1] for i, al in enumerate(self.active_length)]
@@ -422,7 +428,7 @@ class DataSet(TFRData):
     self.properties[self.GROUPS] = groups
 
 
-  def get_types(self, *class_indices, target_is_onehot=False):
+  def get_classes(self, *class_indices):
     """Get specific types of data"""
     indices = []
     for i in class_indices: indices.extend(self.groups[i])
@@ -430,7 +436,7 @@ class DataSet(TFRData):
     # Set corresponding properties
     data_set.properties[self.NUM_CLASSES] = len(class_indices)
     # data_set is in one-hot format
-    if target_is_onehot:
+    if self.target_is_onehot:
       data_set.targets = data_set.targets[:, np.array(class_indices)]
     # Set group names
     if pedia.classes in data_set.properties:
@@ -440,6 +446,28 @@ class DataSet(TFRData):
     # Refresh groups
     data_set.refresh_groups()
     return data_set
+
+
+  def merge_classes(self, *class_indices):
+    """Merge 2 classes and put them at the end of class list"""
+    target_is_onehot = self.target_is_onehot
+    # Update group and class name
+    indices = []
+    names_to_merge = []
+    for i in reversed(sorted(class_indices)):
+      indices.extend(self.properties[self.GROUPS].pop(i))
+      names_to_merge.append(self.properties[pedia.classes].pop(i))
+    self.properties[self.GROUPS].append(indices)
+    self.properties[pedia.classes].append('/'.join(names_to_merge))
+    # Set num classes
+    self.properties[self.NUM_CLASSES] = len(self.properties[self.GROUPS])
+    # Generate labels
+    labels = np.zeros(shape=self.size, dtype=int)
+    for i, group in enumerate(self.groups): labels[np.array(group)] = i
+    # Set targets
+    if target_is_onehot:
+      self.targets = misc.convert_to_one_hot(labels, self.num_classes)
+    else: self.targets = labels
 
   # endregion : Public Methods
 

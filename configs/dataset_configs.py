@@ -70,10 +70,23 @@ class DataConfigs(object):
     None, 'Configuration for data augmentation', is_key=None)
   pad_mode = Flag.string(None, 'Padding option for image padding', is_key=None)
 
+  # Confusion matrix related
+  class_indices = Flag.string(
+    None, 'Class indices, e.g., `3,5`, only for research use', is_key=None)
+
   @property
   def sample_among_sequences(self):
     if self.sub_seq_len in [None, 0]: return False
     assert isinstance(self.sub_seq_len, int) and self.sub_seq_len > 0
     return True
+
+  @property
+  def class_index_list(self):
+    if not isinstance(self.class_indices, str): return []
+    indices = [int(ci) for ci in self.class_indices.split(',')]
+    # Sanity check
+    assert all([i >= 0 for i in indices])
+    assert len(indices) == len(list(set(indices)))
+    return indices
 
 
