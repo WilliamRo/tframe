@@ -82,7 +82,8 @@ class DataConfigs(object):
 
   @property
   def class_index_list(self):
-    if not isinstance(self.class_indices, str): return []
+    if not isinstance(self.class_indices, str) or self.class_indices == '-':
+      return []
     indices = [int(ci) for ci in self.class_indices.split(',')]
     # Sanity check
     assert all([i >= 0 for i in indices])

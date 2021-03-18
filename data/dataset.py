@@ -451,6 +451,8 @@ class DataSet(TFRData):
   def merge_classes(self, *class_indices):
     """Merge 2 classes and put them at the end of class list"""
     target_is_onehot = self.target_is_onehot
+    # (self.properties[pedia.classes] is shared across instances)
+    self.properties[pedia.classes] = self.properties[pedia.classes].copy()
     # Update group and class name
     indices = []
     names_to_merge = []
@@ -468,6 +470,8 @@ class DataSet(TFRData):
     if target_is_onehot:
       self.targets = misc.convert_to_one_hot(labels, self.num_classes)
     else: self.targets = labels
+
+    return self
 
   # endregion : Public Methods
 
