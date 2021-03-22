@@ -11,7 +11,7 @@ import tframe as tfr
 """Stark knows everything about tframe logic and helps to mitigate the chaos 
    in this framework.
 """
-# region : Pruner-related
+# region: Pruner-related
 
 def get_params_num(variables, consider_prune=False):
   """Used in Net.structure_detail"""
@@ -49,4 +49,13 @@ def get_num_string(num, dense_num):
   else: num_str = str(num)
   return num_str
 
-# endregion : Pruner-related
+# endregion: Pruner-related
+
+# region: MISC
+
+def decayable(v):
+  assert isinstance(v, tf.Variable)
+  return all([v.trainable, 'batchnorm' not in v.name, 'bias' not in v.name])
+
+# endregion: MISC
+

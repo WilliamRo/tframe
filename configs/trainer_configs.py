@@ -73,6 +73,9 @@ class TrainerConfigs(object):
   l1_penalty = Flag.float(0.0, 'l1 penalty', is_key=None)
   l2_penalty = Flag.float(0.0, 'l2 penalty', is_key=None)
 
+  decoupled_l2_penalty = Flag.float(
+    0.0, 'l2 penalty for decoupled weight decay', is_key=None)
+
   saturation_penalty = Flag.float(None, 'Saturation penalty', is_key=None)
   encourage_saturation = Flag.boolean(
     True, 'Whether to encourage saturation', is_key=None)
@@ -130,5 +133,7 @@ class TrainerConfigs(object):
     else: KeyError('Unknown constraint name `{}`'.format(p.name))
 
   def smooth_out_trainer_configs(self):
-    pass
+    if self.global_l2_penalty * self.decoupled_l2_penalty != 0:
+      raise AssertionError(
+        '!! global_l2_penalty can not be used with decoupled_l2_penalty')
 

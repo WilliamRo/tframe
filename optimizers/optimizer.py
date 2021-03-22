@@ -9,6 +9,8 @@ from tframe import context
 from tframe import hub as th
 from tframe import pedia
 
+from tframe.utils.stark import decayable
+
 
 class Optimizer(object):
   """Tframe optimizer class allowing more sophisticated operations on gradients.
@@ -27,6 +29,14 @@ class Optimizer(object):
     grads_and_vars = self._compute_gradients(loss, var_list=var_list)
     # Step 2: apply gradients
     update = self.tf_optimizer.apply_gradients(grads_and_vars)
+    # Step 3: apply decoupled weight decay if required
+    if th.decoupled_l2_penalty > 0:
+      assert th.decoupled_l2_penalty < 1
+      vars_to_decay = [v for _, v in grads_and_vars if decayable(v)]
+      with tf.control_dependencies([update]):
+        update_with_decay = tf.group(*[
+          tf.assign_sub(v, v * th.decoupled_l2_penalty) for v in vars_to_decay])
+      update = update_with_decay
     # Set reset_tf_optimizer if necessary
     if th.reset_optimizer_after_resurrection and th.lives > 0:
       self.reset_tf_optimizer = tf.variables_initializer(

@@ -69,8 +69,7 @@ class Net(Function):
 
   @property
   def decayable_vars(self):
-    return [var for var in self.var_list if all([
-      var.trainable, not 'batchnorm' in var.name, not 'bias' in var.name])]
+    return [var for var in self.var_list if stark.decayable(var)]
 
   @property
   def weight_vars(self):
