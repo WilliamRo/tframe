@@ -2,18 +2,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
 from collections import OrderedDict
 
+import tensorflow as tf
+
 from tframe.configs.config_base import Config
+from tframe.core import Nomear
 from tframe.utils.monitor import Monitor
-# from tframe.deprecated.monitor import Monitor
+
 import tframe.utils.checker as checker
 
 
-# Public methods
-
-class Context(object):
+class Context(Nomear):
   """The author is too lazy to add a description"""
   _LOSSES_LIST = '_LOSSES_LIST'
   _TENSORS_EXPORT_DICT = '_TENSOES_EXPORT_DICT'
@@ -62,6 +62,11 @@ class Context(object):
 
     # Counter for shortcuts
     self._short_cut_counter = 0
+
+    # Learning rate coefficients
+    self.lr_coef = None
+    self.lr_global_step = None
+    self.lr_decay_steps = None
 
   # region : Properties
 
@@ -165,9 +170,61 @@ class Context(object):
     # Clear shortcut counter
     self._short_cut_counter = 0
 
+  # region: Learning Rate Related
+
+  def tune_lr_indirectly(self, tensor: tf.Tensor, value):
+    """Tune learning rate by assign new value to variables such as lr_coef"""
+    # Local keys
+    INT_SLOT = 'LR_INT_SLOT'
+    REAL_SLOT = 'LR_REAL_SLOT'
+    COEF_ASSIGNER = 'COEF_ASSIGNER'
+    DECAY_STEPS_ASSIGNER = 'DECAY_STEPS_ASSIGNER'
+    GLOBAL_STEP_ASSIGNER = 'GLOBAL_STEP_ASSIGNER'
+
+    # Check tensor and find the operations
+    assert isinstance(tensor, tf.Variable)
+    if tensor is self.lr_coef:
+      assert isinstance(value, float)
+      feed_slot = context.get_from_pocket(
+        INT_SLOT, initializer=lambda: tf.placeholder(
+          dtype=tf.int32, name='lr_int_slot'))
+      assigner_key = COEF_ASSIGNER
+    elif tensor in (self.lr_global_step, self.lr_decay_steps):
+      assert isinstance(value, int) and value >= 0
+      feed_slot = context.get_from_pocket(
+        REAL_SLOT, initializer=lambda: tf.placeholder(
+          dtype=tf.float32, name='lr_real_slot'))
+      # Find variable and assigner
+      assigner_key = (GLOBAL_STEP_ASSIGNER if tensor is self.lr_global_step
+                      else DECAY_STEPS_ASSIGNER)
+    else:
+      raise AssertionError('!! Can not set value to `{}`'.format(tensor.name))
+
+    # Get assign operation
+    assign_op = context.get_from_pocket(
+      assigner_key, initializer=lambda: tf.assign(tensor, feed_slot))
+
+    # Run
+    self.trainer.session.run(assign_op, feed_dict={feed_slot: value})
+
+  def set_lr_decay_steps(self, value):
+    self.tune_lr_indirectly(self.lr_decay_steps, value)
+
+  def reset_lr_global_step(self):
+    self.tune_lr_indirectly(self.lr_global_step, 0)
+
+  def increase_lr_global_step(self):
+    assign_op = context.get_from_pocket(
+      'LR_INC_GLOBAL_STEP',
+      initializer=lambda: tf.assign_add(self.lr_global_step, 1))
+    # Run
+    self.trainer.session.run(assign_op)
+
+  # endregion: Learning Rate Related
+
   # endregion : Public Methods
 
-  # region : Collection short cuts
+  # region : Collection shortcuts
 
   def add_loss_tensor(self, loss):
     assert isinstance(loss, tf.Tensor)
@@ -205,6 +262,7 @@ class Context(object):
 
   def set_logits_tensor(self, output, logits):
     self.logits_tensor_dict[output] = logits
+
   # region : Public Static Methods
 
   @staticmethod

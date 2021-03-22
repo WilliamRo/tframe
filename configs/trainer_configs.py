@@ -95,8 +95,25 @@ class TrainerConfigs(object):
   reset_optimizer_after_resurrection = Flag.boolean(
     False, 'Whether to re-initiate optimizer after resurrection. '
            'Take effect only when lr_decay < 1')
-  adam_epsilon = Flag.float(
-    1e-8, 'epsilon used for initiating AdamOptimizer', is_key=None)
+  optimizer_epsilon = Flag.float(
+    1e-8, 'epsilon used for initiating Optimizers', is_key=None)
+
+  lr_decay_method = Flag.string(None, 'Learning rate decay method', is_key=None)
+
+  bs_mar = Flag.float(
+    None, 'Batch size modifier after resurrection', is_key=None)
+
+
+  @property
+  def lr_decay_enabled(self):
+    """If this is true:
+       (1) variables for global_step and decay_steps will initiated.
+       (2) decay_steps will be set before trainer's outer loop or after
+           resurrection
+       (3) global_step will be reset to 0 each time a new record appears
+       (4) global_step will be increased by 1 after each update   """
+    if self.lr_decay_method is None: return False
+    return self.lr_decay_method not in ('', '-', 'none', 'None')
 
   def get_global_regularizer(self):
     if not self.use_global_regularizer: return None

@@ -18,14 +18,14 @@ from tframe.data.perpetual_machine import PerpetualMachine
 from tframe.data.sequences.seq_set import SequenceSet
 from tframe.enums import InputTypes, SaveMode
 from tframe.core import with_graph
+from tframe.core import Nomear
 from tframe.configs.config_base import Config, Flag
 from tframe.utils.maths.stat_tools import Statistic
 
-from tframe.trainers.metric_slot import MetricSlot
 from tframe.trainers.metrics_manager import MetricsManager
 
 
-class Trainer(object):
+class Trainer(Nomear):
   """Base class of trainer for training tframe models.
 
      Model save mechanism when save_mode is
@@ -153,6 +153,19 @@ class Trainer(object):
   def _save_model_at_training_end(self):
     return self.th.save_model and self.th.save_model_at_the_end
 
+  @property
+  def recommend_decay_steps(self):
+    assert self.th.early_stop
+    bs = self.effective_batch_size
+    return self.training_set.size // bs * (self.th.patience + 1)
+
+  @property
+  def effective_batch_size(self):
+    if self.th.bs_mar in (None, 1.0): return self.th.batch_size
+    assert self.th.bs_mar > 0
+    return self.get_from_pocket(
+      'EFFECTIVE_BATCH_SIZE', initializer=lambda: self.th.batch_size)
+
   # endregion : Properties
 
   # region : Public Methods
@@ -254,7 +267,11 @@ class Trainer(object):
   def _outer_loop(self):
     hub = self.th
     rnd = 0
+    # Validate model at the beginning if required
     if self.th.validate_at_the_beginning: self._validate_model(rnd=1)
+    # Set lr decay variables
+    self._reset_lr_decay_variables()
+
     for _ in range(hub.total_outer_loops):
       rnd += 1
       if self.is_online: console.section('Iterations Begin')
@@ -273,7 +290,7 @@ class Trainer(object):
       # Maybe give a report on metric
       if not self.is_online and hub.validation_on:
         self.model.end_round(rnd)
-        if self.key_metric.get_idle_rounds(rnd) > self.th.patience:
+        if self.key_metric.get_idle_rounds(rnd) >= self.th.patience:
           self.th.raise_stop_flag()
 
       # Maybe save model (model.rounds var has been increased)
@@ -349,8 +366,11 @@ class Trainer(object):
       self.counter += 1
       # Update model
       loss_dict = self._update_model(batch)
+      # Increase lr global step if necessary
+      if self.th.lr_decay_enabled: context.increase_lr_global_step()
       # Print progress
       self._print_progress(rnd, loss_dict)
+
       # Validation
       if self._validate_model(rnd) and self._save_model_when_record_appears:
         if not self.is_online: assert np.isscalar(self.th.round_progress)
@@ -384,6 +404,11 @@ class Trainer(object):
     if self._warm_up and self._record_count < self.th.warm_up_thres:
       self._warm_up = False
 
+  def _reset_lr_decay_variables(self):
+    if not self.th.lr_decay_enabled: return
+    context.reset_lr_global_step()
+    context.set_lr_decay_steps(self.recommend_decay_steps)
+
   def resurrect(self, rnd):
     # Decrease lives by 1 and show status
     assert self._lives > 0
@@ -394,6 +419,7 @@ class Trainer(object):
     # [Compromise] set record counter or round
     self.key_metric.set_record_counter(self.counter)
     self.key_metric.set_record_round(rnd)
+
     # Load model
     flag, _, _ = self.model.agent.load()
     assert flag
@@ -403,9 +429,22 @@ class Trainer(object):
       self.th.opt_lr_multiplier *= self.th.lr_decay
       if self.th.reset_optimizer_after_resurrection:
         self.model.reset_optimizer()
+
       self.model.set_train_step()
       console.show_status('Learning rate decayed to {:.6f}'.format(
         self.th.learning_rate * self.th.opt_lr_multiplier))
+
+    # Modify batch size if required.
+    # (bs_mar is short for `batch size modifier after resurrection`)
+    if self.th.bs_mar not in (None, 1.0):
+      assert self.th.bs_mar > 0
+      self.replace_stuff(
+        'EFFECTIVE_BATCH_SIZE', int(self.th.bs_mar * self.effective_batch_size))
+      console.show_status('Batch size adjusted to {}'.format(
+        self.effective_batch_size))
+
+    # Reset global_step and decay_steps if necessary
+    self._reset_lr_decay_variables()
 
   # endregion : During training
 
@@ -525,7 +564,7 @@ class Trainer(object):
 
       pass
     return self.model.get_data_batches(
-      self.training_set, self.th.batch_size, self.th.num_steps,
+      self.training_set, self.effective_batch_size, self.th.num_steps,
       self.th.shuffle, is_training=True)
 
   @staticmethod

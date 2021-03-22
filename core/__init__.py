@@ -8,4 +8,6 @@ from .slots import SummarySlot, OperationSlot, VariableSlot
 from .slots import IndependentSummarySlot
 from .group import Group
 
+from .nomear import Nomear
+
 from . import context

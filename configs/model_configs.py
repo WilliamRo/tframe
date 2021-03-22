@@ -23,6 +23,9 @@ class ModelConfigs(object):
   learning_rate = Flag.float(
     None, 'Learning rate', name='lr', is_key=None, hp_scale='log')
   lr = learning_rate  # Compromise
+  initial_lr = Flag.float(None, 'Initial learning rate', is_key=None)
+  ending_lr = Flag.float(0, 'Ending learning rate', is_key=None)
+
   momentum = Flag.float(0.9, 'Momentum', is_key=None)
   weight_initializer = Flag.string(None, 'Weight initializer', is_key=None)
   bias_initializer = Flag.float(None, 'Bias initializer', is_key=None)

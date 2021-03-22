@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tframe import console
 from tframe import context
 from tframe import hub as th
 from tframe import pedia
@@ -98,11 +99,14 @@ class Optimizer(object):
        (2) an instance of tensorflow optimizer, e.g., tf.train.Adam()
        (3) a tframe optimizer
     """
-    # Case (3)
-    if isinstance(identifier, Optimizer): return identifier
+    # Case (3) this branch is blocked for now
+    if isinstance(identifier, Optimizer):
+      assert False
+      return identifier
     # Case (1)
     optimizer = cls.get_tf_optimizer(identifier)
-    # Case (2)
+    # Case (2) this branch will disable the automatic setting of lr decay,
+    #   highly not recommended
     if not isinstance(optimizer, tf.train.Optimizer):
       raise TypeError('!! Failed to get optimizer')
 
@@ -117,15 +121,53 @@ class Optimizer(object):
   @classmethod
   def get_tf_optimizer(cls, optimizer):
     if isinstance(optimizer, tf.train.Optimizer): return optimizer
+    # Consider learning rate decay
+    lr = cls.get_learning_rate()
+    # Set modifier to learning rate
+    if context.lr_coef is None:
+      context.lr_coef = tf.Variable(1.0, trainable=False)
+    lr = lr * context.lr_coef
 
     if optimizer in ['adam', tf.train.AdamOptimizer]:
       return tf.train.AdamOptimizer(
-        learning_rate=th.learning_rate,
-        beta1=th.beta1, beta2=th.beta2, epsilon=th.adam_epsilon)
+        learning_rate=lr, beta1=th.beta1, beta2=th.beta2,
+        epsilon=th.optimizer_epsilon)
     elif optimizer in ['rmsprop', tf.train.RMSPropOptimizer]:
       return tf.train.RMSPropOptimizer(
-        learning_rate=th.learning_rate)
+        learning_rate=lr, momentum=th.momentum, epsilon=th.optimizer_epsilon)
     return optimizer(th.learning_rate)
 
-  # endregion: Static and class methods
+  @classmethod
+  def get_learning_rate(cls):
+    if not th.lr_decay_enabled: return th.learning_rate
+    # Initialize steps as variables
+    if context.lr_global_step is None:
+      assert context.lr_decay_steps is None
+      context.lr_global_step = tf.Variable(0, trainable=False, dtype=tf.float32)
+      context.lr_decay_steps = tf.Variable(
+        999999, trainable=False, dtype=tf.float32)
+
+    # Find method
+    method = th.lr_decay_method.lower().replace('-', '_')
+    lr = None
+    if method in ('exp', 'exponential'): lr = None
+    elif method in ('piece', 'piecewise'): lr = None
+    elif method in ('poly', 'polynomial'): lr = None
+    elif method in ('inverse', 'inverse_time'): lr = None
+    elif method in ('cosine_restart',): lr = None
+    elif method in ('linear_cosine',): lr = None
+    elif method in ('noisy_linear_cosine',): lr = None
+    elif method in ('cos', 'cosine'):
+      lr = tf.train.cosine_decay(
+        th.learning_rate, global_step=context.lr_global_step,
+        decay_steps=context.lr_decay_steps, alpha=th.ending_lr)
+
+    # Check and return
+    if lr is None: raise KeyError(
+      'Unknown learning rate decay method `{}`'.format(th.lr_decay_method))
+    console.show_status(
+      '`{}` learning rate decay has come into effect.'.format(method), '++')
+    return lr
+
+# endregion: Static and class methods
 

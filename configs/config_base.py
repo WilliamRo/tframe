@@ -255,6 +255,9 @@ class Config(
     if optimizer is None:
       assert not any([self.optimizer is None, self.learning_rate is None])
       optimizer = self.optimizer
+      tfr.console.show_status(
+        'Optimizer defined in trainer hub is used.', '++')
+
     return Optimizer.get_optimizer(optimizer)
 
   # endregion : Public Methods

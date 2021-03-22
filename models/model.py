@@ -277,9 +277,6 @@ class Model(object):
     if not self._loss.activated:
       raise AssertionError('!! loss has not been activated yet')
     with tf.name_scope('Optimizer'):
-      if optimizer is None: console.show_status(
-        'Optimizer defined in trainer hub initialized.', '++')
-
       optimizer = hub.get_optimizer(optimizer)
 
       self._optimizer = optimizer
@@ -567,6 +564,7 @@ class Model(object):
     return variable_dict
 
   def tune_lr(self, new_lr=None, coef=1.0):
+    assert False
     #TODO
     if self._optimizer is None:
       raise ValueError('!! Optimizer not defined yet')
