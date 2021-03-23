@@ -155,9 +155,9 @@ class Trainer(Nomear):
 
   @property
   def recommend_decay_steps(self):
-    assert self.th.early_stop
     bs = self.effective_batch_size
-    return self.training_set.size // bs * (self.th.patience + 1)
+    epochs = self.th.patience if self.th.early_stop else self.th.epoch
+    return self.training_set.size // bs * (epochs + 1)
 
   @property
   def effective_batch_size(self):

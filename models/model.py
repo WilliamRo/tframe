@@ -168,6 +168,8 @@ class Model(object):
     if not hub.save_train_opt_vars:
       vars = filter_by_name(pedia.train_opt)
       vars = filter_by_name('Optimizer')
+    # Remove variables defined in optimizer
+    vars = filter_by_name('lr_var')
     # Remove `dynamic_opt` vars
     vars = filter_by_name(pedia.dynamic_opt)
     # Krause optimizer related vars (TODO: need to be refactored)

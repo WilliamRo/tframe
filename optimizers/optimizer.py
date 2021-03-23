@@ -135,7 +135,7 @@ class Optimizer(object):
     lr = cls.get_learning_rate()
     # Set modifier to learning rate
     if context.lr_coef is None:
-      context.lr_coef = tf.Variable(1.0, trainable=False)
+      context.lr_coef = tf.Variable(1.0, trainable=False, name='lr_var_coef')
     lr = lr * context.lr_coef
 
     if optimizer in ['adam', tf.train.AdamOptimizer]:
@@ -153,9 +153,10 @@ class Optimizer(object):
     # Initialize steps as variables
     if context.lr_global_step is None:
       assert context.lr_decay_steps is None
-      context.lr_global_step = tf.Variable(0, trainable=False, dtype=tf.float32)
+      context.lr_global_step = tf.Variable(
+        0, trainable=False, dtype=tf.float32, name='lr_var_global_step')
       context.lr_decay_steps = tf.Variable(
-        999999, trainable=False, dtype=tf.float32)
+        999999, trainable=False, dtype=tf.float32, name='lr_var_decay_steps')
 
     # Find method
     method = th.lr_decay_method.lower().replace('-', '_')
