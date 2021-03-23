@@ -63,20 +63,24 @@ class Context(object):
 
   # region : Public Methods
 
-  def set_notes_by_path(self, summ_file_path):
-    # Sanity check
-    assert isinstance(summ_file_path, str)
-    # Try to load note file
-    try:
-      with open(summ_file_path, 'rb') as f:
-        self.notes = pickle.load(f)
-      assert isinstance(self.notes, list)
-      self.summary_file_path = summ_file_path
-    except:
-      print('!! Failed to load {}'.format(summ_file_path))
-      return
-    # Print status
-    print('>> Loaded notes from `{}`'.format(self.summary_file_path))
+  def set_notes(self, summaries):
+    if isinstance(summaries, str):
+      # Try to load note file
+      try:
+        with open(summaries, 'rb') as f:
+          self.notes = pickle.load(f)
+        assert isinstance(self.notes, list)
+        self.summary_file_path = summaries
+      except:
+        print('!! Failed to load {}'.format(summaries))
+        return
+      # Print status
+      print('>> Loaded notes from `{}`'.format(self.summary_file_path))
+    else:
+      assert isinstance(summaries, list)
+      self.notes = summaries
+      self.summary_file_path = 'Unknown'
+      print('>> {} notes set to viewer'.format(len(summaries)))
 
     # Initialize flags and criteria
     self._init_flags()

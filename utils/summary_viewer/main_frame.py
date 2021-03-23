@@ -28,7 +28,7 @@ class SummaryViewer(Viewer):
   ROOT_HEIGHT = 565
   ROOT_WIDTH = 860
 
-  def __init__(self, summary_path=None, **kwargs):
+  def __init__(self, summaries=None, **kwargs):
     # Call parent's constructor
     Viewer.__init__(self)
     self.master.resizable(False, False)
@@ -52,9 +52,8 @@ class SummaryViewer(Viewer):
     self._create_layout()
 
     # Try to load summary
-    if summary_path is not None:
-      assert isinstance(summary_path, str)
-      self.set_notes_by_path(summary_path)
+    if summaries is not None:
+      self.set_notes(summaries)
     else:
       self.global_refresh()
 
@@ -86,9 +85,9 @@ class SummaryViewer(Viewer):
     assert isinstance(plugin, Plugin)
     self.plugins.append(plugin)
 
-  def set_notes_by_path(self, summary_path):
+  def set_notes(self, notes):
     # Set context
-    self.context.set_notes_by_path(summary_path)
+    self.context.set_notes(notes)
     # Refresh
     self.global_refresh()
 
@@ -194,7 +193,7 @@ if __name__ == '__main__':
 
   summ_path = None
   viewer = main_frame.SummaryViewer(
-    summary_path=summ_path,
+    summaries=summ_path,
     default_inactive_flags=(
       'patience',
       'shuffle',

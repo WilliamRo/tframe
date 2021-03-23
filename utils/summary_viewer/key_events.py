@@ -49,7 +49,7 @@ def load_notes(viewer, _):
     title='Load summary file', filetypes=(('TFrame summary files', '*.sum'),))
   if file_path == '': return
   # Set note file to viewer
-  viewer.set_notes_by_path(file_path)
+  viewer.set_notes(file_path)
 
 
 def toggle_debug_mode(viewer, _):
