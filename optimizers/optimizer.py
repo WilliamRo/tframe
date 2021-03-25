@@ -145,6 +145,8 @@ class Optimizer(object):
     elif optimizer in ['rmsprop', tf.train.RMSPropOptimizer]:
       return tf.train.RMSPropOptimizer(
         learning_rate=lr, momentum=th.momentum, epsilon=th.optimizer_epsilon)
+    elif optimizer in ['sgd', tf.train.GradientDescentOptimizer]:
+      return tf.train.GradientDescentOptimizer(learning_rate=lr)
     return optimizer(th.learning_rate)
 
   @classmethod
