@@ -8,12 +8,13 @@ from tframe import checker
 from tframe import pedia
 from tframe import hub
 
+from tframe.core import Nomear
 from tframe.utils import misc
 
 from tframe.data.base_classes import TFRData
 
 
-class DataSet(TFRData):
+class DataSet(TFRData, Nomear):
 
   EXTENSION = 'tfd'
 
