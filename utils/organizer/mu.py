@@ -23,6 +23,7 @@ from tframe.layers.common import Dropout
 from tframe.layers.common import Flatten
 from tframe.layers.common import Input
 from tframe.layers.common import Linear
+from tframe.layers.common import Reshape
 
 from tframe.layers.convolutional import Conv1D
 from tframe.layers.convolutional import Conv2D
