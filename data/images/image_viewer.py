@@ -36,6 +36,7 @@ class ImageViewer(object):
   MAX_HEIGHT = 800
 
   def __init__(self, dataset=None, **kwargs):
+    self.color_map = kwargs.get('color_map', None)
     self.kwargs = kwargs
 
     # Basic settings
@@ -340,10 +341,11 @@ class ImageViewer(object):
       self.image_width = width
       # Draw image
       color_map = self.kwargs.get('color_map', None)
-      if len(shape) < 3 and color_map is not None:
-        assert callable(color_map)
+      if len(shape) < 3 and self.color_map is not None:
+        if not callable(color_map): color_map = cm.get_cmap(color_map)
         image = Image_.fromarray(np.uint8(color_map(image) * 255))
-      else: image = Image_.fromarray(image, 'RGB')
+      else:
+        image = Image_.fromarray(image, 'RGB' if len(shape) == 3 else None)
       image = image.resize((width, height))
       self.photo = ImageTk.PhotoImage(image=image)
 
