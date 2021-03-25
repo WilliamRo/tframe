@@ -243,10 +243,11 @@ class Helper(object):
       criterion = self.config_dict[self.CONFIG_KEYS.criterion]
       if isinstance(criterion, str):
         criterion = criterion.lower()
-        if any(['accuracy' in criterion, 'f1' in criterion]):
-          self.config_dict[self.CONFIG_KEYS.greater_is_better] = True
-        elif any(['loss' in criterion, 'cross_entropy' in criterion]):
-          self.config_dict[self.CONFIG_KEYS.greater_is_better] = False
+        if any([s in criterion for s in ('accuracy', 'f1', 'improvement')]):
+            self.config_dict[self.CONFIG_KEYS.greater_is_better] = True
+        elif any([s in criterion for s in (
+            'loss', 'cross_entropy', 'bpc', 'perplexity')]):
+            self.config_dict[self.CONFIG_KEYS.greater_is_better] = False
 
     # Try to set hyper-parameters' properties
     if self.configs.get(self.CONFIG_KEYS.auto_set_hp_properties, True):

@@ -28,6 +28,9 @@ class MetricSlot(TensorSlot):
     self.memory = 4
     self._trend = []
 
+    # Bayesian booster
+    self.improvement = 0
+
   # region : Properties
 
   @property
@@ -135,6 +138,10 @@ class MetricSlot(TensorSlot):
     # Update metric record
     if (self._record.never_assigned or
         self.is_better_than(metric, self.record, gap=gap)):
+      # Accumulate improvement
+      if not self._record.never_assigned:
+        self.improvement += abs(metric - self.record)
+
       self._record_round = rnd
       self._record_counter = counter
       self.record = metric

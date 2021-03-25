@@ -516,6 +516,11 @@ class Model(object):
       # if not is_online:
       #   self.agent.put_down_criterion('Best E({})', metric.mean_record)
 
+    # Take down improvement if necessary
+    if not hub.overwrite:
+      self.agent.put_down_criterion(
+        'Improvement', self.metrics_manager.early_stop_slot.improvement)
+
   def end_round(self, rnd):
     self.key_metric.end_round(rnd)
 
