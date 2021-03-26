@@ -283,8 +283,10 @@ class Input(Layer):
     tf.add_to_collection(pedia.default_feed_dict, input_)
     # Return placeholder
     self.place_holder = input_
-    self.rnn_single_step_input = tf.reshape(
-      input_, [-1] + list(self.sample_shape))
+    # TODO: RNNs do not support partially unknown input shape
+    if not None in self.sample_shape:
+      self.rnn_single_step_input = tf.reshape(
+        input_, [-1] + list(self.sample_shape))
     return input_
 
 

@@ -181,6 +181,10 @@ class Net(Function):
       t.specify_format(align='llr')
       t.print_header(*headers)
       for i, row in enumerate(rows):
+        # Replace unknown shape with `?`. This takes effect in models with
+        #  input of partially unknown shape
+        row[1] = row[1].replace('None', '?')
+
         t.print_row(*row)
         # Draw line
         t.hline() if i != len(rows) - 1 else t.dhline()
