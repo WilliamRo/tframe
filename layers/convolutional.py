@@ -5,6 +5,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tframe import activations
+from tframe import hub as th
 
 from tframe.core.function import Function
 from tframe.core.decorators import init_with_graph
@@ -55,7 +56,8 @@ class _Conv(Layer):
     # self.neuron_scale = get_scale(output)
 
     if not self.use_batchnorm: return output
-    output = BatchNormalization()(output)
+    momentum = th.bn_momentum if th.bn_momentum is not None else 0.99
+    output = BatchNormalization(momentum=momentum)(output)
     if not self.input_activation: return output
     return Activation(self.input_activation)(output)
 
