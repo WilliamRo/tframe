@@ -272,13 +272,11 @@ class Bridge(Layer):
     a = self.conv_layer.output_tensor
     assert isinstance(a, tf.Tensor)
     # Define utilities
-    crop_x = lambda: (a, x[:, :a.shape[1], :a.shape[2]])
-    crop_a = lambda: (a[:, :x.shape[1], :x.shape[2]], x)
+    crop = lambda src, tgt: src[:, :tgt.shape[1], :tgt.shape[2]]
 
     # Crop if necessary
-    if self.guest_is_larger is True: a, x = crop_a()
-    else: a, x = crop_x()
-    if self.guest_is_larger is None: a, x = crop_a()
+    if self.guest_is_larger is True: a = crop(a, x)
+    elif self.guest_is_larger is False: x = crop(x, a)
 
     # Concatenate and return
     return tf.concat([a, x], axis=-1)

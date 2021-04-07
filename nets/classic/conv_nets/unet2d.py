@@ -22,7 +22,7 @@ class UNet2D(ConvNet):
                use_maxpool: bool = True,
                use_batchnorm: bool = False,
                link_indices: Union[List[int], str, None] = 'a',
-               arc_string: Optional[str] = None):
+               auto_crop=False, arc_string: Optional[str] = None):
     """This class provides some generalization to the traditional U-Net
 
     Example U-Net, height=3, thickness=2, link_indices=2,3
@@ -67,6 +67,7 @@ class UNet2D(ConvNet):
     self.use_batchnorm = use_batchnorm
     self.link_indices = link_indices
     self.arc_string = arc_string
+    self.auto_crop = auto_crop
 
     self.parse_arc_str_and_check()
 
@@ -113,7 +114,9 @@ class UNet2D(ConvNet):
       expand(filters)
       # Build a bridge if necessary
       if i in self.link_indices:
-        layers.append(Bridge(floors[self.height - i]))
+        guest_is_larger = None
+        if self.auto_crop: guest_is_larger = not self.use_maxpool
+        layers.append(Bridge(floors[self.height - i], guest_is_larger))
       # Increase thickness
       for _ in range(self.thickness):
         layers.append(self._get_conv(filters))
