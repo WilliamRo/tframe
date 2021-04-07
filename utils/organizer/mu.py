@@ -9,6 +9,7 @@ from tframe.models.sl.predictor import Predictor
 # ---------------------------------------------------------------
 from tframe.nets.classic.conv_nets.lenet import LeNet
 from tframe.nets.classic.conv_nets.nas101 import NAS101
+from tframe.nets.classic.conv_nets.unet2d import UNet2D
 
 from tframe.nets.forkmerge import ForkMerge
 from tframe.nets.forkmerge import ForkMergeDAG
@@ -33,6 +34,7 @@ from tframe.layers.highway import LinearHighway
 
 from tframe.layers.hyper.dense import Dense as HyperDense
 
+from tframe.layers.merge import Bridge
 from tframe.layers.merge import Merge
 from tframe.layers.merge import ShortCut
 
