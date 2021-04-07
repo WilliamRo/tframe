@@ -174,6 +174,13 @@ class DataSet(TFRData, Nomear):
   # region : Basic APIs
 
   def get_round_length(self, batch_size, num_steps=None, training=False):
+    # Green pass
+    if training and hub.updates_per_round > 0:
+      assert hub.shuffle is True and not self.is_rnn_input
+      self._set_dynamic_round_len(hub.updates_per_round)
+      return hub.updates_per_round
+
+    # Calculate round_len according to batch_size and num_steps
     assert isinstance(batch_size, int) and isinstance(training, bool)
     if batch_size < 0: batch_size = self.size
 
@@ -501,6 +508,11 @@ class DataSet(TFRData, Nomear):
     if upper_bound is None: upper_bound = self.size
     assert isinstance(batch_index, int) and batch_index >= 0
     checker.check_positive_integer(batch_size)
+
+    # Green pass
+    if training and hub.updates_per_round > 0:
+      assert hub.shuffle
+      return list(np.random.randint(0, self.size, batch_size))
 
     from_index = batch_index * batch_size
     to_index = min((batch_index + 1) * batch_size, upper_bound)

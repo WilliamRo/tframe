@@ -106,6 +106,8 @@ class TrainerConfigs(object):
   bs_mar = Flag.float(
     None, 'Batch size modifier after resurrection', is_key=None)
 
+  updates_per_round = Flag.integer(None, 'Number of updates per round')
+
 
   @property
   def lr_decay_enabled(self):
