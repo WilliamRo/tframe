@@ -45,11 +45,12 @@ class Parser(object):
 
 
   # Deprecated
-  # def get_arg(self, dtype=str, default=None):
-  #   if len(self.arg_list) == 0 and default is not None: return default
-  #   assert len(self.arg_list) == 1
-  #   arg = self.arg_list[0]
-  #   return dtype(arg)
+  def get_arg(self, dtype=str, default=None):
+    """Used in modules like activation.py for parsing `lrelu:0.15`"""
+    if len(self.arg_list) == 0 and default is not None: return default
+    assert len(self.arg_list) == 1
+    arg = self.arg_list[0]
+    return dtype(arg)
 
 
   def get_kwarg(self, key, dtype=str, default=None):
