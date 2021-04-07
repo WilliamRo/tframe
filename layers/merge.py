@@ -6,8 +6,11 @@ import numpy as np
 import tensorflow as tf
 
 from tframe import console, checker, pedia
+from tframe.layers.convolutional import Conv2D
 from tframe.layers.layer import Layer, single_input, Function
 from tframe.utils import get_scale
+
+from typing import Optional
 
 
 class ShortCut(Layer):
@@ -247,7 +250,38 @@ class ConcatenateForGAN(Layer):
     return result
 
 
+class Bridge(Layer):
 
+  full_name = 'bridge'
+  abbreviation = 'bridge'
+  is_nucleus = False
+
+  def __init__(self, conv_layer: Conv2D,
+               guest_is_larger: Optional[bool] = None):
+    """Concatenate 2 convolutional mappings with necessary cropping"""
+    self.conv_layer = conv_layer
+    self.guest_is_larger = guest_is_larger
+
+  @property
+  def structure_tail(self):
+    return '(*,{})'.format(self.conv_layer.output_id_str)
+
+  @single_input
+  def _link(self, x: tf.Tensor, **kwargs):
+    # Get guest
+    a = self.conv_layer.output_tensor
+    assert isinstance(a, tf.Tensor)
+    # Define utilities
+    crop_x = lambda: (a, x[:, :a.shape[1], :a.shape[2]])
+    crop_a = lambda: (a[:, :x.shape[1], :x.shape[2]], x)
+
+    # Crop if necessary
+    if self.guest_is_larger is True: a, x = crop_a()
+    else: a, x = crop_x()
+    if self.guest_is_larger is None: a, x = crop_a()
+
+    # Concatenate and return
+    return tf.concat([a, x], axis=-1)
 
 
 
