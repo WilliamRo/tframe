@@ -114,6 +114,10 @@ def mean_squared_error(y_true, y_predict):
   return tf.square(y_true - y_predict)
 
 
+def mean_absolute_error(y_true, y_predict):
+  return tf.abs(y_true - y_predict)
+
+
 def euclidean(y_true, y_predict):
   distances = tf.norm(y_true - y_predict, axis=-1)
   return distances
@@ -172,6 +176,8 @@ def get(identifier, last_only=False, **kwargs):
 
     if identifier in ['mean_squared', 'mean_squared_error', 'mse']:
       kernel = mean_squared_error
+    elif identifier in ['mean_absolute', 'mean_absolute_error', 'mae']:
+      kernel = mean_absolute_error
     elif identifier in ['cross_entropy', 'softmax_cross_entropy']:
       use_logits = True
       kernel = cross_entropy

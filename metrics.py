@@ -153,6 +153,7 @@ def f1_score():
       F1s.append(tf.cond(tf.is_nan(F1),
                          lambda: tf.constant(0, dtype=tf.float64), lambda: F1))
     return tf.reduce_mean(F1s)
+
   def np_summ_method(x):
     assert isinstance(x, np.ndarray) and x.shape[-1] == 2
     if not len(x.shape) == 2: x = x.reshape(-1, 2)
@@ -219,6 +220,10 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       kernel = lambda t1, t2: tf.square(tf.subtract(t1, t2))
       tf_summ_method = tf.reduce_mean
       name = 'MSE'
+    elif identifier in ['mae']:
+      kernel = lambda t1, t2: tf.abs(tf.subtract(t1, t2))
+      tf_summ_method = tf.reduce_mean
+      name = 'MAE'
     elif identifier in ['delta', 'distance']:
       kernel, tf_summ_method = delta, tf.norm
       name = 'L2'
