@@ -4,6 +4,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tframe import activations
+
 from tframe.core.function import Function
 from tframe.core.decorators import init_with_graph
 
@@ -32,6 +34,10 @@ class _Conv(Layer):
   def __init__(self, *args, use_batchnorm=False, expand_last_dim=False,
                **kwargs):
     self.input_activation = kwargs.get('activation', None)
+
+    if self.input_activation is not None:
+      kwargs['activation'] = activations.get(self.input_activation)
+
     if use_batchnorm: kwargs['activation'] = None
     self.use_batchnorm = use_batchnorm
     # IDEs such as pycharm should be able to find the noumenon's para infos
