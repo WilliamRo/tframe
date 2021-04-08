@@ -113,7 +113,8 @@ class MetricsManager(object):
         tensor = quantity(target_tensor, output_tensor)
 
       # Create a metric_slot and plug tensor in
-      name = metric if isinstance(metric, str) else quantity.name
+      # name = metric if isinstance(metric, str) else quantity.name
+      name = quantity.name
       metric_slot = MetricSlot(self.model, name=name)
       metric_slot.plug(tensor, quantity.name, quantity_def=quantity)
 

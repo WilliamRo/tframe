@@ -8,6 +8,7 @@ import tensorflow as tf
 
 from tframe import checker, context, linker
 from tframe.core.quantity import Quantity
+from tframe.utils.arg_parser import Parser
 
 
 # region : Private
@@ -114,26 +115,27 @@ def mean_squared_error(y_true, y_predict):
   return tf.square(y_true - y_predict)
 
 
-def _weighted_mxe(y_true: tf.Tensor, y_predict: tf.Tensor, tf_func):
+def _weighted_mxe(y_true: tf.Tensor, y_predict: tf.Tensor, tf_func, min_w):
   """Calculate MSE or MAE using y_true as weights. assert y_true \in [0, 1]"""
   from tframe import hub as th
 
   assert tf_func in (tf.square, tf.abs)
+  assert 0 <= min_w <= 1
 
   reduce_axis = list(range(1, len(y_true.shape) - 1))
-  weights = tf.maximum(y_true, th.wmxe_min)
+  weights = tf.maximum(y_true, min_w)
 
   nume = tf.reduce_sum(tf_func(y_true - y_predict) * weights, axis=reduce_axis)
   deno = tf.reduce_sum(weights, axis=reduce_axis)
   return tf.divide(nume, deno)
 
 
-def weighted_mse(y_true: tf.Tensor, y_predict: tf.Tensor):
-  return _weighted_mxe(y_true, y_predict, tf.square)
+def weighted_mse(y_true: tf.Tensor, y_predict: tf.Tensor, min_w=0):
+  return _weighted_mxe(y_true, y_predict, tf.square, min_w)
 
 
-def weighted_mae(y_true: tf.Tensor, y_predict: tf.Tensor):
-  return _weighted_mxe(y_true, y_predict, tf.abs)
+def weighted_mae(y_true: tf.Tensor, y_predict: tf.Tensor, min_w=0):
+  return _weighted_mxe(y_true, y_predict, tf.abs, min_w)
 
 
 def mean_absolute_error(y_true, y_predict):
@@ -191,7 +193,10 @@ def get(identifier, last_only=False, **kwargs):
     return Quantity(identifier)
 
   elif isinstance(identifier, six.string_types):
-    identifier = identifier.lower()
+    # Parse identifier
+    p = Parser.parse(identifier)
+    identifier = p.name.lower()
+
     # tr_summ_method is set to tf.reduce_mean by default
     kernel, tf_summ_method, np_summ_method = None, tf.reduce_mean, None
     use_logits = False
@@ -201,9 +206,11 @@ def get(identifier, last_only=False, **kwargs):
     elif identifier in ['mean_absolute', 'mean_absolute_error', 'mae']:
       kernel = mean_absolute_error
     elif identifier in ['weighted_mean_squared_error', 'wmse']:
-      kernel = weighted_mse
+      min_w = p.get_arg(float)
+      kernel = lambda *args: weighted_mse(*args, min_w=min_w)
     elif identifier in ['weighted_mean_absolute_error', 'wmae']:
-      kernel = weighted_mae
+      min_w = p.get_arg(float)
+      kernel = lambda *args: weighted_mae(*args, min_w=min_w)
     elif identifier in ['cross_entropy', 'softmax_cross_entropy']:
       use_logits = True
       kernel = cross_entropy
@@ -223,7 +230,8 @@ def get(identifier, last_only=False, **kwargs):
 
     # Set use_logits to False by default
     if use_logits is None: use_logits = False
+    if 'name' not in kwargs: kwargs['name'] = 'Loss'
     return Quantity(kernel, tf_summ_method, np_summ_method, last_only,
-                    name='Loss', use_logits=use_logits, **kwargs)
+                    use_logits=use_logits, **kwargs)
   else: raise TypeError('identifier must be a Quantity, function or a string')
 

@@ -6,7 +6,9 @@ import six
 import numpy as np
 import tensorflow as tf
 import tframe as tfr
+
 from tframe.core.quantity import Quantity
+from tframe.utils.arg_parser import Parser
 
 from . import losses
 
@@ -188,7 +190,11 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
 
   elif isinstance(identifier, six.string_types):
     name = identifier
-    identifier = identifier.lower()
+
+    # Parse identifier
+    p = Parser.parse(identifier)
+    identifier = p.name.lower()
+
     kernel, tf_summ_method, np_summ_method = None, None, None
     lower_is_better = True
     use_logits = False
@@ -217,12 +223,7 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       name = 'BPC'
       use_logits = True
     elif identifier in ['mse', 'mae', 'wmse', 'wmae']:
-      kernel = {'mse': losses.mean_squared_error,
-                'mae': losses.mean_absolute_error,
-                'wmse': losses.weighted_mse,
-                'wmae': losses.weighted_mae}[identifier]
-      tf_summ_method = tf.reduce_mean
-      name = identifier.upper()
+      return losses.get(identifier=name, name=identifier.upper())
     elif identifier in ['delta', 'distance']:
       kernel, tf_summ_method = delta, tf.norm
       name = 'L2'
