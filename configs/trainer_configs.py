@@ -108,6 +108,9 @@ class TrainerConfigs(object):
 
   updates_per_round = Flag.integer(None, 'Number of updates per round')
 
+  wmxe_min = Flag.float(
+    0.1, 'Minimum value of weights used in weighted M[SA]E', is_key=None)
+
 
   @property
   def lr_decay_enabled(self):

@@ -114,6 +114,28 @@ def mean_squared_error(y_true, y_predict):
   return tf.square(y_true - y_predict)
 
 
+def _weighted_mxe(y_true: tf.Tensor, y_predict: tf.Tensor, tf_func):
+  """Calculate MSE or MAE using y_true as weights. assert y_true \in [0, 1]"""
+  from tframe import hub as th
+
+  assert tf_func in (tf.square, tf.abs)
+
+  reduce_axis = list(range(1, len(y_true.shape) - 1))
+  weights = tf.maximum(y_true, th.wmxe_min)
+
+  nume = tf.reduce_sum(tf_func(y_true - y_predict) * weights, axis=reduce_axis)
+  deno = tf.reduce_sum(weights, axis=reduce_axis)
+  return tf.divide(nume, deno)
+
+
+def weighted_mse(y_true: tf.Tensor, y_predict: tf.Tensor):
+  return _weighted_mxe(y_true, y_predict, tf.square)
+
+
+def weighted_mae(y_true: tf.Tensor, y_predict: tf.Tensor):
+  return _weighted_mxe(y_true, y_predict, tf.abs)
+
+
 def mean_absolute_error(y_true, y_predict):
   return tf.abs(y_true - y_predict)
 
@@ -178,6 +200,10 @@ def get(identifier, last_only=False, **kwargs):
       kernel = mean_squared_error
     elif identifier in ['mean_absolute', 'mean_absolute_error', 'mae']:
       kernel = mean_absolute_error
+    elif identifier in ['weighted_mean_squared_error', 'wmse']:
+      kernel = weighted_mse
+    elif identifier in ['weighted_mean_absolute_error', 'wmae']:
+      kernel = weighted_mae
     elif identifier in ['cross_entropy', 'softmax_cross_entropy']:
       use_logits = True
       kernel = cross_entropy

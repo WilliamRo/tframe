@@ -216,14 +216,13 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       tf_summ_method = tf.reduce_mean
       name = 'BPC'
       use_logits = True
-    elif identifier in ['mse']:
-      kernel = lambda t1, t2: tf.square(tf.subtract(t1, t2))
+    elif identifier in ['mse', 'mae', 'wmse', 'wmae']:
+      kernel = {'mse': losses.mean_squared_error,
+                'mae': losses.mean_absolute_error,
+                'wmse': losses.weighted_mse,
+                'wmae': losses.weighted_mae}[identifier]
       tf_summ_method = tf.reduce_mean
-      name = 'MSE'
-    elif identifier in ['mae']:
-      kernel = lambda t1, t2: tf.abs(tf.subtract(t1, t2))
-      tf_summ_method = tf.reduce_mean
-      name = 'MAE'
+      name = identifier.upper()
     elif identifier in ['delta', 'distance']:
       kernel, tf_summ_method = delta, tf.norm
       name = 'L2'
