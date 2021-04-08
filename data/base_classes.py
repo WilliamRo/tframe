@@ -23,6 +23,7 @@ class TFRData(object):
   GROUPS = 'GROUPS'
 
   BATCH_PREPROCESSOR = 'BATCH_PREPROCESSOR'
+  CASCADED_BATCH_PREPROCESSOR = 'CASCADED_BATCH_PREPROCESSOR'
   LENGTH_CALCULATOR = 'LENGTH_CALCULATOR '
 
   def __init__(self, name):
@@ -42,16 +43,33 @@ class TFRData(object):
   @property
   def batch_preprocessor(self):
     """A method taking DataSet as input and preprocess its features (and
-      targets if necessary) without changing its size. Typically used for
-      a regular data set"""
+    targets if necessary) without changing its size. Typically used for
+    a regular data set.
+
+     Method Signature:
+       processor(data_batch: DataSet, is_training: bool) -> DataSet
+    """
     assert isinstance(self.properties, dict)
-    return self.properties.get(self.BATCH_PREPROCESSOR, None)
+    if self.CASCADED_BATCH_PREPROCESSOR in self.properties:
+      return self.properties[self.CASCADED_BATCH_PREPROCESSOR]
+
+    # Generate cascaded batch preprocessor
+    processors = self.properties.get(self.BATCH_PREPROCESSOR, None)
+    if processors is None: return None
+    assert isinstance(processors, list)
+    if len(processors) == 1: return processors[0]
+
+    def _cascaded_processor(dataset, is_training):
+      for p in processors: dataset = p(dataset, is_training)
+      return dataset
+    self.properties[self.CASCADED_BATCH_PREPROCESSOR] = _cascaded_processor
+    return self.batch_preprocessor
 
   @batch_preprocessor.setter
   def batch_preprocessor(self, val):
     assert isinstance(self.properties, dict)
     assert callable(val)
-    self.properties[self.BATCH_PREPROCESSOR] = val
+    self.properties[self.BATCH_PREPROCESSOR] = [val]
 
   @property
   def length_calculator(self):
@@ -101,9 +119,22 @@ class TFRData(object):
 
   # region : Public Methods
 
+  def append_batch_preprocessor(self, method):
+    """This method was originally designed to enable multiple batch
+    preprocessors in Phase Retrieval applications. These functions will be
+    called in a cascade fashion."""
+    assert callable(method)
+    if not self.BATCH_PREPROCESSOR in self.properties:
+      self.batch_preprocessor = method
+    else:
+      assert isinstance(self.properties[self.BATCH_PREPROCESSOR], list)
+      self.properties[self.BATCH_PREPROCESSOR].append(method)
+
   def remove_batch_preprocessor(self):
     if self.BATCH_PREPROCESSOR in self.properties:
       self.properties.pop(self.BATCH_PREPROCESSOR)
+    if self.CASCADED_BATCH_PREPROCESSOR in self.properties:
+      self.properties.pop(self.CASCADED_BATCH_PREPROCESSOR)
 
   def save(self, filename):
     if filename.split('.')[-1] != self.EXTENSION:
