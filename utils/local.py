@@ -208,7 +208,7 @@ def re_find_single(pattern, file_name=None):
   return matched[0]
 
 
-def walk(root_path, type_filter=None, pattern=None):
+def walk(root_path, type_filter=None, pattern=None, return_basename=False):
   """Find all required contents under the given path"""
   # Sanity check
   assert os.path.exists(root_path)
@@ -221,6 +221,7 @@ def walk(root_path, type_filter=None, pattern=None):
   # Filter pattern
   if pattern is not None:
     paths = list(filter(lambda p: fnmatch(p, pattern), paths))
+  if return_basename: return [os.path.basename(p) for p in paths]
   return paths
 
 
