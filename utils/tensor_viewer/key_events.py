@@ -52,6 +52,10 @@ def on_key_press(viewer, event):
     flag = not viewer.variable_viewer.for_export
     viewer.variable_viewer.for_export = flag
     viewer.variable_viewer.refresh()
+  elif key_symbol == 'E':  # E for 'force real shape'
+    flag = not viewer.variable_viewer.force_real_shape
+    viewer.variable_viewer.force_real_shape = flag
+    viewer.variable_viewer.refresh()
   elif key_symbol == 's':
     # Take a snapshot
     file_name = tk.filedialog.asksaveasfilename(

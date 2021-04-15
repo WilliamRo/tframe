@@ -54,6 +54,8 @@ class VariableViewer(Frame):
 
     self.for_export = False           # key_symbol: e
 
+    self.force_real_shape = False     # key_symbol: E
+
   @property
   def index(self):
     return (0 if self.related_criteria_figure is None else
@@ -175,14 +177,16 @@ class VariableViewer(Frame):
     image = abs_variable if self.show_absolute_value else image
     if self.for_export: image = np.transpose(image)
 
-    is_gate = re.match(r'\w+_gate', key) is not None or key == 'recurrent_z'
-    # Show heat_map
-    cmap = 'OrRd' if self.show_absolute_value or is_gate else 'bwr'
+    gate_like = any([re.match(r'\w+_gate', key),
+                     re.match(r'.*[Aa]ngle', key),
+                     key == 'recurrent_z'])
+    # Show heat_map (original cmap for abs is `OrRd`)
+    cmap = 'gist_earth' if self.show_absolute_value or gate_like else 'bwr'
     im = self._heat_map(image, cmap=cmap)
     if self.show_value: self._annotate_heat_map(im, image)
     pool = np.abs(images) if self.unify_range else abs_variable
     # Set color limits
-    if is_gate:
+    if gate_like:
       im.set_clim(0, 1)
     elif self.show_absolute_value:
       im.set_clim(np.min(pool), np.max(pool))
@@ -200,6 +204,9 @@ class VariableViewer(Frame):
     if self.for_export:
       self.subplot.set_aspect('auto')
       # self.subplot.set_xlabel('time step')
+    # TODO: beta
+    if self.force_real_shape:
+      self.subplot.set_aspect(image.shape[0] / image.shape[1])
 
   def _plot_array(self, array, arrays):
     self.set_ax2_invisible()
@@ -332,6 +339,8 @@ class VariableViewer(Frame):
     tensor = tensor_list[0]
     if len(tensor.shape) in (2, 1): return tensor_list
     elif len(tensor.shape) == 3 and tensor.shape[2] == 3: return tensor_list
+    elif len(tensor.shape) == 3 and tensor.shape[2] == 1:
+      return [t.reshape(t.shape[:2]) for t in tensor_list]
     elif len(tensor.shape) == 4 and tensor.shape[2] != 3: return None
     elif len(tensor.shape) not in (3, 4): return None
     # Now len(tensor.shape) in (3, 4)
