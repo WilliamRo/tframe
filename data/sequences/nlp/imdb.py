@@ -6,6 +6,7 @@ import os
 
 import numpy as np
 from tframe import console
+from tframe.utils.local import check_path
 from tframe.utils.misc import convert_to_one_hot
 
 from tframe.data.sequences.seq_set import SequenceSet
@@ -59,7 +60,7 @@ class IMDB(DataAgent):
   def _load_raw_data(cls, data_dir, num_words=10000):
     from tensorflow import keras
     imdb = keras.datasets.imdb
-    data_path = os.path.join(data_dir, 'imdb.npz')
+    data_path = os.path.join(check_path(data_dir), 'imdb.npz')
     return imdb.load_data(data_path, num_words=num_words)
 
   @classmethod
