@@ -379,8 +379,17 @@ class ImageViewer(object):
       else:
         info = 'Prediction: {}'.format(self._get_class_string(prediction))
       self.details.config(text=info, fg=color)
-    else:
-      self.details.config(text='No details', fg='grey')
+      return
+
+    # Try to get details
+    text, fg = 'No details', 'grey'
+    if 'details' in self.data_set.properties:
+      detail_list = self.data_set.properties['details']
+      text = detail_list[self._cursor]
+      fg = 'black'
+
+    # Show details
+    self.details.config(text=text, fg=fg)
 
   def _get_class_string(self, label):
     classes = self.data_set.properties.get('CLASSES', None)
