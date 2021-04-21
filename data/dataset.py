@@ -175,7 +175,7 @@ class DataSet(TFRData, Nomear):
 
   def get_round_length(self, batch_size, num_steps=None, training=False):
     # Green pass
-    if training and hub.updates_per_round > 0:
+    if training and hub.updates_per_round and hub.updates_per_round > 0:
       assert hub.shuffle is True and not self.is_rnn_input
       self._set_dynamic_round_len(hub.updates_per_round)
       return hub.updates_per_round
@@ -510,7 +510,7 @@ class DataSet(TFRData, Nomear):
     checker.check_positive_integer(batch_size)
 
     # Green pass
-    if training and hub.updates_per_round > 0:
+    if training and hub.updates_per_round and hub.updates_per_round > 0:
       assert hub.shuffle
       return list(np.random.randint(0, self.size, batch_size))
 

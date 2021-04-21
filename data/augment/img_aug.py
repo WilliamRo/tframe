@@ -59,8 +59,8 @@ def _rotate(x: np.ndarray, y: Optional[np.ndarray] = None, bg=0):
   return x
 
 
-def _flip(x: np.ndarray, y: Optional[np.ndarray] = None,
-          horizontal=True, vertical=True, p=0.5):
+def _flip(x: np.ndarray, horizontal=True, vertical=True, p=0.5,
+          y: Optional[np.ndarray] = None):
   """Randomly flip image batch.
 
   :param x: images with shape (batch_size, H, W[, C])
