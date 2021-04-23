@@ -382,9 +382,15 @@ class ImageViewer(object):
       return
 
     # Try to get details
-    text, fg = 'No details', 'grey'
-    if 'details' in self.data_set.properties:
-      detail_list = self.data_set.properties['details']
+    text, fg, detail_list, key = 'No details', 'grey', None, 'details'
+    if hasattr(self.data_set, key):
+      detail_list = getattr(self.data_set, key)
+    elif key in self.data_set.properties:
+      detail_list = self.data_set.properties[key]
+    elif key in self.data_set.data_dict:
+      detail_list = self.data_set.data_dict[key]
+
+    if detail_list:
       text = detail_list[self._cursor]
       fg = 'black'
 
