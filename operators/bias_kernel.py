@@ -35,17 +35,17 @@ class BiasKernel(KernelBase):
   # region : Kernels
 
   def common(self):
-    bias = tf.get_variable('bias', shape=[self.num_neurons], dtype=hub.dtype,
+    bias = tf.get_variable('bias', shape=[self.num_units], dtype=hub.dtype,
                            initializer=self.initializer)
     return bias
 
   def hyper16(self, seed, weight_initializer):
-    shape = [linker.get_dimension(seed), self.num_neurons]
+    shape = [linker.get_dimension(seed), self.num_units]
     weight_initializer = initializers.get(weight_initializer)
     Wzb = self._get_weights('Wzb', shape, initializer=weight_initializer)
 
     bias = seed @ Wzb
-    b0 = tf.get_variable('bias', shape=[self.num_neurons], dtype=hub.dtype,
+    b0 = tf.get_variable('bias', shape=[self.num_units], dtype=hub.dtype,
                          initializer=self.initializer)
     return tf.nn.bias_add(bias, b0)
 

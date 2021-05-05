@@ -49,7 +49,7 @@ class NeuroBase(object):
   # region : Public Methods
 
   def differentiate(
-      self, num_neurons, name, activation=None,
+      self, num_units, name, activation=None,
       weight_initializer=None, use_bias=None, bias_initializer=None,
       layer_normalization=None, normalize_each_psi=None,
       weight_dropout=None, **kwargs):
@@ -75,7 +75,7 @@ class NeuroBase(object):
     merged_dict.update(kwargs)
 
     return NeuronArray(
-      num_neurons, name, activation=activation,
+      num_units, name, activation=activation,
       weight_initializer=weight_initializer,
       use_bias=use_bias, bias_initializer=bias_initializer,
       layer_normalization=layer_normalization,
@@ -190,6 +190,24 @@ class NeuroBase(object):
     # Split if necessary
     if num_or_size_splits is not None:
       return tf.split(output, num_or_size_splits, axis=1)
+    return output
+
+  def conv2d(self,
+             x,
+             output_channels,
+             filter_size,
+             scope,
+             strides=1,
+             padding='SAME',
+             dilations=1,
+             **kwargs):
+    """This function was developed in CUHK RRSSB 212A
+    """
+    na = self.differentiate(output_channels, scope)
+    na.add_kernel(x, suffix='x', kernel_key='conv2d',
+                  filter_size=filter_size, strides=strides,
+                  padding=padding, dilations=dilations, **kwargs)
+    output = na()
     return output
 
   # endregion : Library

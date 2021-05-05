@@ -19,7 +19,7 @@ class KernelBase(object):
 
   def __init__(self,
                kernel_key,
-               num_neurons,
+               num_units,
                initializer,
                prune_frac=0,
                etch=None,
@@ -28,7 +28,7 @@ class KernelBase(object):
 
     self.kernel_key = checker.check_type(kernel_key, str)
     self.kernel = self._get_kernel(kernel_key)
-    self.num_neurons = checker.check_positive_integer(num_neurons)
+    self.num_units = checker.check_positive_integer(num_units)
 
     self.initializer = initializers.get(initializer)
     assert 0 <= prune_frac <= 1
@@ -75,10 +75,13 @@ class KernelBase(object):
 
 
   def _get_weights(self, name, shape, dtype=None, initializer=None):
+    """This method is crucial for pruning algorithm"""
+
     if initializer is None: initializer = self.initializer
     else: initializer = initializers.get(initializer)
     # Set default dtype if not specified
     if dtype is None: dtype = hub.dtype
+
     # Get regularizer if necessary
     regularizer = None
     if hub.use_global_regularizer: regularizer = hub.get_global_regularizer()
@@ -87,12 +90,14 @@ class KernelBase(object):
     # Get weights
     weights = tf.get_variable(name, shape, dtype=dtype, initializer=initializer,
                               regularizer=regularizer, constraint=constraint)
+
     # If weight dropout is positive, dropout and return
     if self.weight_dropout > 0:
       return linker.dropout(weights, self.weight_dropout, rescale=True)
     # If no mask is needed to be created, return weight variable directly
     if not any([self.prune_is_on, self.being_etched, hub.force_to_use_pruner]):
       return weights
+
     # Register, context.pruner should be created in early model.build
     assert context.pruner is not None
     # Merged lottery logic into etch logic

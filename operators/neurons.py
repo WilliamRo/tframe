@@ -16,7 +16,7 @@ class NeuronArray(NeuroBase):
 
   def __init__(
       self,
-      num_neurons,
+      num_units,
       scope,
       activation=None,
       weight_initializer='xavier_normal',
@@ -29,7 +29,7 @@ class NeuronArray(NeuroBase):
     NeuroBase.__init__(self, activation, weight_initializer, use_bias,
                        bias_initializer, layer_normalization, **kwargs)
 
-    self.num_neurons = checker.check_positive_integer(num_neurons)
+    self.num_units = checker.check_positive_integer(num_units)
     self.scope = checker.check_type(scope, str)
     self.psi_kernels = []
     self.bias_kernel = None
@@ -127,7 +127,7 @@ class NeuronArray(NeuroBase):
 
     # Initiate a psi_kernel
     psi_kernel = PsiKernel(
-      kernel_key, self.num_neurons, input_, suffix,
+      kernel_key, self.num_units, input_, suffix,
       weight_initializer=weight_initializer, prune_frac=prune_frac,
       LN=self._layer_normalization and self._normalize_each_psi,
       gain_initializer=self._gain_initializer, etch=self.etch,
@@ -137,7 +137,7 @@ class NeuronArray(NeuroBase):
 
   def register_bias_kernel(self, kernel_key='common', prune_frac=0., **kwargs):
     self.bias_kernel = BiasKernel(
-      kernel_key, self.num_neurons, self._bias_initializer,
+      kernel_key, self.num_units, self._bias_initializer,
       prune_frac, **kwargs)
 
   # endregion : Public Methods
