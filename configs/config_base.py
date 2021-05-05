@@ -86,6 +86,8 @@ class Config(
 
   stats_max_length = Flag.integer(20, 'Maximum length a Statistic can keep')
 
+  allow_activation = Flag.boolean(True, 'Whether to allow activation')
+
   def __init__(self, as_global=False):
     # Try to register flags into tensorflow
     if not self.__class__.registered:

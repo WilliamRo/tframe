@@ -124,11 +124,13 @@ class TrainerConfigs(object):
     return self.lr_decay_method not in ('', '-', 'none', 'None')
 
   def get_global_regularizer(self):
+    """Used only in kernel base"""
     if not self.use_global_regularizer: return None
     from tframe import regularizers
     return regularizers.get(self.regularizer)
 
   def get_global_constraint(self):
+    """Used only in kernel base"""
     if self.global_constraint in [None, '']: return None
     p = Parser.parse(self.global_constraint)
     if p.name in ['max_norm']:
