@@ -150,7 +150,7 @@ class CriteriaFigure(Frame):
     self.ax1.set_title('Step = {:.2f}'.format(step))
 
     # Draw update on canvas
-    self.figure_canvas.draw()
+    self.figure_canvas._draw()
     # Tight layout
     self.figure.tight_layout()
 
