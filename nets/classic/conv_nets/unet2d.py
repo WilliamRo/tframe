@@ -22,6 +22,7 @@ class UNet2D(ConvNet):
                use_maxpool: bool = True,
                use_batchnorm: bool = False,
                link_indices: Union[List[int], str, None] = 'a',
+               inner_shortcut: bool = False,  # TODO
                auto_crop=False, arc_string: Optional[str] = None):
     """This class provides some generalization to the traditional U-Net
 
@@ -70,6 +71,9 @@ class UNet2D(ConvNet):
     self.auto_crop = auto_crop
 
     self.parse_arc_str_and_check()
+
+    # TODO: not working and there's no solution
+    assert not auto_crop
 
 
   def _get_conv(self, filters, strides=1, transpose=False):
@@ -161,7 +165,7 @@ class UNet2D(ConvNet):
       self.link_indices = []
     elif self.link_indices in ('a', 'f', 'all', 'full'):
       self.link_indices = list(range(1, self.height + 1))
-    checker.check_type(self.link_indices, int)
+    if self.link_indices: checker.check_type(self.link_indices, int)
 
 
   def __str__(self):
@@ -169,7 +173,8 @@ class UNet2D(ConvNet):
       self.filters, self.kernel_size, self.height, self.thickness,
       self.activation)
     if len(self.link_indices) < self.height:
-      result += '-' + ','.join([str(i) for i in self.link_indices])
+      if len(self.link_indices) == 0: result += '-o'
+      else: result += '-' + ','.join([str(i) for i in self.link_indices])
     if self.use_maxpool: result += '-mp'
     if self.use_batchnorm: result += '-bn'
     return result
