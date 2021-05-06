@@ -200,13 +200,14 @@ class NeuroBase(object):
              strides=1,
              padding='SAME',
              dilations=1,
+             filter=None,
              **kwargs):
     """This function was developed in CUHK RRSSB 212A
     """
     na = self.differentiate(output_channels, scope)
     na.add_kernel(x, suffix='x', kernel_key='conv2d',
                   filter_size=filter_size, strides=strides,
-                  padding=padding, dilations=dilations, **kwargs)
+                  padding=padding, dilations=dilations, filter=filter, **kwargs)
     output = na()
     return output
 
@@ -218,12 +219,13 @@ class NeuroBase(object):
              strides=1,
              padding='SAME',
              dilations=1,
+             filter=None,
              **kwargs):
 
     na = self.differentiate(output_channels, scope)
     na.add_kernel(x, suffix='x', kernel_key='deconv2d',
                   filter_size=filter_size, strides=strides,
-                  padding=padding, dilations=dilations, **kwargs)
+                  padding=padding, dilations=dilations, filter=filter, **kwargs)
     output = na()
     return output
 

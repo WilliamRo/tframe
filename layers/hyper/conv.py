@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tframe import checker
 from tframe import hub as th
 from tframe.layers.layer import single_input
 from tframe.layers.normalization import BatchNormalization
@@ -17,6 +18,8 @@ class ConvBase(HyperBase):
 
   class Configs(object):
     data_format = 'channels_last'
+    kernel_dim = None
+    transpose = False
 
   def __init__(self,
                filters,
@@ -30,7 +33,12 @@ class ConvBase(HyperBase):
                bias_initializer='zeros',
                expand_last_dim=False,
                use_batchnorm=False,
+               filter_generator=None,
                **kwargs):
+    """If filter_generator is provided, it should have the signature:
+          def filter_generator(filter_shape):
+            ...
+    """
 
     # Call parent's initializer
     super(ConvBase, self).__init__(
@@ -42,13 +50,17 @@ class ConvBase(HyperBase):
       **kwargs)
 
     # Specific attributes
-    self.filters = filters
-    self.kernel_size = kernel_size
-    self.strides = strides
+    self.channels = filters
+    self.kernel_size = self._check_size(kernel_size)
+    self.strides = self._check_size(strides)
     self.padding = padding
     self.dilations = dilations
     self.expand_last_dim = expand_last_dim
     self.use_batchnorm = use_batchnorm
+
+    # Set filter generator
+    if filter_generator is not None: assert callable(filter_generator)
+    self.filter_generator = filter_generator
 
     # Set neuron scale as filter shape
     knl_shape = (list(kernel_size) if isinstance(kernel_size, (list, tuple))
@@ -62,13 +74,27 @@ class ConvBase(HyperBase):
     result = super().get_layer_string(scale, full_name, suffix)
     return result
 
+  def _check_size(self, size):
+    return checker.check_conv_size(size, self.Configs.kernel_dim, dtype=list)
+
   @single_input
-  def _link(self, x, **kwargs):
+  def _link(self, x: tf.Tensor, **kwargs):
     # Expand last dimension if necessary
     if self.expand_last_dim: x = tf.expand_dims(x, -1)
 
+    # Generate filter if filter_generator is provided
+    filter = None
+    if callable(self.filter_generator):
+      # Currently customized filter is only supported by 2-D convolution
+      assert self.Configs.kernel_dim == 2
+      input_dim = x.shape.as_list()[-1]
+      filter_shape = self.kernel_size
+      if self.Configs.transpose: filter_shape += [self.channels, input_dim]
+      else: filter_shape += [input_dim, self.channels]
+      filter = self.filter_generator(filter_shape)
+
     # Convolve
-    y = self.forward(x, **kwargs)
+    y = self.forward(x, filter=filter, **kwargs)
 
     # Apply batchnorm if required
     if self.use_batchnorm:
@@ -82,45 +108,18 @@ class ConvBase(HyperBase):
 
 
 class Conv2D(ConvBase):
-  """Perform 2D convolution on a channel-last image
-  """
+  """Perform 2D convolution on a channel-last image"""
 
   full_name = 'conv2d'
   abbreviation = 'conv2d'
 
-  def __init__(self,
-               filters,
-               kernel_size,
-               strides=1,
-               padding='same',
-               dilations=1,
-               activation=None,
-               use_bias=False,
-               kernel_initializer='glorot_uniform',
-               bias_initializer='zeros',
-               expand_last_dim=False,
-               use_batchnorm=False,
-               **kwargs):
+  class Configs(ConvBase.Configs):
+    kernel_dim = 2
 
-    # Call parent's initializer
-    super(Conv2D, self).__init__(
-      filters=filters,
-      kernel_size=kernel_size,
-      strides=strides,
-      padding=padding,
-      dilations=dilations,
-      activation=activation,
-      use_bias=use_bias,
-      kernel_initializer=kernel_initializer,
-      bias_initializer=bias_initializer,
-      expand_last_dim=expand_last_dim,
-      use_batchnorm=use_batchnorm,
-      **kwargs)
-
-  def forward(self, x: tf.Tensor, **kwargs):
-    return self.conv2d(x, self.filters, self.kernel_size, 'HyperConv2D',
-                       strides=self.strides, padding=self.padding,
-                       dilations=self.dilations, **kwargs)
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    return self.conv2d(
+      x, self.channels, self.kernel_size, 'HyperConv2D', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
 
 
 class Deconv2D(ConvBase):
@@ -128,9 +127,13 @@ class Deconv2D(ConvBase):
   full_name = 'deconv2d'
   abbreviation = 'deconv2d'
 
-  def forward(self, x: tf.Tensor, **kwargs):
-    return self.deconv2d(x, self.filters, self.kernel_size, 'HyperConv2D',
-                       strides=self.strides, padding=self.padding,
-                       dilations=self.dilations, **kwargs)
+  class Configs(ConvBase.Configs):
+    kernel_dim = 2
+    transpose = True
+
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    return self.deconv2d(
+      x, self.channels, self.kernel_size, 'HyperDeconv2D', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
 
 

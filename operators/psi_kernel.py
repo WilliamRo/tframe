@@ -74,11 +74,7 @@ class PsiKernel(KernelBase):
   @staticmethod
   def _check_size(size, dim=2):
     if size is None: return None
-    if not isinstance(size, (tuple, list)):
-      assert isinstance(size, int) and size > 0
-      size = (size,) * dim
-    for s in size: assert isinstance(s, int) and s > 0
-    return size
+    return checker.check_conv_size(size, dim)
 
   def _get_kernel(self, identifier):
     assert isinstance(identifier, str)
@@ -112,54 +108,55 @@ class PsiKernel(KernelBase):
 
   # region : Kernels
 
-  def _conv_common(self, conv, name, transpose=False, **kwargs):
+  def _conv_common(self, conv, name, transpose=False,
+                   filter=None, **kwargs):
+    # Find filter shape
     assert callable(conv) and self.filter_size is not None
     filter_shape = list(self.filter_size)
     if transpose: filter_shape += [self.num_units, self.input_dim]
     else: filter_shape += [self.input_dim, self.num_units]
-    filter = self._get_weights('kernel', shape=filter_shape)
+
+    # Get filter if not provided
+    if filter is None: filter = self._get_weights('kernel', shape=filter_shape)
+    # Check filter shape
+    assert filter.shape.as_list() == filter_shape
+
     return conv(self.input_, filter,
                 strides=self.strides,
                 padding=self.padding,
                 dilations=self.dilations,
                 data_format='NHWC', name=name, **kwargs)
 
-  def conv2d(self):
-    return self._conv_common(tf.nn.conv2d, name='conv2d_kernel')
+  def conv2d(self, filter=None):
+    return self._conv_common(tf.nn.conv2d, name='conv2d_kernel', filter=filter)
 
-  def deconv2d(self):
+  def deconv2d(self, filter=None):
     """This remedy for output tensor shape is from keras.layers.Conv2DTranspose
     """
     from tensorflow.python.keras.utils.conv_utils import deconv_output_length
 
-    inputs_shape = tf.shape(self.input_)
-    batch_size = inputs_shape[0]
+    # Define utility
+    get_len = lambda i, shape: deconv_output_length(
+      shape[i+1], self.filter_size[i], padding=self.padding.lower(),
+      output_padding=None, stride=self.strides[i], dilation=self.dilations[i])
+    get_hw = lambda shape: [get_len(i, shape) for i in (0, 1)]
 
-    assert self.filter_size is not None and self.strides is not None
     # Infer the dynamic output shape:
-    out_height = deconv_output_length(
-      inputs_shape[1], self.filter_size[0], padding=self.padding.lower(),
-      output_padding=None, stride=self.strides[0], dilation=self.dilations[0])
-    out_width = deconv_output_length(
-      inputs_shape[2], self.filter_size[1], padding=self.padding.lower(),
-      output_padding=None, stride=self.strides[1], dilation=self.dilations[1])
-
-    output_shape = (batch_size, out_height, out_width, self.num_units)
+    assert self.filter_size is not None and self.strides is not None
+    inputs_shape = tf.shape(self.input_)
+    out_height, out_width = get_hw(inputs_shape)
+    output_shape = (inputs_shape[0], out_height, out_width, self.num_units)
     output_shape_tensor = tf.stack(output_shape)
 
     # Compute
-    y = self._conv_common(tf.nn.conv2d_transpose, name='deconv2d_kernel',
-                          output_shape=output_shape_tensor, transpose=True)
+    y = self._conv_common(
+      tf.nn.conv2d_transpose, name='deconv2d_kernel',
+      output_shape=output_shape_tensor, transpose=True, filter=filter)
 
     # Compute and set static output shape
     out_shape = self.input_.shape.as_list()
+    out_shape[1], out_shape[2] = get_hw(out_shape)
     out_shape[3] = self.num_units
-    out_shape[1] = deconv_output_length(
-      out_shape[1], self.filter_size[0], padding=self.padding.lower(),
-      output_padding=None, stride=self.strides[0], dilation=self.dilations[0])
-    out_shape[2] = deconv_output_length(
-      out_shape[2], self.filter_size[1], padding=self.padding.lower(),
-      output_padding=None, stride=self.strides[1], dilation=self.dilations[1])
     y.set_shape(out_shape)
 
     return y

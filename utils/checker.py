@@ -9,6 +9,12 @@ def try_str2float(s):
   except ValueError: return s
 
 
+def check_conv_size(size, dim=2, dtype=tuple):
+  if not isinstance(size, (tuple, list)): size = (size,) * dim
+  for s in size: check_positive_integer(s, name='size component `{}`'.format(s))
+  return dtype(size)
+
+
 def check_tensor_shape(tensor1, tensor2, name1=None, name2=None):
   if name1 is None: name1 = misc.retrieve_name(tensor1)
   if name2 is None: name2 = misc.retrieve_name(tensor2)
