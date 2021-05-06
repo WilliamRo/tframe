@@ -4,8 +4,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe import activations
 from tframe import hub as th
+from tframe.layers.layer import single_input
 from tframe.layers.normalization import BatchNormalization
 
 from .hyper_base import HyperBase
@@ -16,7 +16,7 @@ class ConvBase(HyperBase):
   abbreviation = 'conv'
 
   class Configs(object):
-    pass
+    data_format = 'channels_last'
 
   def __init__(self,
                filters,
@@ -62,6 +62,24 @@ class ConvBase(HyperBase):
     result = super().get_layer_string(scale, full_name, suffix)
     return result
 
+  @single_input
+  def _link(self, x, **kwargs):
+    # Expand last dimension if necessary
+    if self.expand_last_dim: x = tf.expand_dims(x, -1)
+
+    # Convolve
+    y = self.forward(x, **kwargs)
+
+    # Apply batchnorm if required
+    if self.use_batchnorm:
+      momentum = th.bn_momentum if th.bn_momentum is not None else 0.99
+      y = BatchNormalization(momentum=momentum)(y)
+
+    # Activate if required
+    if self._activation is None: return y
+    assert callable(self._activation)
+    return self._activation(y)
+
 
 class Conv2D(ConvBase):
   """Perform 2D convolution on a channel-last image
@@ -69,9 +87,6 @@ class Conv2D(ConvBase):
 
   full_name = 'conv2d'
   abbreviation = 'conv2d'
-
-  class Configs(ConvBase.Configs):
-    data_format = 'channels_last'
 
   def __init__(self,
                filters,
@@ -103,20 +118,19 @@ class Conv2D(ConvBase):
       **kwargs)
 
   def forward(self, x: tf.Tensor, **kwargs):
-    # Expand last dimension if necessary
-    if self.expand_last_dim: x = tf.expand_dims(x, -1)
+    return self.conv2d(x, self.filters, self.kernel_size, 'HyperConv2D',
+                       strides=self.strides, padding=self.padding,
+                       dilations=self.dilations, **kwargs)
 
-    # Convolve
-    y = self.conv2d(x, self.filters, self.kernel_size, 'HyperConv2D',
-                    strides=self.strides, padding=self.padding,
-                    dilations=self.dilations, **kwargs)
 
-    # Apply batchnorm if required
-    if self.use_batchnorm:
-      momentum = th.bn_momentum if th.bn_momentum is not None else 0.99
-      y = BatchNormalization(momentum=momentum)(y)
+class Deconv2D(ConvBase):
 
-    # Activate if required
-    if self._activation is None: return y
-    assert callable(self._activation)
-    return self._activation(y)
+  full_name = 'deconv2d'
+  abbreviation = 'deconv2d'
+
+  def forward(self, x: tf.Tensor, **kwargs):
+    return self.deconv2d(x, self.filters, self.kernel_size, 'HyperConv2D',
+                       strides=self.strides, padding=self.padding,
+                       dilations=self.dilations, **kwargs)
+
+

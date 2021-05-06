@@ -43,16 +43,10 @@ class PsiKernel(KernelBase):
 
     # Attributes for convolutional operators
     # Check filter size for convolutional operations
-    if filter_size is not None:
-      if not isinstance(filter_size, (tuple, list)):
-        assert isinstance(filter_size, int) and filter_size > 0
-        filter_size = (filter_size, filter_size)
-      assert isinstance(filter_size, (tuple, list)) and len(filter_size) == 2
-      for s in filter_size: assert isinstance(s, int) and s > 0
-    self.filter_size = filter_size
-    self.strides = strides
+    self.filter_size = self._check_size(filter_size)
+    self.strides = self._check_size(strides)
     self.padding = padding.upper()
-    self.dilations = dilations
+    self.dilations = self._check_size(dilations)
 
   # region : Properties
 
@@ -75,6 +69,15 @@ class PsiKernel(KernelBase):
 
   # region : Private Methods
 
+  @staticmethod
+  def _check_size(size, dim=2):
+    if size is None: return None
+    if not isinstance(size, (tuple, list)):
+      assert isinstance(size, int) and size > 0
+      size = (size,) * dim
+    for s in size: assert isinstance(s, int) and s > 0
+    return size
+
   def _get_kernel(self, identifier):
     assert isinstance(identifier, str)
     identifier = identifier.lower()
@@ -84,6 +87,7 @@ class PsiKernel(KernelBase):
     elif identifier in ('elect', 'election'): return self.elect
     elif identifier in ('sparse_sog', 'sparsog'): return self.sparse_sog
     elif identifier in ('conv2d',): return self.conv2d
+    elif identifier in ('deconv2d',): return self.deconv2d
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
 
   def _layer_normalization(self, a):
@@ -106,15 +110,55 @@ class PsiKernel(KernelBase):
 
   # region : Kernels
 
-  def conv2d(self):
-    assert self.filter_size is not None
+  def _conv_common(self, conv, name, **kwargs):
+    assert callable(conv) and self.filter_size is not None
     filter_shape = list(self.filter_size) + [self.input_dim, self.num_units]
     filter = self._get_weights('kernel', shape=filter_shape)
-    return tf.nn.conv2d(self.input_, filter,
-                        strides=self.strides,
-                        padding=self.padding,
-                        dilations=self.dilations,
-                        data_format='NHWC', name='conv2d_kernel')
+    return conv(self.input_, filter,
+                strides=self.strides,
+                padding=self.padding,
+                dilations=self.dilations,
+                data_format='NHWC', name=name, **kwargs)
+
+  def conv2d(self):
+    return self._conv_common(tf.nn.conv2d, name='conv2d_kernel')
+
+  def deconv2d(self):
+    """This remedy for output tensor shape is from keras.layers.Conv2DTranspose
+    """
+    from tensorflow.python.keras.utils.conv_utils import deconv_output_length
+
+    inputs_shape = tf.shape(self.input_)
+    batch_size = inputs_shape[0]
+
+    assert self.filter_size is not None and self.strides is not None
+    # Infer the dynamic output shape:
+    out_height = deconv_output_length(
+      inputs_shape[1], self.filter_size[0], padding=self.padding.lower(),
+      output_padding=None, stride=self.strides[0], dilation=self.dilations[0])
+    out_width = deconv_output_length(
+      inputs_shape[2], self.filter_size[1], padding=self.padding.lower(),
+      output_padding=None, stride=self.strides[1], dilation=self.dilations[1])
+
+    output_shape = (batch_size, out_height, out_width, self.num_units)
+    output_shape_tensor = tf.stack(output_shape)
+
+    # Compute
+    y = self._conv_common(tf.nn.conv2d_transpose, name='deconv2d_kernel',
+                          output_shape=output_shape_tensor)
+
+    # Compute and set static output shape
+    out_shape = self.input_.shape.as_list()
+    out_shape[3] = self.num_units
+    out_shape[1] = deconv_output_length(
+      out_shape[1], self.filter_size[0], padding=self.padding.lower(),
+      output_padding=None, stride=self.strides[0], dilation=self.dilations[0])
+    out_shape[2] = deconv_output_length(
+      out_shape[2], self.filter_size[1], padding=self.padding.lower(),
+      output_padding=None, stride=self.strides[1], dilation=self.dilations[1])
+    y.set_shape(out_shape)
+
+    return y
 
   def dense(self):
     W = self._get_weights('W', shape=[self.input_dim, self.num_units])
