@@ -10,19 +10,30 @@ from tframe import checker
 from tframe import hub
 from tframe import linker
 from tframe import initializers
-from tframe import regularizers
 
-from tframe.operators.prune.etches import get_etch_kernel
+from typing import Optional
 
 
 class KernelBase(object):
+  """Kernel base provides support for network pruning algorithms via
+  KernelBase._get_weights method. Layers or operators using this method
+  to allocate trainable variables usually have `hyper` prefix in their name.
+
+  To create sparse mask for pruning:
+  (1) set th.prune_on or th.etch_on to True
+  (2) initiate the subclass of KernelBase by setting `prune_frac` > 0 or
+      `etch` to a string, e.g., lottery:prune_frac=0.1.
+  After these 2 steps, the learnable weight of this kernel base will be
+  registered to context.pruner, the corresponding etch kernel will be created,
+  and corresponding masked weights will replace the trainable weights.
+  """
 
   def __init__(self,
                kernel_key,
                num_units,
                initializer,
                prune_frac=0,
-               etch=None,
+               etch: Optional[str] = None,
                weight_dropout=0.0,
                **kwargs):
 
@@ -108,27 +119,8 @@ class KernelBase(object):
     # Register etch kernel to pruner
     masked_weights = context.pruner.register_to_dense(weights, self.etch)
 
-    # if self.prune_is_on:
-    #   masked_weights = context.pruner.register_to_dense(
-    #     weights, self.prune_frac)
-    # else:
-    #   # TODO
-    #   assert self.being_etched
-    #   mask = self._get_etched_surface(weights)
-    #   masked_weights = context.pruner.register_with_mask(weights, mask)
-
     # Return
     assert isinstance(masked_weights, tf.Tensor)
     return masked_weights
 
 
-  # def _get_etched_surface(self, weights):
-  #   assert isinstance(self.etch, str) and isinstance(weights, tf.Variable)
-  #   mask = tf.get_variable(
-  #     'etched_surface', shape=weights.shape, dtype=hub.dtype,
-  #     initializer=tf.initializers.ones)
-  #   # Get etch kernel and register to pruner
-  #   kernel = get_etch_kernel(self.etch)
-  #   etch_kernel = kernel(weights, mask)
-  #   context.pruner.register_etch_kernel(etch_kernel)
-  #   return mask

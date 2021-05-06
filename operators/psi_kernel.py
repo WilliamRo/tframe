@@ -10,6 +10,8 @@ from tframe import hub
 from tframe import linker
 from tframe import initializers
 
+from typing import Optional
+
 from .kernel_base import KernelBase
 
 
@@ -24,7 +26,7 @@ class PsiKernel(KernelBase):
                prune_frac=0,
                LN=False,
                gain_initializer='ones',
-               etch=None,
+               etch: Optional[str] = None,
                weight_dropout=0.0,
                filter_size=None,
                strides=1,
