@@ -110,9 +110,11 @@ class PsiKernel(KernelBase):
 
   # region : Kernels
 
-  def _conv_common(self, conv, name, **kwargs):
+  def _conv_common(self, conv, name, transpose=False, **kwargs):
     assert callable(conv) and self.filter_size is not None
-    filter_shape = list(self.filter_size) + [self.input_dim, self.num_units]
+    filter_shape = list(self.filter_size)
+    if transpose: filter_shape += [self.num_units, self.input_dim]
+    else: filter_shape += [self.input_dim, self.num_units]
     filter = self._get_weights('kernel', shape=filter_shape)
     return conv(self.input_, filter,
                 strides=self.strides,
@@ -145,7 +147,7 @@ class PsiKernel(KernelBase):
 
     # Compute
     y = self._conv_common(tf.nn.conv2d_transpose, name='deconv2d_kernel',
-                          output_shape=output_shape_tensor)
+                          output_shape=output_shape_tensor, transpose=True)
 
     # Compute and set static output shape
     out_shape = self.input_.shape.as_list()

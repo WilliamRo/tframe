@@ -13,8 +13,10 @@ from tframe.layers.common import Input
 from tframe.layers.common import Linear
 
 from tframe.layers.convolutional import Conv1D
-from tframe.layers.convolutional import Conv2D
-from tframe.layers.convolutional import Deconv2D
+# from tframe.layers.convolutional import Conv2D
+# from tframe.layers.convolutional import Deconv2D
+from tframe.layers.hyper.conv import Conv2D
+from tframe.layers.hyper.conv import Deconv2D
 
 from tframe.layers.highway import LinearHighway
 

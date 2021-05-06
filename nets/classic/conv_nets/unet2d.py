@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 from tframe import checker
-from tframe.layers.convolutional import Conv2D, Deconv2D
+# from tframe.layers.convolutional import Conv2D, Deconv2D
+from tframe.layers.hyper.conv import Conv2D, Deconv2D
 from tframe.layers.pooling import MaxPool2D
 from tframe.layers.merge import Bridge
 from tframe.layers.normalization import BatchNormalization
