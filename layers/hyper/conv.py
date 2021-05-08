@@ -36,8 +36,9 @@ class ConvBase(HyperBase):
                filter_generator=None,
                **kwargs):
     """If filter_generator is provided, it should have the signature:
-          def filter_generator(filter_shape):
+          def filter_generator(self, filter_shape):
             ...
+        in which self is an instance of ConvBase
     """
 
     # Call parent's initializer
@@ -63,9 +64,9 @@ class ConvBase(HyperBase):
     self.filter_generator = filter_generator
 
     # Set neuron scale as filter shape
-    knl_shape = (list(kernel_size) if isinstance(kernel_size, (list, tuple))
-                 else [kernel_size, kernel_size])
-    self.neuron_scale = knl_shape + [filters]
+    knl_shape = (tuple(kernel_size) if isinstance(kernel_size, (list, tuple))
+                 else (kernel_size, kernel_size))
+    self.neuron_scale = knl_shape + (filters,)
 
   def get_layer_string(self, scale, full_name=False, suffix=''):
     activation = self._activation_string
@@ -75,7 +76,7 @@ class ConvBase(HyperBase):
     return result
 
   def _check_size(self, size):
-    return checker.check_conv_size(size, self.Configs.kernel_dim, dtype=list)
+    return checker.check_conv_size(size, self.Configs.kernel_dim)
 
   @single_input
   def _link(self, x: tf.Tensor, **kwargs):
@@ -89,9 +90,10 @@ class ConvBase(HyperBase):
       assert self.Configs.kernel_dim == 2
       input_dim = x.shape.as_list()[-1]
       filter_shape = self.kernel_size
-      if self.Configs.transpose: filter_shape += [self.channels, input_dim]
-      else: filter_shape += [input_dim, self.channels]
-      filter = self.filter_generator(filter_shape)
+      if self.Configs.transpose: filter_shape += (self.channels, input_dim)
+      else: filter_shape += (input_dim, self.channels)
+      with tf.variable_scope('filter-generator'):
+        filter = self.filter_generator(self, filter_shape)
 
     # Convolve
     y = self.forward(x, filter=filter, **kwargs)

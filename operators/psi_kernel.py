@@ -108,8 +108,11 @@ class PsiKernel(KernelBase):
 
   # region : Kernels
 
-  def _conv_common(self, conv, name, transpose=False,
-                   filter=None, **kwargs):
+  def _conv_common(self, conv, name, transpose=False, kernel=None, **kwargs):
+    """The reference for convolution with different filter for each sample in
+    mini-batch:
+       https://stackoverflow.com/questions/42068999/tensorflow-convolutions-with-different-filter-for-each-sample-in-the-mini-batch
+    """
     # Find filter shape
     assert callable(conv) and self.filter_size is not None
     filter_shape = list(self.filter_size)
@@ -117,20 +120,26 @@ class PsiKernel(KernelBase):
     else: filter_shape += [self.input_dim, self.num_units]
 
     # Get filter if not provided
-    if filter is None: filter = self._get_weights('kernel', shape=filter_shape)
+    if kernel is None: kernel = self._get_weights('kernel', shape=filter_shape)
+
+    # Define convolution method
+    _conv = lambda tupl: conv(
+      tupl[0], tupl[1], strides=self.strides, padding=self.padding,
+      dilations=self.dilations, data_format='NHWC', name=name, **kwargs)
+
     # Check filter shape
-    assert filter.shape.as_list() == filter_shape
+    if kernel.shape.as_list() == filter_shape:
+      return _conv((self.input_, kernel))
+    else:
+      assert len(kernel.shape) == len(filter_shape) + 1
+      return tf.squeeze(tf.map_fn(
+        _conv, (tf.expand_dims(self.input_, 1), kernel), dtype=hub.dtype),
+        axis=1)
 
-    return conv(self.input_, filter,
-                strides=self.strides,
-                padding=self.padding,
-                dilations=self.dilations,
-                data_format='NHWC', name=name, **kwargs)
+  def conv2d(self, filter=None) -> tf.Tensor:
+    return self._conv_common(tf.nn.conv2d, name='conv2d_kernel', kernel=filter)
 
-  def conv2d(self, filter=None):
-    return self._conv_common(tf.nn.conv2d, name='conv2d_kernel', filter=filter)
-
-  def deconv2d(self, filter=None):
+  def deconv2d(self, filter=None) -> tf.Tensor:
     """This remedy for output tensor shape is from keras.layers.Conv2DTranspose
     """
     from tensorflow.python.keras.utils.conv_utils import deconv_output_length
@@ -151,7 +160,7 @@ class PsiKernel(KernelBase):
     # Compute
     y = self._conv_common(
       tf.nn.conv2d_transpose, name='deconv2d_kernel',
-      output_shape=output_shape_tensor, transpose=True, filter=filter)
+      output_shape=output_shape_tensor, transpose=True, kernel=filter)
 
     # Compute and set static output shape
     out_shape = self.input_.shape.as_list()
