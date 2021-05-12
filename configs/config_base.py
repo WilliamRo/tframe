@@ -88,6 +88,9 @@ class Config(
 
   allow_activation = Flag.boolean(True, 'Whether to allow activation')
 
+  # A dictionary for highest priority setting
+  _backdoor = {}
+
   def __init__(self, as_global=False):
     # Try to register flags into tensorflow
     if not self.__class__.registered:
@@ -137,9 +140,16 @@ class Config(
   def __getattribute__(self, name):
     attr = object.__getattribute__(self, name)
     if not isinstance(attr, Flag): return attr
-    else: return attr.value
+    else:
+      if name in self._backdoor: return self._backdoor[name]
+      return attr.value
 
   def __setattr__(self, name, value):
+    # Set value to backdoor if required, e.g., th.batch_size = {[256]}
+    if isinstance(value, list) and len(value) == 1:
+      if isinstance(value[0], set) and len(value[0]) == 1:
+        self._backdoor[name] = list(value[0])[0]
+
     # If attribute is not found (say during instance initialization),
     # .. use default __setattr__
     if not hasattr(self, name):
