@@ -170,7 +170,7 @@ class NeuroBase(object):
     return output
 
   def dense(self, output_dim, x, scope, activation=None,
-            num_or_size_splits=None, **kwargs):
+            num_or_size_splits=None, **kwargs) -> tf.Tensor:
     """Dense neuron.
     :param output_dim: neuron number (output dimension)
     :param x: input tensor of shape [batch_size, input_dim]
