@@ -251,6 +251,58 @@ class Predictor(Feedforward, Recurrent):
 
   # endregion : Private Methods
 
+  # region: Visualization
+
+  def visualize_tensors(self, data_set, tensors: dict = None,
+                        max_tensors=None, max_channels=None):
+    """Visualize tensors related to 2-D convolutional networks"""
+    from tframe.data.dataset import DataSet
+    from lambo.gui.vinci.vinci import DaVinci
+    from tframe.nets.net import Net
+    from collections import OrderedDict
+
+    # Sanity check
+    assert isinstance(data_set, DataSet)
+
+    # Find tensors to visualize
+    if tensors is None:
+      tensors = OrderedDict()
+      for net in self.children:
+        y = net.output_tensor
+        tensors[y.name.split('/')[1]] = y
+        if max_tensors is not None and len(tensors) == max_tensors: break
+    assert isinstance(tensors, dict)
+
+    # Get tensor
+    values = self.evaluate(
+      list(tensors.values()), data_set, batch_size=1, verbose=True)
+
+    # Constructor DaVinci
+    da = DaVinci('Tensor Visualizer', height=7, width=7)
+    # Fill in objects
+    for i in range(len(values[0])): da.objects.append([v[i] for v in values])
+
+    def imshow(net_id, slice_id, total):
+      def _imshow(x):
+        net_name = list(tensors.keys())[net_id]
+        x = x[net_id][:, :, slice_id]
+        title = '{}[{}/{}] Shape = {}x{}'.format(
+          net_name, slice_id + 1, total, x.shape[0], x.shape[1])
+        da.imshow(x, color_bar=True, title=title)
+      return _imshow
+
+    # Add plotter
+    for i, v in enumerate(values):
+      total = v.shape[-1]
+      for j in range(total):
+        if max_channels is not None and j == max_channels: break
+        da.add_plotter(imshow(i, j, total))
+
+    # Show
+    da.show()
+
+  # endregion: Visualization
+
 
 
 
