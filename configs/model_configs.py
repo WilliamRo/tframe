@@ -39,6 +39,10 @@ class ModelConfigs(object):
   strides = Flag.integer(None, 'Strides', is_key=None)
   padding = Flag.string(None, 'Padding', is_key=None)
   kernel_size = Flag.integer(None, 'Kernel size', is_key=None)
+  contraction_kernel_size = Flag.integer(
+    None, 'Contraction kernel size used in U-Net', is_key=None)
+  expansion_kernel_size = Flag.integer(
+    None, 'Expansion kernel size used in U-Net', is_key=None)
 
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   fc_dims = Flag.whatever(None, '...')

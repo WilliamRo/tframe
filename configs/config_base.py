@@ -87,6 +87,8 @@ class Config(
   stats_max_length = Flag.integer(20, 'Maximum length a Statistic can keep')
 
   allow_activation = Flag.boolean(True, 'Whether to allow activation')
+  visualize_tensors = Flag.boolean(
+    False, 'Whether to visualize tensors in core')
 
   # A dictionary for highest priority setting
   _backdoor = {}
