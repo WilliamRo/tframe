@@ -253,38 +253,50 @@ class Predictor(Feedforward, Recurrent):
 
   # region: Visualization
 
-  def visualize_tensors(self, data_set, tensors: dict = None,
-                        max_tensors=None, max_channels=None):
+  def visualize_tensors(
+      self, data_set, tensor_dict: dict = None, max_tensors=None,
+      max_channels=None, visualize_kernels=False):
     """Visualize tensors related to 2-D convolutional networks"""
     from tframe.data.dataset import DataSet
     from lambo.gui.vinci.vinci import DaVinci
-    from tframe.nets.net import Net
+    from tframe.utils.display.img_utils import tile_kernels
     from collections import OrderedDict
 
     # Sanity check
     assert isinstance(data_set, DataSet)
+    assert tensor_dict is None
 
-    # Find tensors to visualize
-    if tensors is None:
-      tensors = OrderedDict()
-      for net in self.children:
-        y = net.output_tensor
-        tensors[y.name.split('/')[1]] = y
-        if max_tensors is not None and len(tensors) == max_tensors: break
-    assert isinstance(tensors, dict)
+    # Find tensors to visualize. Shape of each tensor should be
+    #  [bs, H, W, C] for layer output or [bs, K, K, c_in, c_out] for kernels
+    if tensor_dict is None:
+      tensor_dict = OrderedDict()
+      tensor_list = (context.get_collection_by_key(pedia.hyper_kernels)
+                     if visualize_kernels else [net.output_tensor
+                                                for net in self.children])
+      for tensor in tensor_list:
+        tensor_dict[tensor.name.split('/')[1]] = tensor
+        if max_tensors is not None and len(tensor_dict) == max_tensors: break
+
+    assert isinstance(tensor_dict, dict) and len(tensor_dict) > 0
 
     # Get tensor
     values = self.evaluate(
-      list(tensors.values()), data_set, batch_size=1, verbose=True)
+      list(tensor_dict.values()), data_set, batch_size=1, verbose=True)
 
     # Constructor DaVinci
     da = DaVinci('Tensor Visualizer', height=7, width=7)
     # Fill in objects
-    for i in range(len(values[0])): da.objects.append([v[i] for v in values])
+    batch_size = len(values[0])
+    for i in range(batch_size):
+      vs = [v[i] for v in values]
+      # If tensor is kernel, tile them
+      if len(vs[0].shape) == 4: vs = [tile_kernels(v) for v in vs]
+      # Append vs to objects
+      da.objects.append(vs)
 
     def imshow(net_id, slice_id, total):
       def _imshow(x):
-        net_name = list(tensors.keys())[net_id]
+        net_name = list(tensor_dict.keys())[net_id]
         x = x[net_id][:, :, slice_id]
         title = '{}[{}/{}] Shape = {}x{}'.format(
           net_name, slice_id + 1, total, x.shape[0], x.shape[1])
@@ -292,7 +304,7 @@ class Predictor(Feedforward, Recurrent):
       return _imshow
 
     # Add plotter
-    for i, v in enumerate(values):
+    for i, v in enumerate(da.objects[0]):
       total = v.shape[-1]
       for j in range(total):
         if max_channels is not None and j == max_channels: break

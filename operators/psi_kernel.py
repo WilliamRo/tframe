@@ -8,6 +8,7 @@ from tframe import checker
 from tframe import context
 from tframe import hub
 from tframe import linker
+from tframe import pedia
 from tframe import initializers
 
 from typing import Optional
@@ -132,6 +133,8 @@ class PsiKernel(KernelBase):
       return _conv((self.input_, kernel))
     else:
       assert len(kernel.shape) == len(filter_shape) + 1
+      # Add filter to context for future use
+      context.add_to_list_collection(pedia.hyper_kernels, kernel)
       return tf.squeeze(tf.map_fn(
         _conv, (tf.expand_dims(self.input_, 1), kernel), dtype=hub.dtype),
         axis=1)

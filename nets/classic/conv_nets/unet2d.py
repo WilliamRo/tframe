@@ -24,6 +24,9 @@ class UNet2D(ConvNet):
                use_batchnorm: bool = False,
                link_indices: Union[List[int], str, None] = 'a',
                inner_shortcut: bool = False,  # TODO
+               filter_generator=None,
+               contraction_kernel_size: Optional[int] = None,
+               expansion_kernel_size: Optional[int] = None,
                auto_crop=False, arc_string: Optional[str] = None):
     """This class provides some generalization to the traditional U-Net
 
@@ -70,18 +73,28 @@ class UNet2D(ConvNet):
     self.link_indices = link_indices
     self.arc_string = arc_string
     self.auto_crop = auto_crop
+    self.filter_generator = filter_generator
 
     self.parse_arc_str_and_check()
+
+    self.contraction_kernel_size = (
+      self.kernel_size if contraction_kernel_size is None
+      else contraction_kernel_size)
+    self.expansion_kernel_size = (
+      self.kernel_size if expansion_kernel_size is None
+      else expansion_kernel_size)
 
     # TODO: not working and there's no solution
     assert not auto_crop
 
 
-  def _get_conv(self, filters, strides=1, transpose=False):
+  def _get_conv(self, filters, kernel_size, strides=1, transpose=False,
+                allow_hyper=False):
     Conv = Deconv2D if transpose else Conv2D
-    return Conv(filters, self.kernel_size, strides, padding='same',
-                activation=self.activation if strides == 1 else None,
-                use_bias=False)
+    return Conv(
+      filters, kernel_size, strides, padding='same',
+      activation=self.activation if strides == 1 else None, use_bias=False,
+      filter_generator=self.filter_generator if allow_hyper else None)
 
 
   def _get_layers(self):
@@ -90,16 +103,16 @@ class UNet2D(ConvNet):
     # Define some utilities
     contract = lambda channels: layers.append(
       MaxPool2D(2, 2) if self.use_maxpool else self._get_conv(
-        channels, strides=2))
-    expand = lambda channels: layers.append(
-      self._get_conv(channels, strides=2, transpose=True))
+        channels, self.contraction_kernel_size, strides=2, allow_hyper=True))
+    expand = lambda channels: layers.append(self._get_conv(
+      channels, self.expansion_kernel_size, strides=2, transpose=True))
 
     # Build left tower for contracting
     filters = self.filters
     for i in range(self.height):   # (height - i)-th floor
       # Add front layers on each floor
-      for _ in range(self.thickness):
-        layers.append(self._get_conv(filters))
+      for _ in range(self.thickness): layers.append(self._get_conv(
+          filters, self.contraction_kernel_size, allow_hyper=True))
       # Remember the last layer in each floor before contracting
       floors.append(layers[-1])
       # Contract
@@ -109,7 +122,7 @@ class UNet2D(ConvNet):
 
     # Build ground floor (GF)
     for _ in range(self.thickness):
-      layers.append(self._get_conv(filters))
+      layers.append(self._get_conv(filters, self.expansion_kernel_size))
 
     # Build right tower for expanding
     for i in range(1, self.height + 1):    # i-th floor
@@ -124,7 +137,7 @@ class UNet2D(ConvNet):
         layers.append(Bridge(floors[self.height - i], guest_is_larger))
       # Increase thickness
       for _ in range(self.thickness):
-        layers.append(self._get_conv(filters))
+        layers.append(self._get_conv(filters, self.expansion_kernel_size))
 
     return layers
 
@@ -136,6 +149,9 @@ class UNet2D(ConvNet):
       {link_indices} can be `a` or `f` indicating linking all layers on the same
       floor, or indices separated by `,` indicating which floor to link, e.g.,
       `0,2,4`, in which case the given height must be greater than 4.
+
+    Note that arc_string does not support different kernel size for left and
+      right tower.
     """
     if self.arc_string is not None:
       options = self.arc_string.split('-')
@@ -170,9 +186,9 @@ class UNet2D(ConvNet):
 
 
   def __str__(self):
-    result = '{}-{}-{}-{}-{}'.format(
-      self.filters, self.kernel_size, self.height, self.thickness,
-      self.activation)
+    result = '{}-c{}e{}-{}-{}-{}'.format(
+      self.filters, self.contraction_kernel_size, self.expansion_kernel_size,
+      self.height, self.thickness, self.activation)
     if len(self.link_indices) < self.height:
       if len(self.link_indices) == 0: result += '-o'
       else: result += '-' + ','.join([str(i) for i in self.link_indices])

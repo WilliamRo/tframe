@@ -89,6 +89,8 @@ class Config(
   allow_activation = Flag.boolean(True, 'Whether to allow activation')
   visualize_tensors = Flag.boolean(
     False, 'Whether to visualize tensors in core')
+  visualize_kernels = Flag.boolean(
+    False, 'Whether to visualize CNN kernels in core')
 
   # A dictionary for highest priority setting
   _backdoor = {}

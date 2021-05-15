@@ -22,6 +22,8 @@ fork = 'fork'
 gather_indices = 'gather_indices'
 Generator = 'Generator'
 
+hyper_kernels = 'hyper_kernels'
+
 invisible = 'do_not_show'
 injection_loss = 'INJECTION_LOSS'
 is_training = 'is_training'
