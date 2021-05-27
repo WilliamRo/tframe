@@ -101,22 +101,26 @@ class UNet2D(ConvNet):
     layers, floors = [], []
 
     # Define some utilities
-    contract = lambda channels: layers.append(
+    contract = lambda channels, allow_hyper=False: layers.append(
       MaxPool2D(2, 2) if self.use_maxpool else self._get_conv(
-        channels, self.contraction_kernel_size, strides=2, allow_hyper=True))
+        channels, self.contraction_kernel_size, strides=2,
+        allow_hyper=allow_hyper))
     expand = lambda channels: layers.append(self._get_conv(
       channels, self.expansion_kernel_size, strides=2, transpose=True))
 
     # Build left tower for contracting
     filters = self.filters
     for i in range(self.height):   # (height - i)-th floor
+
+      allow_hyper = i == 0
+
       # Add front layers on each floor
       for _ in range(self.thickness): layers.append(self._get_conv(
-          filters, self.contraction_kernel_size, allow_hyper=True))
+          filters, self.contraction_kernel_size, allow_hyper=allow_hyper))
       # Remember the last layer in each floor before contracting
       floors.append(layers[-1])
       # Contract
-      contract(filters)
+      contract(filters, allow_hyper=allow_hyper)
       # Double filters
       filters *= 2
 
