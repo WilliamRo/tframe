@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import numpy as np
 
-import tensorflow as tf
+from tframe import tf
 import tframe.activations as activations
 import tframe.initializers as initializers
 import tframe.regularizers as regularizers

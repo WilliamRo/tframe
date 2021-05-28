@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import re
 import inspect
-import tensorflow as tf
+from tframe import tf
 
 from tframe import linker
 

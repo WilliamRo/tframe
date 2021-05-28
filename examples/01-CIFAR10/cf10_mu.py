@@ -1,4 +1,4 @@
-import tensorflow as tf
+from tframe import tf
 
 from tframe import Classifier
 from tframe.layers import Input, Linear, Activation, Flatten

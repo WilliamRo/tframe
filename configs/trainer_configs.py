@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+from tframe import tf
 from .flag import Flag
 from tframe.utils.arg_parser import Parser
 

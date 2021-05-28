@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import six
 import numpy as np
-import tensorflow as tf
+from tframe import tf
 
 from tframe import checker, context, linker
 from tframe.core.quantity import Quantity

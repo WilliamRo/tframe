@@ -7,7 +7,7 @@ import gzip
 import numpy as np
 from collections import OrderedDict
 
-import tensorflow as tf
+from tframe import tf
 
 from tframe import console, context, hub
 from tframe import pedia

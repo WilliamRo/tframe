@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import collections
 import numpy as np
-import tensorflow as tf
+from tframe import tf
 
 from tframe.models.model import Model
 from tframe.nets.net import Net

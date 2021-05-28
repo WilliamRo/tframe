@@ -5,7 +5,7 @@ from __future__ import print_function
 import numpy as np
 import collections
 
-import tensorflow as tf
+from tframe import tf
 
 import tframe as tfr
 

@@ -6,6 +6,18 @@ from __future__ import print_function
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+import numpy as np
+import tensorflow as tf
+
+# [VP] the code block below is used for making tframe compatible with
+#   tensorflow 2.*. All modules related to tframe using tensorflow are
+#   recommended to import tf in the way below:
+#      from tframe import tf
+if tf.version.VERSION[0] == '2':
+  print('>> Disabling TensorFlow {} behavior ...'.format(tf.version.VERSION))
+  tf = tf.compat.v1
+  tf.disable_v2_behavior()
+
 from . import pedia
 from .enums import *
 
@@ -28,9 +40,6 @@ from .models import Classifier
 from .utils.organizer import mu
 
 from .trainers.smartrainer import SmartTrainerHub as DefaultHub
-
-import numpy as np
-import tensorflow as tf
 
 
 def set_random_seed(seed=26):

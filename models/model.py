@@ -2,8 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
 import numpy as np
+from tframe import tf
 from collections import OrderedDict
 
 import tframe as tfr

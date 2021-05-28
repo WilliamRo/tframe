@@ -1,6 +1,6 @@
 import cf10_core as core
 import cf10_mu as m
-import tensorflow as tf
+from tframe import tf
 from tframe import console
 from tframe.utils.misc import date_string
 

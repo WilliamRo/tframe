@@ -5,8 +5,8 @@ from __future__ import print_function
 import os
 import time
 
-import tensorflow as tf
 import tframe as tfr
+from tframe import tf
 
 from tframe import hub
 from tframe import console

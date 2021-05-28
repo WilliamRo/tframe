@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import inspect
-import tensorflow as tf
+from tframe import tf
 
 from tframe import context
 from tframe import checker

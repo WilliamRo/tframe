@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import six
 
-import tensorflow as tf
+from tframe import tf
 
 from tframe.utils.arg_parser import Parser
 

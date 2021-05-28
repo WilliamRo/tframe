@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import re
-import tensorflow as tf
+from tframe import tf
 from tframe.enums import EnumPro
 
 flags = tf.app.flags

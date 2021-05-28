@@ -8,7 +8,7 @@ import datetime
 import math
 from .np_tools import get_ravel_indices
 
-import tensorflow as tf
+from tframe import tf
 
 
 def ordinal(n):

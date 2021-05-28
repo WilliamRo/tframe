@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+from tframe import tf
 
 from tframe import checker, hub
 from tframe.nets.rnn_cells.cell_base import CellBase

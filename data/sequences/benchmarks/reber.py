@@ -8,7 +8,7 @@ import random
 from enum import Enum, unique
 from collections import OrderedDict
 
-import tensorflow as tf
+from tframe import tf
 
 from tframe import checker
 from tframe import console

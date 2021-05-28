@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import sys, os
 import numpy as np
-import tensorflow as tf
+from tframe import tf
 from collections import OrderedDict
 
 import tframe as tfr

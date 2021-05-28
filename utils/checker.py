@@ -1,4 +1,4 @@
-import tensorflow as tf
+from tframe import tf
 import numpy as np
 
 from tframe.utils import misc

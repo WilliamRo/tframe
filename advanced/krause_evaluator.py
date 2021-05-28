@@ -5,7 +5,7 @@ from __future__ import print_function
 from collections import OrderedDict
 import numpy as np
 
-import tensorflow as tf
+from tframe import tf
 from tframe import console
 from tframe import checker
 from tframe import pedia
