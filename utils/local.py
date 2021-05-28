@@ -6,7 +6,7 @@ import os
 import re
 import six
 
-import tensorflow as tf
+from tframe import tf
 
 import tframe as tfr
 
