@@ -329,14 +329,14 @@ class Helper(object):
       k, v = r.groups()
       assert isinstance(v, str)
       val_list = re.split(r'[,/]', v)
-      # Set python version if specified
-      if k == self.CONFIG_KEYS.python_version:
-        self._python_cmd = 'python{}'.format(val_list[0])
-        continue
       # Check system configurations
       if k in self.config_dict:
         assert len(val_list) == 1
-        self.config_dict[k] = val_list[0]
+        val = val_list[0]
+        if k == self.CONFIG_KEYS.python_version:
+          self._python_cmd = 'python{}'.format(val)
+        else: self.config_dict[k] = val
+        sys.argv.remove(s)
         continue
 
       # Register key in common way
