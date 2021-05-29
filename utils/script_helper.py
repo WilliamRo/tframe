@@ -69,6 +69,7 @@ class Helper(object):
     strategy = 'strategy'
     criterion = 'criterion'
     greater_is_better = 'greater_is_better'
+    python_version = 'python_version'
 
   def __init__(self, module_name=None):
     self.module_name = module_name
@@ -260,6 +261,9 @@ class Helper(object):
       self.common_parameters['script_suffix'] = '_{}'.format(index + 1)
     # Run
     configs = self._get_all_configs(hyper_params)
+    if self.CONFIG_KEYS.python_version in configs:
+      suffix = configs.get(self.CONFIG_KEYS.python_version)
+      self._python_cmd = 'python{}'.format(suffix)
     cmd = [self._python_cmd, self.module_name] + self._get_hp_strings(configs)
     run(cmd)
     print()
@@ -379,6 +383,7 @@ class Helper(object):
     kwargs.get('prior', None)
     kwargs.get('strategy', None)
     kwargs.get('times', None)
+    kwargs.get('python_version', None)
     self.configure(**kwargs)
 
   def _export_log(self):
