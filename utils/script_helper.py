@@ -261,9 +261,6 @@ class Helper(object):
       self.common_parameters['script_suffix'] = '_{}'.format(index + 1)
     # Run
     configs = self._get_all_configs(hyper_params)
-    if self.CONFIG_KEYS.python_version in configs:
-      suffix = configs.get(self.CONFIG_KEYS.python_version)
-      self._python_cmd = 'python{}'.format(suffix)
     cmd = [self._python_cmd, self.module_name] + self._get_hp_strings(configs)
     run(cmd)
     print()
@@ -332,6 +329,10 @@ class Helper(object):
       k, v = r.groups()
       assert isinstance(v, str)
       val_list = re.split(r'[,/]', v)
+      # Set python version if specified
+      if k == self.CONFIG_KEYS.python_version:
+        self._python_cmd = 'python{}'.format(val_list[0])
+        continue
       # Check system configurations
       if k in self.config_dict:
         assert len(val_list) == 1
