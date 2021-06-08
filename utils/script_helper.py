@@ -12,7 +12,7 @@ from tframe import console
 from tframe.utils.note import Note
 from tframe.utils.local import re_find_single
 from tframe.utils.misc import date_string
-from tframe.utils.file_tools.imp import import_from_path
+from tframe.utils.file_tools.imp_tools import import_from_path
 from tframe.utils.string_tools import get_time_string
 from tframe.utils.file_tools.io_utils import safe_open
 from tframe.utils.organizer.task_tools import update_job_dir
