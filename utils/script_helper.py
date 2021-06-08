@@ -3,6 +3,14 @@ from __future__ import division
 from __future__ import print_function
 
 import os, sys
+
+# Register paths here
+p = sys.path[0]
+for _ in range(2):
+  p = os.path.dirname(p)
+  if not os.path.isdir(p): break
+  sys.path.append(p)
+
 import re
 import time
 from subprocess import run

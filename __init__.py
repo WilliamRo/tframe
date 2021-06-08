@@ -6,6 +6,7 @@ from __future__ import print_function
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+import sys, os
 import numpy as np
 import tensorflow as tf
 
@@ -45,3 +46,21 @@ from .trainers.smartrainer import SmartTrainerHub as DefaultHub
 def set_random_seed(seed=26):
   np.random.seed(seed)
   tf.set_random_seed(seed)
+
+
+# Try to register folders
+try:
+  from roster import folders
+  root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+  # Register these folders behind potential first few directories inside root.
+  # This is to avoid `th.config_dir()` inside xx_core.py scripts perform
+  # incorrectly. TODO: this code block should be refactored
+  for i, p in enumerate(sys.path):
+    if root in p: continue
+    break
+  for fd in folders: sys.path.insert(i, os.path.join(root, fd))
+  console.show_status('Registered {} (root: `{}`) to sys.path.'.format(
+    ', '.join(['`{}`'.format(fd) for fd in folders]), root))
+except:
+  pass
+

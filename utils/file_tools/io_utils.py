@@ -35,6 +35,8 @@ def safe_open(p, mode, wait_time=0.1, time_out=100):
   :param time_out: maximum waiting time
   :return: file handler returned by open
   """
+  if not os.path.exists(p):
+    raise FileExistsError('!! File `{}` not exist'.format(p))
   tic = time.time()
   while True:
     try:
@@ -43,7 +45,7 @@ def safe_open(p, mode, wait_time=0.1, time_out=100):
       time.sleep(wait_time)
     # Check if time is out
     if time.time() - tic > time_out:
-      raise TimeoutError('!! safe_open time out.')
+      raise TimeoutError('!! Failed to open `{}`, time out.'.format(p))
 
 
 def load(*path):

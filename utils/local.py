@@ -211,7 +211,8 @@ def re_find_single(pattern, file_name=None):
 def walk(root_path, type_filter=None, pattern=None, return_basename=False):
   """Find all required contents under the given path"""
   # Sanity check
-  assert os.path.exists(root_path)
+  if not os.path.exists(root_path):
+    raise FileNotFoundError('!! `{}` not exist'.format(root_path))
   paths = [os.path.join(root_path, p) for p in os.listdir(root_path)]
   # Filter path
   if type_filter in ('file',): type_filter = os.path.isfile
