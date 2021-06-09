@@ -257,10 +257,12 @@ class Bridge(Layer):
   is_nucleus = False
 
   def __init__(self, conv_layer: Conv2D,
-               guest_is_larger: Optional[bool] = None):
+               guest_is_larger: Optional[bool] = None,
+               guest_first: bool = True):
     """Concatenate 2 convolutional mappings with necessary cropping"""
     self.conv_layer = conv_layer
     self.guest_is_larger = guest_is_larger
+    self.guest_first = guest_first
 
   @property
   def structure_tail(self):
@@ -279,7 +281,8 @@ class Bridge(Layer):
     elif self.guest_is_larger is False: x = crop(x, a)
 
     # Concatenate and return
-    return tf.concat([a, x], axis=-1)
+    tensors = [a, x] if self.guest_first else [x, a]
+    return tf.concat(tensors, axis=-1)
 
 
 
