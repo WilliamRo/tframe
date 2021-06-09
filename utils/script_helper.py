@@ -301,8 +301,9 @@ class Helper(object):
     """If module name is not provided, try to find one according to the
        recommended project organization"""
     if self.module_name is None:
-      self.module_name = '../t{}.py'.format(
-        re_find_single(r'(?<=s)\d+_\w+(?=.py)'))
+      task_path = os.path.dirname(sys.path[0])
+      self.module_name = '{}/t{}.py'.format(
+        task_path, re_find_single(r'(?<=s)\d+_\w+(?=.py)'))
       console.show_status('Module set to `{}`'.format(self.module_name))
 
     if not os.path.exists(self.module_name):
