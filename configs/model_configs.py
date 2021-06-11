@@ -181,6 +181,8 @@ class ModelConfigs(object):
     None, 'Global batch norm layer momentum', is_key=None)
   bn_epsilon = Flag.float(None, 'Global batch norm layer epsilon', is_key=None)
 
+  bottle_neck = Flag.boolean(None, 'Whether to use bottle neck', is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True

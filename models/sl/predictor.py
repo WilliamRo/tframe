@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 from tframe import tf
 
 from tframe.models.model import Model
@@ -273,6 +274,7 @@ class Predictor(Feedforward, Recurrent):
       tensor_list = (context.get_collection_by_key(pedia.hyper_kernels)
                      if visualize_kernels else [net.output_tensor
                                                 for net in self.children])
+      tensor_dict['Input'] = self.input_tensor
       for tensor in tensor_list:
         tensor_dict[tensor.name.split('/')[1]] = tensor
         if max_tensors is not None and len(tensor_dict) == max_tensors: break
@@ -294,21 +296,77 @@ class Predictor(Feedforward, Recurrent):
       # Append vs to objects
       da.objects.append(vs)
 
+    # Set
+    K_SPACE = 'K_SPACE'
+    da.put_into_pocket(K_SPACE, False)
+    def toggle_k_space():
+      da.replace_stuff(K_SPACE, not da[K_SPACE])
+      da.refresh()
+    da.state_machine.register_key_event('f', toggle_k_space)
+
     def imshow(net_id, slice_id, total):
       def _imshow(x):
         net_name = list(tensor_dict.keys())[net_id]
         x = x[net_id][:, :, slice_id]
         title = '{}[{}/{}] Shape = {}x{}'.format(
           net_name, slice_id + 1, total, x.shape[0], x.shape[1])
-        da.imshow(x, color_bar=True, title=title)
+        da.imshow(x, color_bar=True, title=title, k_space=da[K_SPACE])
       return _imshow
 
     # Add plotter
+    anchors = []
     for i, v in enumerate(da.objects[0]):
       total = v.shape[-1]
+      anchors.append(len(da.layer_plotters))
       for j in range(total):
         if max_channels is not None and j == max_channels: break
         da.add_plotter(imshow(i, j, total))
+
+    # Add fast forward/backward function
+    def fast_for_back_ward(d):
+      assert d in (-1, 1)
+      a = anchors[::d]
+      for li in a:
+        if d * (li - da.layer_cursor) > 0:
+          da.layer_cursor = li
+          return
+      da.layer_cursor = a[0]
+
+    da.state_machine.register_key_event('H', lambda: fast_for_back_ward(-1))
+    da.state_machine.register_key_event('L', lambda: fast_for_back_ward(1))
+
+    # Set method for exporting videos
+    def dump(fps: float = 1.0, fmt: str = 'mp4', folder_name: str = None):
+      import os
+
+      # Find path to dump
+      if folder_name is None: folder_name = 'variables-{}'.format(self.rounds)
+      directory = os.path.join(self.agent.ckpt_dir, folder_name)
+      if not os.path.exists(directory): os.mkdir(directory)
+      console.show_status('Dumping variables to `{}` ...'.format(directory))
+
+      # Dump
+      index = 1
+      for i, v in enumerate(da.objects[0]):
+        net_name = list(tensor_dict.keys())[i]
+        n_pages = v.shape[-1]
+        if max_channels is not None: n_pages = min(n_pages, max_channels)
+        if 'input' in net_name.lower():
+          index += n_pages
+          continue
+        console.show_status('Generating animation for {} ({} frames)'.format(
+          net_name, n_pages))
+
+        cursor_range = '{}:{}'.format(index, index + n_pages - 1)
+        fn = 'o{}-{}-{}-{}'.format(
+          da.object_cursor + 1, 'F' if da[K_SPACE] else 'I', i + 1, net_name)
+        p = os.path.join(directory, fn)
+        da.export('l', fps, cursor_range, fmt, path=p, n_tail=5)
+        index += n_pages
+
+      console.show_status('Variables dumped to `{}` ...'.format(directory))
+
+    da.dump = dump
 
     # Show
     da.show()
