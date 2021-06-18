@@ -203,6 +203,7 @@ class ForkMergeDAG(Net):
 
 
   def _init_graph(self):
+    """Formulate the adjacent matrix"""
     # Check vertices first
     assert isinstance(self.vertices, (list, tuple))
     vertices = []
@@ -232,7 +233,9 @@ class ForkMergeDAG(Net):
     ]): raise AssertionError('!! Adjacent matrix {} is illegal'.format(
       self.adj_mat))
 
-    # Check input projections
+    # Check input projections, make sure self.input_projections is a list of
+    #   layer list (may be empty), e.g., [[], [Conv], [], [], [Conv, Conv]]
+    # Input projections only apply to in-vertex
     if self.input_projections is None:
       self.input_projections = [[]] * len(self.vertices)
       return
@@ -240,6 +243,7 @@ class ForkMergeDAG(Net):
     assert len(self.input_projections) == len(self.vertices)
     projections = []
     for j, p in enumerate(self.input_projections):
+      # self.adj_mat[i, j] means `whether vertex i goes to vertex j`
       if not self.adj_mat[0, j + 1] or p is None: p = []
       elif isinstance(p, (tuple, list)):
         if len(p) > 0: assert all([isinstance(f, Layer) for f in p])
@@ -270,6 +274,7 @@ class ForkMergeDAG(Net):
         t for i, t in enumerate(outputs) if self.adj_mat[i, j + 1]]
 
       # Apply input projection if necessary
+      # Note that input projection only applies to DAG input tensor
       proj_flag = input_ in input_tensors and self.input_projections[j] != []
       if proj_flag:
         layers = self.input_projections[j]

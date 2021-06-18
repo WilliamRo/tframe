@@ -70,6 +70,7 @@ class ConvBase(HyperBase):
 
   def get_layer_string(self, scale, full_name=False, suffix=''):
     activation = self._activation_string
+    if self.dilations not in (None, 1): suffix += f'(d{self.dilations})'
     if callable(self.filter_generator): suffix += '[H]'
     if self.use_batchnorm: suffix += '->bn'
     if isinstance(activation, str): suffix += '->{}'.format(activation)

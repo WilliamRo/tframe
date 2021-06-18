@@ -46,7 +46,8 @@ class Model(object):
     assert mark is not None
     if hub.prefix is not None: self.mark = hub.prefix + self.mark
     if hub.suffix is not None: self.mark += hub.suffix
-    if hub.script_suffix is not None: self.mark += hub.script_suffix
+    if hub.script_suffix not in (None, ''):
+      self.mark += '_Sc' + hub.script_suffix
     # TODO: set prune iteration number.
     #       At this time configs conflicts are not smoothed.
     if hub.prune_on or hub.pruning_rate_fc > 0:
@@ -628,7 +629,7 @@ class Model(object):
     single_fetch = not isinstance(fetches, (tuple, list))
     # Wrap fetches into a list if necessary
     if single_fetch: fetches = [fetches]
-    if num_steps is None: num_steps = hub.val_num_steps
+    if data.is_rnn_input and num_steps is None: num_steps = hub.val_num_steps
     if batch_size is None: batch_size = data.size
 
     # Get outputs (sometimes fetches may contain operations which yields None)

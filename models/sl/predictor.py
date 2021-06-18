@@ -287,6 +287,7 @@ class Predictor(Feedforward, Recurrent):
 
     # Constructor DaVinci
     da = DaVinci('Tensor Visualizer', height=7, width=7)
+    da._k_space_log = True
     # Fill in objects
     batch_size = len(values[0])
     for i in range(batch_size):
@@ -297,20 +298,13 @@ class Predictor(Feedforward, Recurrent):
       da.objects.append(vs)
 
     # Set
-    K_SPACE = 'K_SPACE'
-    da.put_into_pocket(K_SPACE, False)
-    def toggle_k_space():
-      da.replace_stuff(K_SPACE, not da[K_SPACE])
-      da.refresh()
-    da.state_machine.register_key_event('f', toggle_k_space)
-
     def imshow(net_id, slice_id, total):
       def _imshow(x):
         net_name = list(tensor_dict.keys())[net_id]
         x = x[net_id][:, :, slice_id]
         title = '{}[{}/{}] Shape = {}x{}'.format(
           net_name, slice_id + 1, total, x.shape[0], x.shape[1])
-        da.imshow(x, color_bar=True, title=title, k_space=da[K_SPACE])
+        da.imshow_pro(x, title=title)
       return _imshow
 
     # Add plotter
@@ -351,15 +345,18 @@ class Predictor(Feedforward, Recurrent):
         net_name = list(tensor_dict.keys())[i]
         n_pages = v.shape[-1]
         if max_channels is not None: n_pages = min(n_pages, max_channels)
-        if 'input' in net_name.lower():
-          index += n_pages
-          continue
+
+        # TODO: allow exporting input
+        # if 'input' in net_name.lower():
+        #   index += n_pages
+        #   continue
+
         console.show_status('Generating animation for {} ({} frames)'.format(
           net_name, n_pages))
 
         cursor_range = '{}:{}'.format(index, index + n_pages - 1)
         fn = 'o{}-{}-{}-{}'.format(
-          da.object_cursor + 1, 'F' if da[K_SPACE] else 'I', i + 1, net_name)
+          da.object_cursor + 1, 'F' if da._k_space else 'I', i + 1, net_name)
         p = os.path.join(directory, fn)
         da.export('l', fps, cursor_range, fmt, path=p, n_tail=5)
         index += n_pages

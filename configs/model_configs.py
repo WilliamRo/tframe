@@ -36,6 +36,8 @@ class ModelConfigs(object):
   use_layernorm = Flag.boolean(False, 'Whether to use layer norm', is_key=None)
 
   activation = Flag.string(None, 'Activation', is_key=None)
+  relu_leak = Flag.float(
+    0.0, 'Leak value of ReLU, should be in [0, 1)', is_key=None)
   strides = Flag.integer(None, 'Strides', is_key=None)
   padding = Flag.string(None, 'Padding', is_key=None)
   kernel_size = Flag.integer(None, 'Kernel size', is_key=None)
@@ -169,6 +171,7 @@ class ModelConfigs(object):
   # NAS related
   filters = Flag.integer(None, 'Number of filters/channels used in CNNs',
                          is_key=None)
+  dilations = Flag.integer(None, 'Dilation used in conv ops', is_key=None)
   vertices = Flag.string(None, 'Vertices list used in DAG architecture',
                          is_key=None)
   adj_matrix = Flag.string(None, 'Adjacent matrix of a DAG', is_key=None)
@@ -182,6 +185,8 @@ class ModelConfigs(object):
   bn_epsilon = Flag.float(None, 'Global batch norm layer epsilon', is_key=None)
 
   bottle_neck = Flag.boolean(None, 'Whether to use bottle neck', is_key=None)
+
+  rehearse = Flag.boolean(False, 'This option is for checking model')
 
 
   def smooth_out_model_configs(self):

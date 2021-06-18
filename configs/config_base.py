@@ -92,6 +92,8 @@ class Config(
   visualize_kernels = Flag.boolean(
     False, 'Whether to visualize CNN kernels in core')
 
+  tensor_dict = Flag.whatever(None, 'Stores tensors for visualization')
+
   # A dictionary for highest priority setting
   _backdoor = {}
 

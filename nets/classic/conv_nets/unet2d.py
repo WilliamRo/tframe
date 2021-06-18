@@ -3,8 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 from tframe import checker
-# from tframe.layers.convolutional import Conv2D, Deconv2D
 from tframe.layers.hyper.conv import Conv2D, Deconv2D
+# from tframe.layers.convolutional import Conv2D, Deconv2D
 from tframe.layers.pooling import MaxPool2D
 from tframe.layers.merge import Bridge
 from tframe.layers.normalization import BatchNormalization
@@ -96,7 +96,9 @@ class UNet2D(ConvNet):
     return Conv(
       filters, kernel_size, strides, padding='same',
       activation=self.activation if strides == 1 else None, use_bias=False,
-      filter_generator=self.filter_generator if allow_hyper else None)
+    )
+    # TODO: hyper here
+      # filter_generator=self.filter_generator if allow_hyper else None)
 
 
   def _get_layers(self):
