@@ -3,6 +3,7 @@
 # ---------------------------------------------------------------
 from tframe.models.sl.classifier import Classifier
 from tframe.models.sl.predictor import Predictor
+from tframe.models import Recurrent
 
 # ---------------------------------------------------------------
 #  Net
@@ -24,6 +25,7 @@ from tframe.layers.common import Dropout
 from tframe.layers.common import Flatten
 from tframe.layers.common import Input
 from tframe.layers.common import Linear
+from tframe.layers.common import Onehot
 from tframe.layers.common import Reshape
 
 from tframe.layers.convolutional import Conv1D
@@ -48,6 +50,13 @@ from tframe.layers.preprocess import Normalize
 from tframe.layers.pooling import AveragePooling2D
 from tframe.layers.pooling import GlobalAveragePooling2D
 from tframe.layers.pooling import MaxPool2D
+
+# ---------------------------------------------------------------
+#  Layer
+# ---------------------------------------------------------------
+from tframe.nets.rnn_cells.lstms import LSTM
+from tframe.nets.rnn_cells.gdu import GDU
+from tframe.nets.rnn_cells.gru import GRU
 
 # ---------------------------------------------------------------
 #  Alias

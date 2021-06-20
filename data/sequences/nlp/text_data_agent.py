@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import sys
+import sys, os
 
 from tframe import tf
 
@@ -44,4 +44,23 @@ class TextDataAgent(DataAgent):
   @classmethod
   def generate_token_ids(cls, data, mapping):
     return [mapping[token] for token in data if token in mapping]
+
+
+  @classmethod
+  def read_signal_as_text(cls, file_path, vocab=None) -> (list, dict):
+    if not os.path.exists(file_path):
+      raise FileNotFoundError(f'!! File `{file_path}` not found.')
+
+    # Read text
+    with open(file_path, 'rb') as f: text = f.read()
+
+    # Generate vocabulary set if not provided
+    if vocab is None: vocab = sorted(set(text))
+
+    # Create mapping function
+    mapping = {c:i for i, c in enumerate(vocab)}
+
+    # Return list of indices and vocab
+    return [mapping[c] for c in text], mapping
+
 

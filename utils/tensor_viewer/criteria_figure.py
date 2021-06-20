@@ -99,7 +99,8 @@ class CriteriaFigure(Frame):
     self.refresh()
 
   def refresh(self):
-    if self._step is None or len(self._criteria) == 0: return
+    if self._step is None or len(self._losses) + len(self._criteria) == 0:
+      return
 
     # Set slider bar
     self._set_slider()
