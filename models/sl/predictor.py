@@ -149,7 +149,7 @@ class Predictor(Feedforward, Recurrent):
       with tf.name_scope('Metric'):
         self._metrics_manager.initialize(
           metric, last_only, self._val_targets.tensor,
-          self._outputs.tensor, **kwargs)
+          self.val_outputs.tensor, **kwargs)
 
     # Merge summaries
     self._merge_summaries()
@@ -174,12 +174,17 @@ class Predictor(Feedforward, Recurrent):
     self._targets.plug(target_tensor, collection=pedia.default_feed_dict)
 
   def _plug_val_target_in(self, val_targets):
-    if val_targets is None:
+    """TODO: logic of val_targets has been borrowed for supporting
+       non-train-input logic. Need to be refactored
+    """
+    # TODO: to be refactored
+    if val_targets is None and hub.val_input_shape is None:
       self._val_targets = self._targets
     else:
-      assert isinstance(val_targets, str)
+      # assert isinstance(val_targets, str)
       val_target_tensor = tf.placeholder(
-        hub.dtype, self.outputs.shape_list, name='val_targets')
+        hub.dtype, self.val_outputs.shape_list, name='val_targets')
+        # hub.dtype, self.outputs.shape_list, name = 'val_targets')  # TODO
       self._val_targets.plug(
         val_target_tensor, collection=pedia.default_feed_dict)
 
@@ -211,7 +216,7 @@ class Predictor(Feedforward, Recurrent):
   @with_graph
   def predict(self, data, batch_size=None, extractor=None, **kwargs):
     return self.evaluate(
-      self._outputs.tensor, data, batch_size, extractor, **kwargs)
+      self.val_outputs.tensor, data, batch_size, extractor, **kwargs)
 
   @with_graph
   def evaluate_model(self, data, batch_size=None, dynamic=False, **kwargs):

@@ -62,6 +62,7 @@ class Model(object):
     #   outputs should be a Group which is more general for error injection
     #   tframe 2.0 should be using such way to describe a Model
     self._outputs = TensorSlot(self)
+    self.val_outputs = TensorSlot(self)
 
     # Compromising way to enable additional error injection
     self._forms_for_injection = []
@@ -705,11 +706,24 @@ class Model(object):
   @with_graph
   def _get_default_feed_dict(self, batch, is_training):
     feed_dict = {}
-    for tensor in tf.get_collection(pedia.default_feed_dict):
-      if 'input' in tensor.name.lower():
+    default_feed_collection = tf.get_collection(pedia.default_feed_dict)
+
+    # Handle conflict caused by non_train_input
+    input_key, target_key = 'input', 'targets'
+    non_train_cond_triggered = all(
+      [not is_training, hub.val_input_shape is not None])
+    if non_train_cond_triggered:
+      input_key, target_key = pedia.non_train_input, pedia.non_train_target
+
+    for tensor in default_feed_collection:
+      # Get tensor name
+      name = tensor.name.split('/')[-1].split(':')[0]
+
+      if input_key in tensor.name.lower():
         feed_dict[tensor] = batch[pedia.features]
-      elif tensor.name.lower() in ('target', 'targets'):
-      # elif 'target' in tensor.name:
+      elif name == target_key:
+      # elif tensor.name.lower() in (target_key,):
+      # elif target_key in tensor.name:
         # TODO: when predict without outputting loss ...
         if batch.targets is not None: feed_dict[tensor] = batch.targets
       elif pedia.gather_indices in tensor.name:
@@ -717,7 +731,8 @@ class Model(object):
         #       However, Quantity will never know the exact batch size
         feed_dict[tensor] = batch.gather_indices
       else:
-        name = tensor.name.split('/')[-1].split(':')[0]
+        # TODO: use this ugly patch to circumvent non-train input issue
+        if non_train_cond_triggered and name == 'targets': continue
         val = batch.data_dict.get(name, None)
         if val is not None: feed_dict[tensor] = val
 

@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 from tframe import checker
-from tframe.layers.hyper.conv import Conv2D, Deconv2D
+from tframe.layers.hyper.conv import Conv2D, Deconv2D, DenseUpsampling2D
 # from tframe.layers.convolutional import Conv2D, Deconv2D
 from tframe.layers.pooling import MaxPool2D
 from tframe.layers.merge import Bridge
@@ -24,6 +24,7 @@ class UNet2D(ConvNet):
                use_batchnorm: bool = False,
                link_indices: Union[List[int], str, None] = 'a',
                inner_shortcut: bool = False,  # TODO
+               use_duc = False,
                bottle_neck_after_bridge = False,
                filter_generator=None,
                contraction_kernel_size: Optional[int] = None,
@@ -76,6 +77,7 @@ class UNet2D(ConvNet):
     self.auto_crop = auto_crop
     self.filter_generator = filter_generator
     self.bottle_net_after_bridge = bottle_neck_after_bridge
+    self.use_duc = use_duc
 
     self.parse_arc_str_and_check()
 
@@ -92,11 +94,13 @@ class UNet2D(ConvNet):
 
   def _get_conv(self, filters, kernel_size, strides=1, transpose=False,
                 allow_hyper=False):
-    Conv = Deconv2D if transpose else Conv2D
-    return Conv(
-      filters, kernel_size, strides, padding='same',
-      activation=self.activation if strides == 1 else None, use_bias=False,
-    )
+    Conv = Conv2D
+    if transpose: Conv = DenseUpsampling2D if self.use_duc else Deconv2D
+
+    activation = self.activation if strides == 1 else None
+
+    return Conv(filters, kernel_size, strides, padding='same',
+                activation=activation, use_bias=False)
     # TODO: hyper here
       # filter_generator=self.filter_generator if allow_hyper else None)
 
@@ -204,6 +208,7 @@ class UNet2D(ConvNet):
       else: result += '-' + ','.join([str(i) for i in self.link_indices])
     if self.use_maxpool: result += '-mp'
     if self.use_batchnorm: result += '-bn'
+    if self.use_duc: result += '-duc'
     return result
 
 

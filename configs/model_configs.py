@@ -45,6 +45,8 @@ class ModelConfigs(object):
     None, 'Contraction kernel size used in U-Net', is_key=None)
   expansion_kernel_size = Flag.integer(
     None, 'Expansion kernel size used in U-Net', is_key=None)
+  use_duc = Flag.boolean(
+    None, 'Whether to use dense upsampling convolution', is_key=None)
 
   hidden_dim = Flag.integer(-1, 'Hidden dimension', is_key=None)
   fc_dims = Flag.whatever(None, '...')
@@ -52,7 +54,8 @@ class ModelConfigs(object):
   num_layers = Flag.integer(1, 'Layer number', is_key=None)
   num_concurrent = Flag.integer(1, 'Concurrent number', is_key=None)
   layer_width = Flag.integer(None, 'Layer width', is_key=None)
-  input_shape = Flag.list([], 'Input shape of samples')
+  input_shape = Flag.list([], 'Input shape of samples for training')
+  val_input_shape = Flag.list(None, 'Input shape of samples for deploying')
   output_dim = Flag.integer(0, 'Output dimension of a model')
   target_dim = Flag.integer(0, 'User specified target dim of a model')
   target_dtype = Flag.whatever(None, 'Target data type')

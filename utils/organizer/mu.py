@@ -36,6 +36,9 @@ from tframe.layers.highway import LinearHighway
 
 from tframe.layers.hyper.conv import Conv2D as HyperConv2D
 from tframe.layers.hyper.conv import Deconv2D as HyperDeconv2D
+from tframe.layers.hyper.conv import DenseUpsampling2D
+DUC = DenseUpsampling2D
+
 from tframe.layers.hyper.dense import Dense as HyperDense
 
 from tframe.layers.merge import Bridge

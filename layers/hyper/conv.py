@@ -11,6 +11,8 @@ from tframe.layers.normalization import BatchNormalization
 
 from .hyper_base import HyperBase
 
+import typing as tp
+
 
 class ConvBase(HyperBase):
 
@@ -139,5 +141,76 @@ class Deconv2D(ConvBase):
     return self.deconv2d(
       x, self.channels, self.kernel_size, 'HyperDeconv2D', strides=self.strides,
       padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
+
+
+class DenseUpsampling2D(Conv2D):
+  """DUC proposed in
+  [1] Wang, et al., Understanding Convolution for Semantic Segmentation,
+     https://arxiv.org/abs/1702.08502 """
+
+  full_name = 'DUConv2d'
+  abbreviation = 'DUC2d'
+  
+  def __init__(self,
+               filters,
+               kernel_size,
+               strides=1,
+               padding='same',
+               dilations=1,
+               activation=None,
+               use_bias=False,
+               kernel_initializer='glorot_uniform',
+               bias_initializer='zeros',
+               expand_last_dim=False,
+               use_batchnorm=False,
+               filter_generator=None,
+               **kwargs):
+    # Sanity check
+    self.duc_strides = self._check_strides(strides)
+    sh, sw = self.duc_strides
+
+    # Call parent's constructor
+    super(DenseUpsampling2D, self).__init__(
+      filters=filters * sh * sw,
+      kernel_size=kernel_size,
+      strides=1,
+      padding=padding,
+      dilations=dilations,
+      activation=activation,
+      use_bias=use_bias,
+      kernel_initializer=kernel_initializer,
+      bias_initializer=bias_initializer,
+      expand_last_dim=expand_last_dim,
+      use_batchnorm=use_batchnorm,
+      filter_generator=filter_generator,
+      **kwargs)
+
+  def _check_strides(self, strides: tp.Union[int, list, tuple]):
+    """Currently only strides of up-to-2 dimension is supported"""
+    if isinstance(strides, int) and strides > 0:
+      strides = [strides] * 2
+    elif isinstance(strides, (tuple, list)) and len(strides) == 2:
+      assert all([isinstance(s, int) and s > 0 for s in strides])
+    else: raise ValueError(f'!! Illegal strides `{strides}`.')
+    return strides
+
+  def _reshape(self, x: tf.Tensor):
+    sh, sw = self.duc_strides
+    _, h, w, F = x.shape.as_list()
+    H, W = h * sh, w * sw
+    f = F // sh // sw
+
+    x = tf.transpose(x, [0, 3, 1, 2])
+    x = tf.reshape(x, shape=[-1, f, sh, sw, h, w])
+    x = tf.transpose(x, [0, 1, 2, 4, 3, 5])
+    x = tf.reshape(x, shape=[-1, f, H, W])
+    x = tf.transpose(x, [0, 2, 3, 1])
+    return x
+
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    y = super(DenseUpsampling2D, self).forward(x, filter, **kwargs)
+
+    return self._reshape(y)
+
 
 

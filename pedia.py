@@ -37,6 +37,9 @@ metric_name = 'metric_name'
 metric_foreach = 'metric_foreach'
 monitor = 'monitor'
 
+non_train_input = 'non_train_inp'
+non_train_target = 'val_targets'
+
 predictions = 'predictions'
 prod = 'prod'
 pre_activation = 'pre_activation'

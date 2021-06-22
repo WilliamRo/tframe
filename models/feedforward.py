@@ -25,11 +25,32 @@ class Feedforward(Model, Net):
 
   @with_graph
   def _build(self, **kwargs):
+    from tframe import hub as th
+    from tframe import mu as m
+    from tframe import console
+
     # Feed forward to get outputs
     output = self()
-    if not self._inter_type == pedia.fork:
-      assert isinstance(output, tf.Tensor)
-      self.outputs.plug(output)
+
+    if self._inter_type == pedia.fork: return
+
+    assert isinstance(output, tf.Tensor)
+    self.outputs.plug(output)
+
+    # val_outputs is designed for models whose training data have different
+    # size with actual data fed in non-training situations such as validation
+    if th.val_input_shape is None:
+      self.val_outputs.plug(output)
+      return
+
+    # Create val_output tensor
+    val_input = m.Input(sample_shape=th.val_input_shape,
+                        name=pedia.non_train_input)
+    val_output = self(val_input())
+    self.val_outputs.plug(val_output)
+
+    console.show_status(
+      f'Shadow output with input shape {th.val_input_shape} has been created.')
 
   # region : Public Methods
 
