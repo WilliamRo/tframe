@@ -134,8 +134,6 @@ class Agent(object):
     if rounds is not None: path += '({:.3f}_rounds)'.format(rounds)
     if suffix is not None: path += '-{}'.format(suffix)
     save_checkpoint(path, self.session, self._saver, self._model.counter)
-    # Save task file
-    self.save_config_sheet()
 
   def save_config_sheet(self):
     # Get tgt path
@@ -193,6 +191,7 @@ class Agent(object):
       if hub.export_note: paths.append(self.note_dir)
       clear_paths(paths)
     if hub.summary: self._check_bash()
+    if hub.save_model: self.save_config_sheet()
 
     # Launch session on self.graph
     console.show_status('Launching session ...')
