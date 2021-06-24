@@ -202,7 +202,8 @@ class DenseUpsampling2D(Conv2D):
 
     x = tf.transpose(x, [0, 3, 1, 2])
     x = tf.reshape(x, shape=[-1, f, sh, sw, h, w])
-    x = tf.transpose(x, [0, 1, 2, 4, 3, 5])
+    # x = tf.transpose(x, [0, 1, 2, 4, 3, 5])   # Case I
+    x = tf.transpose(x, [0, 1, 4, 2, 5, 3])  # Case II
     x = tf.reshape(x, shape=[-1, f, H, W])
     x = tf.transpose(x, [0, 2, 3, 1])
     return x

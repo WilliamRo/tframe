@@ -178,7 +178,7 @@ class Predictor(Feedforward, Recurrent):
        non-train-input logic. Need to be refactored
     """
     # TODO: to be refactored
-    if val_targets is None and hub.val_input_shape is None:
+    if val_targets is None and hub.non_train_input_shape is None:
       self._val_targets = self._targets
     else:
       # assert isinstance(val_targets, str)
@@ -279,7 +279,8 @@ class Predictor(Feedforward, Recurrent):
       tensor_list = (context.get_collection_by_key(pedia.hyper_kernels)
                      if visualize_kernels else [net.output_tensor
                                                 for net in self.children])
-      tensor_dict['Input'] = self.input_tensor
+      tensor_dict['Input'] = (self.input_tensor if self._shadow_input is None
+                              else self._shadow_input.output_tensor)
       for tensor in tensor_list:
         tensor_dict[tensor.name.split('/')[1]] = tensor
         if max_tensors is not None and len(tensor_dict) == max_tensors: break

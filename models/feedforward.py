@@ -39,18 +39,19 @@ class Feedforward(Model, Net):
 
     # val_outputs is designed for models whose training data have different
     # size with actual data fed in non-training situations such as validation
-    if th.val_input_shape is None:
+    if th.non_train_input_shape is None:
       self.val_outputs.plug(output)
       return
 
     # Create val_output tensor
-    val_input = m.Input(sample_shape=th.val_input_shape,
+    val_input = m.Input(sample_shape=th.non_train_input_shape,
                         name=pedia.non_train_input)
     val_output = self(val_input())
     self.val_outputs.plug(val_output)
+    self._shadow_input = val_input
 
     console.show_status(
-      f'Shadow output with input shape {th.val_input_shape} has been created.')
+      f'Shadow output with input shape {th.non_train_input_shape} has been created.')
 
   # region : Public Methods
 

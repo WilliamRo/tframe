@@ -54,7 +54,7 @@ class UNet2D(ConvNet):
     :param filters: initial filters, will be doubled after contracting, and
                     halved after expanding
     :param kernel_size: kernel size for each [De]Conv2D layer
-    :param activation: activation used in each [Dd]Conv2D layer
+    :param activation: activation used in each [De]Conv2D layer
     :param height: height of each tower
     :param thickness: number of convolutional layers used on each floor
     :param use_maxpool: whether to use MaxPool2D layer for contracting

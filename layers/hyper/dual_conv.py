@@ -4,27 +4,31 @@ from __future__ import print_function
 
 from tframe import tf
 
-from tframe import checker
-from tframe import hub as th
-from tframe.layers.layer import single_input
-from tframe.layers.normalization import BatchNormalization
-
-from .hyper_base import HyperBase
+from .conv import ConvBase
 
 
-class DualConv2D(HyperBase):
+class DualConv2D(ConvBase):
 
+  full_name = 'dualconv2d'
   abbreviation = 'duconv2d'
 
-  def __init__(self,
-               filter_generator=None,
-               **kwargs):
+  class Configs(ConvBase.Configs):
+    kernel_dim = 2
 
-    # Call parent's initializer
-    super(DualConv2D, self).__init__(use_bias=False, **kwargs)
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    # Currently only hyper filter is supported
+    assert isinstance(filter, tf.Tensor)
 
+    # Generate dual kernel
+    dual = tf.sqrt(1.0 - tf.square(filter))
 
-  @single_input
-  def _link(self, x: tf.Tensor, **kwargs):
+    # Convolve
+    y_1 = self.conv2d(
+      x, self.channels, self.kernel_size, 'DualReal', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
 
-    return None
+    y_2 = self.conv2d(
+      x, self.channels, self.kernel_size, 'DualImag', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=dual, **kwargs)
+
+    return tf.sqrt(tf.square(y_1) + tf.square(y_2))

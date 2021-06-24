@@ -109,6 +109,7 @@ class Config(
 
   @property
   def should_create_path(self):
+    if tfr.hub.rehearse: return True
     return (self.train or self.dynamic_evaluation) and not self.on_cloud
 
   @property

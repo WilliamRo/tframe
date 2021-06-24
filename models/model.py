@@ -64,6 +64,8 @@ class Model(object):
     self._outputs = TensorSlot(self)
     self.val_outputs = TensorSlot(self)
 
+    self._shadow_input = None
+
     # Compromising way to enable additional error injection
     self._forms_for_injection = []
 
@@ -711,7 +713,7 @@ class Model(object):
     # Handle conflict caused by non_train_input
     input_key, target_key = 'input', 'targets'
     non_train_cond_triggered = all(
-      [not is_training, hub.val_input_shape is not None])
+      [not is_training, hub.non_train_input_shape is not None])
     if non_train_cond_triggered:
       input_key, target_key = pedia.non_train_input, pedia.non_train_target
 

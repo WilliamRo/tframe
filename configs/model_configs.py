@@ -55,7 +55,8 @@ class ModelConfigs(object):
   num_concurrent = Flag.integer(1, 'Concurrent number', is_key=None)
   layer_width = Flag.integer(None, 'Layer width', is_key=None)
   input_shape = Flag.list([], 'Input shape of samples for training')
-  val_input_shape = Flag.list(None, 'Input shape of samples for deploying')
+  non_train_input_shape = Flag.list(
+    None, 'Input shape of samples for non-train situation')
   output_dim = Flag.integer(0, 'Output dimension of a model')
   target_dim = Flag.integer(0, 'User specified target dim of a model')
   target_dtype = Flag.whatever(None, 'Target data type')
