@@ -17,18 +17,19 @@ class DualConv2D(ConvBase):
 
   def forward(self, x: tf.Tensor, filter=None, **kwargs):
     # Currently only hyper filter is supported
-    assert isinstance(filter, tf.Tensor)
+    assert isinstance(filter, (list, tuple))
 
     # Generate dual kernel
-    dual = tf.sqrt(1.0 - tf.square(filter))
+    # dual = tf.sqrt(1.0 - tf.square(filter))
+    real, imag = filter
 
     # Convolve
     y_1 = self.conv2d(
       x, self.channels, self.kernel_size, 'DualReal', strides=self.strides,
-      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
+      padding=self.padding, dilations=self.dilations, filter=real, **kwargs)
 
     y_2 = self.conv2d(
       x, self.channels, self.kernel_size, 'DualImag', strides=self.strides,
-      padding=self.padding, dilations=self.dilations, filter=dual, **kwargs)
+      padding=self.padding, dilations=self.dilations, filter=imag, **kwargs)
 
     return tf.sqrt(tf.square(y_1) + tf.square(y_2))

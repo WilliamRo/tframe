@@ -233,5 +233,7 @@ def get(identifier, last_only=False, **kwargs):
     if 'name' not in kwargs: kwargs['name'] = 'Loss'
     return Quantity(kernel, tf_summ_method, np_summ_method, last_only,
                     use_logits=use_logits, **kwargs)
-  else: raise TypeError('identifier must be a Quantity, function or a string')
+  else:
+    raise TypeError('identifier must be a Quantity, function or a string.'
+                    f' `{identifier}` is illegal.')
 
