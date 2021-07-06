@@ -153,6 +153,7 @@ class Recurrent(Model, RNet):
 
     # Output has a shape of [batch_size, num_steps, *output_shape]
     self.outputs.plug(outputs)
+    self.val_outputs.plug(outputs)   # BATCH
 
   @staticmethod
   def _extract_tensors(tensors, extract):
