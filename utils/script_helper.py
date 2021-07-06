@@ -104,6 +104,10 @@ class Helper(object):
   # region : Properties
 
   @property
+  def criterion(self):
+    return self.config_dict[self.CONFIG_KEYS.criterion]
+
+  @property
   def configs(self):
     od = OrderedDict()
     for k, v in self.config_dict.items():
@@ -249,7 +253,8 @@ class Helper(object):
     if self.configs.get(self.CONFIG_KEYS.strategy, 'grid') == 'grid': return
     # Try to automatically set greater_is_better
     if self.CONFIG_KEYS.greater_is_better not in self.configs:
-      criterion = self.config_dict[self.CONFIG_KEYS.criterion]
+      # criterion = self.config_dict[self.CONFIG_KEYS.criterion]
+      criterion = self.criterion
       if isinstance(criterion, str):
         criterion = criterion.lower()
         if any([s in criterion for s in ('accuracy', 'f1', 'improvement')]):
@@ -409,8 +414,9 @@ class Helper(object):
       content = f.readlines()
       f.seek(0)
       f.truncate()
-      f.write('{} summ: {}, scroll: {} \n'.format(
-        get_time_string(), self.summ_file_name, self.pot.scroll.details))
+      f.write('{} summ: {}, criterion: {}, scroll: {} \n'.format(
+        get_time_string(), self.summ_file_name, self.criterion,
+        self.pot.scroll.details))
       for line in engine_logs: f.write('  {}\n'.format(line))
       f.write('-' * 79 + '\n')
       f.writelines(content)
