@@ -4,7 +4,7 @@ from __future__ import print_function
 
 from collections import OrderedDict
 
-import tensorflow as tf
+from tframe import tf
 
 from tframe.configs.config_base import Config
 from tframe.core import Nomear
