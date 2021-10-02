@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
+
 from tframe import tf
 
 from .conv import ConvBase
@@ -22,6 +24,8 @@ class DualConv2D(ConvBase):
     # Generate dual kernel
     # dual = tf.sqrt(1.0 - tf.square(filter))
     real, imag = filter
+    assert isinstance(real, tf.Tensor)
+    N = np.prod(real.shape.as_list()[1:3])
 
     # Convolve
     y_1 = self.conv2d(
@@ -32,4 +36,4 @@ class DualConv2D(ConvBase):
       x, self.channels, self.kernel_size, 'DualImag', strides=self.strides,
       padding=self.padding, dilations=self.dilations, filter=imag, **kwargs)
 
-    return tf.sqrt(tf.square(y_1) + tf.square(y_2))
+    return tf.sqrt(tf.square(y_1) + tf.square(y_2)) / N

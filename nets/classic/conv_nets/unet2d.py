@@ -24,7 +24,7 @@ class UNet2D(ConvNet):
                use_batchnorm: bool = False,
                link_indices: Union[List[int], str, None] = 'a',
                inner_shortcut: bool = False,  # TODO
-               use_duc = False,
+               use_duc = False, guest_first=True,
                bottle_neck_after_bridge = False,
                filter_generator=None,
                contraction_kernel_size: Optional[int] = None,
@@ -78,6 +78,7 @@ class UNet2D(ConvNet):
     self.filter_generator = filter_generator
     self.bottle_net_after_bridge = bottle_neck_after_bridge
     self.use_duc = use_duc
+    self.guest_first = guest_first
 
     self.parse_arc_str_and_check()
 
@@ -146,7 +147,8 @@ class UNet2D(ConvNet):
       if i in self.link_indices:
         guest_is_larger = None
         if self.auto_crop: guest_is_larger = not self.use_maxpool
-        layers.append(Bridge(floors[self.height - i], guest_is_larger))
+        layers.append(Bridge(floors[self.height - i], guest_is_larger,
+                             guest_first=self.guest_first))
         if self.bottle_net_after_bridge:
           layers.append(self._get_conv(filters, kernel_size=1))
       # Increase thickness

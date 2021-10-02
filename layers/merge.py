@@ -89,7 +89,9 @@ class Merge(Layer):
   PROD = pedia.prod
   SUM = pedia.sum
   CONCAT = pedia.concat
+  CROSS_CONCAT = 'cross-concat'
   CONCAT_SUM = 'concat-sum'
+  HIGHWAY = 'highway'
 
   def __init__(self, merge_method, **kwargs):
     """This layer class provides some build-in merge method, including
@@ -127,6 +129,13 @@ class Merge(Layer):
     if self.merge_method == self.SUM: return tf.add_n(input_list)
     elif self.merge_method == self.CONCAT:
       return tf.concat(input_list, axis=self._axis)
+    elif self.merge_method == self.CROSS_CONCAT:
+      assert len(input_list) == 2
+      x: tf.Tensor = input_list[0]
+      y: tf.Tensor = input_list[1]
+      assert x.shape.as_list() == y.shape.as_list()
+      xy = tf.multiply(x, y, name='cross')
+      return tf.concat([x, y, xy], axis=self._axis)
     elif self.merge_method == self.PROD:
       output = input_list.pop()
       for tensor in input_list: output *= tensor
@@ -139,6 +148,11 @@ class Merge(Layer):
       inputs = [x for i, x in enumerate(input_list) if i in self._sum_indices]
       inputs.append(y)
       return tf.add_n(inputs)
+    elif self.merge_method == self.HIGHWAY:
+      assert len(input_list) == 3
+      x, x_bar, gate = input_list
+      y = tf.multiply(gate, x) + tf.multiply(1. - gate, x_bar)
+      return y
     else: raise KeyError('!! Unknown merge method {}'.format(self.merge_method))
 
   def _check_input_list(self, input_list):
@@ -182,8 +196,16 @@ class Merge(Layer):
     return Merge(cls.CONCAT, axis=axis, **kwargs)
 
   @classmethod
+  def CrossConcat(cls, axis=-1, **kwargs):
+    return Merge(cls.CROSS_CONCAT, axis=axis, **kwargs)
+
+  @classmethod
   def ConcatSum(cls, sum_indices=(0,), **kwargs):
     return Merge(cls.CONCAT_SUM, sum_indices=sum_indices, **kwargs)
+
+  @classmethod
+  def Highway(cls, **kwargs):
+    return Merge(cls.HIGHWAY, **kwargs)
 
 
 class ConcatenateForGAN(Layer):

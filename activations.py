@@ -10,6 +10,7 @@ from tframe.utils import checker
 from tframe.utils.arg_parser import Parser
 
 
+
 def relu(input_):
   if input_.dtype in [tf.complex64, tf.complex128]:
     with tf.name_scope("c_relu"):
@@ -83,6 +84,7 @@ def get(identifier, **kwargs):
     elif identifier in ['lrelu', 'leakyrelu', 'leaky-relu']:
       leak = p.get_arg(float, default=0.1)
       return lambda x: leaky_relu(x, leak=leak)
+    elif identifier in ['id']: return lambda x: x
     elif identifier in ['softmax']: return softmax
     elif identifier in ['cumax']: return cumax
     elif identifier in ['sigmoid']: return lambda x: sigmoid(x, **kwargs)

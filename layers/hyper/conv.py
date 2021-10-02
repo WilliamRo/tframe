@@ -36,6 +36,7 @@ class ConvBase(HyperBase):
                expand_last_dim=False,
                use_batchnorm=False,
                filter_generator=None,
+               name: tp.Optional[str] = None,
                **kwargs):
     """If filter_generator is provided, it should have the signature:
           def filter_generator(self, filter_shape):
@@ -70,9 +71,12 @@ class ConvBase(HyperBase):
                  else (kernel_size, kernel_size))
     self.neuron_scale = knl_shape + (filters,)
 
+    # Set name if provided
+    if name is not None: self.full_name = name
+
   def get_layer_string(self, scale, full_name=False, suffix=''):
     activation = self._activation_string
-    if self.dilations not in (None, 1): suffix += f'(d{self.dilations})'
+    if self.dilations not in (None, 1): suffix += f'(di{self.dilations})'
     if callable(self.filter_generator): suffix += '[H]'
     if self.use_batchnorm: suffix += '->bn'
     if isinstance(activation, str): suffix += '->{}'.format(activation)

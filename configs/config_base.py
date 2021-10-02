@@ -73,11 +73,11 @@ class Config(
                                ' command line')
   bool_para_1 = Flag.boolean(False, 'Used to pass a boolean parameter using'
                                     ' command line')
-  alpha = Flag.float(0.0, 'Alpha', is_key=None)
-  beta = Flag.float(0.0, 'Beta', is_key=None)
-  gamma = Flag.float(0.0, 'Gamma', is_key=None)
-  epsilon = Flag.float(0.0, 'Epsilon', is_key=None)
-  delta = Flag.float(0.0, 'Delta', is_key=None)
+  alpha = Flag.float(None, 'Alpha', is_key=None)
+  beta = Flag.float(None, 'Beta', is_key=None)
+  gamma = Flag.float(None, 'Gamma', is_key=None)
+  epsilon = Flag.float(None, 'Epsilon', is_key=None)
+  delta = Flag.float(None, 'Delta', is_key=None)
 
   developer_code = Flag.string('', 'Code for developers to debug', is_key=None)
   developer_args = Flag.string(
@@ -93,6 +93,8 @@ class Config(
     False, 'Whether to visualize CNN kernels in core')
 
   tensor_dict = Flag.whatever(None, 'Stores tensors for visualization')
+
+  tic_toc = Flag.boolean(False, 'Whether to track time')
 
   # A dictionary for highest priority setting
   _backdoor = {}

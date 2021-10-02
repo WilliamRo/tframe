@@ -685,7 +685,8 @@ class Model(object):
     if single_fetch: outputs = outputs[0]
     return outputs
 
-  def rehearse(self, path=None, export_graph=False, build_model=True):
+  def rehearse(self, path=None, export_graph=False, build_model=True,
+               mark=None):
     """This method build and launch model, show structure detail and export
     tensorflow logs containing graph which can be visualized in TensorBoard."""
     import os, sys
@@ -695,6 +696,7 @@ class Model(object):
     th.summary = export_graph
     th.job_dir = path
 
+    if mark is not None: self.mark = mark
     if build_model: self.build(optimizer=tf.train.GradientDescentOptimizer(0.0))
     self.launch_model(overwrite=True)
 

@@ -503,6 +503,7 @@ class Trainer(Nomear):
   # region : Private Methods
 
   def _update_model(self, data_batch):
+    if self.th.tic_toc: self.th.tic(key='__update')
     loss_dict = self.model.update_model(data_batch=data_batch)
     loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
     # assert len(loss_slots) > 0
@@ -603,6 +604,12 @@ class Trainer(Nomear):
         self.th.round_name, rnd, total_rounds, loss_string)
     else:
       content = 'Iteration {} - {}'.format(self.counter, loss_string)
+
+    # Show time elapsed for a single update if required
+    if self.th.tic_toc:
+      # Here the key for toc should be taken care of
+      content += ' ({:.1f}ms)'.format(self.th.toc('__update') * 1000)
+
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)
 
   def _get_tensors_to_export(self):
@@ -715,9 +722,17 @@ class Trainer(Nomear):
         self.training_set, train_dict)
 
     # Validate val_set and record
+    if self.th.tic_toc: self.th.tic('__validate')
     val_dict = self.model.validate_model(
       self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary,
       verbose=self.th.val_progress_bar, seq_detail=self.th.val_info_splits > 0)
+
+    if self.th.tic_toc:
+      time_elapsed = self.th.toc('__validate') * 1000
+      console.show_status(
+        f'{time_elapsed:.1f}ms for {self.validation_set.size} samples',
+        '[Tic-toc]')
+
     new_record = self.metrics_manager.record_stats_on_dataset(
       self.validation_set, val_dict, True, rnd)
     # Terminator will check early_stop_criterion if new_record appears
@@ -842,7 +857,7 @@ class TrainerHub(Config):
     # metric log is a list of list
     self.metric_log = []
 
-    self._start_time = None
+    self._time_stamp = {'__start_time': None}
     self._stop = False
 
     self._round_length = None
@@ -885,7 +900,7 @@ class TrainerHub(Config):
 
   @property
   def start_time(self):
-    return self._start_time
+    return self._time_stamp['__start_time']
 
   @property
   def stop(self):
@@ -951,12 +966,12 @@ class TrainerHub(Config):
   def sanity_check(self):
     assert isinstance(self.trainer, Trainer)
 
-  def tic(self):
-    self._start_time = time.time()
+  def tic(self, key='__start_time'):
+    self._time_stamp[key] = time.time()
 
-  def toc(self):
-    assert self._start_time is not None
-    return time.time() - self._start_time
+  def toc(self, key='__start_time'):
+    assert self._time_stamp[key] is not None
+    return time.time() - self._time_stamp[key]
 
   def raise_stop_flag(self):
     self._stop = True

@@ -113,13 +113,13 @@ if __name__ == '__main__':
   da = DaVinci('TFrame fourier', init_as_image_viewer=True)
   sess: tf.Session = tf.get_default_session()
 
-  C = 4
+  C = 10
   np_angle = list(np.linspace(0, 1, C))
   r = tf.constant([0.3] * C)
   theta = tf.constant(np_angle)
 
   # radius = tf.constant([1.0] * C)
-  radius = tf.constant([1.0, 0.8, 0.6, 0.4])
+  radius = tf.constant(list(np.linspace(1.0, 0.4, C)))
 
   tensor = get_fourier_basis(L, center, uv, r, theta, radius, fmt='i')
   #: [?, L, L, C]
