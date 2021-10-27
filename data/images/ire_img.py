@@ -43,7 +43,7 @@ class IrregularImageSet(DataSet):
     if not isinstance(self.data_dict, dict) or len(self.data_dict) == 0:
       raise TypeError('!! data_dict must be a non-empty dictionary')
 
-    valid_length = len(self.features)
+    valid_length = self.size
 
     # Check each item in data_dict
     for name, data in self.data_dict.items():

@@ -639,7 +639,8 @@ class DataSet(TFRData, Nomear):
     else: return indices
 
   def _init_indices(self, shuffle):
-    indices = list(range(len(self.features)))
+    # indices = list(range(len(self.features)))
+    indices = list(range(self.size))
     if shuffle: np.random.shuffle(indices)
     self.indices = np.array(indices)
 
