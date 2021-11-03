@@ -208,6 +208,11 @@ def get(identifier, last_only=False, **kwargs):
     elif identifier in ['weighted_mean_squared_error', 'wmse']:
       min_w = p.get_arg(float)
       kernel = lambda *args: weighted_mse(*args, min_w=min_w)
+    elif identifier in ['rmse', 'root_mean_squared_error']:
+      kernel = mean_squared_error
+      def tf_rmse_summ(x): return tf.sqrt(tf.reduce_mean(x))
+      def np_rmse_summ(x): return np.sqrt(np.mean(x))
+      tf_summ_method, np_summ_method = tf_rmse_summ, np_rmse_summ
     elif identifier in ['weighted_mean_absolute_error', 'wmae']:
       min_w = p.get_arg(float)
       kernel = lambda *args: weighted_mae(*args, min_w=min_w)

@@ -222,7 +222,7 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       tf_summ_method = tf.reduce_mean
       name = 'BPC'
       use_logits = True
-    elif identifier in ['mse', 'mae', 'wmse', 'wmae']:
+    elif identifier in ['mse', 'mae', 'wmse', 'wmae', 'rmse']:
       return losses.get(identifier=name, name=identifier.upper())
     elif identifier in ['delta', 'distance']:
       kernel, tf_summ_method = delta, tf.norm

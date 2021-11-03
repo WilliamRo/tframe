@@ -51,6 +51,7 @@ class DataShadow(Nomear):
   @classmethod
   def check_memory(cls):
     if cls._max_size is None or len(cls._queue) <= cls._max_size: return
+
     d: DataShadow = cls._queue.pop(0)
     d._pocket.pop(cls.DATA_KEY)
 
