@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+from tframe import tf
 
 from tframe import console, checker, pedia
 from tframe.layers.convolutional import Conv2D
