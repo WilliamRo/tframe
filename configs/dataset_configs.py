@@ -52,6 +52,11 @@ class DataConfigs(object):
   class_weights = Flag.list(None, 'Class weights used in weighted '
                                   'cross entropy loss')
 
+  folds_k = Flag.integer(None, 'The k-value for k-fold cross validation',
+                         is_key=None)
+  folds_i = Flag.integer(None, 'The i-value for k-fold cross validation',
+                         is_key=None)
+
   # Financial data configs
   max_level = Flag.integer(None, 'Max level in LOB data', is_key=None)
   volume_only = Flag.boolean(

@@ -481,6 +481,20 @@ class DataSet(TFRData, Nomear):
 
     return self
 
+
+  def split_k_fold(self, K: int, i: int):
+    # Sanity check
+    assert 0 < i <= K
+    # Calculate fold size
+    N = self.size // K
+    # Find indices
+    i1, i2 = (i - 1) * N, (i * N if i < K else self.size)
+    val_indices = set(range(i1, i2))
+    train_indices = set(range(self.size)) - val_indices
+    train_set, val_set = self[list(train_indices)], self[list(val_indices)]
+    train_set.name, val_set.name = 'Train Set', 'Val Set'
+    return train_set, val_set
+
   # endregion : Public Methods
 
   # region : Private Methods
