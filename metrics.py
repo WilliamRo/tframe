@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import six
 import numpy as np
-import tensorflow as tf
+from tframe import tf
 import tframe as tfr
 
 from tframe.core.quantity import Quantity
