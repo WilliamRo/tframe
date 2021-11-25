@@ -13,3 +13,6 @@
 # limitations under the License.
 # ======-=========================================================-=============
 """TALOS is a 2.0 version of TFRAME"""
+from talos.gates import importer
+
+Nomear = importer.Nomear
