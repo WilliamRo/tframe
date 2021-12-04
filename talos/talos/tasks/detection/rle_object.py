@@ -14,13 +14,14 @@
 # ===-=======================================================================-==
 """This module provides a general class for run-length-encoded objects"""
 from talos import Nomear
+from talos.tasks.detection.object2d import Object2D
 from roma import check_type
 
 import numpy as np
 
 
 
-class RLEObject(Nomear):
+class RLEObject(Object2D):
 
   def __init__(self, rle: list, width=None):
     # Sanity check
@@ -38,7 +39,7 @@ class RLEObject(Nomear):
   def rle2(self):
     """For the i-th row, rle2[i] = [start_index, end_index]"""
     rle = np.reshape(self.rle, newshape=[-1, 2])
-    rle[:, 1] += rle[:, 0]
+    rle[:, 1] = (rle[:, 0] + rle[:, 1] - 1)
     return rle
 
   @Nomear.property()
@@ -49,41 +50,64 @@ class RLEObject(Nomear):
     """For the i-th row, rle3[i] = [start_row, start_col, end_col]"""
     assert self.width is not None
     Rs = self.rle2 // self.width
-    assert (Rs[:, 1] - Rs[:, 0]).max() <= 1
+
+    delta = Rs[:, 1] - Rs[:, 0]
+    if sum(delta) != 0: raise ValueError('!! Length overflow detected')
+
     Cs = self.rle2 - Rs * self.width
     return  np.stack([Rs[:, 0], Cs[:, 0], Cs[:, 1]], axis=-1)
 
   @Nomear.property()
+  def interval(self):
+    return self.rle2[:, 0].min(), self.rle2[:, 1].max()
+
+  @Nomear.property()
   def box(self):
+    from talos.tasks.detection.box import Box
     r_min, r_max = self.rle3[:, 0].min(), self.rle3[:, 0].max()
     c_min, c_max = self.rle3[:, 1].min(), self.rle3[:, 2].max()
-    return r_min, r_max, c_min, c_max
+    assert r_max >= r_min and c_max >= c_min
+    return Box(r_min, r_max, c_min, c_max)
 
   @Nomear.property()
   def mask2d(self):
-    r_min, r_max, c_min, c_max = self.box
-    mask = np.zeros(shape=[r_max - r_min, c_max - c_min], dtype=bool)
-    for r, c_1, c_2 in self.rle3: mask[r - r_min, c_1 - c_min:c_2 - c_min] = 1
-    return mask, (r_min, c_min)
+    r1, r2, c1, c2 = (
+      self.box.r_min, self.box.r_max, self.box.c_min, self.box.c_max)
+    mask = np.zeros(shape=[r2-r1+1, c2-c1+1], dtype=bool)
+    for r, c_1, c_2 in self.rle3: mask[r-r1, c_1-c1:c_2-c1+1] = 1
+    return mask, (r1, c1)
 
   # endregion: Properties
 
   # region: Public Methods
+
+  def is_overlap_with(self, guest):
+    """Return whether the bounding box is overlapped with guest"""
+    assert isinstance(guest, RLEObject)
+    if self.width is None:
+      min_1, max_1 = self.interval
+      min_2, max_2 = guest.interval
+      return self.is_overlap_1D(min_1, max_1, min_2, max_2)
+
+    # For 2-D objects
+    return self.box.is_overlap_with(guest.box)
 
   def iou_to(self, guest):
     # Sanity check
     if isinstance(guest, list): guest = RLEObject(guest)
     assert isinstance(guest, RLEObject)
 
+    if not self.is_overlap_with(guest): return 0.0
+
     # Create minimum buffer
     (min1, max1), (min2, max2) = self.range1d, guest.range1d
     min_index = min(min1, min2)
-    buf_len = max(max1, max2) - min_index
+    buf_len = max(max1, max2) - min_index + 1
     buffer = np.zeros(shape=[2, buf_len], dtype=bool)
 
     # Create masks
     for i, rle in enumerate((self.rle2, guest.rle2)):
-      for a, b in rle: buffer[i][a-min_index:b-min_index] = True
+      for a, b in rle: buffer[i][a-min_index:b-min_index+1] = True
 
     # Calculate score
     intersection = np.logical_and(buffer[0], buffer[1])

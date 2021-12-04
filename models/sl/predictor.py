@@ -160,6 +160,7 @@ class Predictor(Feedforward, Recurrent):
   def _plug_target_in(self, shape):
     dtype = hub.dtype
     if hub.target_dim != 0: shape[-1] = hub.target_dim
+    elif hub.target_shape not in ('-', 'null'): shape = hub.target_shape
     # If target is sparse label
     if hub.target_dtype is not None: dtype = hub.target_dtype
     # if hub.target_dim == 1: dtype = tf.int32  # TODO: X
