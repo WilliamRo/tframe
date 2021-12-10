@@ -115,7 +115,8 @@ class MetricsManager(object):
       # Create a metric_slot and plug tensor in
       # name = metric if isinstance(metric, str) else quantity.name
       name = quantity.name
-      metric_slot = MetricSlot(self.model, name=name)
+      metric_slot = MetricSlot(self.model, name=name,
+                               post_processor=quantity.post_processor)
       metric_slot.plug(tensor, quantity.name, quantity_def=quantity)
 
       # Append metric slot to metrics list

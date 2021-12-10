@@ -336,7 +336,7 @@ class Model(object):
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
-    return self._update_group.run(feed_dict)
+    return self._update_group.run(feed_dict, data=data_batch)
 
   def get_data_batches(self, data_set, batch_size, num_steps=None,
                        shuffle=False, is_training=False):
@@ -443,6 +443,7 @@ class Model(object):
     :return: a dictionary in which keys are slots (may include loss and metric)
              and values are scalars corresponding to these slots
     """
+    # Sanity check
     assert isinstance(data_set, DataSet)
     if num_steps is None: num_steps = hub.val_num_steps
 
@@ -468,16 +469,17 @@ class Model(object):
         # e.g. small model on WHB
         if num_steps == -1: one_shot = True
 
-    # .. do one-shot validation if is qualified
+    # [Branch 1/2] do one-shot validation if is qualified
     # .. for RNN models, reset_batch flag of data_set should be set
     if one_shot:
       data_set = self._sanity_check_before_use(data_set)
       if self.input_type is InputTypes.RNN_BATCH:
         data_set.should_reset_state = True
       feed_dict = self._get_default_feed_dict(data_set, is_training=False)
-      return self.validate_group.run(feed_dict, allow_sum=allow_sum)
+      return self.validate_group.run(feed_dict, allow_sum=allow_sum,
+                                     data=data_set)
 
-    # - Otherwise do batch validation
+    # [Branch 2/2] Otherwise do batch validation
     tensor_slots = self.validate_group.tensor_slots
     quantity_defs = [s.quantity_definition for s in tensor_slots]
     fetches = [q.quantities for q in quantity_defs]
@@ -494,6 +496,9 @@ class Model(object):
         assert isinstance(val, list)
         if not data_set.n_to_one:
           checker.check_type(val, np.ndarray)
+      # Apply post-processor if provided
+      if callable(slot.post_processor):
+        val = slot.post_processor(val, data_set)
       # Apply np_summ_method on val
       scalar = qd.apply_np_summ_method(val, seq_detail)
       # Add summ to results
@@ -731,7 +736,7 @@ class Model(object):
         # TODO: when predict without outputting loss ...
         if batch.targets is not None: feed_dict[tensor] = batch.targets
       elif pedia.gather_indices in tensor.name:
-        # TODO: when  batch.size is 1, gather_indices is not necessary
+        # TODO: when batch.size is 1, gather_indices is not necessary
         #       However, Quantity will never know the exact batch size
         feed_dict[tensor] = batch.gather_indices
       else:

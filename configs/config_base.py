@@ -110,6 +110,10 @@ class Config(
   # region : Properties
 
   @property
+  def use_dynamic_ground_truth(self):
+    return callable(self.dynamic_ground_truth_generator)
+
+  @property
   def should_create_path(self):
     if tfr.hub.rehearse: return True
     return (self.train or self.dynamic_evaluation) and not self.on_cloud

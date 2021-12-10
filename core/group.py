@@ -32,7 +32,7 @@ class Group(object):
 
   # region : Public Methods
 
-  def run(self, feed_dict=None, allow_sum=True):
+  def run(self, feed_dict=None, allow_sum=True, data=None):
     """Run group in session. Slots except SummarySlot should be activated"""
     fetches = []
     for slot in self._slots:
@@ -50,6 +50,10 @@ class Group(object):
     # Check results
     tensor_dict = collections.OrderedDict()
     for slot, val in zip(fetches, results):
+      # Do post-process if post_processor is provided
+      if callable(slot.post_processor):
+        val = slot.post_processor(val, data)
+
       if isinstance(slot, SummarySlot):
         self._model.agent.write_summary(val)
       elif isinstance(slot, (TensorSlot, NestedTensorSlot)):

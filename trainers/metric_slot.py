@@ -11,7 +11,7 @@ from tframe.core import TensorSlot, VariableSlot, SummarySlot
 
 class MetricSlot(TensorSlot):
 
-  def __init__(self, model, name='metric'):
+  def __init__(self, model, name='metric', post_processor=None):
     # Call parent's constructor
     super().__init__(model, name)
     #
@@ -30,6 +30,8 @@ class MetricSlot(TensorSlot):
 
     # Bayesian booster
     self.improvement = 0
+
+    self.post_processor = post_processor
 
   # region : Properties
 

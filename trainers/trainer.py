@@ -504,9 +504,19 @@ class Trainer(Nomear):
 
   def _update_model(self, data_batch):
     if self.th.tic_toc: self.th.tic(key='__update')
+
+    # TODO: currently, the dynamic ground-truth logic is implemented by
+    #       a naive run-twice logic
+    if self.th.use_dynamic_ground_truth:
+      data_batch = self.th.dynamic_ground_truth_generator(
+        self.model, data_batch)
+
+    # Update model
     loss_dict = self.model.update_model(data_batch=data_batch)
-    loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
+
+    # Get and process loss slots
     # assert len(loss_slots) > 0
+    loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
     assert len(loss_slots) == 1
     loss_slot = loss_slots[0]
     self.batch_loss_stat.record(loss_dict[loss_slot])
@@ -608,6 +618,7 @@ class Trainer(Nomear):
     # Show time elapsed for a single update if required
     if self.th.tic_toc:
       # Here the key for toc should be taken care of
+      # TODO: note that print progress may take a lot of time
       content += ' ({:.1f}ms)'.format(self.th.toc('__update') * 1000)
 
     self._inter_cut(content, prompt='[Train]', start_time=self.th.start_time)

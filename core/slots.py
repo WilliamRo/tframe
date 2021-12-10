@@ -21,6 +21,12 @@ class Slot(object):
     self.name = name
     self.sleep = False
 
+    # This attribute is designed for complicated metrics such as IoU scores
+    # for instance segmentation task (2021-12-10 @ CUHK RRSSB 212A-06)
+    # A post_processor should have the following signature:
+    #   def post_processor(array: np.ndarray, data: tframe.DataSet)
+    self.post_processor = None
+
   # region : Properties
 
   @property
@@ -35,8 +41,7 @@ class Slot(object):
 
   # region : Overriding
 
-  def __str__(self):
-    return self.name
+  def __str__(self): return self.name
 
   # endregion : Overriding
 
@@ -52,34 +57,14 @@ class Slot(object):
       raise TypeError('!! op should be in {}'.format(self.op_classes))
     self._op = op
 
-  def run(self, feed_dict=None):
-    return self._model.session.run(self._op, feed_dict=feed_dict)
+  def run(self, feed_dict=None, data=None):
+    result = self._model.session.run(self._op, feed_dict=feed_dict)
+    if callable(self.post_processor):
+      result = self.post_processor(result, data)
+    return result
 
-  # TODO: when everything is settled, remove this method
-  def run_(self, fetches=None, feed_dict=None):
-    if not self.activated:
-      raise AssertionError('!! This slot is not activated')
-
-    fetches = self._op if fetches is None else fetches
-    if not isinstance(fetches, (tuple, list)): fetches = [fetches]
-    assert isinstance(fetches, (list, tuple))
-    ops = []
-    for entity in fetches:
-      op = entity
-      if isinstance(op, Slot): op = entity.op
-      elif op.__class__ not in [
-        tf.Tensor, tf.Operation, tf.summary.Summary, tf.Variable]:
-        # Nested tensor slots shall not be run
-        raise TypeError('!! Unknown type {}'.format(op.__class__))
-      ops.append(op)
-
-    with self._model.graph.as_default():
-      result = self._model.session.run(ops, feed_dict=feed_dict)
-      if isinstance(result, (tuple, list)): result = result[0]
-      return result
-
-  def fetch(self, feed_dict=None):
-    result = self.run(feed_dict=feed_dict)
+  def fetch(self, feed_dict=None, data=None):
+    result = self.run(feed_dict=feed_dict, data=data)
     if isinstance(result, (list, tuple)):
       result = result[0]
     return result

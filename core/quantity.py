@@ -57,6 +57,10 @@ class Quantity(object):
     self.name = name
     self.lower_is_better = kwargs.get('lower_is_better', True)
 
+    # This will be passed to metric in metric_manager.py -> initialize
+    # This variable is first designed for instance segmentation metrics
+    self.post_processor = kwargs.get('post_processor', None)
+
   @property
   def support_batch_eval(self):
     self._check_link()
@@ -123,7 +127,12 @@ class Quantity(object):
         q = tf.gather_nd(q, tfr.context.gather_indices)
       else: q = q[:, -1]
     if self._tf_summ_method is None:
-      raise TypeError('!! summ_method should be provided')
+      if self.post_processor is None:
+        raise TypeError('!! tf_summ_method should be provided')
+      else:
+        # For metric only
+        assert callable(self.post_processor)
+        return q
     self._quantity = self._tf_summ_method(q)
     assert isinstance(self._quantity, tf.Tensor)
     assert len(self._quantity.shape) == 0
@@ -173,7 +182,8 @@ class Quantity(object):
       if isinstance(quantities[0], np.ndarray):
         quantities = np.concatenate(quantities, axis=0)
 
-    return self.np_summ_method(quantities)
+    if callable(self.np_summ_method): return self.np_summ_method(quantities)
+    return quantities
 
   def _show_seq_metric_detail(self, val_list):
     console = tfr.console

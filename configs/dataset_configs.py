@@ -57,6 +57,9 @@ class DataConfigs(object):
   folds_i = Flag.integer(None, 'The i-value for k-fold cross validation',
                          is_key=None)
 
+  dynamic_ground_truth_generator = Flag.whatever(
+    None, 'A callable method for generating dynamic ground truth')
+
   # Financial data configs
   max_level = Flag.integer(None, 'Max level in LOB data', is_key=None)
   volume_only = Flag.boolean(
