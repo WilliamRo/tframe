@@ -64,7 +64,8 @@ class Object2D(Nomear):
     return m
 
   @classmethod
-  def calc_avg_precision(cls, true_list, pred_list, thresholds):
+  def calc_avg_precision(cls, true_list, pred_list, thresholds,
+                         multiply_confidence=False):
     """Calculate the average precision (AP) metric at a given threshold
        or a set of thresholds"""
     # Sanity check
@@ -77,7 +78,14 @@ class Object2D(Nomear):
     m = cls.calc_match_matrix(true_list, pred_list)
     precisions = []
     for alpha in thresholds:
-      TP = sum(np.sum(m >= alpha, axis=0) > 0)
+      acc_pred = np.minimum(np.sum(m >= alpha, axis=0), 1.0)
+
+      if multiply_confidence:
+        assert hasattr(pred_list[0], 'confidence')
+        c = np.array([p.confidence for p in pred_list])
+        TP = sum(acc_pred * c)
+      else: TP = sum(acc_pred)
+
       precisions.append(TP / len(pred_list))
 
     # Return AP

@@ -25,7 +25,8 @@ import numpy as np
 
 class Box(Object2D):
 
-  def __init__(self, r_min, r_max, c_min, c_max, tag=None):
+  def __init__(self, r_min, r_max, c_min, c_max,
+               tag=None, class_id=None, confidence=None):
     """Given a 2-D image I, `self` represents a sub-region of
        I[r_min:r_max+1, c_min:c_max+1]"""
     assert r_min <= r_max and c_min <= c_max
@@ -33,6 +34,9 @@ class Box(Object2D):
     self.r_max = r_max
     self.c_min = c_min
     self.c_max = c_max
+
+    self.class_id = class_id
+    self.confidence = confidence
     self.tag = check_type(tag, str, nullable=True)
 
   # region: Properties
@@ -58,7 +62,8 @@ class Box(Object2D):
     return (self.r_max - self.r_min + 1) * (self.c_max - self.c_min + 1)
 
   def __str__(self):
-    return f'[{self.r_min}:{self.r_max}, {self.c_min}:{self.c_max}]'
+    suffix = '' if self.confidence is None else f'-c{self.confidence:.2f}'
+    return f'[{self.r_min}:{self.r_max}, {self.c_min}:{self.c_max}]' + suffix
 
   # endregion: Properties
 
@@ -88,18 +93,28 @@ class Box(Object2D):
 
   @classmethod
   def get_grid_center_1D(cls, L: int, S: int, i: int):
+    """Return grid center in geo-axis:
+                        i_min       i_max
+       pixel index i:     0     1     2
+                       |-----|--x--|-----|
+       geo-axis x:     0     1     2     3
+
+    Thus the center of grid [0, 1, 2] is 1.5, denoted by `x`, and the center
+    of grid [0, 1, 2, 3] is 2.
+    """
     i_min, i_max = cls.get_cell_interval_1D(L, S, i)
-    return i_min + (i_max - i_min + 1) / 2
+    return (i_min + i_max + 1) / 2
 
   @classmethod
-  def get_cell_interval_1D(cls, L, S, i, shift=0):
-    """Return interval by pixel indices"""
-    assert 0 <= i < S and -1 <= shift <= 1
+  def get_cell_interval_1D(cls, L, S, i):
+    """Return interval by pixel indices. For in-divisible cases such as 7/3, the
+    last piece will contain more pixel, i.e., 7 = 2 + 2 + 3
+    """
+    assert 0 <= i < S
     l = L // S  # min size
     i_min = i * l
     i_max = L - 1 if i == S - 1 else i_min + l - 1
-    delta = shift * L
-    return i_min + delta, i_max + delta
+    return i_min , i_max
 
   # endregion: Public Methods
 
@@ -107,11 +122,11 @@ class Box(Object2D):
 
   @staticmethod
   def show_rect_static(
-      r_min, r_max, c_min, c_max, color='w', ax=None, margin=1):
+      r_min, r_max, c_min, c_max, color='w', ax=None):
     box = Box(r_min, r_max, c_min, c_max)
-    box.show_rect(color=color, ax=ax, margin=margin)
+    box.show_rect(color=color, ax=ax)
 
-  def show_rect(self, color='w', ax: plt.Axes = None, margin=1,
+  def show_rect(self, color='w', ax: plt.Axes = None,
                 show_tag=False, linestyle=None):
     import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle
@@ -121,13 +136,17 @@ class Box(Object2D):
 
     # Show rectangle
     x, y, w, h = self.xywh
-    ax.add_patch(Rectangle((x - margin, y - margin), w + margin, h + margin,
-                           edgecolor=color, facecolor='none', alpha=0.6,
-                           linewidth=2, linestyle=linestyle))
+    x, y = x - 0.5, y - 0.5
+    ax.add_patch(Rectangle(
+      (x, y), w, h, edgecolor=color, facecolor='none', alpha=0.6,
+      linewidth=2, linestyle=linestyle))
 
-    # Show tag if necessary
+    # Show tag if necessary TODO:
     if not show_tag: return
-    ax.annotate(self.tag, (x, y), textcoords='offset points', xytext=(1, -9),
-                ha='left', color='w', backgroundcolor='grey')
+    # For plt.annotate, see: https://matplotlib.org/stable/gallery/text_labels_and_annotations/annotation_demo.html
+    bbox_args = dict(boxstyle="round", fc="0.8")
+    m = 7
+    ax.annotate(self.tag, (x, y), ha='left', va='top', bbox=bbox_args,
+                xytext=(m, -m), textcoords='offset pixels')
 
   # endregion: Plotter

@@ -56,14 +56,16 @@ class ConvNet(object):
 
   @classmethod
   def conv_bn_relu(cls, filters, kernel_size, use_batchnorm=True, leak=0,
-                   strides=None, transpose=False, dilations=None):
+                   strides=None, transpose=False, dilations=None,
+                   expand_last_dim=False):
     assert filters is not None and 0 <= leak < 1
     if strides is None: strides = 2 if transpose else 1
     activation = 'relu' if leak == 0 else 'lrelu:{}'.format(leak)
 
     Conv = Deconv2D if transpose else Conv2D
     return [Conv(filters, kernel_size, strides=strides, dilations=dilations,
-                 use_batchnorm=use_batchnorm, activation=activation)]
+                 use_batchnorm=use_batchnorm, activation=activation,
+                 expand_last_dim=expand_last_dim)]
 
   @classmethod
   def bottle_net(cls, filters, kernel_size, use_batchnorm=True):
