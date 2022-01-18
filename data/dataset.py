@@ -451,6 +451,9 @@ class DataSet(TFRData, Nomear):
       group_names = data_set.properties[pedia.classes]
       data_set.properties[pedia.classes] = [
         group_names[i] for i in class_indices]
+    # Clear dense label
+    if self.DENSE_LABELS in self.data_dict:
+      self.data_dict.pop(self.DENSE_LABELS)
     # Refresh groups
     data_set.refresh_groups()
     return data_set
