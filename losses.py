@@ -122,7 +122,7 @@ def _weighted_mxe(y_true: tf.Tensor, y_predict: tf.Tensor, tf_func, min_w):
   assert tf_func in (tf.square, tf.abs)
   assert 0 <= min_w <= 1
 
-  reduce_axis = list(range(1, len(y_true.shape) - 1))
+  reduce_axis = list(range(1, len(y_true.shape)))
   weights = tf.maximum(y_true, min_w)
 
   nume = tf.reduce_sum(tf_func(y_true - y_predict) * weights, axis=reduce_axis)
@@ -136,6 +136,36 @@ def weighted_mse(y_true: tf.Tensor, y_predict: tf.Tensor, min_w=0):
 
 def weighted_mae(y_true: tf.Tensor, y_predict: tf.Tensor, min_w=0):
   return _weighted_mxe(y_true, y_predict, tf.abs, min_w)
+
+
+def mean_balanced_error(y_true: tf.Tensor, y_predict: tf.Tensor):
+  """"""
+  reduce_axis = list(range(1, len(y_true.shape)))
+
+  # Define similarity ratio
+  magic_number = 1e-6
+  _min = tf.minimum(y_true, y_predict)
+  _max = tf.maximum(y_true, y_predict)
+  sr = _min / tf.maximum(_max, magic_number)
+  tp = sr * y_true
+
+  # Calculate F1 score
+  be = 1 - 2 * tp / (y_true + y_predict + _epsilon)
+
+  return tf.reduce_mean(be, reduce_axis)
+
+
+def global_balanced_error(y_true: tf.Tensor, y_predict: tf.Tensor):
+  reduce_axis = list(range(1, len(y_true.shape)))
+
+  # Define similarity ratio
+  _min = tf.minimum(y_true, y_predict)
+  _max = tf.maximum(y_true, y_predict)
+  sr = _min / tf.maximum(_max, 1e-6)
+  tp = tf.reduce_sum(sr * y_true, axis=reduce_axis)
+
+  # Calculate F1 score
+  return 1 - 2 * tp / tf.reduce_sum(y_true + y_predict, axis=reduce_axis)
 
 
 def mean_absolute_error(y_true, y_predict):
@@ -205,6 +235,10 @@ def get(identifier, last_only=False, **kwargs):
       kernel = mean_squared_error
     elif identifier in ['mean_absolute', 'mean_absolute_error', 'mae']:
       kernel = mean_absolute_error
+    elif identifier in ['mean_balanced_error', 'mbe']:
+      kernel = mean_balanced_error
+    elif identifier in ['global_balanced_error', 'gbe']:
+      kernel = global_balanced_error
     elif identifier in ['weighted_mean_squared_error', 'wmse']:
       min_w = p.get_arg(float)
       kernel = lambda *args: weighted_mse(*args, min_w=min_w)

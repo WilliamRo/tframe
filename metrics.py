@@ -87,6 +87,9 @@ def generalized_accuracy(truth, output):
 
 # region : Metrics for FNN only
 
+def ssim(truth, output):
+  return tf.image.ssim(truth, output, max_val=1.0)
+
 def delta(truth, output):
   assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
   if tfr.hub.val_preheat > 0:
@@ -239,6 +242,15 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       kernel, tf_summ_method = delta, rms
       np_summ_method = lambda x: np.sqrt(np.mean(np.square(x)))
       name = 'RMS(mv)'
+    elif identifier in ['ssim']:
+      kernel = ssim
+      tf_summ_method = tf.reduce_mean
+      name = 'SSIM'
+      lower_is_better = False
+    elif identifier in ['mean_balanced_error', 'mbe']:
+      kernel = losses.mean_balanced_error
+      tf_summ_method = tf.reduce_mean
+      name = 'MBE'
     else: raise ValueError('Can not resolve `{}`'.format(identifier))
 
     return Quantity(kernel, tf_summ_method, np_summ_method, last_only,
