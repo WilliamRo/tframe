@@ -112,6 +112,9 @@ def rms_error_ratio(truth, output):
     truth, output = _truncate(truth, output)
   return rms(truth - output) / rms(truth) * 100
 
+def bucket_accuracy(y_true: tf.Tensor, y_predict: tf.Tensor):
+  return 1 - losses.global_balanced_error(y_true, y_predict)
+
 # endregion : Metrics for FNN only
 
 # region : Quantities
@@ -251,6 +254,11 @@ def get(identifier, last_only=False, pred_thres=None, **kwargs):
       kernel = losses.mean_balanced_error
       tf_summ_method = tf.reduce_mean
       name = 'MBE'
+    elif identifier in ['bucket_accuracy', 'ba']:
+      kernel = bucket_accuracy
+      tf_summ_method = tf.reduce_mean
+      name = 'BA'
+      lower_is_better = False
     else: raise ValueError('Can not resolve `{}`'.format(identifier))
 
     return Quantity(kernel, tf_summ_method, np_summ_method, last_only,

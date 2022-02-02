@@ -158,14 +158,29 @@ def mean_balanced_error(y_true: tf.Tensor, y_predict: tf.Tensor):
 def global_balanced_error(y_true: tf.Tensor, y_predict: tf.Tensor):
   reduce_axis = list(range(1, len(y_true.shape)))
 
+  _epsilon = 1e-6
+
   # Define similarity ratio
+  # _min = tf.minimum(y_true, y_predict) + _epsilon
+  # _max = tf.maximum(y_true, y_predict) + _epsilon
+  # sr = _min / _max
   _min = tf.minimum(y_true, y_predict)
   _max = tf.maximum(y_true, y_predict)
-  sr = _min / tf.maximum(_max, 1e-6)
-  tp = tf.reduce_sum(sr * y_true, axis=reduce_axis)
+  sr = _min / tf.maximum(_max, 1e-8)
+  tp = tf.reduce_sum(sr * y_true, axis=reduce_axis) + _epsilon
 
   # Calculate F1 score
-  return 1 - 2 * tp / tf.reduce_sum(y_true + y_predict, axis=reduce_axis)
+  return 1 - 2 * tp / tf.reduce_sum(
+    y_true + y_predict + 2 * _epsilon, axis=reduce_axis)
+
+  # # Define similarity ratio
+  # _min = tf.minimum(y_true, y_predict)
+  # _max = tf.maximum(y_true, y_predict)
+  # sr = _min / tf.maximum(_max, 1e-6)
+  # tp = tf.reduce_sum(sr * y_true, axis=reduce_axis)
+  #
+  # # Calculate F1 score
+  # return 1 - 2 * tp / tf.reduce_sum(y_true + y_predict, axis=reduce_axis)
 
 
 def mean_absolute_error(y_true, y_predict):
@@ -237,7 +252,7 @@ def get(identifier, last_only=False, **kwargs):
       kernel = mean_absolute_error
     elif identifier in ['mean_balanced_error', 'mbe']:
       kernel = mean_balanced_error
-    elif identifier in ['global_balanced_error', 'gbe']:
+    elif identifier in ['global_balanced_error', 'gbe', 'ber']:
       kernel = global_balanced_error
     elif identifier in ['weighted_mean_squared_error', 'wmse']:
       min_w = p.get_arg(float)
