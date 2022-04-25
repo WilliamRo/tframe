@@ -34,6 +34,8 @@ from tframe.layers.pooling import AveragePooling2D
 from tframe.layers.pooling import GlobalAveragePooling2D
 from tframe.layers.pooling import MaxPool2D
 
+from tframe.nets.forkmerge import ForkMergeDAG
+
 
 class ConvNet(object):
 
@@ -94,6 +96,26 @@ class ConvNet(object):
     else: raise KeyError('!! Can not parse `{}`'.format(spec))
 
   # endregion: Basic Layer Combinations
+
+  # region: Residual Blocks
+
+  @classmethod
+  def residual_block(cls, c, kernel_size=3, strides=1, shortcut=None):
+    vertices = [
+      [Conv2D(c, kernel_size, strides, use_batchnorm=True, activation='relu'),
+       Conv2D(c, kernel_size, strides=1, use_batchnorm=True)],
+      [Merge.Sum(), Activation.ReLU()]]
+    edges = '1;11'
+
+    # If input channel != output channel, or strides != 1,
+    #   layer outputs cannot be added together
+    if shortcut is not None:
+      vertices.insert(1, shortcut)
+      edges = '1;10;011'
+
+    return ForkMergeDAG(vertices, edges, name='ResidualBlock')
+
+  # endregion: Residual Blocks
 
 
 
