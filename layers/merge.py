@@ -31,7 +31,9 @@ class ShortCut(Layer):
   def transformation_str_list(self):
     result = []
     if self._transforms is None:
-      return [f.output_id_str for f in self.definitions]
+      # return [f.output_id_str for f in self.definitions]
+      return [f.get_layer_string(True) if isinstance(f, Layer)
+              else f.structure_string(True) for f in self.definitions]
     for f, t_list in zip(self.definitions, self._transforms):
       result.append(
         '->'.join([f.output_id_str] + [t.group_name for t in t_list]))
@@ -41,7 +43,7 @@ class ShortCut(Layer):
     if len(definitions) == 0:
       console.warning_with_pause('Nothing to be merged.')
     self.definitions = checker.check_type(definitions, Function)
-    for f in self.definitions: f.set_output_id()
+    # for f in self.definitions: f.set_output_id()
     self.axis = axis
     # Check mode
     assert mode in (self.Mode.SUM, self.Mode.CONCATE)
@@ -61,6 +63,9 @@ class ShortCut(Layer):
     if len(self.definitions) == 0: return input_
     # Get tensor list to merge
     tensors = [input_]
+    # Execute definitions if not executed
+    for f in self.definitions:
+      if f.output_tensor is None: _ = f(input_)
     if self._transforms is None:
       tensors += [f.output_tensor for f in self.definitions]
     else:
