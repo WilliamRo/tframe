@@ -99,7 +99,7 @@ class CriterionControl(BaseControl):
 
   def refresh(self, find_btn_enabled):
     values = self.value_list
-    fmt = ' [{}, {}] Avg: {}, Med: {}'
+    fmt = ' [{}, {}] A: {}, M: {}'
     if len(values) > 0:
       to_str = self.to_str
       val_strs = [to_str(f(values)) for f in (min, max, np.mean, np.median)]
@@ -143,8 +143,8 @@ class CriterionControl(BaseControl):
     self.statistic_label.pack(side=tk.LEFT)
 
     # (3) Detail button
-    self.detail_button.configure(text='Detail', style=self.set_style(
-      self.WidgetNames.TButton, 'detail', width=6))
+    self.detail_button.configure(text='D', style=self.set_style(
+      self.WidgetNames.TButton, 'detail', width=2))
     self.detail_button.configure(command=self._on_detail_btn_click)
     self.detail_button.pack(side=tk.RIGHT)
 

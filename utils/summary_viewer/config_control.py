@@ -33,7 +33,7 @@ class ConfigControl(BaseControl):
   # Basic configurations
   WIDTH = 400
   HEIGHT = 100
-  MAX_STR_LENGTH = 50
+  MAX_STR_LENGTH = 20
 
   def __init__(self, master, flag_name, flag_values, is_active):
     # Sanity check
@@ -222,7 +222,12 @@ class ConfigControl(BaseControl):
         value = str(value)
         m = re.match(r"<class '([\w]+.)+([\w]+)'>", value)
         if m is not None: value = m.group(1)
-      self.values_control = ttk.Label(self, text=value)
+
+      # Truncate long text if necessary
+      text = value
+      if len(text) > self.MAX_STR_LENGTH:
+        text = text[:self.MAX_STR_LENGTH] + '...'
+      self.values_control = ttk.Label(self, text=text)
     else:
       self.values_control = ttk.Combobox(
         self, state='readonly', justify=tk.RIGHT)
