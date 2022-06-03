@@ -193,6 +193,8 @@ class ModelConfigs(object):
 
   rehearse = Flag.boolean(False, 'This option is for checking model')
 
+  use_rnn = Flag.boolean(None, 'Whether to use RNN')
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate_fc > 0: self.prune_on = True
