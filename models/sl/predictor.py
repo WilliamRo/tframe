@@ -155,7 +155,8 @@ class Predictor(Feedforward, Recurrent):
     self._merge_summaries()
 
     # Define train step
-    self._define_train_step(optimizer)
+    if optimizer is not None:
+      self._define_train_step(optimizer)
 
   def _plug_target_in(self, shape):
     dtype = hub.dtype
