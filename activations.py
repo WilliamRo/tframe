@@ -52,6 +52,14 @@ def sigmoid(input_, **kwargs):
   return (high - low) * sig + low
 
 
+@tf.custom_gradient
+def sign_st(x):
+  """Sign function with straight-through estimator"""
+  from tframe import hub as th
+  def grad(dy): return dy * tf.cast(-1 < x < 1.0, dtype=th.dtype)
+  return tf.sign(x), grad
+
+
 def sog(x, groups_size):
   """Softmax over groups. All groups share the same group size."""
   # Sanity check
@@ -88,6 +96,7 @@ def get(identifier, **kwargs):
     elif identifier in ['softmax']: return softmax
     elif identifier in ['cumax']: return cumax
     elif identifier in ['sigmoid']: return lambda x: sigmoid(x, **kwargs)
+    elif identifier in ['signst', 'sign_st']: return sign_st
     elif identifier in ['retanh', 'relutanh']: return lambda x: relu(tf.tanh(x))
     else:
       # Try to find activation in tf.nn
