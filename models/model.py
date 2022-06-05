@@ -75,7 +75,7 @@ class Model(object):
     self._batch_val_summ = IndependentSummarySlot(self, 'batch_metric_summ')
 
     self._loss = TensorSlot(self, 'Loss')
-    self._train_step = OperationSlot(self)
+    self._train_step = OperationSlot(self, name='Train-step')
     self._train_step_summary = SummarySlot(self)
 
     self.validate_group = Group(
@@ -284,7 +284,7 @@ class Model(object):
       raise AssertionError('!! loss has not been activated yet')
     with tf.name_scope('Optimizer'):
       optimizer = hub.get_optimizer(optimizer)
-
+      if optimizer is None: return
       self._optimizer = optimizer
       self.set_train_step(var_list)
 
@@ -336,7 +336,12 @@ class Model(object):
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
     feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
-    return self._update_group.run(feed_dict, data=data_batch)
+    results = self._update_group.run(feed_dict, data=data_batch)
+
+    # Clip weights if necessary
+    self._clip_weights()
+
+    return results
 
   def get_data_batches(self, data_set, batch_size, num_steps=None,
                        shuffle=False, is_training=False):
@@ -610,7 +615,10 @@ class Model(object):
     self.agent.shutdown()
 
   def launch_model(self, overwrite=False):
-    return self.agent.launch_model(overwrite)
+    results = self.agent.launch_model(overwrite)
+    # Clip weights if necessary
+    self._clip_weights()
+    return results
 
   def evaluate(self, fetches, data, batch_size=None, postprocessor=None,
                verbose=False, num_steps=None, suppress_n_to_one=False):
@@ -708,6 +716,12 @@ class Model(object):
   # endregion : Public Methods
 
   # region : Private Methods
+
+  def _clip_weights(self):
+    if hub.clip_weight_at is None: return
+    from tframe.nets.net import Net
+    assert isinstance(self, Net) and isinstance(self, Model)
+    self.session.run(self.weight_clip_ops)
 
   def _evaluate_batch(self, fetch_list, data_set, **kwargs):
     raise NotImplementedError

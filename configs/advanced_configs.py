@@ -79,4 +79,14 @@ class AdvancedConfigs(object):
 
   # endregion : Etching
 
+  # region: Quantization
+
+  binarize_weights = Flag.boolean(
+    False, 'Whether to binarize weights in kernel', is_key=None)
+  clip_weight_at = Flag.float(
+    None, 'Weight clip during updating, usually used with `binarize_weights`',
+    is_key=None)
+
+  # endregion: Quantization
+
 

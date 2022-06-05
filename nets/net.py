@@ -10,6 +10,7 @@ from tframe import context
 from tframe import hub
 from tframe import pedia
 from tframe.core import Function
+from tframe.core import Nomear
 from tframe.core.decorators import with_graph_if_has
 from tframe.core.slots import OutputSlot
 from tframe.layers.layer import Layer
@@ -20,7 +21,8 @@ from tframe.utils.display.table import Table
 from tframe.utils.string_tools import merger
 
 
-class Net(Function):
+
+class Net(Function, Nomear):
   """Function which can packet sub-functions automatically when calling add
      method"""
 
@@ -267,6 +269,14 @@ class Net(Function):
         assert isinstance(child, Net)
         layers += child.layers
     return layers
+
+  @Nomear.property()
+  def weight_clip_ops(self):
+    value = hub.clip_weight_at
+    assert isinstance(value, float) and value > 0
+    ops = [tf.assign(v, tf.clip_by_value(v, -value, value))
+           for v in self.weight_vars]
+    return ops
 
   # endregion : Properties
 

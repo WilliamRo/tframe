@@ -36,6 +36,11 @@ class Group(object):
     """Run group in session. Slots except SummarySlot should be activated"""
     fetches = []
     for slot in self._slots:
+      # Make sure every slot in this group except summary slot has been
+      #  activated
+      if not slot.activated and slot.name != 'summary':
+        raise AssertionError(f'!! Slot `{slot.name}` not activated')
+
       if isinstance(slot, SummarySlot) and (
           not slot.activated or not tfr.context.hub.summary or not allow_sum):
         continue

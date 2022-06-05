@@ -278,7 +278,10 @@ class Config(
     from tframe.optimizers.optimizer import Optimizer
 
     if optimizer is None:
-      assert not any([self.optimizer is None, self.learning_rate is None])
+      if any([self.optimizer is None, self.learning_rate is None]):
+        tfr.console.show_status('Optimizer not defined.', '!!')
+        return None
+
       optimizer = self.optimizer
       tfr.console.show_status(
         'Optimizer defined in trainer hub is used.', '++')
