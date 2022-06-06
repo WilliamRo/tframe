@@ -49,9 +49,12 @@ class DataSet(TFRData, Nomear):
 
     # Indices
     self.indices = None
-    self._ordered_indices = np.array(list(range(self.size)))
 
   # region : Properties
+
+  @Nomear.property()
+  def _ordered_indices(self):
+    return np.array(list(range(self.size)))
 
   @property
   def target_is_onehot(self):
