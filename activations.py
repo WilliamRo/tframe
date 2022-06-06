@@ -56,7 +56,10 @@ def sigmoid(input_, **kwargs):
 def sign_st(x):
   """Sign function with straight-through estimator"""
   from tframe import hub as th
-  def grad(dy): return dy * tf.cast(-1 < x < 1.0, dtype=th.dtype)
+  def grad(dy):
+    return dy * tf.cast(tf.logical_and(
+      tf.greater_equal(x, -1.0), tf.less_equal(x, 1.0)),
+      dtype=th.dtype)
   return tf.sign(x), grad
 
 
@@ -96,7 +99,7 @@ def get(identifier, **kwargs):
     elif identifier in ['softmax']: return softmax
     elif identifier in ['cumax']: return cumax
     elif identifier in ['sigmoid']: return lambda x: sigmoid(x, **kwargs)
-    elif identifier in ['signst', 'sign_st']: return sign_st
+    elif identifier in ['signst', 'sign_st', 'sign-st']: return sign_st
     elif identifier in ['retanh', 'relutanh']: return lambda x: relu(tf.tanh(x))
     else:
       # Try to find activation in tf.nn
