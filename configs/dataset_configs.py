@@ -10,6 +10,8 @@ class DataConfigs(object):
   train_size = Flag.integer(0, 'Size of training set')
   val_size = Flag.integer(0, 'Size of validation set')
   test_size = Flag.integer(0, 'Size of test set')
+  val_proportion = Flag.float(None, 'Proportion of validation set')
+  test_proportion = Flag.float(None, 'Proportion of test set')
   train_config = Flag.string(None, 'Config string for train_set', is_key=None)
   val_config = Flag.string(None, 'Config string for val_set', is_key=None)
   test_config = Flag.string(None, 'Config string for test_set', is_key=None)
