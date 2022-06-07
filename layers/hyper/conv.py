@@ -68,7 +68,7 @@ class ConvBase(HyperBase):
 
     # Set neuron scale as filter shape
     knl_shape = (tuple(kernel_size) if isinstance(kernel_size, (list, tuple))
-                 else (kernel_size, kernel_size))
+                 else (kernel_size,) * self.Configs.kernel_dim)
     self.neuron_scale = knl_shape + (filters,)
 
     # Set name if provided
@@ -115,6 +115,21 @@ class ConvBase(HyperBase):
     if self._activation is None: return y
     assert callable(self._activation)
     return self._activation(y)
+
+
+class Conv1D(ConvBase):
+  """Perform 1D convolution on a channel-last data"""
+
+  full_name = 'conv1d'
+  abbreviation = 'conv1d'
+
+  class Configs(ConvBase.Configs):
+    kernel_dim = 1
+
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    return self.conv1d(
+      x, self.channels, self.kernel_size, 'HyperConv1D', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
 
 
 class Conv2D(ConvBase):

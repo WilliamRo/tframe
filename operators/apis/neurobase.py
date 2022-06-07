@@ -192,6 +192,23 @@ class NeuroBase(object):
       return tf.split(output, num_or_size_splits, axis=1)
     return output
 
+  def conv1d(self,
+             x,
+             output_channels,
+             filter_size,
+             scope,
+             strides=1,
+             padding='SAME',
+             dilations=1,
+             filter=None,
+             **kwargs):
+    na = self.differentiate(output_channels, scope)
+    na.add_kernel(x, suffix='x', kernel_key='conv1d',
+                  filter_size=filter_size, strides=strides,
+                  padding=padding, dilations=dilations, filter=filter, **kwargs)
+    output = na()
+    return output
+
   def conv2d(self,
              x,
              output_channels,

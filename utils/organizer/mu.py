@@ -3,6 +3,7 @@
 # ---------------------------------------------------------------
 from tframe.models.sl.classifier import Classifier
 from tframe.models.sl.predictor import Predictor
+from tframe.models import Feedforward
 from tframe.models import Recurrent
 
 # ---------------------------------------------------------------
@@ -34,6 +35,7 @@ from tframe.layers.convolutional import Deconv2D
 
 from tframe.layers.highway import LinearHighway
 
+from tframe.layers.hyper.conv import Conv1D as HyperConv1D
 from tframe.layers.hyper.conv import Conv2D as HyperConv2D
 from tframe.layers.hyper.conv import Deconv2D as HyperDeconv2D
 from tframe.layers.hyper.conv import DenseUpsampling2D
@@ -52,6 +54,7 @@ from tframe.layers.preprocess import Normalize
 
 from tframe.layers.pooling import AveragePooling2D
 from tframe.layers.pooling import GlobalAveragePooling2D
+from tframe.layers.pooling import MaxPool1D
 from tframe.layers.pooling import MaxPool2D
 
 # ---------------------------------------------------------------

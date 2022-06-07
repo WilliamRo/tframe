@@ -72,9 +72,11 @@ class PsiKernel(KernelBase):
 
   # region : Private Methods
 
-  @staticmethod
-  def _check_size(size, dim=2):
+  def _check_size(self, size):
     if size is None: return None
+    dim = len(self.input_.shape) - 2
+    # inputs to conv-layers is at least 3-D tensors
+    if dim < 1: return None
     return checker.check_conv_size(size, dim)
 
   def _get_kernel(self, identifier):
@@ -85,6 +87,7 @@ class PsiKernel(KernelBase):
     elif identifier in ('row_mask', 'hyper16'): return self.row_mask
     elif identifier in ('elect', 'election'): return self.elect
     elif identifier in ('sparse_sog', 'sparsog'): return self.sparse_sog
+    elif identifier in ('conv1d',): return self.conv1d
     elif identifier in ('conv2d',): return self.conv2d
     elif identifier in ('deconv2d',): return self.deconv2d
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
@@ -124,9 +127,17 @@ class PsiKernel(KernelBase):
     if kernel is None: kernel = self._get_weights('kernel', shape=filter_shape)
 
     # Define convolution method
+    if conv.__name__ == 'conv1d':
+      kwargs['stride'] = self.strides
+      kwargs['data_format'] = 'NWC'
+    elif conv.__name__ == 'conv2d':
+      kwargs['strides'] = self.strides
+      kwargs['data_format'] = 'NHWC'
+    else: raise KeyError(f'!! Unknown conv op `{conv.__name__}`')
+
     _conv = lambda tupl: conv(
-      tupl[0], tupl[1], strides=self.strides, padding=self.padding,
-      dilations=self.dilations, data_format='NHWC', name=name, **kwargs)
+      tupl[0], tupl[1], padding=self.padding, dilations=self.dilations,
+      name=name, **kwargs)
 
     # Check filter shape
     if kernel.shape.as_list() == filter_shape:
@@ -138,6 +149,9 @@ class PsiKernel(KernelBase):
       return tf.squeeze(tf.map_fn(
         _conv, (tf.expand_dims(self.input_, 1), kernel), dtype=hub.dtype),
         axis=1)
+
+  def conv1d(self, filter=None) -> tf.Tensor:
+    return self._conv_common(tf.nn.conv1d, name='conv1d_kernel', kernel=filter)
 
   def conv2d(self, filter=None) -> tf.Tensor:
     return self._conv_common(tf.nn.conv2d, name='conv2d_kernel', kernel=filter)

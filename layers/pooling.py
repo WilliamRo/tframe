@@ -11,11 +11,40 @@ from tframe.utils import get_scale
 from tframe.core.decorators import init_with_graph
 from tframe.core.function import Function
 
+from tensorflow.python.layers.pooling import MaxPooling1D as MaxPool1D_
 from tensorflow.python.layers.pooling import MaxPool2D as MaxPool2D_
-from tensorflow.python.layers.pooling import AveragePooling2D as \
-  AveragePooling2D_
+from tensorflow.python.layers.pooling import AveragePooling2D as AveragePooling2D_
 
 # TODO: this module needs to be refactored
+
+
+
+class MaxPool1D(Layer, MaxPool1D_):
+
+  full_name = 'maxpoold'
+  abbreviation = 'maxpool'
+
+  @init_with_graph
+  def __init__(self, pool_size, strides,
+               padding='same', data_format='channels_last',
+               name=None, **kwargs):
+    MaxPool1D_.__init__(
+      self, pool_size, strides, padding, data_format, name, **kwargs)
+
+  @property
+  def structure_tail(self):
+    size = lambda inputs: 'x'.join([str(n) for n in inputs])
+    return '({}>{})'.format(size(self.pool_size), size(self.strides))
+
+  @single_input
+  def _link(self, input_=None, **kwargs):
+    assert isinstance(input_, tf.Tensor)
+    output = MaxPool1D_.__call__(self, input_, scope=self.full_name)
+    # self.neuron_scale = get_scale(output)
+    return output
+
+  def __call__(self, *args, **kwargs):
+    return Layer.__call__(self, *args, **kwargs)
 
 
 class MaxPool2D(Layer, MaxPool2D_):
