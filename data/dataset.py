@@ -168,7 +168,8 @@ class DataSet(TFRData, Nomear):
       dense_labels = misc.convert_to_dense_labels(self.targets)
       for i in range(self.num_classes):
         # Find samples of class i and append to groups
-        samples = list(np.argwhere([j == i for j in dense_labels]).ravel())
+        samples = list(np.argwhere([j == i
+                                    for j in dense_labels.ravel()]).ravel())
         groups.append(samples)
       return groups
 
