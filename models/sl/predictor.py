@@ -83,7 +83,7 @@ class Predictor(Feedforward, Recurrent):
     last_only = False
     if 'last_only' in kwargs.keys():
       last_only = kwargs.pop('last_only')
-      if hub.use_gather_indices:
+      if hub.use_gather_indices and last_only:
         # Initiate gather_indices placeholder
         assert context.gather_indices is None
         context.gather_indices = tf.placeholder(
