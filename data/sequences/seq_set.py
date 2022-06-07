@@ -58,19 +58,21 @@ class SequenceSet(DataSet):
   @DataSet.features.setter
   def features(self, val):
     if val is not None:
-      if isinstance(val, list): self.data_dict[self.FEATURES] = val
+      if isinstance(val, (list, np.ndarray)):
+        self.data_dict[self.FEATURES] = val
       else: raise TypeError('!! Unsupported feature type {}'.format(type(val)))
 
   @DataSet.targets.setter
   def targets(self, val):
     if val is not None:
-      if isinstance(val, list): self.data_dict[self.TARGETS] = val
+      if isinstance(val, (list, np.ndarray)):
+        self.data_dict[self.TARGETS] = val
       else: raise TypeError('!! Unsupported target type {}'.format(type(val)))
 
   @property
   def representative(self):
     sequences = list(self.data_dict.values())[0]
-    assert isinstance(sequences, list)
+    assert isinstance(sequences, (list, np.ndarray))
     return sequences
 
   @property
@@ -149,7 +151,7 @@ class SequenceSet(DataSet):
 
     # If item is index array
     f = lambda x: self._get_subset(x, item)
-    data_set = SequenceSet(
+    data_set = type(self)(
       data_dict=self._apply(f), summ_dict=self._apply(f, self.summ_dict),
       name=self.name + '(slice)')
     return self._finalize(data_set, item)
@@ -381,6 +383,8 @@ class SequenceSet(DataSet):
        regular numpy arrays. Samples in the same sequence list must have the
        same shape
        summ_dict should be a dictionary which stores summaries of each sequence.
+
+       TODO: this method should be deprecated
    """
     # Check data_dict and summ_dict
     if not isinstance(self.data_dict, dict) or len(self.data_dict) == 0:
@@ -394,8 +398,10 @@ class SequenceSet(DataSet):
     for name, seq_list in self.data_dict.items():
       checker.check_type(seq_list, np.ndarray)
       # Check type and length
-      if not isinstance(seq_list, list) or len(seq_list) != list_length:
-        raise ValueError('!! {} should be a list with length {}'.format(
+      if (not isinstance(seq_list, (list, np.ndarray)) or len(seq_list) !=
+          list_length):
+        raise ValueError(
+          '!! {} should be a list or array with length {}'.format(
           name, list_length))
       # Check structure
       if [len(s) for s in seq_list] != self.structure:

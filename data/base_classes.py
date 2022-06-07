@@ -7,9 +7,9 @@ import re
 import tarfile, zipfile
 import numpy as np
 import pickle
+import tframe.utils.misc as misc
 
 from tframe import console
-import tframe.utils.misc as misc
 from tframe import local
 
 
@@ -85,6 +85,7 @@ class TFRData(object):
 
   @property
   def groups(self):
+    """This properties was overwritten in dataset.py on June 7, 2022."""
     val = self.properties[self.GROUPS]
     assert isinstance(val, list) and len(val) == self.num_classes
     return val

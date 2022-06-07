@@ -154,9 +154,38 @@ class DataSet(TFRData, Nomear):
     assert not isinstance(self, SequenceSet)
     return np.std(self.features, axis=0)
 
+  @property
+  def groups(self):
+    """In datasets for classification tasks, `groups` is a list of indices:
+    [[indices of class 1], [indices of class 2], ..., [indices of class N]]
+    This property should be somehow dynamic.
+
+    This properties was refactored on June 7, 2022.
+    TODO: to be refactored
+    """
+    def initialize_groups():
+      groups = []
+      dense_labels = misc.convert_to_dense_labels(self.targets)
+      for i in range(self.num_classes):
+        # Find samples of class i and append to groups
+        samples = list(np.argwhere([j == i for j in dense_labels]).ravel())
+        groups.append(samples)
+      return groups
+
+    groups = self.get_from_pocket(self.GROUPS, initializer=initialize_groups)
+
+    # If groups is integrated, return it directly
+    if (len(groups) == self.num_classes
+        and sum([len(g) for g in groups]) == self.size): return groups
+
+    # Otherwise, generate a new group
+    groups = initialize_groups()
+    self.replace_stuff(self.GROUPS, groups)
+    return groups
+
   # endregion : Properties
 
-  # region : Overriden Methods
+  # region : Overrode Methods
 
   def __len__(self): return self.size
 
@@ -172,7 +201,7 @@ class DataSet(TFRData, Nomear):
     data_set = type(self)(data_dict=self._apply(f), name=self.name + '(slice)')
     return self._finalize(data_set, item)
 
-  # endregion : Overriden Methods
+  # endregion : Overrode Methods
 
   # region : Basic APIs
 
@@ -515,10 +544,12 @@ class DataSet(TFRData, Nomear):
         if isinstance(v, tuple) and len(v) == self.size:
           data_set.properties[k] = self._get_subset(v, indices)
 
+    # TODO: remove this block if everything is done
     # Groups should not be passed to subset
-    data_set.properties.pop(self.GROUPS, None)
-    if self.num_classes is not None and 'targets' in self.data_dict.keys():
-      data_set.refresh_groups()
+    # data_set.properties.pop(self.GROUPS, None)
+    # if self.num_classes is not None and 'targets' in self.data_dict.keys():
+    #   data_set.refresh_groups()
+
     return data_set
 
   def _select(self, batch_index, batch_size, upper_bound=None, training=False):
