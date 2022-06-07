@@ -165,7 +165,12 @@ class DataSet(TFRData, Nomear):
     """
     def initialize_groups():
       groups = []
-      dense_labels = misc.convert_to_dense_labels(self.targets)
+      if self.TARGETS in self.data_dict: targets = self.targets
+      else:
+        targets = self.summ_dict[self.TARGETS]
+        assert len(targets.shape) == 3 and targets.shape[1] == 1
+        targets = np.reshape(targets, (len(targets), -1))
+      dense_labels = misc.convert_to_dense_labels(targets)
       for i in range(self.num_classes):
         # Find samples of class i and append to groups
         samples = list(np.argwhere([j == i

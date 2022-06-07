@@ -444,6 +444,7 @@ class SequenceSet(DataSet):
   @staticmethod
   def _pad_sequences(sequences, max_steps):
     """Receive a list of irregular sequences and output a regular numpy array"""
+    if isinstance(sequences, np.ndarray): return sequences
     assert isinstance(sequences, list)
     checker.check_positive_integer(max_steps)
     checker.check_type(sequences, np.ndarray)
