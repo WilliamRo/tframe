@@ -621,7 +621,7 @@ class Model(object):
     return results
 
   def evaluate(self, fetches, data, batch_size=None, postprocessor=None,
-               verbose=False, num_steps=None, suppress_n_to_one=False):
+               verbose=False, num_steps=-1, suppress_n_to_one=False):
     """
     Evaluate tensors based on data
     TODO: note that if num_steps != -1, outputs from a same sequence may be
