@@ -547,7 +547,7 @@ class DataSet(TFRData, Nomear):
 
     if indices is not None:
       for k, v in self.properties.items():
-        if isinstance(v, tuple) and len(v) == self.size:
+        if isinstance(v, (list, tuple, np.ndarray)) and len(v) == self.size:
           data_set.properties[k] = self._get_subset(v, indices)
 
     # TODO: remove this block if everything is done
