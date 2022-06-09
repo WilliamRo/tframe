@@ -92,7 +92,7 @@ class DataSet(TFRData, Nomear):
     if self.num_classes is None: raise AssertionError(
       '!! # classes should be known for getting dense labels')
     # Try to convert dense labels from targets
-    targets = self.targets
+    targets = self[self.TARGETS]
     # Handle sequence summary situation
     if isinstance(targets, (list, tuple)):
       targets = np.concatenate(targets, axis=0)

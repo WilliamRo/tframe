@@ -131,9 +131,11 @@ class Classifier(Predictor):
     top_k = kwargs.get('export_top_k', 3)
 
     # Check data_set before get model prediction
-    assert self.input_type is InputTypes.BATCH
     assert isinstance(data_set, DataSet)
-    assert data_set.features is not None and data_set.targets is not None
+
+    # The assertions below is removed for RNN models
+    # assert self.input_type is InputTypes.BATCH
+    # assert data_set.features is not None and data_set.targets is not None
 
     # -------------------------------------------------------------------------
     #  Calculate predicted classes and corresponding probabilities

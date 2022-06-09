@@ -96,7 +96,13 @@ def convert_to_one_hot(labels, num_classes):
 
 
 def convert_to_dense_labels(one_hot):
+  """`one_hot` may be of shape [batch_size, 1, num_classes], which may appear
+  in seq_set.summ_dict"""
   assert isinstance(one_hot, np.ndarray)
+  # Convert targets in summ_dict if necessary
+  if len(one_hot.shape) == 3 and one_hot.shape[1] == 1:
+    one_hot = one_hot.reshape(one_hot.shape[0], -1)
+
   if len(one_hot.shape) == 1 or one_hot.shape[1] == 1: return one_hot
   assert len(one_hot.shape) == 2 and one_hot.shape[1] > 1
   return np.argmax(one_hot, axis=1)
