@@ -71,6 +71,7 @@ class ConfusionMatrix(object):
       c_preds = preds[mask]
       cm[c] = np.array([np.sum(c_preds==i) for i in range(self.num_classes)])
     assert np.sum(cm) == total
+    cm = cm.transpose()
 
     # Count positives and negatives
     self.TPs = cm.diagonal()
