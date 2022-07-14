@@ -121,7 +121,7 @@ class Note(object):
 
   def save(self, file_path):
     self._check_before_dump()
-    io_utils.save(file_path)
+    io_utils.save(self, file_path)
     # with open(file_path, 'wb') as f:
     #   pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
