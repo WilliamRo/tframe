@@ -277,6 +277,7 @@ class ConcatenateForGAN(Layer):
     return result
 
 
+
 class Bridge(Layer):
 
   full_name = 'bridge'
@@ -285,11 +286,13 @@ class Bridge(Layer):
 
   def __init__(self, conv_layer: Conv2D,
                guest_is_larger: Optional[bool] = None,
-               guest_first: bool = True):
+               guest_first: bool = True, use_weight=True):
     """Concatenate 2 convolutional mappings with necessary cropping"""
     self.conv_layer = conv_layer
     self.guest_is_larger = guest_is_larger
     self.guest_first = guest_first
+    self.use_weight = use_weight
+    self.weight_tensor = None
 
   @property
   def structure_tail(self):
@@ -302,6 +305,11 @@ class Bridge(Layer):
     assert isinstance(a, tf.Tensor)
     # Define utilities
     crop = lambda src, tgt: src[:, :tgt.shape[1], :tgt.shape[2]]
+
+    if self.use_weight:
+      self.weight_tensor = tf.get_variable('bridge_weight_tensor',dtype=tf.float32, initializer=[1.0])
+      a = self.weight_tensor * a
+      tf.add_to_collection('bridge_weight_tensor', self.weight_tensor)
 
     # Crop if necessary
     if self.guest_is_larger is True: a = crop(a, x)
