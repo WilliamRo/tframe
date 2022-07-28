@@ -214,19 +214,18 @@ class Reshape(Layer):
                    dimension
     """
     self.output_shape = shape
-
-  @single_input
-  def _link(self, input_, **kwargs):
     name = 'flatten' if self.output_shape is None else 'reshape'
     self.abbreviation = name
     self.full_name = name
 
+  @single_input
+  def _link(self, input_, **kwargs):
     input_shape = input_.get_shape().as_list()
     output_shape = ([-1, np.prod(input_shape[1:])]
                     if self.output_shape is None
                     else [-1] + list(self.output_shape))
 
-    output = tf.reshape(input_, output_shape, name=name)
+    output = tf.reshape(input_, output_shape, name=self.full_name)
     self.neuron_scale = get_scale(output)
     return output
 
@@ -239,7 +238,16 @@ class Input(Layer):
       dtype=None,
       name='Input',
       group_shape=None):
+    """Initialize an input layer.
 
+    :param sample_shape: shape of each sample input to a model (at each time
+                         step)
+    :param dtype: data type of this input
+    :param name: input name
+    :param group_shape: [None] (represents batch dimension) by default. For
+                        RNNs, it will be automatically set to [None, None]
+                        in `recurrent.py -> Recurrent._build` method
+    """
     # Check sample shape
     if sample_shape is not None:
       if not isinstance(sample_shape, (list, tuple)):
@@ -264,6 +272,8 @@ class Input(Layer):
 
 
   def set_group_shape(self, shape):
+    """Currently, this method will be only called by Recurrent outside this
+    module."""
     if shape is not None:
       if not isinstance(shape, (tuple, list)):
         raise TypeError('group_shape must be a list or a tuple')
@@ -283,7 +293,10 @@ class Input(Layer):
     tf.add_to_collection(pedia.default_feed_dict, input_)
     # Return placeholder
     self.place_holder = input_
+
     # TODO: RNNs do not support partially unknown input shape
+    # this block will cause an unnecessary reshape operator appearing
+    # in graph
     if not None in self.sample_shape:
       self.rnn_single_step_input = tf.reshape(
         input_, [-1] + list(self.sample_shape))

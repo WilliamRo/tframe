@@ -421,7 +421,7 @@ class Net(Function, Nomear):
       # If layer is a nucleus or the 1st layer added into this Net
       if f.is_nucleus or len(self.children) == 0:
         self._add_new_subnet(f)
-      # Otherwise add this layer to last Net of self.children
+      # Otherwise, add this layer to last Net of self.children
       container = self.add_to_last_net(f, only_cascade=True)
     else: raise ValueError('!! Object added to a Net must be a Layer or a Net')
 
