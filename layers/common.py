@@ -263,6 +263,8 @@ class Input(Layer):
 
     self.set_group_shape(group_shape)
 
+    self.dummy = False
+
 
   @property
   def input_shape(self):
@@ -285,8 +287,15 @@ class Input(Layer):
     # This method is only accessible by Function.__call__ thus a None will
     #   be given as input
     assert len(args) == 0 and len(kwargs) == 0
+
+    # Make dummy output if required
+    if self.dummy:
+      shape = [1] + list(self.sample_shape)
+      return tf.constant(np.zeros(shape, dtype=float), dtype=self.dtype)
+
     input_ = tf.placeholder(
       dtype=self.dtype, shape=self.input_shape, name=self.name)
+
     # Update neuron scale
     self.neuron_scale = get_scale(input_)
     # Add input to default collection

@@ -740,9 +740,9 @@ class Model(object):
 
     for tensor in default_feed_collection:
       # Get tensor name
-      name = tensor.name.split('/')[-1].split(':')[0]
+      name: str = tensor.name.split('/')[-1].split(':')[0]
 
-      if input_key in tensor.name.lower():
+      if input_key == name.lower():
         feed_dict[tensor] = batch[pedia.features]
       elif name == target_key:
       # elif tensor.name.lower() in (target_key,):

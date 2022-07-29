@@ -144,7 +144,7 @@ class Net(Function, Nomear):
 
     # Dense total will be used when model weights are pruned
     total_params, dense_total = 0, 0
-    if self.is_root:
+    if self.input_ is not None:
       rows.append(['input', shape_string(self.input_.sample_shape), ''])
 
     for child in self.children:
