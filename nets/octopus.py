@@ -75,7 +75,13 @@ class Octopus(Net):
       total_params += num
       dense_total += dense_num
 
+      # Show output id in structure detail if this branch is enabled
+      if w: rows[-1][0] += f':={child.output_id_str}'
+
     # Return
+    output_ids = [child.output_id_str for w, child in zip(
+      self.gates, self.children) if w]
+    rows.append([f'Sum({",".join(output_ids)})', rows[-1][1], ''])
     return rows, total_params, dense_total
 
   def structure_string(self, detail=True, scale=True):
@@ -143,6 +149,7 @@ class Octopus(Net):
     tensors = [child() for child in self.children]
 
     # Merge
-    return tf.add_n([w * tensor for w, tensor in zip(self.gates, tensors)])
+    if sum(self.gates) == 0: raise AssertionError('!! All inputs are disabled.')
+    return tf.add_n([tensor for w, tensor in zip(self.gates, tensors) if w])
 
   # endregion: APIs
