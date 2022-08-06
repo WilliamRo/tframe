@@ -32,6 +32,8 @@ class TrainerConfigs(object):
   batch_metric = Flag.string(None, 'Batch metric during training')
   eval_metric = Flag.string(None, 'Metric for evaluation')
 
+  save_records = Flag.boolean(True, 'Whether to save records')
+
   val_preheat = Flag.integer(0, 'metric = metric_batch[val_preheat:].mean')
   val_batch_size = Flag.integer(None, 'Batch size in batch validation')
   eval_batch_size = Flag.integer(None, 'Batch size in batch evaluation')

@@ -179,6 +179,14 @@ class MetricSlot(TensorSlot):
       self._record_summary.plug(tf.summary.scalar(
         '{}_record_sum'.format(self.name), self._record.tensor))
 
+      # Put metric tensor into 'do not save' list if required
+      from tframe import hub
+      if not hub.save_records:
+        from tframe import pedia
+        tf.add_to_collection(pedia.do_not_save, self._record._op)
+        tf.add_to_collection(pedia.do_not_save, self._mean_record._op)
+
+
   def _show_trend(self):
     tendency = ''
     if len(self._trend) > 0:
