@@ -8,7 +8,7 @@ from tframe import tf
 from collections import OrderedDict
 
 import tframe as tfr
-from tframe import pedia
+from tframe.core.nomear import Nomear
 
 from .flag import Flag
 from .advanced_configs import AdvancedConfigs
@@ -32,6 +32,7 @@ class Config(
   NoteConfigs,
   TrainerConfigs,
   RNNConfigs,
+  Nomear,
 ):
   registered = False
 

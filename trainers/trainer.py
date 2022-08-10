@@ -723,14 +723,17 @@ class Trainer(Nomear):
           self.th.take_note_in_beginning or self.th.validate_at_the_beginning)):
         return False
 
-    # Validate training set if necessary
-    if self.th.validate_train_set:
-      train_dict = self.model.validate_model(
-        self.training_set, self.th.val_batch_size, allow_sum=False,
+    # Validate datasets other than validation set
+    other_sets = []
+    other_sets.extend(self.th.additional_datasets_for_validation)
+    if self.th.validate_train_set: other_sets.append(self.training_set)
+
+    for ds in other_sets:
+      res_dict = self.model.validate_model(
+        ds, self.th.val_batch_size, allow_sum=False,
         verbose=self.th.val_progress_bar)
       # Record
-      self.metrics_manager.record_stats_on_dataset(
-        self.training_set, train_dict)
+      self.metrics_manager.record_stats_on_dataset(ds, res_dict)
 
     # Validate val_set and record
     if self.th.tic_toc: self.th.tic('__validate')
@@ -879,6 +882,9 @@ class TrainerHub(Config):
     self.logs = {}
 
   # region : Properties
+
+  @Config.property()
+  def additional_datasets_for_validation(self): return []
 
   @property
   def round_length(self):
