@@ -72,7 +72,10 @@ class Context(object):
         assert isinstance(self.notes, list)
         self.summary_file_path = summaries
       except:
+        import traceback
         print('!! Failed to load {}'.format(summaries))
+        print('Error message:' + '\n' + '-' * 79 + 'x')
+        print(traceback.format_exc() + '-' * 79 + 'x')
         return
       # Print status
       print('>> Loaded notes from `{}`'.format(self.summary_file_path))
