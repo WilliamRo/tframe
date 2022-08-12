@@ -531,7 +531,9 @@ class Model(object):
       #   self.agent.put_down_criterion('Best E({})', metric.mean_record)
 
     # Take down improvement if necessary
-    if not hub.overwrite:
+    if not hub.overwrite and hub.save_records:
+      # Improvement is for smart booster. For incremental learning tasks,
+      #  this criterion makes not sense.
       self.agent.put_down_criterion(
         'Improvement', self.metrics_manager.early_stop_slot.improvement)
 
