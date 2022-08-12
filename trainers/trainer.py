@@ -727,6 +727,7 @@ class Trainer(Nomear):
     other_sets = []
     other_sets.extend(self.th.additional_datasets_for_validation)
     if self.th.validate_train_set: other_sets.append(self.training_set)
+    if self.th.validate_test_set: other_sets.append(self.test_set)
 
     for ds in other_sets:
       res_dict = self.model.validate_model(
@@ -760,14 +761,6 @@ class Trainer(Nomear):
     if self.th.etch_on:
       self.model.agent.put_down_criterion(
         'Weight Fraction', context.pruner.weights_fraction)
-
-    # Validate test set if necessary TODO: BETA
-    if self.th.validate_test_set:
-      test_dict = self.model.validate_model(
-        self.test_set, self.th.val_batch_size, allow_sum=False,
-        verbose=self.th.val_progress_bar)
-      # Record
-      self.metrics_manager.record_stats_on_dataset(self.test_set, test_dict)
 
     # Print stats and return new_record flag
     self.metrics_manager.print_latest_stats(

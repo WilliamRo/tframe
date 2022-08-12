@@ -245,7 +245,7 @@ class MetricsManager(object):
     assert isinstance(stats_dict, OrderedDict)
     for data_set, sd in stats_dict.items():
       assert isinstance(data_set, DataSet) and isinstance(sd, OrderedDict)
-      data_prefix = data_set.name[:3]
+      data_prefix = data_set.name[:8]
       for slot, value in sd.items():
         scalar_dict['{} {}'.format(data_prefix, slot.symbol)] = value
 
