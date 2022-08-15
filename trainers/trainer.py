@@ -715,6 +715,11 @@ class Trainer(Nomear):
     assert pruner is not None
     pruner.etch_all()
 
+  def _validate_model_on(self, dataset: TFRData):
+    return self.model.validate_model(
+      dataset, self.th.val_batch_size, allow_sum=self.th.summary,
+      verbose=self.th.val_progress_bar, seq_detail=self.th.val_info_splits > 0)
+
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
     # Validate cycle should be met
@@ -730,17 +735,13 @@ class Trainer(Nomear):
     if self.th.validate_test_set: other_sets.append(self.test_set)
 
     for ds in other_sets:
-      res_dict = self.model.validate_model(
-        ds, self.th.val_batch_size, allow_sum=False,
-        verbose=self.th.val_progress_bar)
+      res_dict = self._validate_model_on(ds)
       # Record
       self.metrics_manager.record_stats_on_dataset(ds, res_dict)
 
     # Validate val_set and record
     if self.th.tic_toc: self.th.tic('__validate')
-    val_dict = self.model.validate_model(
-      self.validation_set, self.th.val_batch_size, allow_sum=self.th.summary,
-      verbose=self.th.val_progress_bar, seq_detail=self.th.val_info_splits > 0)
+    val_dict = self._validate_model_on(self.validation_set)
 
     if self.th.tic_toc:
       time_elapsed = self.th.toc('__validate') * 1000
