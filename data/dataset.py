@@ -250,7 +250,9 @@ class DataSet(TFRData, Nomear):
     if batch_size == -1: batch_size = self.size
 
     # Generate batches
-    self._init_indices(shuffle)
+    # !! Without `if is_training:`, error will occur if th.validate_train_set
+    #    is on
+    if is_training: self._init_indices(shuffle)
     for i in range(round_len):
       indices = self._select(i, batch_size, training=is_training)
       # Get subset
