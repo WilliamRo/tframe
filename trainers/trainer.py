@@ -680,7 +680,7 @@ class Trainer(Nomear):
       if not (self.counter == 1 and self.th.take_note_in_beginning): return
     # Loss history should not be blank
     if not self.batch_loss_stat.last_value: return
-    # Validation history should no be blank if validation is on
+    # Validation history should not be blank if validation is on
     if self.th.validation_on:
       if not self.metrics_manager.ready_for_note_taking: return
 
