@@ -16,6 +16,3 @@ def update_job_dir(id, model_name):
   task_dir = os.path.dirname(file)
   th.job_dir = os.path.join(task_dir, '{:02d}_{}'.format(id, model_name))
 
-
-  print()
-
