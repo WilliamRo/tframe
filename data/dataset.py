@@ -410,22 +410,37 @@ class DataSet(TFRData, Nomear):
     # Get total size according to over_classes flag
     total_size = self.size
     if over_classes:
-      sample_nums = [len(g) for g in self.groups]
-      for n in sample_nums: assert n == sample_nums[0]
-      total_size = sample_nums[0]
+      # Auto-size is forbidden when `over_classes` option is on
+      if auto_index >= 0: raise AssertionError(
+        '!! Auto-size is not allowed when `over_classes` is True')
+
+      # ----------------------------------------------------------------- x
+      # TODO 1
+      # # Find sample numbers for each class
+      # sample_nums = [len(g) for g in self.groups]
+      #
+      # for n in sample_nums: assert n == sample_nums[0]
+      # total_size = sample_nums[0]
+      # ----------------------------------------------------------------- x
+
     # Calculate size automatically if necessary
     if auto_index >= 0:
       sizes[auto_index] = total_size - size_accumulator
       if sizes[auto_index] < 0: raise ValueError(
         '!! negative value appears when calculating size automatically')
-    elif size_accumulator != total_size: raise ValueError(
+    elif not over_classes and size_accumulator != total_size: raise ValueError(
       '!! total size does not match size of the data set to split')
 
     # Split data set
     data_sets, cursor = (), 0
     indices_pool = set(range(self.size))
     if over_classes:
-      group_pool = [set(range(total_size)) for _ in self.groups]
+      group_pool = [g[:] for g in self.groups]
+      if random: group_pool = [np.random.permutation(g) for g in group_pool]
+      # ----------------------------------------------------------------- x
+      # TODO 2
+      # group_pool = [set(range(total_size)) for _ in self.groups]
+      # ----------------------------------------------------------------- x
     for i, size in enumerate(sizes):
       if size == 0: continue
       # Generate indices
@@ -436,15 +451,30 @@ class DataSet(TFRData, Nomear):
           indices = np.random.choice(list(indices_pool), size, replace=False)
           indices_pool -= set(indices)
       else:
-        indices = []
-        if not random:
-          for g in self.groups:
-            indices += g[slice(cursor, cursor + size)]
+        # Calculate proportion of i-th sub-dataset
+        p = size / size_accumulator
+        # Wrap remains as last dataset
+        if i == len(sizes) - 1:
+          indices = np.concatenate(group_pool)
         else:
+          indices = []
           for j, g in enumerate(group_pool):
-            idcs = np.random.choice(list(g), size, replace=False)
-            group_pool[j] = g - set(idcs)
-            for idx in idcs: indices.append(self.groups[j][idx])
+            n = int(p * len(self.groups[j]))
+            indices.extend(g[:n])
+            group_pool[j] = g[n:]
+
+          # ----------------------------------------------------------------- x
+          # TODO 3
+          # if not random:
+          #   for g in self.groups:
+          #     indices += g[slice(cursor, cursor + size)]
+          # else:
+          #   for j, g in enumerate(group_pool):
+          #     idcs = np.random.choice(list(g), size, replace=False)
+          #     group_pool[j] = g - set(idcs)
+          #     for idx in idcs: indices.append(self.groups[j][idx])
+          # ----------------------------------------------------------------- x
+
       # Get subset
       data_set = self[indices]
       if names is not None: data_set.name = names[i]
