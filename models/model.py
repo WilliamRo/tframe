@@ -95,6 +95,9 @@ class Model(object):
     self._built = False
     self._scheme = None
 
+    self._shadows = {}
+    self._shadow_assign_group = None
+
     # Public attributes
     self.counter = None
     self.rounds = None
@@ -232,6 +235,8 @@ class Model(object):
     if 'optimizer' not in kwargs: kwargs['optimizer'] = hub.get_optimizer()
     # Call successor's _build method
     self._build(**kwargs)
+    # Initialize shadow vars if necessary
+    self._init_shadows()
     # Initialize monitor
     self._init_monitor()
     # Set built flag
@@ -274,6 +279,26 @@ class Model(object):
     pass
     # TODO
     # if tfr.monitor.activated: tfr.monitor.init_monitor(self)
+
+  def _init_shadows(self):
+    assert len(self._shadows) == 0
+    if not hub.create_shadow_vars: return
+    # Create shadows
+    assign_slots = []
+    with tf.name_scope('Shadows'):
+      for v in tf.trainable_variables():
+        name = v.name.split(':')[0] + '-shadow'
+        shape = v.shape.as_list()
+        shadow = tf.Variable(np.zeros(shape, dtype=np.float32),
+                             trainable=False, name=name, shape=shape)
+        self._shadows[v] = shadow
+        # Create assigning ops
+        slot = OperationSlot(self)
+        slot.plug(tf.assign(shadow, v))
+        assign_slots.append(slot)
+
+    # OperationSlot
+    self._shadow_assign_group = Group(self, *assign_slots, name='AssignShadow')
 
   @with_graph
   def _define_train_step(self, optimizer=None, var_list=None):
@@ -553,6 +578,10 @@ class Model(object):
   # endregion : Training
 
   # region : Public Methods
+
+  def synchronize_shadow(self):
+    self._shadow_assign_group.run()
+    console.show_status('Shadow synchronized.')
 
   def handle_structure_detail(self):
     detail, total_params, dense_total = '', 0, 0

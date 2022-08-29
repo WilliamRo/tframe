@@ -352,6 +352,12 @@ class Trainer(Nomear):
       assert len(ds_dict) == 0
       self._save_model()
 
+    # Save shadow if required
+    if hub.save_shadow_vars:
+      self.model.agent.load()
+      self.model.synchronize_shadow()
+      self._save_model()
+
     return rnd
 
   def _inner_loop(self, rnd):

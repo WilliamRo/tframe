@@ -89,4 +89,13 @@ class AdvancedConfigs(object):
 
   # endregion: Quantization
 
+  # region: Incremental Learning
+
+  create_shadow_vars = Flag.boolean(
+    False, 'Whether to create shadows for all trainable vars')
+  save_shadow_vars = Flag.boolean(
+    False, 'Whether to save shadow variables after training')
+
+  # endregion: Incremental Learning
+
 
