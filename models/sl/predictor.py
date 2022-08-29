@@ -106,6 +106,9 @@ class Predictor(Feedforward, Recurrent):
     # Initiate targets and add it to collection
     self._plug_target_in(self.outputs.shape_list)
 
+    # Initialize shadow vars if necessary
+    self._init_shadows()
+
     # Define loss. Some tensorflow apis only support calculating logits
     with tf.name_scope('Loss'):
       # (1) main loss

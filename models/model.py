@@ -235,8 +235,6 @@ class Model(object):
     if 'optimizer' not in kwargs: kwargs['optimizer'] = hub.get_optimizer()
     # Call successor's _build method
     self._build(**kwargs)
-    # Initialize shadow vars if necessary
-    self._init_shadows()
     # Initialize monitor
     self._init_monitor()
     # Set built flag
