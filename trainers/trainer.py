@@ -353,7 +353,7 @@ class Trainer(Nomear):
       self._save_model()
 
     # Save shadow if required
-    if hub.save_shadow_vars:
+    if hub.create_shadow_vars and hub.save_shadow_vars:
       self.model.agent.load()
       self.model.synchronize_shadow()
       self._save_model()

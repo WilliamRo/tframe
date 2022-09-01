@@ -47,6 +47,9 @@ class Context(Nomear):
     # pruner will be initiated in the early stage of model building
     self.pruner = None
 
+    # puller will be initiated ...
+    self.puller = None
+
     # Sparse tensor list
     self.weights_list = []
     self.sparse_weights_list = []

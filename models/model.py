@@ -95,7 +95,7 @@ class Model(object):
     self._built = False
     self._scheme = None
 
-    self._shadows = {}
+    self.shadows = OrderedDict()
     self._shadow_assign_group = None
 
     # Public attributes
@@ -224,12 +224,19 @@ class Model(object):
 
     # Smooth out flags before important actions
     hub.smooth_out_conflicts()
+
     # Initialize pruner if necessary
     if any([hub.prune_on, hub.weights_mask_on, hub.etch_on,
             hub.force_to_use_pruner]):
       # import here to prevent circular import (temporarily)
       from tframe.advanced.prune.pruner import Pruner
       tfr.context.pruner = Pruner(self)
+
+    # Initialize puller (before init_shadow is called) if required
+    if hub.cl_reg_on:
+      from tframe.advanced.synapspring.puller import Puller
+      tfr.context.puller = Puller(self)
+
     # If optimizer if not provided here, try hub.get_optimizer()
     #   this requires that th.optimizer and th.learning_rate have been provided
     if 'optimizer' not in kwargs: kwargs['optimizer'] = hub.get_optimizer()
@@ -279,7 +286,7 @@ class Model(object):
     # if tfr.monitor.activated: tfr.monitor.init_monitor(self)
 
   def _init_shadows(self):
-    assert len(self._shadows) == 0
+    assert len(self.shadows) == 0
     if not hub.create_shadow_vars: return
     # Create shadows
     assign_slots = []
@@ -289,7 +296,7 @@ class Model(object):
         shape = v.shape.as_list()
         shadow = tf.Variable(np.zeros(shape, dtype=np.float32),
                              trainable=False, name=name, shape=shape)
-        self._shadows[v] = shadow
+        self.shadows[v] = shadow
         # Create assigning ops
         slot = OperationSlot(self)
         slot.plug(tf.assign(shadow, v))

@@ -50,6 +50,10 @@ class AdvancedConfigs(object):
     if self.de_lambda is None: return None
     return Flag.parse_comma(self.de_lambda, float)
 
+  @property
+  def cl_reg_on(self):
+    return self.cl_reg_config is not None
+
   # endregion : Dynamic Evaluation
 
   # region : Attention Related
@@ -91,10 +95,15 @@ class AdvancedConfigs(object):
 
   # region: Incremental Learning
 
+  cl_reg_config = Flag.string(
+    None, 'Configuration of continual learning using regularization method',
+    is_key=None)
+  cl_reg_lambda = Flag.float(0.0, 'lambda for cl reg methods', is_key=None)
+
   create_shadow_vars = Flag.boolean(
     False, 'Whether to create shadows for all trainable vars')
   save_shadow_vars = Flag.boolean(
-    False, 'Whether to save shadow variables after training')
+    True, 'Whether to save shadow variables after training')
 
   # endregion: Incremental Learning
 
