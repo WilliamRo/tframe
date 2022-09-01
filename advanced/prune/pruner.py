@@ -8,7 +8,7 @@ import numpy as np
 import tframe as tfr
 from tframe.enums import SaveMode
 
-from tframe.operators.prune.etches.etch_kernel import EtchKernel
+from tframe.advanced.prune.etches.etch_kernel import EtchKernel
 
 
 class Pruner(object):

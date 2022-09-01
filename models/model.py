@@ -228,7 +228,7 @@ class Model(object):
     if any([hub.prune_on, hub.weights_mask_on, hub.etch_on,
             hub.force_to_use_pruner]):
       # import here to prevent circular import (temporarily)
-      from tframe.operators.prune.pruner import Pruner
+      from tframe.advanced.prune.pruner import Pruner
       tfr.context.pruner = Pruner(self)
     # If optimizer if not provided here, try hub.get_optimizer()
     #   this requires that th.optimizer and th.learning_rate have been provided

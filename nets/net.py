@@ -353,7 +353,6 @@ class Net(Function, Nomear):
     self._tensor_extractors.append(extractor)
 
   def add_to_last_net(self, layer, only_cascade=False):
-    from tframe.nets.rnet import RNet
 
     if len(self.children) == 0:
       raise AssertionError('!! This net does not have children')
@@ -582,7 +581,7 @@ class Net(Function, Nomear):
 
     # if hub.export_masked_weights and hub.pruning_rate_fc > 0:
     if hub.export_masked_weights:
-      from tframe.operators.prune.pruner import Pruner
+      from tframe.advanced.prune.pruner import Pruner
       Pruner.extractor()
 
     if hub.export_sparse_weights:

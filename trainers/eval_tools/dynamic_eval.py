@@ -5,16 +5,15 @@ from __future__ import print_function
 from collections import OrderedDict
 
 from tframe import hub as th
-from tframe import console, checker
+from tframe import console
 from tframe.utils.display.table import Table
 from tframe.models.model import Model
-from tframe.data.dataset import DataSet
 from tframe.core.quantity import Quantity
 
 from tframe.data.dataset import DataSet
 from tframe.data.sequences.seq_set import SequenceSet
 
-from tframe.advanced.krause_evaluator import KrauseEvaluator
+from tframe.advanced.misc.krause_evaluator import KrauseEvaluator
 
 
 class DynamicEvaluator(object):
