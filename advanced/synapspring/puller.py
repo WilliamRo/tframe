@@ -31,7 +31,7 @@ class Puller(Nomear):
 
   # region: Private Methods
 
-  def _init_spring(self):
+  def _init_spring(self) -> SpringBase:
     key = th.cl_reg_config.split(':')[0]
     if key in ('synaptic-intelligence', 'si'):
       from .springs.si import SynapticIntelligence as Spring
@@ -43,7 +43,7 @@ class Puller(Nomear):
 
     console.show_status(f'Spring type `{key}` registered to puller.')
 
-    return Spring()
+    return Spring(self._model)
 
   def _safely_register_customized_loss_f_net(self):
     f_net = self._calculate_spring_loss
@@ -55,6 +55,6 @@ class Puller(Nomear):
     context.customized_loss_f_net = f_net
 
   def _calculate_spring_loss(self, model) -> list:
-    return [self.spring.calculate_loss(model)]
+    return [self.spring.calculate_loss()]
 
   # endregion: Private Methods

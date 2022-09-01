@@ -352,6 +352,11 @@ class Trainer(Nomear):
       assert len(ds_dict) == 0
       self._save_model()
 
+    # Update puller's omega if necessary
+    if hub.cl_reg_on:
+      self.model.agent.load()
+      context.puller.spring.update_omega_after_training()
+
     # Save shadow if required
     if hub.create_shadow_vars and hub.save_shadow_vars:
       self.model.agent.load()
@@ -532,6 +537,10 @@ class Trainer(Nomear):
     if self.th.monitor_weight_grads:
       grads = loss_dict.pop(self.model.grads_slot)
       context.monitor.record_grads(grads)
+
+    # Do something for cl-reg if necessary
+    if self.th.cl_reg_on:
+      context.puller.spring.call_after_each_update()
 
     # TODO: beta
     if self.th.monitor_weight_flips: context.monitor.record_weights()

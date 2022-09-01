@@ -109,6 +109,10 @@ class Predictor(Feedforward, Recurrent):
     # Initialize shadow vars if necessary
     self._init_shadows()
 
+    # Initialize variables for continual learning regularizer calculation
+    if hub.cl_reg_on:
+      context.puller.spring.init_after_linking_before_calc_loss()
+
     # Define loss. Some tensorflow apis only support calculating logits
     with tf.name_scope('Loss'):
       # (1) main loss
