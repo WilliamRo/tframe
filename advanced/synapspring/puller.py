@@ -6,6 +6,7 @@ from collections import OrderedDict
 from tframe import context
 from tframe.core.nomear import Nomear
 from tframe import hub as th
+from tframe import console
 
 import numpy as np
 
@@ -22,7 +23,6 @@ class Puller(Nomear):
     self.shadows = OrderedDict()
 
     self.spring: SpringBase = self._init_spring()
-
     self._safely_register_customized_loss_f_net()
 
   # region: Public Methods
@@ -40,6 +40,8 @@ class Puller(Nomear):
     elif key in ('l2', ):
       from .springs.spring_base import SpringBase as Spring
     else: raise KeyError(f'!! Unknown spring type `{key}')
+
+    console.show_status(f'Spring type `{key}` registered to puller.')
 
     return Spring()
 
