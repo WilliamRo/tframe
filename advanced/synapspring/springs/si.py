@@ -14,9 +14,6 @@ class SynapticIntelligence(SpringBase):
     # Call parent's initializer
     super(SynapticIntelligence, self).__init__(model)
 
-    # Initialize omega as 0
-    self.init_after_linking_before_calc_loss()
-
     self.epsilon = 1e-8
 
   # region: Properties

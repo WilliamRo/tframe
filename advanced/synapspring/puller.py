@@ -41,7 +41,8 @@ class Puller(Nomear):
       from .springs.spring_base import SpringBase as Spring
     else: raise KeyError(f'!! Unknown spring type `{key}')
 
-    console.show_status(f'Spring type `{key}` registered to puller.')
+    console.show_status(f'Spring type `{key}` registered to puller.',
+                        symbol=f'[Puller]')
 
     return Spring(self._model)
 

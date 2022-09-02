@@ -2,6 +2,8 @@ import numpy as np
 
 from collections import OrderedDict
 
+from tframe import console
+from tframe import context
 from tframe.core.nomear import Nomear
 from tframe import tf
 from tframe import hub as th
@@ -9,6 +11,8 @@ from tframe import hub as th
 
 
 class SpringBase(Nomear):
+
+  name = 'CL-REG-L2'
 
   def __init__(self, model):
     # Every spring use shadow vars
@@ -45,11 +49,13 @@ class SpringBase(Nomear):
     loss_list = []
     for v in vars:
       s = shadows[v]
-      loss_list.append(tf.reduce_mean(tf.square(s - v)))
+      omega = self.omegas[v]
+      loss_list.append(tf.reduce_mean(omega * tf.square(s - v)))
 
-    return tf.multiply(th.cl_reg_lambda, tf.add_n(loss_list), name='cl_reg_l2')
+    return tf.multiply(th.cl_reg_lambda, tf.add_n(loss_list), name=self.name)
 
   def init_after_linking_before_calc_loss(self):
+    """This method will be called inside Predictor._build"""
     # Initialize omega as zeros
     with tf.name_scope('Shadows'):
       for v in self.variables:
@@ -59,12 +65,30 @@ class SpringBase(Nomear):
                              trainable=False, name=name, shape=shape)
         self.omegas[v] = shadow
 
+    self._show_status('Omegas has been initiated.')
+
   def call_after_each_update(self):
     pass
 
   def update_omega_after_training(self):
-    pass
+    self.model.agent.load()
+
+    ops = []
+    for v in self.variables:
+      shape = v.shape.as_list()
+      ops.append(tf.assign(self.omegas[v], 1e6 * np.ones(shape)))
+    self.model.session.run(ops)
+
+    context.trainer._save_model()
+    self._show_status('Omegas has been saved.')
 
   # endregion: Abstract Methods
+
+  # region: Private Methods
+
+  def _show_status(self, text):
+    console.show_status(text, symbol=f'[{self.name}]')
+
+  # endregion: Private Methods
 
 

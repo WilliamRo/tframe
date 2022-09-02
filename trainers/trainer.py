@@ -354,7 +354,6 @@ class Trainer(Nomear):
 
     # Update puller's omega if necessary
     if hub.cl_reg_on:
-      self.model.agent.load()
       context.puller.spring.update_omega_after_training()
 
     # Save shadow if required
