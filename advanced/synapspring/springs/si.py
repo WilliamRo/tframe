@@ -20,7 +20,7 @@ class SynapticIntelligence(SpringBase):
     th.monitor_weight_grads = True
     th.monitor_weight_history = True
 
-    self.epsilon = 1e-8
+    self.epsilon = 1e-3
 
   # region: Properties
 
