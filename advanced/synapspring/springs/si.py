@@ -3,16 +3,22 @@ from collections import OrderedDict
 import numpy as np
 
 from tframe.advanced.synapspring.springs.spring_base import SpringBase
-from tframe import tf
+from tframe import context
 from tframe import hub as th
-
+from tframe import tf
+from tframe.utils.maths.stat_tools import Statistic
 
 
 class SynapticIntelligence(SpringBase):
+  """This module implements Synaptic Intelligence proposed in
+     Zenke, et. al., 2017.
+  """
 
   def __init__(self, model):
     # Call parent's initializer
     super(SynapticIntelligence, self).__init__(model)
+    th.monitor_weight_grads = True
+    th.monitor_weight_history = True
 
     self.epsilon = 1e-8
 
@@ -38,16 +44,34 @@ class SynapticIntelligence(SpringBase):
     loss_list = []
     for v in vars:
       s = shadows[v]
-      loss_list.append(tf.reduce_mean(tf.square(s - v)))
+      omega = self.omegas[v]
+      loss_list.append(tf.reduce_sum(omega * tf.square(s - v)))
 
-    return tf.multiply(th.cl_reg_lambda, tf.add_n(loss_list), name='cl_reg_l2')
+    return tf.multiply(th.cl_reg_lambda, tf.add_n(loss_list), name=self.name)
 
   def call_after_each_update(self):
     """Update importance estimates"""
-    # TODO
-    pass
 
-  def update_omega_after_training(self):
+    assert th.monitor_weight_grads
+    monitor = context.monitor
+    grads = monitor._weight_grad_dict
+    weight_history = monitor._weight_history
+
+    for v in self.variables:
+      # Calculate w_delta
+      s: Statistic = weight_history[v]
+      assert len(s._value_list) == 2
+      w_delta = s.last_value - s._value_list[0]
+
+      # Get grad at current step
+      g = grads[v].last_value
+
+      # Update importance estimates
+      w = self.importance_estimates[v]
+      w = w - g * w_delta
+      self.importance_estimates[v] = w
+
+  def _update_omega(self):
     ops = []
     for v in self.variables:
       w = self.importance_estimates[v]

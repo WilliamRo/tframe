@@ -34,7 +34,7 @@ class Monitor(object):
     self._grad_researchers = []
 
     # TODO: beta
-    self._weight_flip_dict = collections.OrderedDict()
+    self._weight_history = collections.OrderedDict()
     self._weight_flip_count = collections.OrderedDict()
 
   # region : Properties
@@ -158,8 +158,8 @@ class Monitor(object):
       self._weight_grad_dict[w] = Statistic(
         max_length=tfr.hub.stats_max_length, keep_abs_acc=True)
       # TODO: BETA
-      if tfr.hub.monitor_weight_flips:
-        self._weight_flip_dict[w] = Statistic(max_length=2, keep_abs_acc=False)
+      if tfr.hub.monitor_weight_history:
+        self._weight_history[w] = Statistic(max_length=2, keep_abs_acc=False)
 
   def register_loss(self, loss):
     """Currently tensors inside while_loop are not considered.
@@ -198,11 +198,14 @@ class Monitor(object):
     """
     weights = tfr.context.trainer.model.agent.session.run(self._weights_list)
     for w, current_w in zip(self._weights_list, weights):
-      s = self._weight_flip_dict[w]
+      s = self._weight_history[w]
       assert isinstance(s, Statistic)
       last_w = s.last_value
       s.record(current_w)
       if last_w is None: continue
+
+      if not tfr.hub.monitor_weight_flips: continue
+
       # Calculate flip matrix and update flip matrices
       flips = current_w * last_w < 0
       alpha, beta = tfr.hub.flip_alpha, tfr.hub.flip_beta
@@ -211,7 +214,7 @@ class Monitor(object):
           beta * self.get_weight_flip_count(w) + alpha * flips)
 
   def get_weight_flip_count(self, weights):
-    assert weights in self._weight_flip_dict
+    assert weights in self._weight_history
     if weights not in self._weight_flip_count:
       count = np.zeros(shape=weights.shape.as_list(), dtype=int)
       self._weight_flip_count[weights] = count

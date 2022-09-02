@@ -15,9 +15,12 @@ class MonitorConfigs(object):
   # monitor_postact = Flag.boolean(False, 'Whether to enable post-act summary')
   monitor_weight_grads = Flag.boolean(False, 'Whether to monitor weights grad')
   monitor_weight_flips = Flag.boolean(False, 'Whether to monitor weights flips')
+  monitor_weight_history = Flag.boolean(False, 'Whether to monitor weights '
+                                               'history')
 
   def smooth_out_monitor_configs(self):
-    pass
+    if self.monitor_weight_flips:
+      self.monitor_weight_history = True
 
     # if self.monitor in (True, False):
     #   self.monitor_grad = self.monitor

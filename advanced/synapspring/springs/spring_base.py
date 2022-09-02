@@ -57,7 +57,7 @@ class SpringBase(Nomear):
   def init_after_linking_before_calc_loss(self):
     """This method will be called inside Predictor._build"""
     # Initialize omega as zeros
-    with tf.name_scope('Shadows'):
+    with tf.name_scope('Omega'):
       for v in self.variables:
         name = v.name.split(':')[0] + '-omega'
         shape = v.shape.as_list()
@@ -73,14 +73,17 @@ class SpringBase(Nomear):
   def update_omega_after_training(self):
     self.model.agent.load()
 
+    self._update_omega()
+
+    context.trainer._save_model()
+    self._show_status('Omegas has been saved.')
+
+  def _update_omega(self):
     ops = []
     for v in self.variables:
       shape = v.shape.as_list()
       ops.append(tf.assign(self.omegas[v], 1e6 * np.ones(shape)))
     self.model.session.run(ops)
-
-    context.trainer._save_model()
-    self._show_status('Omegas has been saved.')
 
   # endregion: Abstract Methods
 

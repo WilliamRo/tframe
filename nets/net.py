@@ -572,7 +572,7 @@ class Net(Function, Nomear):
   # region : Build-in extractors
 
   def variable_extractor(self):
-    """"""
+    """Extract variables to export"""
     get_key = lambda v: '/'.join(v.name.split('/')[1:])
     def add_to_dict(v): context.variables_to_export[get_key(v)] = v
 
@@ -599,8 +599,10 @@ class Net(Function, Nomear):
     if not hub.monitor_weight_grads: return
     monitor = context.monitor
 
+    # modified on 2022-09-02
+    monitor.register_weights(self.var_list)
     # weights of type tf.Variable
-    monitor.register_weights(self.weight_vars)
+    # monitor.register_weights(self.weight_vars)
 
     # TODO: register masked_weights and sparse weights
 

@@ -267,6 +267,10 @@ class Trainer(Nomear):
   def _outer_loop(self):
     hub = self.th
     rnd = 0
+
+    # Record weights before training
+    if hub.monitor_weight_history: context.monitor.record_weights()
+
     # Validate model at the beginning if required
     if self.th.validate_at_the_beginning: self._validate_model(rnd=1)
     # Set lr decay variables
@@ -537,12 +541,13 @@ class Trainer(Nomear):
       grads = loss_dict.pop(self.model.grads_slot)
       context.monitor.record_grads(grads)
 
+    # Monitor weight history for etching and cl-reg
+    if self.th.monitor_weight_history:
+      context.monitor.record_weights()
+
     # Do something for cl-reg if necessary
     if self.th.cl_reg_on:
       context.puller.spring.call_after_each_update()
-
-    # TODO: beta
-    if self.th.monitor_weight_flips: context.monitor.record_weights()
 
     # Record other tensors
     if self.model.general_tensor_slot.activated:
