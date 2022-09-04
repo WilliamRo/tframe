@@ -14,6 +14,8 @@ class SynapticIntelligence(SpringBase):
      Zenke, et. al., 2017.
   """
 
+  name = 'CL-REG-SI'
+
   def __init__(self, model):
     # Call parent's initializer
     super(SynapticIntelligence, self).__init__(model)

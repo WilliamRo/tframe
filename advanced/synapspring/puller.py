@@ -39,11 +39,14 @@ class Puller(Nomear):
       pass
     elif key in ('l2', ):
       from .springs.spring_base import SpringBase as Spring
+    elif key in context.depot:
+      Spring = context.depot[key]
     else: raise KeyError(f'!! Unknown spring type `{key}')
 
     console.show_status(f'Spring type `{key}` registered to puller.',
                         symbol=f'[Puller]')
 
+    assert issubclass(Spring, SpringBase)
     return Spring(self._model)
 
   def _safely_register_customized_loss_f_net(self):

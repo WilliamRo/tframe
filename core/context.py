@@ -110,6 +110,9 @@ class Context(Nomear):
     return self.get_collection_by_key(
       self._VARIABLE_EXPORT_DICT, init_if_necessary=True, val_type=dict)
 
+  @Nomear.property()
+  def depot(self): return OrderedDict()
+
   # endregion : Properties
 
   # region : Public Methods
