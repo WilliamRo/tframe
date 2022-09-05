@@ -113,6 +113,10 @@ class TrainerConfigs(object):
   wmxe_min = Flag.float(
     0.1, 'Minimum value of weights used in weighted M[SA]E', is_key=None)
 
+  probe_func = Flag.whatever(None, 'Probe function')
+  customized_tensors_to_export = Flag.whatever(
+    None, 'Customized tensors to export')
+
 
   @property
   def lr_decay_enabled(self):

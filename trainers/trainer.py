@@ -689,6 +689,11 @@ class Trainer(Nomear):
       for key, value in context.monitor.stats_dict.items():
         _add_to_dict(key, value)
 
+    # Add customized tensors to export
+    if callable(self.th.customized_tensors_to_export):
+      for key, value in self.th.customized_tensors_to_export().items():
+        _add_to_dict(key, value)
+
     return tensor_dict
 
   def _take_notes_for_export(self):
