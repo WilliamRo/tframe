@@ -455,7 +455,7 @@ class DataSet(TFRData, Nomear):
         p = size / size_accumulator
         # Wrap remains as last dataset
         if i == len(sizes) - 1:
-          indices = np.concatenate(group_pool)
+          indices = np.concatenate(group_pool).astype(np.int)
         else:
           indices = []
           for j, g in enumerate(group_pool):

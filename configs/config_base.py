@@ -97,6 +97,8 @@ class Config(
 
   tic_toc = Flag.boolean(False, 'Whether to track time')
 
+  depot = Flag.whatever({}, 'You can put whatever things here')
+
   # A dictionary for highest priority setting
   _backdoor = {}
 
