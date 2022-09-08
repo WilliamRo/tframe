@@ -44,7 +44,8 @@ class KernelBase(object):
     self.initializer = initializers.get(initializer)
     assert 0 <= prune_frac <= 1
     # IMPORTANT
-    self.prune_frac = prune_frac * hub.pruning_rate
+    self.prune_frac = 0
+    if hub.prune_on: self.prune_frac = prune_frac * hub.pruning_rate
     self.etch = etch
 
     self.weight_dropout = checker.check_type(weight_dropout, float)

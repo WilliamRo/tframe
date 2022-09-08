@@ -50,8 +50,7 @@ class Model(object):
       self.mark += '_Sc' + hub.script_suffix
     # TODO: set prune iteration number.
     #       At this time configs conflicts are not smoothed.
-    if hub.prune_on or hub.pruning_rate > 0:
-      self.mark += '_pr{}'.format(hub.pruning_iterations)
+    if hub.prune_on: self.mark += '_pr{}'.format(hub.pruning_iterations)
     hub.mark = self.mark
 
     # Each model has an agent to deal with some tensorflow stuff
