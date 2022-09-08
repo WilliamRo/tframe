@@ -603,6 +603,20 @@ class DataSet(TFRData, Nomear):
       assert hub.shuffle
       return list(np.random.randint(0, self.size, batch_size))
 
+    # Green pass for class balancing
+    if training and hub.balance_classes:
+      N = self.num_classes
+      assert isinstance(N, int) and len(self.groups) == N
+      n = batch_size // N
+      cls_nums = [n] * N
+      r = batch_size - n * N
+      for i in np.random.choice(range(N), r): cls_nums[i] += 1
+
+      indices = []
+      for i in range(N): indices.extend(
+        np.random.choice(self.groups[i], cls_nums[i]))
+      return indices
+
     from_index = batch_index * batch_size
     to_index = min((batch_index + 1) * batch_size, upper_bound)
     indices = list(range(from_index, to_index))

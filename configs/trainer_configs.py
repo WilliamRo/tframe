@@ -117,6 +117,9 @@ class TrainerConfigs(object):
   customized_tensors_to_export = Flag.whatever(
     None, 'Customized tensors to export')
 
+  balance_classes = Flag.boolean(
+    False, 'Whether to balance classes during training', is_key=None)
+
 
   @property
   def lr_decay_enabled(self):
