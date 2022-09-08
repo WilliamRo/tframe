@@ -128,7 +128,7 @@ class Agent(object):
     if not hub.save_model and hub.overwrite: return False, 0, None
 
     ckpt_dir = self.ckpt_dir
-    if first_time and hub.mark_to_load is not None:
+    if first_time and hub.mark_to_load not in ('', None):
       ckpt_dir = check_path(self.root_path, hub.ckpt_folder_name,
                             hub.mark_to_load, create_path=False)
 
