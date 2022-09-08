@@ -7,7 +7,10 @@ from .flag import Flag
 
 class ModelConfigs(object):
 
-  mark = Flag.string(None, 'Model identifier', is_key=True)
+  mark = Flag.string(None, 'Model identifier, aka mark to save', is_key=True)
+
+  mark_to_load = Flag.string(None, 'Mark to load', is_key=None)
+
   prefix = Flag.string(None, 'Prefix to mark')
   suffix = Flag.string(None, 'Suffix to mark')
   script_suffix = Flag.string(None, 'Suffix used in script helper')
@@ -111,8 +114,7 @@ class ModelConfigs(object):
     0, 'Warm-up rounds for etching', is_key=None)
   etch_warm_up_steps = Flag.integer(
     0, 'Warm-up steps for etching', is_key=None)
-  pruning_rate_fc = Flag.float(
-    0.0, 'Pruning rate for fully connected layers', is_key=None)
+  pruning_rate = Flag.float(None, 'Pruning rate for hyper layers', is_key=None)
   etch_rate_fc = Flag.float(
     0.0, 'Etch rate for fully connected layers', is_key=None)
   pruning_iterations = Flag.integer(0, 'Pruning iterations', is_key=None)
@@ -197,6 +199,7 @@ class ModelConfigs(object):
 
 
   def smooth_out_model_configs(self):
-    if self.pruning_rate_fc > 0: self.prune_on = True
+    if self.pruning_rate is not None and self.pruning_rate >= 0:
+      self.prune_on = True
     if self.prune_on and self.etch_on:
       raise AssertionError('!! prune and etch can not be on in the same time')

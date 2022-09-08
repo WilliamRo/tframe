@@ -48,7 +48,7 @@ def neurons(num,
   else:
     x_prune_frac = kwargs.get('x_prune_frac', 0)
     s_prune_frac = kwargs.get('s_prune_frac', 0)
-  prune_is_on = hub.pruning_rate_fc > 0.0 and x_prune_frac + s_prune_frac > 0
+  prune_is_on = hub.pruning_rate > 0.0 and x_prune_frac + s_prune_frac > 0
 
   # b. Check sparse configs
   x_heads = kwargs.get('x_heads', 0)
@@ -435,7 +435,7 @@ def get_weights_to_prune(name, shape, initializer, frac):
   # Register, context.pruner should be created in early model.build
   assert context.pruner is not None
   etch_config = 'lottery:prune_frac={}'.format(frac)
-  masked_weights = context.pruner.register_to_dense(weights, etch_config)
+  masked_weights = context.pruner.register_to_kernels(weights, etch_config)
   # Return
   assert isinstance(masked_weights, tf.Tensor)
   return masked_weights

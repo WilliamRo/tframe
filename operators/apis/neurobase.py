@@ -222,6 +222,9 @@ class NeuroBase(object):
     """This function was developed in CUHK RRSSB 212A
     """
     na = self.differentiate(output_channels, scope)
+
+    if self.lottery_activated: kwargs['prune_frac'] = self._prune_frac
+
     na.add_kernel(x, suffix='x', kernel_key='conv2d',
                   filter_size=filter_size, strides=strides,
                   padding=padding, dilations=dilations, filter=filter, **kwargs)

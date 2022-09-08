@@ -50,7 +50,7 @@ class Model(object):
       self.mark += '_Sc' + hub.script_suffix
     # TODO: set prune iteration number.
     #       At this time configs conflicts are not smoothed.
-    if hub.prune_on or hub.pruning_rate_fc > 0:
+    if hub.prune_on or hub.pruning_rate > 0:
       self.mark += '_pr{}'.format(hub.pruning_iterations)
     hub.mark = self.mark
 

@@ -44,7 +44,7 @@ class KernelBase(object):
     self.initializer = initializers.get(initializer)
     assert 0 <= prune_frac <= 1
     # IMPORTANT
-    self.prune_frac = prune_frac * hub.pruning_rate_fc
+    self.prune_frac = prune_frac * hub.pruning_rate
     self.etch = etch
 
     self.weight_dropout = checker.check_type(weight_dropout, float)
@@ -55,8 +55,9 @@ class KernelBase(object):
 
   @property
   def prune_is_on(self):
-    assert 0 <= self.prune_frac <= 1
-    return self.prune_frac > 0 and hub.prune_on
+    # assert 0 <= self.prune_frac <= 1
+    # return self.prune_frac > 0 and hub.prune_on
+    return hub.prune_on
 
   @property
   def being_etched(self):
@@ -123,7 +124,7 @@ class KernelBase(object):
       self.etch = 'lottery:prune_frac={}'.format(self.prune_frac)
 
     # Register etch kernel to pruner
-    masked_weights = context.pruner.register_to_dense(weights, self.etch)
+    masked_weights = context.pruner.register_to_kernels(weights, self.etch)
 
     # Return
     assert isinstance(masked_weights, tf.Tensor)

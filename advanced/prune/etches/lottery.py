@@ -19,7 +19,7 @@ class Lottery(EtchKernel):
     # Call parent's constructor
     super().__init__(weights)
 
-    assert isinstance(prune_frac, float) and 0 < prune_frac < 1
+    assert isinstance(prune_frac, float) and 0 <= prune_frac < 1
     self.prune_frac = prune_frac
 
     # Variable and ops used for resetting

@@ -16,8 +16,8 @@ class Pruner(object):
 
   def __init__(self, model):
     self._model = model
-    self._dense_kernels = []
-    self._conv_kernels = []
+    self._kernels_to_prune = []
+    # self._conv_kernels = []
 
     # key: tf.Variable, value: EtchKernel
     self.variable_dict = OrderedDict()
@@ -29,7 +29,7 @@ class Pruner(object):
 
   @property
   def weights_list(self):
-    return [k.weights for k in self._dense_kernels]
+    return [k.weights for k in self._kernels_to_prune]
 
   @property
   def th(self): return tfr.hub
@@ -37,13 +37,13 @@ class Pruner(object):
   @property
   def total_size(self):
     """Total size of weights to be pruned"""
-    return np.sum([knl.total_size for knl in self._dense_kernels])
+    return np.sum([knl.total_size for knl in self._kernels_to_prune])
 
   @property
   def sparse_size(self):
     """Total size of weights to be pruned"""
     return np.sum([knl.total_size * knl.weights_fraction / 100.
-                   for knl in self._dense_kernels])
+                   for knl in self._kernels_to_prune])
   @property
   def weights_fraction(self):
     return self.sparse_size / self.total_size * 100
@@ -67,7 +67,7 @@ class Pruner(object):
     kernel.weights_fraction = 100.0 * size / total_size
     return size, total_size
 
-  def register_to_dense(self, weights, etch_config):
+  def register_to_kernels(self, weights, etch_config):
     """This method will be called in KernelBase._get_weights"""
     # In some case such as building in RNN, a same weights may be called twice
     # .. e.g. build_while_free -> _link
@@ -79,7 +79,7 @@ class Pruner(object):
     kernel_constructor = EtchKernel.get_etch_kernel(etch_config)
     kernel = kernel_constructor(weights)
     self.variable_dict[weights] = kernel
-    self._dense_kernels.append(kernel)
+    self._kernels_to_prune.append(kernel)
     return kernel.masked_weights
 
   def clear(self):
@@ -94,7 +94,7 @@ class Pruner(object):
     self._write_weight_and_mask_buffer()
     # Create empty op list and feed_dict
     ops, feed_dict = [], {}
-    for knl in self._dense_kernels:
+    for knl in self._kernels_to_prune:
       assert isinstance(knl, EtchKernel)
       op, d = knl.get_etch_op_dict()
       ops.append(op)
@@ -117,7 +117,7 @@ class Pruner(object):
       tfr.console.warning_with_pause(
         'Pruner.extractor has been called yet prune is not on')
       return
-    for kernel in pruner._dense_kernels:
+    for kernel in pruner._kernels_to_prune:
       assert isinstance(kernel, EtchKernel)
       export_dict = tfr.context.variables_to_export
       if tfr.hub.prune_on or tfr.hub.etch_on:
@@ -139,9 +139,9 @@ class Pruner(object):
 
   def _write_weight_and_mask_buffer(self, prompt='[Etch]'):
     """Write weight and mask buffer to each etch kernel"""
-    fetches = [(knl.weights, knl.mask) for knl in self._dense_kernels]
+    fetches = [(knl.weights, knl.mask) for knl in self._kernels_to_prune]
     buffers = self._run_op(fetches)
-    for (w_buffer, m_buffer), knl in zip(buffers, self._dense_kernels):
+    for (w_buffer, m_buffer), knl in zip(buffers, self._kernels_to_prune):
       assert isinstance(knl, EtchKernel)
       knl.weights_buffer = w_buffer
       knl.mask_buffer = m_buffer
@@ -160,7 +160,7 @@ class Pruner(object):
     """This method will be called in Agent.launch_model.
        It is the reset part of iterative pruning with resetting
     """
-    self._model.session.run([ws.assign_init for ws in self._dense_kernels])
+    self._model.session.run([ws.assign_init for ws in self._kernels_to_prune])
 
   def prune_and_save_lottery18(self):
     """This method should be called only in the end of trainer.train
@@ -168,7 +168,7 @@ class Pruner(object):
        [1] Frankle, etc. THE LOTTERY TICKET HYPOTHESIS: FINDING SPARSE,
            TRAINABLE NEURAL NETWORKS. 2018
     """
-    if tfr.hub.forbid_lottery_saving: return
+    if tfr.hub.forbid_lottery_saving or tfr.hub.pruning_rate <= 0: return
     # pruning should start from best model if save_model is on
     if tfr.hub.save_model and tfr.hub.save_mode == SaveMode.ON_RECORD:
       tfr.console.show_status('Loading best model to prune ...')
@@ -178,7 +178,7 @@ class Pruner(object):
     self.etch_all('[Lottery]')
 
     # Reset weights
-    self._run_op([ws.reset_weights for ws in self._dense_kernels])
+    self._run_op([ws.reset_weights for ws in self._kernels_to_prune])
     # Show status
     tfr.console.show_status('Weights reset.', '[Lottery]')
     # Save next model

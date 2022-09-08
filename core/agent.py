@@ -122,11 +122,17 @@ class Agent(object):
     feed_dict = {self._is_training: is_training}
     return feed_dict
 
-  def load(self):
+  def load(self, first_time=False):
     # TODO: when save_model option is turned off and the user want to
     #   try loading the exist model, set overwrite to False
     if not hub.save_model and hub.overwrite: return False, 0, None
-    return load_checkpoint(self.ckpt_dir, self.session, self._saver)
+
+    ckpt_dir = self.ckpt_dir
+    if first_time and hub.mark_to_load is not None:
+      ckpt_dir = check_path(self.root_path, hub.ckpt_folder_name,
+                            hub.mark_to_load, create_path=False)
+
+    return load_checkpoint(ckpt_dir, self.session, self._saver)
 
   def save_model(self, rounds=None, suffix=None):
     """rounds is used only by trainer"""
@@ -176,8 +182,8 @@ class Agent(object):
     """This method will be used in some very special cased, e.g. for
        saving train_stats used in dynamic evaluation (krause, 2018)
     """
-    self._saver = tf.train.Saver(
-      var_list=self._model.variable_to_save, max_to_keep=2)
+    vars = self._model.variable_to_save
+    self._saver = tf.train.Saver(var_list=vars, max_to_keep=2)
 
   @with_graph
   def launch_model(self, overwrite=False):
@@ -219,7 +225,8 @@ class Agent(object):
     if hub.prune_on: context.pruner.set_init_val_lottery18()
 
     # Try to load exist model
-    load_flag, self._model.counter, self._model.rounds = self.load()
+    load_flag, self._model.counter, self._model.rounds = self.load(
+      first_time=True)
     # Sanity check
     if hub.prune_on and hub.pruning_iterations > 0:
       if not load_flag: raise AssertionError(
