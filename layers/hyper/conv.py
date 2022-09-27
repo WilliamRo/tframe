@@ -147,6 +147,21 @@ class Conv2D(ConvBase):
       padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
 
 
+class Deconv1D(ConvBase):
+
+  full_name = 'deconv1d'
+  abbreviation = 'deconv1d'
+
+  class Configs(ConvBase.Configs):
+    kernel_dim = 1
+    transpose = True
+
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    return self.deconv1d(
+      x, self.channels, self.kernel_size, 'HyperDeconv1D', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
+
+
 class Deconv2D(ConvBase):
 
   full_name = 'deconv2d'

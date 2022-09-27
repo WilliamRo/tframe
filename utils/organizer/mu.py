@@ -37,6 +37,7 @@ from tframe.layers.highway import LinearHighway
 
 from tframe.layers.hyper.conv import Conv1D as HyperConv1D
 from tframe.layers.hyper.conv import Conv2D as HyperConv2D
+from tframe.layers.hyper.conv import Deconv1D as HyperDeconv1D
 from tframe.layers.hyper.conv import Deconv2D as HyperDeconv2D
 from tframe.layers.hyper.conv import DenseUpsampling2D
 DUC = DenseUpsampling2D

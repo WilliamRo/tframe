@@ -89,6 +89,7 @@ class PsiKernel(KernelBase):
     elif identifier in ('sparse_sog', 'sparsog'): return self.sparse_sog
     elif identifier in ('conv1d',): return self.conv1d
     elif identifier in ('conv2d',): return self.conv2d
+    elif identifier in ('deconv1d',): return self.deconv1d
     elif identifier in ('deconv2d',): return self.deconv2d
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
 
@@ -127,8 +128,11 @@ class PsiKernel(KernelBase):
     if kernel is None: kernel = self._get_weights('kernel', shape=filter_shape)
 
     # Define convolution method
-    if conv.__name__ == 'conv1d':
+    if conv.__name__  == 'conv1d':
       kwargs['stride'] = self.strides
+      kwargs['data_format'] = 'NWC'
+    elif conv.__name__ =='conv1d_transpose':
+      kwargs['strides'] = self.strides
       kwargs['data_format'] = 'NWC'
     elif conv.__name__ == 'conv2d':
       kwargs['strides'] = self.strides
@@ -156,6 +160,33 @@ class PsiKernel(KernelBase):
   def conv2d(self, filter=None) -> tf.Tensor:
     return self._conv_common(tf.nn.conv2d, name='conv2d_kernel', kernel=filter)
 
+  def deconv1d(self, filter=None) -> tf.Tensor:
+    from tensorflow.python.keras.utils.conv_utils import deconv_output_length
+
+    # Define utility
+    get_len = lambda shape: deconv_output_length(
+      shape[1], self.filter_size[0], padding=self.padding.lower(),
+      output_padding=None, stride=self.strides[0], dilation=self.dilations[0])
+
+    # Infer the dynamic output shape:
+    assert self.filter_size is not None and self.strides is not None
+    inputs_shape = tf.shape(self.input_)
+    output_shape = (inputs_shape[0], get_len(inputs_shape), self.num_units)
+    output_shape_tensor = tf.stack(output_shape)
+
+    # Compute
+    y = self._conv_common(
+      tf.nn.conv1d_transpose, name='deconv1d_kernel',
+      output_shape=output_shape_tensor, transpose=True, kernel=filter)
+
+    # Compute and set static output shape
+    out_shape = self.input_.shape.as_list()            # in_shape: (?, L, C)
+    out_shape[1] = get_len(out_shape)
+    out_shape[2] = self.num_units
+    y.set_shape(out_shape)
+
+    return y
+
   def deconv2d(self, filter=None) -> tf.Tensor:
     """This remedy for output tensor shape is from keras.layers.Conv2DTranspose
     """
@@ -180,7 +211,7 @@ class PsiKernel(KernelBase):
       output_shape=output_shape_tensor, transpose=True, kernel=filter)
 
     # Compute and set static output shape
-    out_shape = self.input_.shape.as_list()
+    out_shape = self.input_.shape.as_list()            # in_shape: (?, H, W, C)
     out_shape[1], out_shape[2] = get_hw(out_shape)
     out_shape[3] = self.num_units
     y.set_shape(out_shape)

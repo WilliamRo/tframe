@@ -231,6 +231,24 @@ class NeuroBase(object):
     output = na()
     return output
 
+  def deconv1d(self,
+               x,
+               output_channels,
+               filter_size,
+               scope,
+               strides=1,
+               padding='SAME',
+               dilations=1,
+               filter=None,
+               **kwargs):
+
+    na = self.differentiate(output_channels, scope)
+    na.add_kernel(x, suffix='x', kernel_key='deconv1d',
+                  filter_size=filter_size, strides=strides,
+                  padding=padding, dilations=dilations, filter=filter, **kwargs)
+    output = na()
+    return output
+
   def deconv2d(self,
              x,
              output_channels,
