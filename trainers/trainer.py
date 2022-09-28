@@ -271,6 +271,10 @@ class Trainer(Nomear):
     # Record weights before training
     if hub.monitor_weight_history: context.monitor.record_weights()
 
+    # Reset metrics if required
+    if self.th.clear_records_before_training:
+      self.model.metrics_manager.reset_records()
+
     # Validate model at the beginning if required
     if self.th.validate_at_the_beginning: self._validate_model(rnd=1)
     # Set lr decay variables
