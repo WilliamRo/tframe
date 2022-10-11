@@ -17,7 +17,7 @@ def update_job_dir(id, model_name):
 
   # TODO: the patch below is used currently
   job_fn = '{:02d}_{}'.format(id, model_name)
-  if any([f'{job_fn}/checkpoints' in task_dir for c in ('/', '\\')]):
+  if any([f'{job_fn}{c}checkpoints' in task_dir for c in ('/', '\\')]):
     # For trained model, the task module is located inside the
     # corresponding checkpoints folder,
     th.job_dir = os.path.dirname(os.path.dirname(task_dir))
