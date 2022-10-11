@@ -380,8 +380,9 @@ class DataSet(TFRData, Nomear):
   # region : Public Methods
 
   def split(self, *sizes, names=None, over_classes=False, random=False):
-    """If over_classes is True, sizes are for each group, and this works only
-       for uniform dataset.
+    """If over_classes is True, sizes are weights for each group.
+    e.g.,
+       train_set, val_set = train_set.split(9, 1, over_classes=True)
     """
     # Sanity check
     if len(sizes) == 0: raise ValueError('!! split sizes not specified')
