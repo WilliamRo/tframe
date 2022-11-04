@@ -33,7 +33,7 @@ def check_path(*paths, create_path=True, is_file_path=False):
         path = '/' + p
       else:
         # This will only happen in Windows system family
-        path = p + '/'
+        path = p + '\\'
         # continue
     else:
       path = os.path.join(path, p)

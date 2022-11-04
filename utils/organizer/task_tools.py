@@ -9,20 +9,26 @@ import traceback
 
 def update_job_dir(id, model_name):
   from tframe import hub as th
+  from tframe.utils.local import check_path
 
-  # th.job_dir += '/{:02d}_{}'.format(id, model_name)
-
-  file, _, _, _ = list(traceback.extract_stack())[-2]
-  task_dir = os.path.dirname(file)
-
-  # TODO: the patch below is used currently
+  # Job folder name
   job_fn = '{:02d}_{}'.format(id, model_name)
-  if any([f'{job_fn}{c}checkpoints' in task_dir for c in ('/', '\\')]):
-    # For trained model, the task module is located inside the
-    # corresponding checkpoints folder,
-    th.job_dir = os.path.dirname(os.path.dirname(task_dir))
-  else:
-    # While running normal task module, `task_dir` should be the folder
-    # containing this module file
-    th.job_dir = os.path.join(task_dir, job_fn)
+  file_stack = [check_path(pkg[0]) for pkg in list(traceback.extract_stack())]
 
+  # Case (1): running t-file located in checkpoints model
+  if os.path.join(job_fn, 'checkpoints') in file_stack[-2]:
+    th.job_dir = os.path.dirname(os.path.dirname(file_stack[-2]))
+    return
+
+  # Case (2): running s-file
+  task_dir = os.path.dirname(file_stack[-2])
+  if th.job_dir not in task_dir:
+    # Find correct job_dir for algorithms such as skopt
+    for fn in file_stack[::-1]:
+      if th.job_dir in fn:
+        return os.path.dirname(fn)
+    raise AssertionError('!! failed to extract job_dir while running s-file')
+
+  # Case (3): running t-file from common location, `task_dir` should
+  # be the folder containing this module file
+  th.job_dir = os.path.join(task_dir, job_fn)
