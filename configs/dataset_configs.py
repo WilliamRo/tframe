@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 from .flag import Flag
+from collections import OrderedDict
+
 
 
 class DataConfigs(object):
@@ -10,6 +12,8 @@ class DataConfigs(object):
   train_size = Flag.integer(0, 'Size of training set')
   val_size = Flag.integer(0, 'Size of validation set')
   test_size = Flag.integer(0, 'Size of test set')
+  datasets_for_evaluation = Flag.whatever(
+    OrderedDict(), 'Datasets for evaluation')
   val_proportion = Flag.float(None, 'Proportion of validation set')
   test_proportion = Flag.float(None, 'Proportion of test set')
   train_config = Flag.string(None, 'Config string for train_set', is_key=None)
