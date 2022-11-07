@@ -15,11 +15,11 @@ def update_job_dir(id, model_name):
   # Job folder name
   job_fn = '{:02d}_{}'.format(id, model_name)
   file_stack = [check_path(pkg[0]) for pkg in list(traceback.extract_stack())]
-  task_dir = os.path.dirname(file_stack[-2])
+  task_dir = dirname(file_stack[-2])
 
   # Case (1): running t-file located in checkpoints model
   if os.path.join(job_fn, 'checkpoints') in task_dir:
-    th.job_dir = os.path.dirname(os.path.dirname(task_dir))
+    th.job_dir = dirname(dirname(task_dir))
     return
 
   # Case (2): running s-file
@@ -27,7 +27,7 @@ def update_job_dir(id, model_name):
     # Find correct job_dir for algorithms such as skopt
     for fn in file_stack[::-1]:
       if th.job_dir in fn:
-        th.job_dir = os.path.dirname(fn)
+        th.job_dir = dirname(fn)
         return
     raise AssertionError('!! failed to extract job_dir while running s-file')
 
