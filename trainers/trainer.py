@@ -334,7 +334,7 @@ class Trainer(Nomear):
       self.model.agent.put_down_criterion('Weight Fraction', frac)
 
     # Evaluate the best model if necessary
-    ds_dict = hub.datasets_for_evaluation
+    ds_dict = {ds.name: ds for ds in hub.datasets_for_evaluation}
     if hub.evaluate_train_set: ds_dict['Train'] = self.training_set
     if hub.evaluate_val_set: ds_dict['Val'] = self.validation_set
     if hub.evaluate_test_set: ds_dict['Test'] = self.test_set
