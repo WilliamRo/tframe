@@ -11,6 +11,7 @@ from tframe.models import Recurrent
 # ---------------------------------------------------------------
 from tframe.nets.classic.conv_nets.lenet import LeNet
 from tframe.nets.classic.conv_nets.nas101 import NAS101
+from tframe.nets.classic.conv_nets.unet import UNet
 from tframe.nets.classic.conv_nets.unet2d import UNet2D
 
 from tframe.nets.forkmerge import ForkMerge
