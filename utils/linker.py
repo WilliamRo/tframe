@@ -48,7 +48,9 @@ def neurons(num,
   else:
     x_prune_frac = kwargs.get('x_prune_frac', 0)
     s_prune_frac = kwargs.get('s_prune_frac', 0)
-  prune_is_on = hub.pruning_rate > 0.0 and x_prune_frac + s_prune_frac > 0
+  prune_is_on = (isinstance(hub.pruning_rate, float)
+                 and hub.pruning_rate > 0.0
+                 and x_prune_frac + s_prune_frac > 0)
 
   # b. Check sparse configs
   x_heads = kwargs.get('x_heads', 0)
