@@ -147,6 +147,21 @@ class Conv2D(ConvBase):
       padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
 
 
+class Conv3D(ConvBase):
+  """Perform 3D convolution on a channel-last image"""
+
+  full_name = 'conv3d'
+  abbreviation = 'conv3d'
+
+  class Configs(ConvBase.Configs):
+    kernel_dim = 3
+
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    return self.conv3d(
+      x, self.channels, self.kernel_size, 'HyperConv3D', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
+
+
 class Deconv1D(ConvBase):
 
   full_name = 'deconv1d'
@@ -174,6 +189,21 @@ class Deconv2D(ConvBase):
   def forward(self, x: tf.Tensor, filter=None, **kwargs):
     return self.deconv2d(
       x, self.channels, self.kernel_size, 'HyperDeconv2D', strides=self.strides,
+      padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
+
+
+class Deconv3D(ConvBase):
+
+  full_name = 'deconv3d'
+  abbreviation = 'deconv3d'
+
+  class Configs(ConvBase.Configs):
+    kernel_dim = 3
+    transpose = True
+
+  def forward(self, x: tf.Tensor, filter=None, **kwargs):
+    return self.deconv3d(
+      x, self.channels, self.kernel_size, 'HyperDeconv3D', strides=self.strides,
       padding=self.padding, dilations=self.dilations, filter=filter, **kwargs)
 
 

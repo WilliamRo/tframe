@@ -89,8 +89,10 @@ class PsiKernel(KernelBase):
     elif identifier in ('sparse_sog', 'sparsog'): return self.sparse_sog
     elif identifier in ('conv1d',): return self.conv1d
     elif identifier in ('conv2d',): return self.conv2d
+    elif identifier in ('conv3d',): return self.conv3d
     elif identifier in ('deconv1d',): return self.deconv1d
     elif identifier in ('deconv2d',): return self.deconv2d
+    elif identifier in ('deconv3d',): return self.deconv3d
     else: raise ValueError('!! Unknown kernel `{}`'.format(identifier))
 
   def _layer_normalization(self, a):
@@ -134,9 +136,15 @@ class PsiKernel(KernelBase):
     elif conv.__name__ =='conv1d_transpose':
       kwargs['strides'] = self.strides
       kwargs['data_format'] = 'NWC'
-    elif conv.__name__ == 'conv2d':
+    elif conv.__name__ in ('conv2d', 'conv2d_transpose'):
       kwargs['strides'] = self.strides
       kwargs['data_format'] = 'NHWC'
+    elif conv.__name__ in ('conv3d_v1', 'conv3d_transpose'):
+      # For some reason, conv3d_v1 only accepts 5D `strides` and
+      #  strides[0] == strides[4] == 1. So as `dilations`
+      self.dilations = [1] + list(self.dilations) + [1]
+      kwargs['strides'] = [1] + list(self.strides) + [1]
+      kwargs['data_format'] = 'NDHWC'
     else: raise KeyError(f'!! Unknown conv op `{conv.__name__}`')
 
     _conv = lambda tupl: conv(
@@ -160,63 +168,51 @@ class PsiKernel(KernelBase):
   def conv2d(self, filter=None) -> tf.Tensor:
     return self._conv_common(tf.nn.conv2d, name='conv2d_kernel', kernel=filter)
 
-  def deconv1d(self, filter=None) -> tf.Tensor:
-    from tensorflow.python.keras.utils.conv_utils import deconv_output_length
+  def conv3d(self, filter=None) -> tf.Tensor:
+    return self._conv_common(tf.nn.conv3d, name='conv3d_kernel', kernel=filter)
 
-    # Define utility
-    get_len = lambda shape: deconv_output_length(
-      shape[1], self.filter_size[0], padding=self.padding.lower(),
-      output_padding=None, stride=self.strides[0], dilation=self.dilations[0])
-
-    # Infer the dynamic output shape:
-    assert self.filter_size is not None and self.strides is not None
-    inputs_shape = tf.shape(self.input_)
-    output_shape = (inputs_shape[0], get_len(inputs_shape), self.num_units)
-    output_shape_tensor = tf.stack(output_shape)
-
-    # Compute
-    y = self._conv_common(
-      tf.nn.conv1d_transpose, name='deconv1d_kernel',
-      output_shape=output_shape_tensor, transpose=True, kernel=filter)
-
-    # Compute and set static output shape
-    out_shape = self.input_.shape.as_list()            # in_shape: (?, L, C)
-    out_shape[1] = get_len(out_shape)
-    out_shape[2] = self.num_units
-    y.set_shape(out_shape)
-
-    return y
-
-  def deconv2d(self, filter=None) -> tf.Tensor:
+  def _deconvXd(self, X: int, func, name: str, filter=None) -> tf.Tensor:
     """This remedy for output tensor shape is from keras.layers.Conv2DTranspose
     """
     from tensorflow.python.keras.utils.conv_utils import deconv_output_length
 
-    # Define utility
+    # Define function for calculating deconv_output.shape[i+1]
+    # For X=1,2,3, deconvXd uses `strides`. (Unlike conv1d uses `stride`)
     get_len = lambda i, shape: deconv_output_length(
       shape[i+1], self.filter_size[i], padding=self.padding.lower(),
       output_padding=None, stride=self.strides[i], dilation=self.dilations[i])
-    get_hw = lambda shape: [get_len(i, shape) for i in (0, 1)]
 
-    # Infer the dynamic output shape:
+    # Infer the dynamic output shape as TENSOR
     assert self.filter_size is not None and self.strides is not None
     inputs_shape = tf.shape(self.input_)
-    out_height, out_width = get_hw(inputs_shape)
-    output_shape = (inputs_shape[0], out_height, out_width, self.num_units)
-    output_shape_tensor = tf.stack(output_shape)
+    major_shape_tensor = [get_len(i, inputs_shape) for i in range(X)]
+    output_shape_tensor = tf.stack(
+      [inputs_shape[0]] + major_shape_tensor + [self.num_units])
 
-    # Compute
-    y = self._conv_common(
-      tf.nn.conv2d_transpose, name='deconv2d_kernel',
-      output_shape=output_shape_tensor, transpose=True, kernel=filter)
+    # Compute deconv output
+    y = self._conv_common(func, name=name, output_shape=output_shape_tensor,
+                          transpose=True, kernel=filter)
 
-    # Compute and set static output shape
-    out_shape = self.input_.shape.as_list()            # in_shape: (?, H, W, C)
-    out_shape[1], out_shape[2] = get_hw(out_shape)
-    out_shape[3] = self.num_units
+    # Compute and set static output shape as LIST of scalars
+    # in_shape = (?, L, C) or (?, H, W, C) or (?, D, H, W, C)
+    out_shape = self.input_.shape.as_list()
+    out_shape[1:X+1] = [get_len(i, out_shape) for i in range(X)]
+    out_shape[-1] = self.num_units
     y.set_shape(out_shape)
 
     return y
+
+  def deconv1d(self, filter=None) -> tf.Tensor:
+    return self._deconvXd(1, tf.nn.conv1d_transpose, name='deconv1d_kernel',
+                          filter=filter)
+
+  def deconv2d(self, filter=None) -> tf.Tensor:
+    return self._deconvXd(2, tf.nn.conv2d_transpose, name='deconv2d_kernel',
+                          filter=filter)
+
+  def deconv3d(self, filter=None) -> tf.Tensor:
+    return self._deconvXd(3, tf.nn.conv3d_transpose, name='deconv3d_kernel',
+                          filter=filter)
 
   def dense(self):
     W = self._get_weights('W', shape=[self.input_dim, self.num_units])

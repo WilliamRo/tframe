@@ -231,6 +231,28 @@ class NeuroBase(object):
     output = na()
     return output
 
+  def conv3d(self,
+             x,
+             output_channels,
+             filter_size,
+             scope,
+             strides=1,
+             padding='SAME',
+             dilations=1,
+             filter=None,
+             **kwargs):
+    """This function was developed in 416@ZJU"""
+
+    na = self.differentiate(output_channels, scope)
+
+    if self.lottery_activated: kwargs['prune_frac'] = self._prune_frac
+
+    na.add_kernel(x, suffix='x', kernel_key='conv3d',
+                  filter_size=filter_size, strides=strides,
+                  padding=padding, dilations=dilations, filter=filter, **kwargs)
+    output = na()
+    return output
+
   def deconv1d(self,
                x,
                output_channels,
@@ -262,6 +284,24 @@ class NeuroBase(object):
 
     na = self.differentiate(output_channels, scope)
     na.add_kernel(x, suffix='x', kernel_key='deconv2d',
+                  filter_size=filter_size, strides=strides,
+                  padding=padding, dilations=dilations, filter=filter, **kwargs)
+    output = na()
+    return output
+
+  def deconv3d(self,
+               x,
+               output_channels,
+               filter_size,
+               scope,
+               strides=1,
+               padding='SAME',
+               dilations=1,
+               filter=None,
+               **kwargs):
+
+    na = self.differentiate(output_channels, scope)
+    na.add_kernel(x, suffix='x', kernel_key='deconv3d',
                   filter_size=filter_size, strides=strides,
                   padding=padding, dilations=dilations, filter=filter, **kwargs)
     output = na()
