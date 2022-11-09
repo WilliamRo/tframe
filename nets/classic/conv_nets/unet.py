@@ -3,9 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 from tframe import checker
-from tframe import mu
 from tframe.layers.merge import Bridge
 from tframe.nets.classic.conv_nets.conv_net import ConvNet
+from tframe.layers.hyper.conv import Conv1D, Conv2D, Conv3D
+from tframe.layers.hyper.conv import Deconv1D, Deconv2D, Deconv3D
+from tframe.layers.pooling import MaxPool1D, MaxPool2D, MaxPool3D
 
 from typing import List, Optional, Union
 
@@ -13,9 +15,9 @@ from typing import List, Optional, Union
 
 class UNet(ConvNet):
 
-  conv_classes = [mu.HyperConv1D, mu.HyperConv2D, mu.HyperConv3D]
-  deconv_classes = [mu.HyperDeconv1D, mu.HyperDeconv2D, mu.HyperDeconv3D]
-  pool_classes = [mu.MaxPool1D, mu.MaxPool2D, mu.MaxPool3D]
+  conv_classes = [Conv1D, Conv2D, Conv3D]
+  deconv_classes = [Deconv1D, Deconv2D, Deconv3D]
+  pool_classes = [MaxPool1D, MaxPool2D, MaxPool3D]
 
   def __init__(self,
                dimension: int,
@@ -231,6 +233,7 @@ if __name__ == '__main__':
   from tframe import Predictor
   from tframe import console
   from tframe import hub as th
+  from tframe import mu
 
   console.suppress_logging()
   th.save_model = False
