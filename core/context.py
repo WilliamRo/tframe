@@ -11,6 +11,7 @@ from tframe.core import Nomear
 from tframe.utils.monitor import Monitor
 
 import tframe.utils.checker as checker
+import tframe.utils.console as console
 
 
 class Context(Nomear):
@@ -75,6 +76,11 @@ class Context(Nomear):
 
   @property
   def current_graph(self):
+    """TODO: temporary workaround"""
+    if self._current_graph is None:
+      console.warning(
+      'context.current_graph not set, use tf.default_graph instead.')
+      return tf.get_default_graph()
     assert isinstance(self._current_graph, tf.Graph)
     return self._current_graph
 

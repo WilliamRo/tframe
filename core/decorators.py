@@ -25,8 +25,9 @@ def with_graph_if_has(meth):
 
 def init_with_graph(init):
   def wrapper(*args, **kwargs):
-    assert isinstance(tfr.context.current_graph, tf.Graph)
-    with tfr.context.current_graph.as_default(): init(*args, **kwargs)
+    graph = tfr.context.current_graph
+    assert isinstance(graph, tf.Graph)
+    with graph.as_default(): init(*args, **kwargs)
   return wrapper
 
 
