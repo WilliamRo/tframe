@@ -1,4 +1,5 @@
 from tframe import console
+from tframe import hub as th
 from tframe import mu
 
 
@@ -41,6 +42,8 @@ def test_hyper_conv3D():
 
 if __name__ == '__main__':
   console.suppress_logging()
+
+  th.save_model = False
 
   X = 3
   model = [test_hyper_conv1D,
