@@ -86,6 +86,14 @@ class ConvBase(HyperBase):
   def _check_size(self, size):
     return checker.check_conv_size(size, self.Configs.kernel_dim)
 
+  def _get_filter_shape(self, input_dim):
+    filter_shape = self.kernel_size
+    if self.Configs.transpose:
+      filter_shape += (self.channels, input_dim)
+    else:
+      filter_shape += (input_dim, self.channels)
+    return filter_shape
+
   @single_input
   def _link(self, x: tf.Tensor, **kwargs):
     # Expand last dimension if necessary
@@ -94,12 +102,7 @@ class ConvBase(HyperBase):
     # Generate filter if filter_generator is provided
     filter = None
     if callable(self.filter_generator):
-      # Currently customized filter is only supported by 2-D convolution
-      assert self.Configs.kernel_dim == 2
-      input_dim = x.shape.as_list()[-1]
-      filter_shape = self.kernel_size
-      if self.Configs.transpose: filter_shape += (self.channels, input_dim)
-      else: filter_shape += (input_dim, self.channels)
+      filter_shape = self._get_filter_shape(x.shape.as_list()[-1])
       with tf.variable_scope('filter-generator'):
         filter = self.filter_generator(self, filter_shape)
 
