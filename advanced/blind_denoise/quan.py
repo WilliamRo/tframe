@@ -19,7 +19,7 @@ class InputDropout(Layer, Nomear):
   full_name = 'input_dropout'
 
   def __init__(self, drop_prob=0.5, mask_size=1, force_mask=False,
-               random_roll=True, mask_gen_method='np'):
+               random_roll=True, mask_gen_method='tf'):
     self.drop_prob = drop_prob
     self.mask_size = mask_size
     self.random_roll = random_roll
