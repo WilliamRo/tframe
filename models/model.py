@@ -11,6 +11,7 @@ from tframe import DataSet
 from tframe import hub
 from tframe import checker
 from tframe import console
+from tframe import context
 from tframe import pedia
 
 from tframe.utils.display.progress_bar import ProgressBar
@@ -797,6 +798,11 @@ class Model(object):
         if val is not None: feed_dict[tensor] = val
 
     feed_dict.update(self.agent.get_status_feed_dict(is_training))
+
+    # This method is created for blind_denoise/quan.py
+    # Each func below should have the signature below:
+    #   def func(batch: DataSet) -> dict:
+    for func in context.feed_dict_fillers: feed_dict.update(func(batch))
 
     return feed_dict
 

@@ -117,6 +117,9 @@ class Context(Nomear):
       self._VARIABLE_EXPORT_DICT, init_if_necessary=True, val_type=dict)
 
   @Nomear.property()
+  def feed_dict_fillers(self): return []
+
+  @Nomear.property()
   def depot(self): return OrderedDict()
 
   # endregion : Properties
