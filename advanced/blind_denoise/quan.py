@@ -3,6 +3,7 @@ Quan, et al., Self2Self With Dropout: Learning Self-Supervised Denoising From
 Single Image, CVF, 2020.
 """
 from tframe import tf
+from tframe import hub as th
 from tframe import pedia
 from tframe.layers.layer import Layer
 from tframe.layers.layer import single_input
@@ -18,11 +19,19 @@ class InputDropout(Layer, Nomear):
   abbreviation = 'in_drop'
   full_name = 'input_dropout'
 
-  def __init__(self, drop_prob=0.5, mask_size=1, force_mask=False,
-               random_roll=True, mask_gen_method='tf'):
+  def __init__(self,
+               drop_prob=0.5,
+               mask_size=1,
+               force_mask=False,
+               erosion=0,
+               random_roll=True,
+               last_dim_of_mask=1,
+               mask_gen_method='tf'):
     self.drop_prob = drop_prob
     self.mask_size = mask_size
     self.random_roll = random_roll
+    self.erosion = erosion
+    self.last_dim_of_mask  =last_dim_of_mask
 
     self.drop_mask = None
     self.keep_mask = None
@@ -31,6 +40,8 @@ class InputDropout(Layer, Nomear):
 
     assert mask_gen_method in ('tf', 'np')
     self.mask_gen_method = mask_gen_method
+
+    self.dim = None
 
   # region: Properties
 
@@ -46,14 +57,20 @@ class InputDropout(Layer, Nomear):
   # region: Mask Generation
 
   def _tf_gen_mask(self, x: tf.Tensor):
+    last_mask_dim = self.last_dim_of_mask
+    if last_mask_dim is None: last_mask_dim = x.shape.as_list()[-1]
+
+    dim = self.dim
+    x_shape = tf.shape(x)
+
     if self.mask_size == 1:
-      random_tensor = tf.random.uniform(tf.shape(x))
+      shape_tensor = tf.stack(
+        [x_shape[0]] + [x_shape[i+1] for i in range(dim)] + [last_mask_dim])
+      random_tensor = tf.random.uniform(shape_tensor)
     else:
-      x_shape = tf.shape(x)
-      dim = x_shape.shape[0] - 2
       shape_tensor = tf.stack(
         [x_shape[0]] + [x_shape[i+1] // self.mask_size for i in range(dim)]
-        + [x.shape.as_list()[-1]])
+        + [last_mask_dim])
       random_tensor = tf.random.uniform(shape_tensor)
 
       if dim == 2:
@@ -93,12 +110,16 @@ class InputDropout(Layer, Nomear):
 
   def np_gen_mask(self, x: np.ndarray):
     """x.shape = [batch, (depth, )height, width, channels]"""
+    last_mask_dim = self.last_dim_of_mask
+    if last_mask_dim is None: last_mask_dim = x.shape[-1]
     if self.mask_size == 1:
-      random_array = np.random.uniform(size=x.shape)
+      size = x.shape
+      size[-1] = last_mask_dim
+      random_array = np.random.uniform(size=size)
     else:
-      dim = len(x.shape) - 2
+      dim = self.dim
       random_shape = [x.shape[0]] + [
-        x.shape[i+1] // self.mask_size for i in range(dim)] + [x.shape[-1]]
+        x.shape[i+1] // self.mask_size for i in range(dim)] + [last_mask_dim]
       random_array = np.random.uniform(size=random_shape)
 
       # Resize back to x.shape
@@ -123,26 +144,70 @@ class InputDropout(Layer, Nomear):
 
   # region: Link
 
+  def erode(self, mask: tf.Tensor):
+    """erode mask using tf.nn.erosion2d:
+       [batch, H, W, depth] -> [batch, H, W, depth]"""
+
+    strides, rates = [1, 1, 1, 1], [1, 1, 1, 1]
+    padding = 'SAME'
+
+    # kernel shape: [h, w, depth]
+    s = self.erosion * 2 + 1
+    d = 1 if self.dim == 2 else s
+    kernel = tf.constant(1., dtype=th.dtype, shape=[s, s, d])
+
+    # Swap axes for mask
+    if self.dim == 2:
+      # mask.shape = [batch, H, W, 1]
+      mask = tf.nn.erosion2d(mask, kernel, strides, rates, padding)
+
+      # For unknown reason mask \in (-1, 0)
+      mask += 1.
+
+    elif self.dim == 3:
+      assert self.last_dim_of_mask == 1
+      assert False
+      # mask.shape: [batch, D, H, W, 1] -> [batch, H, W, D]
+      mask = tf.transpose(mask[..., 0], (0, 2, 3, 1))
+      mask = tf.nn.erosion2d(mask, kernel, strides, rates, padding)
+      # mask.shape: [batch, H, W, D] -> [batch, D, H, W]
+      mask = tf.transpose(mask, (0, 3, 1, 2))
+      # mask.shape -> [batch, D, H, W, 1]
+      mask = tf.expand_dims(mask, -1)
+
+    else: raise AssertionError(f'self.dim(={self.dim}) should be in (2, 3)')
+
+    return mask
+
   @single_input
   def _link(self, x: tf.Tensor, **kwargs):
     """This implementation is based on tf.nn.dropout_v2"""
+    self.dim = len(x.shape) - 2
+
     # Note that x.shape (N, (D, )H, W, C) may be partially unknown
     # Generate mask accordingly
     if self.mask_gen_method == 'tf':
       keep_mask = self._tf_gen_mask(x)
     else: keep_mask = self._get_mask_placeholder(x)
 
+    # Calculate drop-mask
+    drop_mask = 1.0 - keep_mask
+
+    # Erode drop_mask if required
+    if self.erosion > 0 and self.mask_size > 1:
+      drop_mask = self.erode(drop_mask)
+
     # Mask input
     masked_x = x * keep_mask
 
-    # Save drop_mask for loss kernel
+    # Save drop_mask for loss kernel and other tensors for future use
+    self.drop_mask = drop_mask
     self.keep_mask = keep_mask
-    self.drop_mask = 1.0 - keep_mask
-
     from tframe import context
     context.add_to_dict_collection('quan', 'masked_input', masked_x)
-    context.add_to_dict_collection('quan', 'drop_mask', self.drop_mask)
+    context.add_to_dict_collection('quan', 'drop_mask', drop_mask)
 
+    # Return accordingly
     if self.force_mask: return masked_x
     return tf.cond(self.is_training, lambda: masked_x, lambda: x)
 
