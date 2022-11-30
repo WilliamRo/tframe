@@ -212,6 +212,15 @@ class Config(
     self.data_dir = os.path.join(self.job_dir, 'data')
     tfr.console.show_status('Job directory set to `{}`'.format(self.job_dir))
 
+  def update_job_dir(self, id, model_name):
+    """A quick API"""
+    from tframe.utils.organizer.task_tools import update_job_dir
+    return update_job_dir(id, model_name, fs_index=-3)
+
+  def set_date_as_prefix(self):
+    from tframe.utils.misc import date_string
+    self.prefix = '{}_'.format(date_string())
+
   @staticmethod
   def decimal_str(num, decimals=3):
     assert np.isscalar(num)
