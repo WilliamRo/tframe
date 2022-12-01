@@ -32,7 +32,7 @@ def update_job_dir(id, model_name, fs_index=-2):
   dirname = os.path.dirname
   # Job folder name
   job_fn = '{:02d}_{}'.format(id, model_name)
-  file_stack = [os.path.abspath(check_path(pkg[0]))
+  file_stack = [check_path(os.path.abspath(pkg[0]))
                 for pkg in list(traceback.extract_stack())]
   task_dir = dirname(file_stack[fs_index])
 
