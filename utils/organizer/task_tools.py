@@ -46,14 +46,14 @@ def update_job_dir(id, model_name, fs_index=-2):
     th.job_dir = dirname(dirname(task_dir))
     return
 
-  # Case (2): running s-file TODO
-  # if th.job_dir not in task_dir:
-  #   # Find correct job_dir for algorithms such as skopt
-  #   for fn in file_stack[::-1]:
-  #     if th.job_dir in fn:
-  #       th.job_dir = dirname(fn)
-  #       return
-  #   raise AssertionError('!! failed to extract job_dir while running s-file')
+  # Case (2): running s-file
+  if th.job_dir not in task_dir:
+    # Find correct job_dir for algorithms such as skopt
+    for fn in file_stack[::-1]:
+      if th.job_dir in fn:
+        th.job_dir = dirname(fn)
+        return
+    raise AssertionError('!! failed to extract job_dir while running s-file')
 
   # Case (3): running t-file from common location, `task_dir` should
   # be the folder containing this module file
