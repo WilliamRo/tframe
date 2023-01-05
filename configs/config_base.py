@@ -108,7 +108,10 @@ class Config(
       self.__class__.register()
 
     if as_global:
-      tfr.hub.redirect(self)
+      # TODO:
+      tfr.hub = self
+      tfr.context.hub = self
+      # tfr.hub.redirect(self)
 
   # region : Properties
 
