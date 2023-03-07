@@ -599,11 +599,6 @@ class DataSet(TFRData, Nomear):
     assert isinstance(batch_index, int) and batch_index >= 0
     checker.check_positive_integer(batch_size)
 
-    # Green pass
-    if training and hub.updates_per_round and hub.updates_per_round > 0:
-      assert hub.shuffle
-      return list(np.random.randint(0, self.size, batch_size))
-
     # Green pass for class balancing
     if training and hub.balance_classes:
       N = self.num_classes
@@ -617,6 +612,11 @@ class DataSet(TFRData, Nomear):
       for i in range(N): indices.extend(
         np.random.choice(self.groups[i], cls_nums[i]))
       return indices
+
+    # Green pass
+    if training and hub.updates_per_round and hub.updates_per_round > 0:
+      assert hub.shuffle
+      return list(np.random.randint(0, self.size, batch_size))
 
     from_index = batch_index * batch_size
     to_index = min((batch_index + 1) * batch_size, upper_bound)
