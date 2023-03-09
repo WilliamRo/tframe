@@ -48,7 +48,7 @@ class NeuronArray(NeuroBase):
 
   # region : Link
 
-  def __call__(self, *input_list):
+  def __call__(self, *input_list, **kwargs):
     """Link neuron array to graph
     :param input_list: inputs to be fully connected
     :return: neuron outputs
@@ -95,7 +95,8 @@ class NeuronArray(NeuroBase):
         else: a = a + bias
 
       # Activate if necessary
-      if self._activation: a = self._activation(a)
+      if self._activation and kwargs.get('activate', True):
+        a = self._activation(a)
 
     return a
 

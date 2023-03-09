@@ -203,10 +203,12 @@ class NeuroBase(object):
              filter=None,
              **kwargs):
     na = self.differentiate(output_channels, scope)
+    # TODO:
+    activate = kwargs.pop('activate', True)
     na.add_kernel(x, suffix='x', kernel_key='conv1d',
                   filter_size=filter_size, strides=strides,
                   padding=padding, dilations=dilations, filter=filter, **kwargs)
-    output = na()
+    output = na(activate=activate)
     return output
 
   def conv2d(self,
