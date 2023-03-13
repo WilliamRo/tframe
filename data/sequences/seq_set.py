@@ -164,7 +164,8 @@ class SequenceSet(DataSet):
   def get_round_length(self, batch_size, num_steps=-1, training=False):
     """Previously, default num_steps is None. However, for directly
     generating FNN batches from seq_set, default num_step is set to -1"""
-    if num_steps is None:
+    if th.updates_per_round is not None: round_len = th.updates_per_round
+    elif num_steps is None:
       raise AssertionError
       # when num_steps is None, this seq_set is treated as common data_set
       # and always contains single sequence
