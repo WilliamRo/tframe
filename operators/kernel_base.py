@@ -111,7 +111,7 @@ class KernelBase(object):
     # Binarize weights if required
     if hub.binarize_weights:
       # See this paper: https://arxiv.org/pdf/1602.02830.pdf
-      return tf.sign(weights)
+      return self.binarize_weights(weights)
 
     # If no mask is needed to be created, return weight variable directly
     if not any([self.prune_is_on, self.being_etched, hub.force_to_use_pruner]):
@@ -130,5 +130,20 @@ class KernelBase(object):
     # Return
     assert isinstance(masked_weights, tf.Tensor)
     return masked_weights
+
+
+  # region: BNN related stuff
+
+  @staticmethod
+  @tf.custom_gradient
+  def binarize_weights(x):
+    from tframe import hub as th
+    def sign(v):
+      return (tf.cast(tf.math.greater_equal(v, 0), th.dtype) - 0.5) * 2
+    def grad(dy): return dy
+    return sign(x), grad
+
+  # endregion: BNN related stuff
+
 
 
