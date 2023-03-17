@@ -56,11 +56,12 @@ def sigmoid(input_, **kwargs):
 def sign_st(x):
   """Sign function with straight-through estimator"""
   from tframe import hub as th
+  def sign(v):
+    return (tf.cast(tf.math.greater_equal(v, 0), th.dtype) - 0.5) * 2
   def grad(dy):
     return dy * tf.cast(tf.logical_and(
-      tf.greater_equal(x, -1.0), tf.less_equal(x, 1.0)),
-      dtype=th.dtype)
-  return tf.sign(x), grad
+      tf.greater_equal(x, -1.0), tf.less_equal(x, 1.0)), dtype=th.dtype)
+  return sign(x), grad
 
 
 def sog(x, groups_size):

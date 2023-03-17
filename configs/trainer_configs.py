@@ -143,12 +143,8 @@ class TrainerConfigs(object):
   def get_global_constraint(self):
     """Used only in kernel base"""
     if self.global_constraint in [None, '']: return None
-    p = Parser.parse(self.global_constraint)
-    if p.name in ['max_norm']:
-      max_value = p.get_arg(float, default=2.0)
-      axis = p.get_kwarg('axis', int, default=0)
-      return tf.keras.constraints.max_norm(max_value=max_value, axis=axis)
-    else: KeyError('Unknown constraint name `{}`'.format(p.name))
+    from tframe import constraints
+    return constraints.get(self.global_constraint)
 
   def smooth_out_trainer_configs(self):
     if self.global_l2_penalty * self.decoupled_l2_penalty != 0:
