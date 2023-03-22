@@ -126,6 +126,7 @@ class Classifier(Predictor):
     """
     # Get options
     show_confusion_matrix = kwargs.get('show_confusion_matrix', False)
+    plot_confusion_matrix = kwargs.get('plot_confusion_matrix', False)
     show_class_detail = kwargs.get('show_class_detail', False)
     export_false = kwargs.get('export_false', False)
     top_k = kwargs.get('export_top_k', 3)
@@ -159,6 +160,7 @@ class Classifier(Predictor):
     if show_confusion_matrix:
       console.show_info('Confusion Matrix:')
       console.write_line(cm.matrix_table(kwargs.get('cell_width', None)))
+    if plot_confusion_matrix: cm.sklearn_plot()
     console.show_info(f'Evaluation Result ({data_set.name}):')
     console.write_line(cm.make_table(
       decimal=4, class_details=show_class_detail))

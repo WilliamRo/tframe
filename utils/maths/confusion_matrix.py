@@ -167,14 +167,14 @@ class ConfusionMatrix(object):
   def matrix_table(self, cell_width=None):
     names = self.class_names
     ncols = len(names) + 2
-    if cell_width is None: cell_width = min([len(s) for s in names])
+    if cell_width is None: cell_width = max([len(s) for s in names])
     # Make table
     table = Table(*([cell_width] * ncols), buffered=True, margin=1, tab=2)
     table.specify_format(*([None] * ncols), align='r' * ncols)
     table.hline()
     # First line
     cells = [''] * ncols
-    cells[len(names) // 2 + 1] = 'True'
+    cells[len(names) // 2 + 2] = 'True'
     table.print_row(*cells)
     table.hline()
     # Second line
@@ -182,7 +182,7 @@ class ConfusionMatrix(object):
     table.hline()
     # Print matrix
     for i, name in enumerate(names):
-      cells = ['Predicted' if i == len(names) // 2 - 1 else '', name] + [
+      cells = ['Predicted' if i == len(names) // 2 else '', name] + [
         n for n in self.confusion_matrix[i]]
       table.print_row(*cells)
     table.hline()
@@ -195,7 +195,8 @@ class ConfusionMatrix(object):
     import matplotlib.pyplot as plt
     cm = self.confusion_matrix
     assert isinstance(cm, np.ndarray)
-    disp = ConfusionMatrixDisplay(cm.transpose(), self.class_names)
+    disp = ConfusionMatrixDisplay(
+      cm.transpose(), display_labels=self.class_names)
     disp.plot(cmap=plt.cm.Blues, **kwargs)
     plt.show()
 
