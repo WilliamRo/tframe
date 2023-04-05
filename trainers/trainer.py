@@ -751,10 +751,10 @@ class Trainer(Nomear):
   def _validate_model(self, rnd):
     if not self.th.validation_on: return False
     # Validate cycle should be met
-    if np.mod(self.counter, self.th.validate_modulus) != 0:
-      if not (self.counter == 1 and (
-          self.th.take_note_in_beginning or self.th.validate_at_the_beginning)):
-        return False
+    if self.counter == 0:
+      if not (self.th.take_note_in_beginning
+              or self.th.validate_at_the_beginning): return False
+    elif np.mod(self.counter, self.th.validate_modulus) != 0: return False
 
     # Validate datasets other than validation set
     other_sets = []
