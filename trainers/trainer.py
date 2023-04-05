@@ -558,6 +558,10 @@ class Trainer(Nomear):
       tensors = loss_dict.pop(self.model.general_tensor_slot)
       context.monitor.record_tensors(tensors)
 
+    # (Temporary)
+    if 'callback_model_updated' in context.depot:
+      context.depot['callback_model_updated'](self)
+
     # Check NaN
     if self.th.terminate_on_nan:
       for val in loss_dict.values():
