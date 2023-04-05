@@ -12,7 +12,7 @@ def modifier(v_dict):
   assert isinstance(v_dict, OrderedDict)
   new_dict = OrderedDict()
   for key, values in v_dict.items():
-    if 'distribution' not in key: continue
+    # if 'distribution' not in key: continue
     new_key = key
     new_dict[new_key] = VariableWithView(values, view=view)
     print('>> {} added to variable_dict'.format(new_key))

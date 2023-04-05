@@ -97,9 +97,10 @@ class VariableViewer(Frame):
           else:
             print(' ! Failed to set `{}` to viewer since its empty.'.format(k))
         elif isinstance(v, list):
-          flattened = self._flatten(v, name=k)
+          # flattened = self._flatten(v, name=k)
+          flattened = v
           # Loosely check nan
-          if np.isnan(flattened[0][0]).any():
+          if flattened and np.isnan(flattened[0][0]).any():
             print(' ! Failed to set `{}` to viewer. np.nan detected.'.format(k))
             continue
           if flattened is not None: dst[k] = flattened

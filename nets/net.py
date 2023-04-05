@@ -79,7 +79,8 @@ class Net(Function, Nomear):
     for v in self.var_list:
       assert isinstance(v, tf.Variable)
       name = v.name.split('/')[-1]
-      if 'w' == name.lower()[0]: vars.append(v)
+      if name.lower().split(':')[0] in ('kernel', 'w', 'weight'):
+        vars.append(v)
     return vars
 
   @property
