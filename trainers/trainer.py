@@ -276,7 +276,9 @@ class Trainer(Nomear):
       self.model.metrics_manager.reset_records()
 
     # Validate model at the beginning if required
-    if self.th.validate_at_the_beginning: self._validate_model(rnd=1)
+    if self.th.validate_at_the_beginning:
+      self._validate_model(rnd=1)
+      self._take_notes_for_export()
     # Set lr decay variables
     self._reset_lr_decay_variables()
 
@@ -708,8 +710,10 @@ class Trainer(Nomear):
     # Note switch should be turned on
     if self.th.note_modulus == 0: return
     # Note cycle should be met
-    if np.mod(self.counter, self.th.note_modulus) != 0:
-      if not (self.counter == 1 and self.th.take_note_in_beginning): return
+    # self.counter == 0 happens when th.validate_at_the_beginning is True
+    if self.counter != 0:
+      if np.mod(self.counter, self.th.note_modulus) != 0: return
+      # if not (self.counter == 1 and self.th.take_note_in_beginning): return
     # Loss history should not be blank
     if not self.batch_loss_stat.last_value: return
     # Validation history should not be blank if validation is on

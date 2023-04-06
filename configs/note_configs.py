@@ -58,6 +58,7 @@ class NoteConfigs(object):
   serial_num = Flag.integer(1, '...', is_key=None)
   supplement = Flag.string(None, 'Supplement', is_key=None)
 
+  # TODO: remove this flag
   take_note_in_beginning = Flag.boolean(
     False, 'Whether to take note on 1st iteration')
 
