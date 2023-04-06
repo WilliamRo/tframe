@@ -715,7 +715,7 @@ class Trainer(Nomear):
       if np.mod(self.counter, self.th.note_modulus) != 0: return
       # if not (self.counter == 1 and self.th.take_note_in_beginning): return
     # Loss history should not be blank
-    if not self.batch_loss_stat.last_value: return
+    # if not self.batch_loss_stat.last_value: return  # TODO
     # Validation history should not be blank if validation is on
     if self.th.validation_on:
       if not self.metrics_manager.ready_for_note_taking: return
