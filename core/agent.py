@@ -12,6 +12,7 @@ from tframe import hub
 from tframe import console
 from tframe import context
 from tframe import pedia
+from tframe.core.nomear import Nomear
 from tframe.configs.config_base import Config
 
 from tframe.utils import imtool
@@ -24,7 +25,7 @@ from tframe.utils.string_tools import get_time_string
 from tframe.core.decorators import with_graph
 
 
-class Agent(object):
+class Agent(Nomear):
   """An Agent works for TFrame Model, handling tensorflow stuffs"""
   def __init__(self, model, graph=None):
     # Each agent works on one tensorflow graph with a tensorflow session
@@ -266,6 +267,13 @@ class Agent(object):
   def shutdown(self):
     if hub.summary or hub.hp_tuning:
       self._summary_writer.close()
+    # Clear context
+    context.lr_coef = None
+    context.lr_global_step = None
+    context.lr_decay_steps = None
+    # Clear graph
+    tf.keras.backend.clear_session()
+    # Close session
     self.session.close()
 
   def write_summary(self, summary, step=None):
@@ -389,6 +397,7 @@ class Agent(object):
     else:
       self._graph = tf.get_default_graph()
       # self._graph = tf.Graph()
+
     # Initialize graph variables
     with self.graph.as_default():
       self._is_training = tf.placeholder(
@@ -400,7 +409,8 @@ class Agent(object):
     #   this placeholder will be got from default graph
     # self._graph.is_training = self._is_training
     # assert context.current_graph is not None
-    if not hub.suppress_current_graph: context.current_graph = self._graph
+    if not hub.suppress_current_graph:
+      context._current_graph = self._graph
     # tfr.current_graph = self._graph
 
   def _check_bash(self):
