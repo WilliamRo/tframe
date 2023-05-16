@@ -57,6 +57,7 @@ from tframe.layers.normalization import LayerNormalization
 from tframe.layers.preprocess import Normalize
 
 from tframe.layers.pooling import AveragePooling2D
+from tframe.layers.pooling import GlobalAveragePooling1D
 from tframe.layers.pooling import GlobalAveragePooling2D
 from tframe.layers.pooling import MaxPool1D
 from tframe.layers.pooling import MaxPool2D
