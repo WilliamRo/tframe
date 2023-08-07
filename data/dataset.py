@@ -22,7 +22,8 @@ class DataSet(TFRData, Nomear):
   TARGETS = pedia.targets
 
   def __init__(self, features=None, targets=None, data_dict=None,
-               name='dataset', is_rnn_input=False, **kwargs):
+               name='dataset', is_rnn_input=False, data_fetcher=None,
+               **kwargs):
     """
     A DataSet is the only data structure which can be fed into tframe model
     directly. Data stored in data_dict must be a regular numpy array with the
@@ -49,6 +50,10 @@ class DataSet(TFRData, Nomear):
 
     # Indices
     self.indices = None
+
+    # Will be called at the beginning of each round in gen_batches
+    #   signature: data_fetcher(ds: tframe.DataSet)
+    self.data_fetcher = data_fetcher
 
   # region : Properties
 
@@ -246,6 +251,9 @@ class DataSet(TFRData, Nomear):
 
   def gen_batches(self, batch_size, shuffle=False, is_training=False):
     """Yield batches of data with the specific size"""
+    if is_training and callable(self.data_fetcher):
+      self.data_fetcher(self)
+
     round_len = self.get_round_length(batch_size, training=is_training)
     if batch_size == -1: batch_size = self.size
 

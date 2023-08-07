@@ -63,8 +63,8 @@ class ConfusionMatrix(object):
     total = preds.size
 
     # Initialize matrix
-    cm = np.zeros(shape=[self.num_classes, self.num_classes], dtype=np.int)
-    support = np.zeros(shape=[self.num_classes], dtype=np.int)
+    cm = np.zeros(shape=[self.num_classes, self.num_classes], dtype=int)
+    support = np.zeros(shape=[self.num_classes], dtype=int)
     for c in range(self.num_classes):
       mask = truths == c
       support[c] = np.sum(mask)
