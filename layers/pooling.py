@@ -159,6 +159,32 @@ class AveragePooling2D(Layer, AveragePooling2D_):
     return Layer.__call__(self, *args, **kwargs)
 
 
+class ReduceMean(Layer):
+
+  full_name = 'average'
+  abbreviation = 'avg'
+
+  @init_with_graph
+  def __init__(self, axis, keepdims=False, **kwargs):
+    if not isinstance(axis, (list, tuple)): axis = [axis]
+
+    self.axis = axis
+    self.keepdims = keepdims
+
+    self._kwargs = kwargs
+
+  def get_layer_string(self, scale, full_name=False, suffix=''):
+    suffix = f'({",".join([str(i) for i in self.axis])})'
+    result = super().get_layer_string(scale, full_name, suffix)
+    return result
+
+  @single_input
+  def _link(self, input_, **kwargs):
+    output = tf.reduce_mean(input_, axis=self.axis, keepdims=self.keepdims)
+    return output
+
+
+
 class GlobalAveragePooling1D(Layer):
 
   full_name = 'globalavgpool1d'

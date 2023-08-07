@@ -230,6 +230,32 @@ class Reshape(Layer):
     return output
 
 
+class BatchReshape(Layer):
+  """Say the input tensor has a shape of [bs, N * M], this layer reshapes
+  this tensor to [bs * N, M]"""
+
+  DEFAULT_PLACEHOLDER_KEY = 'tensor_block_size'
+
+  def __init__(self, key=None):
+    self.key = self.DEFAULT_PLACEHOLDER_KEY if key is None else key
+    self.full_name = 'BatchReshape'
+    self.abbreviation = self.full_name
+
+  @single_input
+  def _link(self, x: tf.Tensor, **kwargs):
+    N = tf.placeholder(dtype=tf.int32, shape=(), name=self.key)
+    # Add N to default collection
+    tf.add_to_collection(pedia.default_feed_dict, N)
+
+    x_shape = tf.shape(x)
+    D = x_shape[1] // N
+
+    # TODO: a workaround, '[-1, D] + x_shape[2:]' does not work
+    output_shape = [-1, D] + [x_shape[i] for i in range(2, len(x.shape))]
+    output = tf.reshape(x, output_shape, name=self.full_name)
+    return output
+
+
 class Input(Layer):
 
   def __init__(
