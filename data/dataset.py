@@ -29,6 +29,9 @@ class DataSet(TFRData, Nomear):
     directly. Data stored in data_dict must be a regular numpy array with the
     same length.
     """
+    if 'check_data' in kwargs: check_data = kwargs.pop('check_data')
+    else: check_data = True
+
     # Call parent's constructor
     super().__init__(name)
 
@@ -46,7 +49,7 @@ class DataSet(TFRData, Nomear):
     self.active_indices = None
 
     # Sanity checks
-    self._check_data()
+    if check_data: self._check_data()
 
     # Indices
     self.indices = None
