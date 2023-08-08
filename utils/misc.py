@@ -104,6 +104,11 @@ def convert_to_dense_labels(one_hot):
     one_hot = one_hot.reshape(one_hot.shape[0], -1)
 
   if len(one_hot.shape) == 1 or one_hot.shape[1] == 1: return one_hot
+
+  # This occurs in situations that BatchReshape is used
+  if len(one_hot.shape) != 2:
+    one_hot = one_hot.reshape(-1, one_hot.shape[-1])
+
   assert len(one_hot.shape) == 2 and one_hot.shape[1] > 1
   return np.argmax(one_hot, axis=1)
 
