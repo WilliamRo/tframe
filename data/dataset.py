@@ -649,6 +649,10 @@ class DataSet(TFRData, Nomear):
 
     # Check each item in data_dict
     for name, array in self.data_dict.items():
+      if name == pedia.batch_mask:
+        assert len(array) == data_length
+        continue
+
       # Check type and length
       if not isinstance(array, np.ndarray) or len(array) != data_length:
         raise ValueError('!! {} should be a numpy array with length {}'.format(

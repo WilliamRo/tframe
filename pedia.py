@@ -1,6 +1,8 @@
 Accuracy = 'Accuracy'
 activation_sum = 'activation_sum'
 
+batch_mask = 'batch_mask'
+
 cascade = 'cascade'
 classes = 'CLASSES'
 concat = 'concat'

@@ -404,6 +404,12 @@ class Agent(Nomear):
         dtype=tf.bool, name=pedia.is_training)
       tf.add_to_collection(pedia.is_training, self._is_training)
 
+      if tfr.hub.use_batch_mask:
+        batch_mask = tf.placeholder(dtype=tf.bool, shape=[None],
+                                    name=pedia.batch_mask)
+        hub.put_into_pocket(pedia.batch_mask, batch_mask)
+        tf.add_to_collection(pedia.default_feed_dict, batch_mask)
+
     # TODO
     # When linking batch-norm layer (and dropout layer),
     #   this placeholder will be got from default graph

@@ -3,10 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 from .flag import Flag
+from tframe.core.nomear import Nomear
 
 
 
-class DataConfigs(object):
+class DataConfigs(Nomear):
   data_config = Flag.string(None, 'Data set config string', is_key=None)
   train_size = Flag.integer(0, 'Size of training set')
   val_size = Flag.integer(0, 'Size of validation set')
@@ -87,6 +88,11 @@ class DataConfigs(object):
   class_indices = Flag.string(
     None, 'Class indices, e.g., `3,5`, only for research use', is_key=None)
 
+  # Batch mask is for controling error propagated back to model
+  #   in one data batch. First introduced in seq2seq sleep stage classification
+  #   where unknown labels exist. Placeholder is created in agent.py
+  use_batch_mask = Flag.boolean(False, 'Option to use batch mask', is_key=None)
+
   @property
   def sample_among_sequences(self):
     if self.sub_seq_len in [None, 0]: return False
@@ -102,5 +108,13 @@ class DataConfigs(object):
     assert all([i >= 0 for i in indices])
     assert len(indices) == len(list(set(indices)))
     return indices
+
+  @property
+  def batch_mask(self):
+    """See th.use_batch_mask. Placeholder will be put into this pocket
+       in tframe.Agent. If th.use_batch_mask is True, pedia.batch_mask
+       SHOULD be in DataSet.data_dict!
+    """
+    return self.get_from_pocket('batch_mask')
 
 

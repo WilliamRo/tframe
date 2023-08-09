@@ -150,6 +150,12 @@ class Classifier(Predictor):
     preds = class_sorted[:, 0]
     truths = np.ravel(data_set.dense_labels)
 
+    # Apply batch mask if provided
+    if pedia.batch_mask in data_set.data_dict:
+      mask = np.array(data_set.data_dict[pedia.batch_mask]).astype(bool)
+      preds = preds[mask]
+      truths = truths[mask]
+
     # Produce confusion matrix
     cm = ConfusionMatrix(
       num_classes=data_set.num_classes,

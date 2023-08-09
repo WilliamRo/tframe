@@ -113,7 +113,13 @@ class Quantity(object):
         raise AssertionError('!! tf_summ_method is provided but not used')
       if self._np_summ_method is not None:
         raise AssertionError('!! np_summ_method is provided but not used')
+      if tfr.hub.use_batch_mask:
+        raise AssertionError(
+          '!! Batch mask can not be applied to quantity without summary')
       return q
+
+    # Apply batch mask if provided
+    if tfr.hub.use_batch_mask: q = q[tfr.hub.batch_mask]
 
     self._quantities = q
     # Extract result in last time step for RNN output
