@@ -153,6 +153,7 @@ class Classifier(Predictor):
     # Apply batch mask if provided
     if pedia.batch_mask in data_set.data_dict:
       mask = np.array(data_set.data_dict[pedia.batch_mask]).astype(bool)
+      mask = np.ravel(mask)
       preds = preds[mask]
       truths = truths[mask]
 
