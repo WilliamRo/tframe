@@ -337,7 +337,7 @@ class ForkMergeDAG(Net):
     columns = edge_spec.split(';')
     # (1) check column number
     assert len(columns) == mat_size - 1
-    adj_mat = np.zeros(shape=[mat_size, mat_size], dtype=np.bool)
+    adj_mat = np.zeros(shape=[mat_size, mat_size], dtype=bool)
     for j, col in enumerate(columns):
       # (2) each column should represent an upper-triangular matrix column
       assert isinstance(col, str) and len(col) == j + 1
