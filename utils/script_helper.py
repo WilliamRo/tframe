@@ -345,6 +345,13 @@ class Helper(object):
       # Parse key and value
       k, v = r.groups()
       assert isinstance(v, str)
+
+      # [Workaround] Patch for python_cmd
+      if k == self.CONFIG_KEYS.python_cmd:
+        self._python_cmd = v
+        sys.argv.remove(s)
+        continue
+
       val_list = re.split(r'[,/]', v)
       # Check system configurations
       if k in self.config_dict:
@@ -352,8 +359,6 @@ class Helper(object):
         val = val_list[0]
         if k == self.CONFIG_KEYS.python_version:
           self._python_cmd = 'python{}'.format(val)
-        elif k == self.CONFIG_KEYS.python_cmd:
-          self._python_cmd = val
         else: self.config_dict[k] = val
         sys.argv.remove(s)
         continue
