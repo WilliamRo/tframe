@@ -78,6 +78,7 @@ class Helper(object):
     criterion = 'criterion'
     greater_is_better = 'greater_is_better'
     python_version = 'python_version'
+    python_cmd = 'python_cmd'
 
   def __init__(self, module_name=None):
     self.module_name = module_name
@@ -274,7 +275,9 @@ class Helper(object):
       self.common_parameters['script_suffix'] = '_{}'.format(index + 1)
     # Run
     configs = self._get_all_configs(hyper_params)
-    cmd = [self._python_cmd, self.module_name] + self._get_hp_strings(configs)
+    cmd = self._python_cmd.split(' ') + [self.module_name]
+    cmd += self._get_hp_strings(configs)
+    console.show_status(f'Executing `{cmd}` ...', symbol='[s-file]')
     run(cmd)
     print()
 
@@ -336,7 +339,7 @@ class Helper(object):
     for s in sys.argv[1:]:
       assert isinstance(s, str)
       # Check format (pattern: --flag_name=value)
-      r = re.fullmatch(r'--([\w_]+)=([-\w./,+:;]+)', s)
+      r = re.fullmatch(r'--([\w_]+)=([-\w./,+:; ]+)', s)
       if r is None: raise AssertionError(
         'Can not parse argument `{}`'.format(s))
       # Parse key and value
@@ -349,6 +352,8 @@ class Helper(object):
         val = val_list[0]
         if k == self.CONFIG_KEYS.python_version:
           self._python_cmd = 'python{}'.format(val)
+        elif k == self.CONFIG_KEYS.python_cmd:
+          self._python_cmd = val
         else: self.config_dict[k] = val
         sys.argv.remove(s)
         continue
