@@ -80,12 +80,19 @@ class Model(object):
     self._train_step = OperationSlot(self, name='Train-step')
     self._train_step_summary = SummarySlot(self)
 
+    self._batchlet_grads = NestedTensorSlot(self, 'Batchlet-Gradients')
+    self._gradient_placeholders = None
+
     self.validate_group = Group(
       self, self._validation_summary, name='Validate-group')
 
-    self._update_group = Group(
-      self, self._loss, self._train_step, self._train_step_summary,
-      name='Update-group')
+    if hub.batchlet_size is None:
+      self._update_group = Group(
+        self, self._loss, self._train_step, self._train_step_summary,
+        name='Update-group')
+    else:
+      self._update_group = Group(
+        self, self._loss, self._batchlet_grads, name='Update-group')
 
     # Slots for exporting np values to note
     self.grads_slot = NestedTensorSlot(self, 'Gradients')
@@ -321,8 +328,22 @@ class Model(object):
       self.set_train_step(var_list)
 
   def set_train_step(self, var_list=None):
-    self._train_step.plug(
-      self._optimizer.minimize(self._loss.op, var_list=var_list))
+    from tframe.optimizers.optimizer import Optimizer
+    optimizer: Optimizer = self._optimizer
+
+    # Get package from optimizer
+    package = optimizer.minimize(self._loss.op, var_list=var_list)
+
+    # Unpack package accordingly
+    if hub.batchlet_size is None: update = package
+    else:
+      grads, grad_placeholders, update = package
+      # If batchlet size is provided, self._train_step will not be activated
+      self._batchlet_grads.plug(grads)
+      self._gradient_placeholders = grad_placeholders
+
+    # Note that in batchlet mode, train_step is not included in update_group
+    self._train_step.plug(update)
 
   def reset_optimizer(self):
     from tframe.optimizers.optimizer import Optimizer
@@ -367,8 +388,36 @@ class Model(object):
 
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
-    feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
-    results = self._update_group.run(feed_dict, data=data_batch)
+    if tfr.hub.batchlet_size is None:
+      feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
+      results = self._update_group.run(feed_dict, data=data_batch)
+    else:
+      # TODO: use batchlet to support infinite batch_size
+      assert isinstance(data_batch, DataSet)
+      bls = tfr.hub.batchlet_size
+      results, gradients = {}, []
+      for batchlet in data_batch.gen_batches(bls, is_training=True):
+        n = batchlet.size
+        feed_dict = self._get_default_feed_dict(batchlet, is_training=True)
+        # Calculate quantities and grads
+        res_let = self._update_group.run(feed_dict, data=data_batch)
+        grads_lets = res_let.pop(self._batchlet_grads)
+
+        # Accumulate quantities
+        if len(results) == 0: results = {k: 0.0 for k in res_let.keys()}
+        for k in res_let.keys(): results[k] += n * res_let[k]
+
+        # Accumulate gradients
+        if len(gradients) == 0: gradients = [0.0 for _ in grads_lets]
+        gradients = [grad + gl * n for gl, grad in zip(grads_lets, gradients)]
+
+      # Calculate quantities
+      for k in results.keys(): results[k] = results[k] / data_batch.size
+
+      # Calculate gradients and update model
+      gradients = [g / data_batch.size for g in gradients]
+      self._train_step.run({
+        p: g for p, g in zip(self._gradient_placeholders, gradients)})
 
     # Clip weights if necessary
     self._clip_weights()

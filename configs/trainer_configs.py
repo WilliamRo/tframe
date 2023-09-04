@@ -41,6 +41,8 @@ class TrainerConfigs(object):
   eval_batch_size = Flag.integer(None, 'Batch size in batch evaluation')
   eval_num_steps = Flag.integer(None, 'Step number in batch evaluation')
 
+  batchlet_size = Flag.integer(None, 'Batchlet size', is_key=False)
+
   block_validation = Flag.whatever(False, '???')
   rand_over_classes = Flag.boolean(False, '...', is_key=None)
 

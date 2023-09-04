@@ -27,8 +27,15 @@ class Optimizer(object):
   def minimize(self, loss, var_list=None):
     # Step 1: compute gradients
     grads_and_vars = self._compute_gradients(loss, var_list=var_list)
+
     # Step 2: apply gradients
-    update = self.tf_optimizer.apply_gradients(grads_and_vars)
+    g_v_for_update = grads_and_vars
+    if th.batchlet_size is not None:
+      assert th.batchlet_size > 0
+      grads = [tf.placeholder(g.dtype, g.shape) for g, _ in grads_and_vars]
+      g_v_for_update = [(g, v) for (_, v), g in zip(grads_and_vars, grads)]
+    update = self.tf_optimizer.apply_gradients(g_v_for_update)
+
     # Step 3: apply decoupled weight decay if required
     if th.decoupled_l2_penalty > 0:
       assert th.decoupled_l2_penalty < 1
@@ -37,11 +44,15 @@ class Optimizer(object):
         update_with_decay = tf.group(*[
           tf.assign_sub(v, v * th.decoupled_l2_penalty) for v in vars_to_decay])
       update = update_with_decay
+
     # Set reset_tf_optimizer if necessary
     if th.reset_optimizer_after_resurrection and th.lives > 0:
       self.reset_tf_optimizer = tf.variables_initializer(
         self.tf_optimizer.variables())
-    return update
+
+    # Return operators accordingly
+    if th.batchlet_size is None: return update
+    return [g for g, v in grads_and_vars], grads, update
 
 
   def _compute_gradients(self, loss, var_list=None):
