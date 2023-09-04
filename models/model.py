@@ -396,7 +396,8 @@ class Model(object):
       assert isinstance(data_batch, DataSet)
       bls = tfr.hub.batchlet_size
       results, gradients = {}, []
-      for batchlet in data_batch.gen_batches(bls, is_training=True):
+      # Note here set is_training to False to bypass random selection logic
+      for batchlet in data_batch.gen_batches(bls, is_training=False):
         n = batchlet.size
         feed_dict = self._get_default_feed_dict(batchlet, is_training=True)
         # Calculate quantities and grads

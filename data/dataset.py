@@ -118,7 +118,8 @@ class DataSet(TFRData, Nomear):
 
   @property
   def representative(self):
-    array = list(self.data_dict.values())[0]
+    array = (self.data_dict[self.FEATURES] if self.FEATURES in self.data_dict
+             else list(self.data_dict.values())[0])
     assert isinstance(array, np.ndarray)
     assert len(array.shape) > 2 if self.is_rnn_input else 1
     return array
