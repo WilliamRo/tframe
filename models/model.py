@@ -846,6 +846,7 @@ class Model(object):
         # TODO: use this ugly patch to circumvent non-train input issue
         if non_train_cond_triggered and name == 'targets': continue
         val = batch.data_dict.get(name, None)
+        if val is None: val = batch.properties.get(name, None)
         if val is not None: feed_dict[tensor] = val
 
     feed_dict.update(self.agent.get_status_feed_dict(is_training))
