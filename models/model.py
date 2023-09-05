@@ -80,8 +80,6 @@ class Model(object):
     self._train_step = OperationSlot(self, name='Train-step')
     self._train_step_summary = SummarySlot(self)
 
-    self._batchlet_grads = NestedTensorSlot(self, 'Batchlet-Gradients')
-    self._gradient_placeholders = None
 
     self.validate_group = Group(
       self, self._validation_summary, name='Validate-group')
@@ -90,7 +88,15 @@ class Model(object):
       self._update_group = Group(
         self, self._loss, self._train_step, self._train_step_summary,
         name='Update-group')
+    elif hub.gradlet_in_device:
+      self._gas_coef = None
+      self._init_gas = OperationSlot(self, name='Init-GAS')
+      self._accum_gas = OperationSlot(self, name='Accumulate-Grads')
+      self._update_group = Group(
+        self, self._loss, self._accum_gas, name='Update-group')
     else:
+      self._batchlet_grads = NestedTensorSlot(self, 'Batchlet-Gradients')
+      self._gradient_placeholders = None
       self._update_group = Group(
         self, self._loss, self._batchlet_grads, name='Update-group')
 
@@ -336,6 +342,11 @@ class Model(object):
 
     # Unpack package accordingly
     if hub.batchlet_size is None: update = package
+    elif hub.gradlet_in_device:
+      coef, init_gas, assign_add_grads, update = package
+      self._gas_coef = coef
+      self._init_gas.plug(init_gas)
+      self._accum_gas.plug(assign_add_grads)
     else:
       grads, grad_placeholders, update = package
       # If batchlet size is provided, self._train_step will not be activated
@@ -388,35 +399,57 @@ class Model(object):
 
   def update_model(self, data_batch, **kwargs):
     """Default model updating method, should be overrode"""
-    if tfr.hub.batchlet_size is None:
+    if hub.batchlet_size is None:
       feed_dict = self._get_default_feed_dict(data_batch, is_training=True)
       results = self._update_group.run(feed_dict, data=data_batch)
+    elif hub.gradlet_in_device:
+      assert isinstance(data_batch, DataSet)
+      bls = tfr.hub.batchlet_size
+
+      # Set gradient accumulators to 0.0
+      self._init_gas.run()
+
+      results = {}
+      # Note here set is_training to False to bypass random selection logic
+      for batchlet in data_batch.gen_batches(bls, is_training=False):
+        coef = batchlet.size / data_batch.size
+        feed_dict = self._get_default_feed_dict(batchlet, is_training=True)
+        feed_dict[self._gas_coef] = coef
+
+        # Calculate quantities and grads
+        res_let = self._update_group.run(feed_dict, data=data_batch)
+
+        # Accumulate quantities
+        if len(results) == 0: results = {k: 0.0 for k in res_let.keys()}
+        for k in res_let.keys(): results[k] += coef * res_let[k]
+
+      # Run train step to update model
+      self._train_step.run()
     else:
       # TODO: use batchlet to support infinite batch_size
       assert isinstance(data_batch, DataSet)
       bls = tfr.hub.batchlet_size
       results, gradients = {}, []
+
       # Note here set is_training to False to bypass random selection logic
       for batchlet in data_batch.gen_batches(bls, is_training=False):
-        n = batchlet.size
+        coef = batchlet.size / data_batch.size
         feed_dict = self._get_default_feed_dict(batchlet, is_training=True)
+
         # Calculate quantities and grads
         res_let = self._update_group.run(feed_dict, data=data_batch)
         grads_lets = res_let.pop(self._batchlet_grads)
 
         # Accumulate quantities
         if len(results) == 0: results = {k: 0.0 for k in res_let.keys()}
-        for k in res_let.keys(): results[k] += n * res_let[k]
+        for k in res_let.keys(): results[k] += coef * res_let[k]
 
         # Accumulate gradients
         if len(gradients) == 0: gradients = [0.0 for _ in grads_lets]
-        gradients = [grad + gl * n for gl, grad in zip(grads_lets, gradients)]
-
-      # Calculate quantities
-      for k in results.keys(): results[k] = results[k] / data_batch.size
+        gradients = [grad + gl * coef
+                     for gl, grad in zip(grads_lets, gradients)]
 
       # Calculate gradients and update model
-      gradients = [g / data_batch.size for g in gradients]
       self._train_step.run({
         p: g for p, g in zip(self._gradient_placeholders, gradients)})
 

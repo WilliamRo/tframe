@@ -27,13 +27,27 @@ class Optimizer(object):
   def minimize(self, loss, var_list=None):
     # Step 1: compute gradients
     grads_and_vars = self._compute_gradients(loss, var_list=var_list)
+    grads = [g for g, _ in grads_and_vars]
 
     # Step 2: apply gradients
     g_v_for_update = grads_and_vars
     if th.batchlet_size is not None:
       assert th.batchlet_size > 0
-      grads = [tf.placeholder(g.dtype, g.shape) for g, _ in grads_and_vars]
-      g_v_for_update = [(g, v) for (_, v), g in zip(grads_and_vars, grads)]
+
+      if th.gradlet_in_device:
+        gas = [
+          tf.Variable(initial_value=tf.zeros_like(g), trainable=False,
+                      shape=g.shape, dtype=g.dtype)
+          for g, _ in grads_and_vars]
+        coef = tf.placeholder(dtype=th.dtype, shape=())
+        init_gas = tf.group(*[tf.assign(ga, tf.zeros_like(ga)) for ga in gas])
+        assign_add_grads = tf.group(
+          *[tf.assign_add(ga, coef * g) for g, ga in zip(grads, gas)])
+        g_v_for_update = [(g, v) for (_, v), g in zip(grads_and_vars, gas)]
+      else:
+        gps = [tf.placeholder(g.dtype, g.shape) for g, _ in grads_and_vars]
+        g_v_for_update = [(g, v) for (_, v), g in zip(grads_and_vars, gps)]
+
     update = self.tf_optimizer.apply_gradients(g_v_for_update)
 
     # Step 3: apply decoupled weight decay if required
@@ -51,8 +65,13 @@ class Optimizer(object):
         self.tf_optimizer.variables())
 
     # Return operators accordingly
-    if th.batchlet_size is None: return update
-    return [g for g, v in grads_and_vars], grads, update
+    if th.batchlet_size is None:
+      return update
+
+    if th.gradlet_in_device:
+      return coef, init_gas, assign_add_grads, update
+
+    return grads, gps, update
 
 
   def _compute_gradients(self, loss, var_list=None):

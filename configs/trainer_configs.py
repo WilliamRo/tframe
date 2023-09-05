@@ -42,6 +42,8 @@ class TrainerConfigs(object):
   eval_num_steps = Flag.integer(None, 'Step number in batch evaluation')
 
   batchlet_size = Flag.integer(None, 'Batchlet size', is_key=False)
+  gradlet_in_device = Flag.boolean(
+    True, 'Option to keep gradients in device in batchlet training')
 
   block_validation = Flag.whatever(False, '???')
   rand_over_classes = Flag.boolean(False, '...', is_key=None)
