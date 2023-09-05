@@ -105,7 +105,8 @@ class Optimizer(object):
   def deal_with_nan(grad):
     # Reference: https://stackoverflow.com/questions/33712178/tensorflow-nan-bug
     assert isinstance(grad, tf.Tensor)
-    return tf.where(tf.is_nan(grad), tf.zeros(grad.shape), grad)
+    return tf.where(tf.is_nan(grad), tf.zeros(grad.shape, dtype=th.dtype),
+                    grad)
 
   @staticmethod
   def clip_gradients(grads_and_vars):

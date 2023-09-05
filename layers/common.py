@@ -70,7 +70,8 @@ class Dropout(Layer):
   def _link(self, input_, **kwargs):
     return tf.nn.dropout(
       input_, tf.cond(tf.get_collection(pedia.is_training)[0],
-                      lambda: self.train_keep_prob, lambda: 1.0))
+                      lambda: tf.constant(self.train_keep_prob, hub.dtype),
+                      lambda: tf.constant(1.0, dtype=hub.dtype)))
 
 
 class Linear(Layer):

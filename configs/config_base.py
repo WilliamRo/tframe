@@ -129,6 +129,7 @@ class Config(
   def np_dtype(self):
     if self.dtype is tf.float32: return np.float32
     elif self.dtype is tf.float64: return np.float64
+    elif self.dtype is tf.float16: return np.float16
     raise ValueError
 
   @property
