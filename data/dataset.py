@@ -60,7 +60,7 @@ class DataSet(TFRData, Nomear):
 
   # region : Properties
 
-  @Nomear.property()
+  @property
   def _ordered_indices(self):
     return np.array(list(range(self.size)))
 
