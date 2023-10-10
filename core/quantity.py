@@ -119,7 +119,19 @@ class Quantity(object):
       return q
 
     # Apply batch mask if provided
-    if tfr.hub.use_batch_mask: q = q[tfr.hub.batch_mask]
+    if tfr.hub.use_batch_mask:
+      # Somehow in tf, given q=[[1, 2], [3, 4]], m=[True, True, True, True],
+      #  calling q[m] will not cause error.
+      # TODO: temporal workaround for RNN results with shape [bs, ns]
+      if tfr.hub.use_rnn and len(q.shape) > 1:
+        assert not self._last_only
+        if len(q.shape) == 2: q = tf.reshape(q, [-1])
+        elif len(q.shape) == 3:
+          # Calculate quantities such as F1 score
+          q = tf.reshape(q, [-1, q.shape.as_list()[-1]])
+        else: raise ValueError(
+          f'!! Failed to apply batch_mask for {len(q.shape)}-D q')
+      q = q[tfr.hub.batch_mask]
 
     self._quantities = q
     # Extract result in last time step for RNN output
