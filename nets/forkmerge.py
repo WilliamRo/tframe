@@ -255,6 +255,9 @@ class ForkMergeDAG(Net):
 
 
   def _link(self, input_:tf.Tensor, **kwargs):
+    # TODO: temporal workaround to circumvent rnet.build_while_free issue
+    linked_before = len(self.children) > 0
+
     # Output tensors of each vertex
     outputs = [input_]
     for j, funcs in enumerate(self.vertices):
@@ -281,7 +284,7 @@ class ForkMergeDAG(Net):
         x = input_
         for layer in layers:
           # Add before link, otherwise variable may be shared
-          self.add(layer)
+          if not linked_before: self.add(layer)
           x = layer(x)
         # Set tensors back
         input_tensors[0] = x
@@ -310,7 +313,7 @@ class ForkMergeDAG(Net):
       x = input_tensors
       for f in funcs:
         # Add funcs to children list for structure details
-        self.add(f)
+        if not linked_before: self.add(f)
         # Call function
         x = f(x)
 
