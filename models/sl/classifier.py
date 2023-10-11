@@ -58,9 +58,10 @@ class Classifier(Predictor):
 
   @with_graph
   def classify(self, data, batch_size=None, extractor=None,
-               return_probs=False, verbose=False):
+               return_probs=False, verbose=False, **kwargs):
     probs = self.evaluate(
-      self._probabilities.tensor, data, batch_size, extractor, verbose=verbose)
+      self._probabilities.tensor, data, batch_size, extractor, verbose=verbose,
+      **kwargs)
     if return_probs: return probs
 
     # TODO: make clear data shape here and add comments
@@ -142,7 +143,12 @@ class Classifier(Predictor):
     #  Calculate predicted classes and corresponding probabilities
     # -------------------------------------------------------------------------
     probs = self.classify(
-      data_set, batch_size, return_probs=True, verbose=verbose)
+      data_set, batch_size, return_probs=True, verbose=verbose,
+      use_batch_mask=False, **kwargs)
+
+    # RNNs will output a list of probs
+    if isinstance(probs, list): probs = np.concatenate(probs, axis=0)
+
     # This provides necessary information for image viewer presentation
     # i.e., the sorted probabilities for each class
     probs_sorted = np.fliplr(np.sort(probs, axis=-1))
@@ -152,7 +158,10 @@ class Classifier(Predictor):
 
     # Apply batch mask if provided
     if pedia.batch_mask in data_set.data_dict:
-      mask = np.array(data_set.data_dict[pedia.batch_mask]).astype(bool)
+      mask = data_set.data_dict[pedia.batch_mask]
+      # Handle RNN sequence learning situation
+      if isinstance(mask, (list, tuple)): mask = np.concatenate(mask, axis=0)
+      mask = np.array(mask).astype(bool)
       mask = np.ravel(mask)
       preds = preds[mask]
       truths = truths[mask]

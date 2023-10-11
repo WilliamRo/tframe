@@ -10,6 +10,7 @@ from tframe import checker, console
 from tframe.data.dataset import DataSet
 from tframe.data.sequences.paral_engine import ParallelEngine
 from tframe.utils.fancy.wheel import Wheel
+from tframe import pedia
 
 
 class SequenceSet(DataSet):
@@ -302,6 +303,12 @@ class SequenceSet(DataSet):
         # if seq_batch.size > 1: TODO: set active_length even if batch_size is 1
         assert isinstance(batch.active_length, list)
         assert len(batch.active_length) > 0
+
+        # TODO: temporal workaround for batch_mask
+        if pedia.batch_mask in batch.data_dict:
+          mask = batch.data_dict[pedia.batch_mask]
+          batch.data_dict[pedia.batch_mask] = np.ravel(mask)
+
         yield batch
         counter += 1
 

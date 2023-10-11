@@ -565,8 +565,12 @@ class Model(object):
     """
     # Sanity check
     assert isinstance(data_set, DataSet)
-    if data_set.is_rnn_input and num_steps is None:
+
+    # if data_set.is_rnn_input and num_steps is None:
+    if isinstance(data_set, SequenceSet) and num_steps is None:
       num_steps = hub.val_num_steps
+
+    batch_mask_is_used = pedia.batch_mask in data_set.data_dict
 
     # - One-shot validation
     one_shot = False
@@ -611,7 +615,7 @@ class Model(object):
     for val, qd, slot in zip(values, quantity_defs, tensor_slots):
       # Sanity check
       assert isinstance(qd, Quantity)
-      if self.input_type is InputTypes.BATCH:
+      if self.input_type is InputTypes.BATCH or batch_mask_is_used:
         assert isinstance(val, np.ndarray) and len(val) > 0
       else:
         assert isinstance(val, list)
@@ -743,7 +747,8 @@ class Model(object):
     return results
 
   def evaluate(self, fetches, data, batch_size=None, postprocessor=None,
-               verbose=False, num_steps=None, suppress_n_to_one=False):
+               verbose=False, num_steps=None, suppress_n_to_one=False,
+               **kwargs):
     """
     Evaluate tensors based on data
     TODO: note that if num_steps != -1, outputs from a same sequence may be
@@ -767,8 +772,12 @@ class Model(object):
     single_fetch = not isinstance(fetches, (tuple, list))
     # Wrap fetches into a list if necessary
     if single_fetch: fetches = [fetches]
-    if data.is_rnn_input and num_steps is None: num_steps = hub.val_num_steps
+    if isinstance(data, SequenceSet) and num_steps is None:
+      num_steps = hub.eval_num_steps
     if batch_size is None: batch_size = data.size
+
+    use_batch_mask = kwargs.get(
+      'use_batch_mask', pedia.batch_mask in data.data_dict)
 
     # Get outputs (sometimes fetches may contain operations which yields None)
     outputs = [[] for op in fetches if not isinstance(op, tf.Operation)]
@@ -788,14 +797,16 @@ class Model(object):
       #           N is the batch_size, and each sk_i is a numpy array
       batch_outputs = self._evaluate_batch(
         fetches, data_batch, num_steps=num_steps,
-        suppress_n_to_one=suppress_n_to_one)
+        suppress_n_to_one=suppress_n_to_one, **kwargs)
       assert isinstance(batch_outputs, list)
       assert len(batch_outputs) == len(outputs)
 
       # Add batch_outputs to outputs accordingly
       for i, batch_output in enumerate(batch_outputs):
         assert isinstance(outputs[i], list)
-        output_is_a_batch = fetches[i].shape.as_list()[0] is None
+        # During validation, when batch_mask is used, output will be raveled
+        output_is_a_batch = all([fetches[i].shape.as_list()[0] is None,
+                                 not use_batch_mask])
         if self.input_type is InputTypes.RNN_BATCH and output_is_a_batch:
           # batch_output is [s1_1, s1_2, ..., s1_N]
           assert isinstance(batch_output, list)
@@ -808,7 +819,7 @@ class Model(object):
       if verbose: bar.show(cursor + 1)
 
     # Merge outputs if necessary
-    if self.input_type is InputTypes.BATCH:
+    if self.input_type is InputTypes.BATCH or use_batch_mask:
       outputs = [np.concatenate(array_list, axis=0) for array_list in outputs]
 
     # Post-proceed and return

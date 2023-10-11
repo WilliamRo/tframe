@@ -20,6 +20,8 @@ from tframe.utils.misc import transpose_tensor
 from tframe.utils.misc import ravel_nested_stuff
 
 from tframe.data.dataset import DataSet
+from tframe import pedia
+
 
 
 class Recurrent(Model, RNet):
@@ -461,6 +463,10 @@ class Recurrent(Model, RNet):
     # Clear up outputs
     outputs, al = [], data_batch.active_length
     if al is None: al = [None] * data_batch.size
+
+    use_batch_mask = kwargs.get(
+      'use_batch_mask', pedia.batch_mask in data_batch.data_dict)
+
     for output, op in zip(batch_outputs, fetch_list):
       # tf.Operation yields None
       if isinstance(op, tf.Operation): continue
@@ -470,9 +476,13 @@ class Recurrent(Model, RNet):
       if op.shape.as_list()[0] is not None:
         outputs.append(output)
         continue
-      #
-      assert output.shape[0] == data_batch.size
-      output = [y[:l] if l is not None else y for y, l in zip(output, al)]
+
+      # TODO: If batch_mask is used, output shape is [?, D]
+      #       instead of [?, ?, D]
+      if not use_batch_mask:
+        assert output.shape[0] == data_batch.size
+        output = [y[:l] if l is not None else y for y, l in zip(output, al)]
+
       if data_batch.n_to_one and not suppress_n_to_one:
         output = [s[-1] for s in output]
       outputs.append(output)
