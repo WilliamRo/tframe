@@ -958,7 +958,8 @@ class TrainerHub(Config):
   @property
   def round_progress(self):
     if self.round_length is None or self.cursor is None: return None
-    return 1.0 * self.cursor / self.round_length
+    # TODO: temporal workaround, self.cursor - self.round_length <= 1
+    return min(1.0 * self.cursor / self.round_length, 1.0)
 
   # region : Modulus
 
