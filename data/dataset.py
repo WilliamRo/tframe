@@ -334,12 +334,18 @@ class DataSet(TFRData, Nomear):
       if i == 0: batch.should_reset_state = True
       return batch
     i = 0
-    if act_lens is None:
+    if act_lens is None or pedia.batch_mask in rnn_data.data_dict:
       for i in range(round_len):
         # Last data_batch may be shorter. (a = [1, 2], a[:9] is legal)
         f = lambda x: x[:, i*num_steps:(i + 1)*num_steps]
         # Yield data batch
-        yield extract(i, f)
+        batch = extract(i, f)
+
+        # TODO: temporal workaround for situations when batch_mask and act_len is both used
+        if act_lens is not None:
+          batch.active_length = [batch.features.shape[1]] * batch.size
+
+        yield batch
     else:
       training = is_training
       # This block is the mirror of _get_dynamic_round_len
