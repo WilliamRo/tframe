@@ -49,7 +49,7 @@ class ConfusionMatrix(object):
   def calculate_PRF(TP, FP, FN):
     precision = TP / np.maximum(TP + FP, 1)
     recall = TP / np.maximum(TP + FN, 1)
-    F1 = 2 * precision * recall / np.maximum(precision + recall, 1)
+    F1 = 2 * precision * recall / np.maximum(precision + recall, 1e-8)
     return precision, recall, F1
 
 
