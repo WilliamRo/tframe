@@ -70,7 +70,8 @@ class Trainer(Nomear):
     # Private Attributes
     self._record_count = 0
     self._warm_up = True
-    self.batch_loss_stat = Statistic(max_length=self.th.hist_buffer_len)
+    self.batch_loss_stats = {}
+    # self.batch_loss_stat = Statistic(max_length=self.th.hist_buffer_len)
 
     self.HubClass = TrainerHub
     if terminator is not None: assert callable(terminator)
@@ -535,11 +536,21 @@ class Trainer(Nomear):
     loss_dict = self.model.update_model(data_batch=data_batch)
 
     # Get and process loss slots
-    # assert len(loss_slots) > 0
-    loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
-    assert len(loss_slots) == 1
-    loss_slot = loss_slots[0]
-    self.batch_loss_stat.record(loss_dict[loss_slot])
+    loss_slots = [s for s in loss_dict.keys() if 'loss' in s.name.lower()]
+    assert len(loss_slots) >= 1
+
+    if len(self.batch_loss_stats) == 0:
+      # Initialize batch_loss_stats if not initialized
+      self.batch_loss_stats = {
+        k: Statistic(max_length=self.th.hist_buffer_len)
+        for k, v in loss_dict.items()}
+
+    for k, v in loss_dict.items(): self.batch_loss_stats[k].record(v)
+
+    # loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
+    # assert len(loss_slots) == 1
+    # loss_slot = loss_slots[0]
+    # self.batch_loss_stat.record(loss_dict[loss_slot])
 
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
@@ -722,7 +733,10 @@ class Trainer(Nomear):
 
     # - Scalars
     scalars = OrderedDict()
-    scalars['Loss'] = self.batch_loss_stat.running_average
+
+    for k, v in self.batch_loss_stats.items():
+      scalars[k.name] = v.running_average
+    # scalars['Loss'] = self.batch_loss_stat.running_average
     self.metrics_manager.update_scalar_dict(scalars)
     if self.th.etch_on:
       scalars['Weight Fraction'] = context.pruner.weights_fraction
@@ -791,6 +805,7 @@ class Trainer(Nomear):
     if new_record and callable(self._terminator):
       if self._terminator(self.metrics_manager.early_stop_criterion):
         self.th.force_terminate = True
+
     # If lottery is on, take down criteria at the beginning
     if self.th.prune_on and self.counter == 1:
       for k, v in val_dict.items():
