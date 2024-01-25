@@ -358,6 +358,17 @@ class Trainer(Nomear):
         self.model.agent.take_notes('{}: {}'.format(title, hub.decimal_str(
           value, hub.val_decimals)))
 
+        # TODO: BETA function: store classification results into note.misc
+        #       USAGE:
+        #         th.gather_classification_results = True
+        #         th.evaluate_test_set = True
+        if self.th.gather_classification_results and name == 'Test':
+          assert isinstance(data_set, DataSet)
+
+          preds = self.model.classify(data_set, batch_size=hub.eval_batch_size)
+          self.model.agent._note.misc['TSP'] = preds
+          self.model.agent._note.misc['TSGT'] = data_set.dense_labels
+
     # Save model here if necessary
     if self._save_model_at_training_end:
       assert len(ds_dict) == 0
