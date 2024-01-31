@@ -4,6 +4,7 @@
 from tframe.models.sl.classifier import Classifier
 from tframe.models.sl.predictor import Predictor
 from tframe.models import Feedforward
+from tframe.models import GAN
 from tframe.models import Recurrent
 
 # ---------------------------------------------------------------
@@ -29,6 +30,7 @@ from tframe.layers.common import Input
 from tframe.layers.common import Linear
 from tframe.layers.common import Onehot
 from tframe.layers.common import Reshape
+from tframe.layers.common import Rescale
 
 from tframe.layers.convolutional import Conv1D
 from tframe.layers.convolutional import Conv2D

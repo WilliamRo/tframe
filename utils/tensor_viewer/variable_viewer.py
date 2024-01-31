@@ -140,7 +140,9 @@ class VariableViewer(Frame):
 
     # Show target
     # Remove color bar if necessary
-    if self._color_bar is not None: self._color_bar.remove()
+    if self._color_bar is not None:
+      try: self._color_bar.remove()
+      except: pass
     self._color_bar = None
 
     if isinstance(target, VariableWithView): target.display(self)

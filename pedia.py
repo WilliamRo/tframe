@@ -14,6 +14,7 @@ default_feed_dict = 'default_feed_dict '
 do_not_save = 'do_not_save'
 Decoder = 'Decoder'
 Discriminator = 'Discriminator'
+D_input = 'D_input'
 dynamic_opt = 'dynamic_opt'
 
 Encoder = 'Encoder'
@@ -23,6 +24,7 @@ fork = 'fork'
 
 gather_indices = 'gather_indices'
 Generator = 'Generator'
+G_input = 'G_input'
 
 hyper_kernels = 'hyper_kernels'
 

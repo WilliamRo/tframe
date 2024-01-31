@@ -781,7 +781,7 @@ class Trainer(Nomear):
       dataset, self.th.val_batch_size, allow_sum=self.th.summary,
       verbose=self.th.val_progress_bar, seq_detail=self.th.val_info_splits > 0)
 
-  def _validate_model(self, rnd):
+  def _validate_model(self, rnd) -> bool:
     if not self.th.validation_on: return False
     # Validate cycle should be met
     if self.counter == 0:

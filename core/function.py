@@ -13,6 +13,7 @@ class Function(object):
   parameters = None
   linked = False
   output_tensor = None
+  scope = None
 
   output_id = None  # this attribute is for shortcut
 
@@ -49,7 +50,9 @@ class Function(object):
     # Call _link to get the output tensor and register parameters
     def get_output_and_register():
       output = link()
-      self.parameters = tf.trainable_variables(tf.get_variable_scope().name)
+      self.scope = tf.get_variable_scope().name
+      if not self.scope.endswith('/'): self.scope += '/'
+      self.parameters = tf.trainable_variables(self.scope)
       return output
 
     if self.group_name is not None:

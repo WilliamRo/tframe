@@ -62,6 +62,7 @@ class ModelConfigs(object):
     None, 'Input shape of samples for non-train situation')
   output_dim = Flag.integer(0, 'Output dimension of a model')
   target_dim = Flag.integer(0, 'User specified target dim of a model')
+  z_dim = Flag.integer(None, 'Latent space dimension in classic GAN')
   target_shape = Flag.whatever('-', 'Target shape')
   target_dtype = Flag.whatever(None, 'Target data type')
   num_classes = Flag.integer(-1, 'Class number for classification tasks')

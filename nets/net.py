@@ -66,8 +66,7 @@ class Net(Function, Nomear):
   @property
   def var_list(self):
     """Should be used in with graph context"""
-    return [var for var in tf.trainable_variables()
-            if '{}'.format(self.name) == var.name.split('/')[self._level]]
+    return self.parameters
 
   @property
   def decayable_vars(self):
