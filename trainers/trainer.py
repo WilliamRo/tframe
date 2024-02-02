@@ -547,9 +547,6 @@ class Trainer(Nomear):
     loss_dict = self.model.update_model(data_batch=data_batch)
 
     # Get and process loss slots
-    loss_slots = [s for s in loss_dict.keys() if 'loss' in s.name.lower()]
-    assert len(loss_slots) >= 1
-
     if len(self.batch_loss_stats) == 0:
       # Initialize batch_loss_stats if not initialized
       self.batch_loss_stats = {
@@ -557,11 +554,6 @@ class Trainer(Nomear):
         for k, v in loss_dict.items()}
 
     for k, v in loss_dict.items(): self.batch_loss_stats[k].record(v)
-
-    # loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
-    # assert len(loss_slots) == 1
-    # loss_slot = loss_slots[0]
-    # self.batch_loss_stat.record(loss_dict[loss_slot])
 
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
