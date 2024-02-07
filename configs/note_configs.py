@@ -10,6 +10,8 @@ class NoteConfigs(object):
 
   gather_file_name = Flag.string('gather.txt', '...')
   gather_summ_name = Flag.string('gather.sum', '...')
+  gather_classification_results = Flag.boolean(
+    False, 'Option to store test-set classification results in Notes')
   show_record_history_in_note = Flag.boolean(False, '...')
 
   export_note = Flag.boolean(False, 'Whether to take notes')

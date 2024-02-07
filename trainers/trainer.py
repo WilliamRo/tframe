@@ -358,6 +358,17 @@ class Trainer(Nomear):
         self.model.agent.take_notes('{}: {}'.format(title, hub.decimal_str(
           value, hub.val_decimals)))
 
+        # TODO: BETA function: store classification results into note.misc
+        #       USAGE:
+        #         th.gather_classification_results = True
+        #         th.evaluate_test_set = True
+        if self.th.gather_classification_results and name == 'Test':
+          assert isinstance(data_set, DataSet)
+
+          preds = self.model.classify(data_set, batch_size=hub.eval_batch_size)
+          self.model.agent._note.misc['TSP'] = preds
+          self.model.agent._note.misc['TSGT'] = data_set.dense_labels
+
     # Save model here if necessary
     if self._save_model_at_training_end:
       assert len(ds_dict) == 0
@@ -536,9 +547,6 @@ class Trainer(Nomear):
     loss_dict = self.model.update_model(data_batch=data_batch)
 
     # Get and process loss slots
-    loss_slots = [s for s in loss_dict.keys() if 'loss' in s.name.lower()]
-    assert len(loss_slots) >= 1
-
     if len(self.batch_loss_stats) == 0:
       # Initialize batch_loss_stats if not initialized
       self.batch_loss_stats = {
@@ -546,11 +554,6 @@ class Trainer(Nomear):
         for k, v in loss_dict.items()}
 
     for k, v in loss_dict.items(): self.batch_loss_stats[k].record(v)
-
-    # loss_slots = [s for s in loss_dict.keys() if s.name == 'Loss']
-    # assert len(loss_slots) == 1
-    # loss_slot = loss_slots[0]
-    # self.batch_loss_stat.record(loss_dict[loss_slot])
 
     # Record grads if necessary
     # <monitor_grad_step_03: fetch and record>
@@ -770,7 +773,7 @@ class Trainer(Nomear):
       dataset, self.th.val_batch_size, allow_sum=self.th.summary,
       verbose=self.th.val_progress_bar, seq_detail=self.th.val_info_splits > 0)
 
-  def _validate_model(self, rnd):
+  def _validate_model(self, rnd) -> bool:
     if not self.th.validation_on: return False
     # Validate cycle should be met
     if self.counter == 0:

@@ -237,17 +237,17 @@ class Model(object):
   @with_graph
   def build(self, **kwargs):
 
-    # Smooth out flags before important actions
+    # [Hub] Smooth out flags before important actions
     hub.smooth_out_conflicts()
 
-    # Initialize pruner if necessary
+    # [Pruner] Initialize pruner if necessary
     if any([hub.prune_on, hub.weights_mask_on, hub.etch_on,
             hub.force_to_use_pruner]):
       # import here to prevent circular import (temporarily)
       from tframe.advanced.prune.pruner import Pruner
       tfr.context.pruner = Pruner(self)
 
-    # Initialize puller (before init_shadow is called) if required
+    # [Puller] Initialize puller (before init_shadow is called) if required
     if hub.cl_reg_on:
       from tframe.advanced.synapspring.puller import Puller
       tfr.context.puller = Puller(self)
@@ -255,12 +255,16 @@ class Model(object):
     # If optimizer if not provided here, try hub.get_optimizer()
     #   this requires that th.optimizer and th.learning_rate have been provided
     if 'optimizer' not in kwargs: kwargs['optimizer'] = hub.get_optimizer()
-    # Call successor's _build method
+
+    # Call successor's _build method <------------------------------- Entrance
     self._build(**kwargs)
-    # Initialize monitor
-    self._init_monitor()
+
+    # [Monitor] Initialize monitor
+    # self._init_monitor()
+
     # Set built flag
     self._built = True
+
     # Show build info
     console.show_status('Model built successfully:')
     self.agent.take_notes('Model built successfully')

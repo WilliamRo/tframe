@@ -48,7 +48,7 @@ class TrainerConfigs(object):
   block_validation = Flag.whatever(False, '???')
   rand_over_classes = Flag.boolean(False, '...', is_key=None)
 
-  sample_num = Flag.integer(9, 'Sample number in some unsupervised learning '
+  sample_num = Flag.integer(0, 'Sample number in some unsupervised learning '
                                'tasks')
 
   clip_threshold = Flag.float(
