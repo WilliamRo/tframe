@@ -81,53 +81,65 @@ class ICC(Nomear):
   def MSE(self): return self.SSE / ((self.n - 1) * (self.k - 1))
 
   @Nomear.property()
-  def estimated_sigma_r(self):
+  def sr2(self):
+    if self.type == self.Types.ICC1:
+      return (self.MSBS - self.MSWS) / self.k
+    return (self.MSBS - self.MSE) / self.k
+
+  @Nomear.property()
+  def sr(self): return np.sqrt(self.sr2)
+
+  @Nomear.property()
+  def sc2(self):
     if self.type == self.Types.ICC2A:
-      return np.sqrt((self.MSBS - self.MSE) / self.k)
+      return (self.MSBM - self.MSE) / self.n
     else: raise NotImplementedError
 
   @Nomear.property()
-  def estimated_sigma_c(self):
-    if self.type == self.Types.ICC2A:
-      return np.sqrt((self.MSBM - self.MSE) / self.n)
-    else: raise NotImplementedError
+  def sc(self): return np.sqrt(self.sc2)
 
   @Nomear.property()
-  def estimated_sigma_v(self):
-    if self.type == self.Types.ICC2A: return np.sqrt(self.MSE)
-    else: raise NotImplementedError
+  def sv2(self):
+    if self.type == self.Types.ICC1: return self.MSWS
+    return self.MSE
+
+  @Nomear.property()
+  def sv(self): return np.sqrt(self.sv2)
 
   @Nomear.property()
   def ICC(self):
-    if self.type == self.Types.ICC2A:
-      return (self.MSBS - self.MSE) / (self.MSBS + (self.k - 1) * self.MSE + (
-          self.k / self.n) * (self.MSBM - self.MSE))
+    if self.type in (self.Types.ICC1, self.Types.ICC2C, self.Types.ICC3C):
+      return self.sr2 / (self.sr2 + self.sv2)
+    if self.type in (self.Types.ICC2A, self.Types.ICC3A):
+      return self.sr2 / (self.sr2 + self.sc2 + self.sv2)
     else: raise NotImplementedError
 
   # endregion: Properties
 
   # region: Public Methods
 
-  def report(self, verbose=False):
+  def report(self, verbose=False, d=3):
     console.show_info('Data Matrix Info:')
     n, k = self.data.shape
     console.supplement(f'Number of subjects = {n}', level=2)
     console.supplement(f'Number of measurements = {k}', level=2)
 
     if verbose:
-      console.supplement(f'MSBS = {self.MSBS:.3f}')
-      console.supplement(f'MSBM = {self.MSBM:.3f}')
-      console.supplement(f'MSE = {self.MSE:.3f}')
-      if self.type == self.Types.ICC2A:
-        console.supplement(
-          f'Estimated sigma_r = {self.estimated_sigma_r:.3f}')
-        console.supplement(
-          f'Estimated sigma_c = {self.estimated_sigma_c:.3f}')
-        console.supplement(
-          f'Estimated sigma_v = {self.estimated_sigma_v:.3f}')
+      console.supplement(f'MSBS = {self.MSBS:.{d}f}')
+      console.supplement(f'MSBM = {self.MSBM:.{d}f}')
+      console.supplement(f'MSWS = {self.MSWS:.{d}f}')
+      console.supplement(f'MSWM = {self.MSWM:.{d}f}')
+      console.supplement(f'MSE = {self.MSE:.{d}f}')
+      if self.type in (self.Types.ICC1, self.Types.ICC2C, self.Types.ICC3C):
+        console.supplement(f'Estimated sigma_r^2 = {self.sr2:.{d}f}')
+        console.supplement(f'Estimated sigma_v^2 = {self.sv2:.{d}f}')
+      elif self.type in (self.Types.ICC2A, self.Types.ICC3A):
+        console.supplement(f'Estimated sigma_r^2 = {self.sr2:.{d}f}')
+        console.supplement(f'Estimated sigma_c^2 = {self.sc2:.{d}f}')
+        console.supplement(f'Estimated sigma_v^2 = {self.sv2:.{d}f}')
       else: raise NotImplementedError
 
-    console.supplement(f'{self.type} = {self.ICC:.3f}')
+    console.supplement(f'{self.type} = {self.ICC:.{d}f}')
 
   # endregion: Public Methods
 
@@ -151,11 +163,10 @@ if __name__ == '__main__':
   data_matrix = mu + sigma_r * randn(n, 1) + sigma_c * randn(1, k)
   data_matrix += sigma_v * randn(n, k)
 
-  data_matrix = np.array([
-    [6, 4.1],
-    [4, 6],
-  ])
+  data_matrix_1 = np.array([[6, 6.1], [3, 2.9], [4, 4.2], [5, 4.8]])
+  data_matrix_2 = np.array([[6, 6.1], [6, 5.9], [6, 6.2], [6, 5.8]])
+  data_matrix_3 = np.array([[6.01, 6.], [6, 6.01], [6, 6.01], [6, 6.01]])
 
-  # Calculate ICC(A, 1)
-  icc = ICC(data_matrix=data_matrix)
-  icc.report(verbose=True)
+  # Calculate ICC
+  icc = ICC(data_matrix_3, ICC.Types.ICC2A)
+  icc.report(verbose=True, d=5)
