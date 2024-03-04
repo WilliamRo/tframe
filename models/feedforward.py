@@ -62,7 +62,7 @@ class Feedforward(Model, Net):
     assert isinstance(trainer, Trainer)
 
     tensors = OrderedDict()
-    num = checker.check_positive_integer(trainer.th.sample_num)
+    num = checker.check_positive_integer(trainer.th.dynamic_tensor_batch_size)
     # .. fetch tensors
     fetches_dict = context.tensors_to_export
     if len(fetches_dict) == 0: return tensors
