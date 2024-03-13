@@ -50,6 +50,8 @@ class TrainerConfigs(object):
 
   sample_num = Flag.integer(0, 'Sample number in some unsupervised learning '
                                'tasks')
+  dynamic_tensor_batch_size = Flag.integer(
+    1, '`num` used in FeedForward.get_tensor_to_export method')
 
   clip_threshold = Flag.float(
     0., 'Threshold for clipping gradients', is_key=None)
