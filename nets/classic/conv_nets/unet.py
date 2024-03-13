@@ -120,6 +120,7 @@ class UNet(ConvNet):
     activation = self.activation if strides == 1 else None
 
     return Conv(filters, kernel_size, strides, padding='same',
+                use_batchnorm=self.use_batchnorm,
                 activation=activation, use_bias=self.use_bias)
 
   def _get_pooling(self): return self.pool_classes[self.dimension - 1](2, 2)
