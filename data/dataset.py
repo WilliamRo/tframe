@@ -574,18 +574,45 @@ class DataSet(TFRData, Nomear):
     return self
 
 
-  def split_k_fold(self, K: int, i: int):
+  def split_k_fold(self, K: int, i: int, over_classes=False):
     # Sanity check
     assert 0 < i <= K
-    # Calculate fold size
-    N = self.size // K
-    # Find indices
-    i1, i2 = (i - 1) * N, (i * N if i < K else self.size)
-    val_indices = set(range(i1, i2))
-    train_indices = set(range(self.size)) - val_indices
-    train_set, val_set = self[list(train_indices)], self[list(val_indices)]
+
+    def get_indices(index_list: list):
+      # Calculate fold size
+      N = len(index_list) // K
+      # Find indices
+      i1, i2 = (i - 1) * N, (i * N if i < K else len(index_list))
+      val_indices = set(range(i1, i2))
+      train_indices = set(range(len(index_list))) - val_indices
+
+      index_array = np.array(index_list)
+      return [list(index_array[list(indices)])
+              for indices in (train_indices, val_indices)]
+
+    if over_classes:
+      train_indices, val_indices = [], []
+      for group in self.groups:
+        ti, vi = get_indices(group)
+        train_indices.extend(ti)
+        val_indices.extend(vi)
+    else:
+      train_indices, val_indices = get_indices(list(range(self.size)))
+
+    train_set, val_set = self[train_indices], self[val_indices]
     train_set.name, val_set.name = 'Train Set', 'Val Set'
     return train_set, val_set
+
+
+  def report(self):
+    from tframe import console
+
+    assert self.num_classes is not None
+
+    console.show_info(f'Information of `{self.name}` dataset:')
+    for i, group in enumerate(self.groups):
+      console.supplement(f'Class {i}: {len(group)} samples', level=2)
+    console.supplement(f'Totally {self.size} samples')
 
   # endregion : Public Methods
 
