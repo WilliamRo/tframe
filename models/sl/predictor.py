@@ -90,18 +90,26 @@ class Predictor(Feedforward, Recurrent):
           tf.int32, [None, 2], 'gather_indices')
         tf.add_to_collection(pedia.default_feed_dict, context.gather_indices)
 
-    # Get loss quantity before building
+    # Call parent's build method to link network
+    # Usually output tensor has been plugged into Model._outputs slot after
+    #  this line
+    self.master._build(self)
+    assert self.outputs.activated
+
+    # Get loss quantity after building
+    # 2024-3-20 this block is removed from being 'before' building to
+    #   `after` building for Quantity.self_link logic
     self.loss_quantity = losses.get(loss, last_only)
+    if not isinstance(self.loss_quantity, Quantity):
+      assert callable(self.loss_quantity)
+      self.loss_quantity = self.loss_quantity()
+      assert isinstance(self.loss_quantity, Quantity)
+
     # This is for calculating loss inside a while-loop
     # 2020-6-10 | William |
     #   this line is solely used for visualizing gradients
     #   thus does not affect error injection in RNNs
     context.loss_function = self.loss_quantity.function
-
-    # Call parent's build method to link network
-    # Usually output tensor has been plugged into Model._outputs slot
-    self.master._build(self)
-    assert self.outputs.activated
 
     # Initiate targets and add it to collection
     self._plug_target_in(self.outputs.shape_list)
