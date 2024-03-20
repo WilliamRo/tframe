@@ -116,7 +116,8 @@ class Predictor(Feedforward, Recurrent):
     # Define loss. Some tensorflow apis only support calculating logits
     with tf.name_scope('Loss'):
       # (1) main loss
-      loss_tensor = self.loss_quantity(
+      if self.loss_quantity.self_link: loss_tensor = self.loss_quantity()
+      else: loss_tensor = self.loss_quantity(
         self._targets.tensor, self.outputs.tensor)
 
       # TODO: with or without regularization loss?

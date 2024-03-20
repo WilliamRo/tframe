@@ -54,12 +54,19 @@ class Quantity(object):
     self._use_logits = tfr.checker.check_type(use_logits, bool)
     self._kwargs = kwargs
 
+    # This logic is first introduced for DDPM implementation
+    self._truth_tensor, self._pred_tensor = None, None
+
     self.name = name
     self.lower_is_better = kwargs.get('lower_is_better', True)
 
     # This will be passed to metric in metric_manager.py -> initialize
     # This variable is first designed for instance segmentation metrics
     self.post_processor = kwargs.get('post_processor', None)
+
+  @property
+  def self_link(self):
+    return self._truth_tensor is not None and self._pred_tensor is not None
 
   @property
   def support_batch_eval(self):
@@ -89,8 +96,10 @@ class Quantity(object):
     self._np_summ_method = self.tf2np[self._tf_summ_method]
     return self.np_summ_method
 
-  def __call__(self, truth, output, **kwargs):
-    assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+  def __call__(self, truth=None, output=None, **kwargs):
+    if self.self_link: truth, output = self._truth_tensor, self._pred_tensor
+    else: assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
+
     # Replace output with logits if necessary
     # logits will be registered when softmax layer is being linked
     # logits = tfr.context.logits_tensor_dict.get(output, None)
@@ -159,6 +168,7 @@ class Quantity(object):
   def function(self, truth, output, **kwargs):
     """This method is designed for calculating loss in while-loop for
        RNN models"""
+    assert not self.self_link
     assert isinstance(truth, tf.Tensor) and isinstance(output, tf.Tensor)
     q = self._kernel(truth, output, **kwargs)
     assert isinstance(q, tf.Tensor)
@@ -179,6 +189,11 @@ class Quantity(object):
     q = self._tf_summ_method(q)
     assert isinstance(q, tf.Tensor) and len(q.shape) == 0
     return q
+
+  def set_truth_and_pred(self, truth, pred):
+    assert isinstance(truth, tf.Tensor) and isinstance(pred, tf.Tensor)
+    self._truth_tensor = truth
+    self._pred_tensor = pred
 
   def _raise_not_linked_error(self):
     raise ValueError('!! This quantity has not been linked yet')
