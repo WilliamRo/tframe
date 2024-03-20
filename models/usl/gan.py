@@ -185,9 +185,9 @@ class GAN(Model):
 
     return results
 
-  def validate_model(self, data_set, batch_size=None, allow_sum=False,
-                     verbose=False, seq_detail=False, num_steps=None):
-    pass
+  # def validate_model(self, data_set, batch_size=None, allow_sum=False,
+  #                    verbose=False, seq_detail=False, num_steps=None):
+  #   pass
 
   def handle_structure_detail(self):
     G_rows, G_total_params, G_dense_total = self.G.structure_detail
