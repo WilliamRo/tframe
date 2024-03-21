@@ -8,7 +8,7 @@ import numpy as np
 
 
 def gan_grid_plot(samples, show=False, h=None, w=None,
-                     wspace=0.03, hspace=0.03):
+                  wspace=0.03, hspace=0.03, fig=None):
   # Check samples' shape to make sure they can be shown in pyplt
   if samples.shape[-1] == 1:
     samples = samples.reshape(samples.shape[:-1])
@@ -18,16 +18,16 @@ def gan_grid_plot(samples, show=False, h=None, w=None,
   h = int(np.ceil(np.sqrt(sample_num))) if h is None else h
   w = int(np.ceil(sample_num / h)) if w is None else w
 
-  fig = plt.figure(figsize=(w, h))
+  if fig is None: fig = plt.figure(figsize=(w, h))
   gs = gridspec.GridSpec(h, w)
 
   for i, sample in enumerate(samples):
-    ax = plt.subplot(gs[i])
-    plt.axis('off')
+    ax: plt.Axes = fig.add_subplot(gs[i])
+    ax.set_axis_off()
     ax.set_xticklabels([])
     ax.set_yticklabels([])
     ax.set_aspect('equal')
-    plt.imshow(sample, cmap='Greys_r')
+    ax.imshow(sample, cmap='Greys_r')
 
   plt.tight_layout()
   fig.subplots_adjust(wspace=wspace, hspace=hspace)
