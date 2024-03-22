@@ -5,6 +5,7 @@ from tframe.models.sl.classifier import Classifier
 from tframe.models.sl.predictor import Predictor
 from tframe.models import Feedforward
 from tframe.models import GAN
+from tframe.models import GaussianDiffusion
 from tframe.models import Recurrent
 
 # ---------------------------------------------------------------

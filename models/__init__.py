@@ -6,5 +6,6 @@ from tframe.models.sl.classifier import Classifier
 from tframe.models.sl.predictor import Predictor
 
 from tframe.models.usl.gan import GAN
+from tframe.models.usl.denoising_diffusion_v1 import GaussianDiffusion
 from tframe.models.usl.vae import VAE
 

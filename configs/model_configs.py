@@ -198,6 +198,9 @@ class ModelConfigs(object):
 
   use_rnn = Flag.boolean(None, 'Whether to use RNN', is_key=None)
 
+  # Diffusion model related settings
+  beta_schedule = Flag.string('cos', 'Beta schedule', is_key=None)
+
 
   def smooth_out_model_configs(self):
     if self.pruning_rate is not None and self.pruning_rate >= 0:
