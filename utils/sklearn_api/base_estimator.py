@@ -1,31 +1,42 @@
 from collections import OrderedDict
 from roma import Nomear
 from sklearn.utils.validation import check_X_y, check_array
-from tframe import tf
+from sklearn.base import BaseEstimator as SKBaseEstimator
+from tframe import tf, hub as th
 
 import numpy as np
 
 
 
-class BaseEstimator(Nomear):
-  """Base class for all estimators in tframe"""
+class BaseEstimator(Nomear, SKBaseEstimator):
+  """Base class for all estimators in tframe.
+  """
+
+  USE_GPU = False
+
+  shared_session = None
+
   def __init__(self, lr=0.01, patience=10, max_iterations=1e9,
-               optimizer='sgd', tol=1e-3, **hp):
+               optimizer='sgd', tol=1e-3):
     self.lr = lr
     self.patience = patience
     self.tol = tol
     self.max_iterations = int(max_iterations)
     self.optimizer = optimizer
 
-    self.hp_dict = hp
-
     # Private attributes
     self._input_shape = None
     self._is_fitted = False
 
-    self._np_variables = OrderedDict()
+    # Workaround
+    if not self.USE_GPU:
+      import os
+      os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
   # region: Properties
+
+  @Nomear.property(local=True)
+  def _np_variables(self) -> dict: return OrderedDict()
 
   @Nomear.property(local=True)
   def tf_X(self):
@@ -33,8 +44,7 @@ class BaseEstimator(Nomear):
     return tf.placeholder(tf.float32, [None] + self._input_shape, name='X')
 
   @Nomear.property(local=True)
-  def tf_y(self):
-    return tf.placeholder(tf.float32, [None, 1], name='y')
+  def tf_y(self): return tf.placeholder(tf.float32, [None, 1], name='y')
 
   @Nomear.property(local=True)
   def tf_var_dict(self) -> dict:
@@ -43,9 +53,12 @@ class BaseEstimator(Nomear):
     d = OrderedDict()
     for k, v in self._np_variables.items():
       assert isinstance(v, np.ndarray)
-      if k.lower() in ('b', 'bias'): initializer = tf.zeros_initializer()
-      else: initializer = tf.random_normal_initializer()
-      d[k] = tf.get_variable(k, shape=v.shape, initializer=initializer)
+      shape = v.shape
+
+      if k.lower() in ('b', 'bias'): v_initializer = tf.zeros_initializer()
+      else: v_initializer = tf.random_normal_initializer()
+
+      d[k] = tf.get_variable(k, shape=shape, initializer=v_initializer)
 
     return d
 
@@ -57,16 +70,17 @@ class BaseEstimator(Nomear):
     return self._loss_function_tf(self.tf_y, self.pred_tensor)
 
   @property
-  def score_tensor(self):
-    return self._score_function_tf(self.tf_y, self.pred_tensor)
-
-  @property
   def update_op(self):
     if self.optimizer.lower() in ('sgd',):
       optimizer = tf.train.GradientDescentOptimizer(self.lr)
-    else: raise ValueError(f'Unsupported optimizer `{self.optimizer}`')
+    else:
+      raise ValueError(f'Unsupported optimizer `{self.optimizer}`')
 
     return optimizer.minimize(self.loss_tensor)
+
+
+  @Nomear.property()
+  def tf_graph(self): return tf.Graph()
 
   # endregion: Properties
 
@@ -76,15 +90,17 @@ class BaseEstimator(Nomear):
     # (0) Check input
     X, y = check_X_y(X, y)
     self._input_shape = list(X.shape[1:])
-    # The shape of y should be [?, 1], otherwise it will be broadcast
-    #  to [?, ?] when calculating loss, causing unexpected results
-    feed_dict = {self.tf_X: X, self.tf_y: y.reshape([-1, 1])}
 
     # (1) Initialize variables
     if len(self._np_variables) == 0: self._init_np_variables(X)
 
     # (2)
-    with tf.Session() as sess:
+    sess = tf.Session(graph=self.tf_graph)
+    with sess:
+      # The shape of y should be [?, 1], otherwise it will be broadcast
+      #  to [?, ?] when calculating loss, causing unexpected results
+      feed_dict = {self.tf_X: X, self.tf_y: y.reshape([-1, 1])}
+
       # Initialize variables
       patience = self.patience
       best_loss = np.inf
@@ -113,9 +129,11 @@ class BaseEstimator(Nomear):
         else:
           patience -= 1
 
-    # (-1) Assign values and finalize
-    for k, v in best_var_dict.items(): self._np_variables[k] = v
-    self._is_fitted = True
+      # (-1) Assign values and finalize
+      for k, v in best_var_dict.items(): self._np_variables[k] = v
+      self._is_fitted = True
+
+
 
   def predict(self, X):
     assert self._is_fitted
@@ -123,14 +141,37 @@ class BaseEstimator(Nomear):
     y: np.ndarray = self._predict_np(X)
     return y.squeeze(-1)
 
+
   def predict_proba(self, X):
     assert self._is_fitted
     X = check_array(X)
     return self._predict_proba_np(X)
 
-  # endregion: Public methods
 
-  # region: Abstract methods
+  def score(self, X, y):
+    assert self._is_fitted
+    X, y = check_X_y(X, y)
+    y_pred = self.predict(X)
+    assert y_pred.shape == y.shape
+
+    # Calculate R2 score
+    from sklearn.metrics import r2_score
+    return r2_score(y, y_pred)
+
+  # endregion: Public Methods
+
+  # region: Utility Methods
+
+  @classmethod
+  def get_shared_session(cls):
+    if cls.shared_session is None: cls.shared_session = tf.Session()
+    return cls.shared_session
+
+  def _get_shape_str(self, shape): return 'x'.join(map(str, shape))
+
+  # endregion: Utility Methods
+
+  # region: Abstract Methods
 
   def _init_np_variables(self, X: np.ndarray):
     raise NotImplementedError
@@ -146,9 +187,6 @@ class BaseEstimator(Nomear):
 
   def _loss_function_tf(self, y_true, y_pred):
     raise NotImplementedError
-
-  def _score_function_tf(self, y_true, y_pred):
-    return -self._loss_function_tf(y_true, y_pred)
 
   # endregion: Abstract methods
 
