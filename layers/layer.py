@@ -49,7 +49,8 @@ class Layer(Function):
 
   def get_layer_string(self, scale, full_name=False, suffix=''):
     result = self.abbreviation if not full_name else self.full_name
-    if scale: result += self.structure_tail
+    if scale:
+      result += self.structure_tail
     result += suffix
     if self.output_id is not None:
       result += ':=' + self.output_id_str

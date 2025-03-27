@@ -7,6 +7,7 @@ from tframe.models import Feedforward
 from tframe.models import GAN
 from tframe.models import GaussianDiffusion
 from tframe.models import Recurrent
+from tframe.models import VAE
 
 # ---------------------------------------------------------------
 #  Net
@@ -65,6 +66,8 @@ from tframe.layers.pooling import GlobalAveragePooling2D
 from tframe.layers.pooling import MaxPool1D
 from tframe.layers.pooling import MaxPool2D
 from tframe.layers.pooling import MaxPool3D
+
+from tframe.layers.msa import MultiHeadSelfAttention
 
 # ---------------------------------------------------------------
 #  Layer

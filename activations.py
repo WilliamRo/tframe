@@ -2,12 +2,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import six
-
 from tframe import tf
-
 from tframe.utils import checker
 from tframe.utils.arg_parser import Parser
+
+import six
+import numpy as np
 
 
 
@@ -31,6 +31,15 @@ def leaky_relu(input_, **kwargs):
   leak = kwargs.get('leak', 0.1)
   return tf.maximum(input_, input_ * leak, name='lrelu')
 
+
+def gelu(x):
+  return 0.5 * x * (1 + tf.math.erf(x / tf.math.sqrt(2.0)))
+
+
+def gelua(x):
+  return 0.5 * x * (1 + tf.math.tanh(
+    tf.math.sqrt(2 / tf.constant(np.pi, dtype=tf.float32)) * (
+        x + 0.044715 * tf.math.pow(x, 3))))
 
 def softmax(input_):
   if input_.dtype in [tf.complex64, tf.complex128]:
@@ -96,6 +105,8 @@ def get(identifier, **kwargs):
     elif identifier in ['lrelu', 'leakyrelu', 'leaky-relu']:
       leak = p.get_arg(float, default=0.1)
       return lambda x: leaky_relu(x, leak=leak)
+    elif identifier in ['gelu']: return lambda x: gelu(x)
+    elif identifier in ['gelua']: return lambda x: gelua(x)
     elif identifier in ['id']: return lambda x: x
     elif identifier in ['softmax']: return softmax
     elif identifier in ['cumax']: return cumax
